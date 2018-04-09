@@ -1,0 +1,14 @@
+#lang info
+
+(define collection "lathe-comforts")
+
+(define deps (list "base"))
+(define build-deps
+  (list
+    "lathe-comforts-lib"
+    "parendown-lib"
+    "racket-doc"
+    "scribble-lib"))
+
+(define scribblings
+  (list (list "scribblings/lathe-comforts.scrbl" (list))))
