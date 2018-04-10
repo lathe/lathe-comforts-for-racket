@@ -26,15 +26,18 @@
 (provide #/all-defined-out)
 
 
+
+; ===== Evergreen utilities for binding syntax and FP ================
+
+
 (module part1 racket/base
   (require #/only-in syntax/parse
     ~or* ~peek-not ~seq define-splicing-syntax-class expr id pattern)
   (require #/only-in syntax/parse/define expr define-simple-macro)
   (provide #/all-defined-out)
   
-  (define-simple-macro (fn parms ... body:expr)
-    (lambda (parms ...)
-      body))
+  
+  ; === Binding syntax utilities, part 1 ===
   
   (define-splicing-syntax-class binds
     #:attributes ([var 1] [val 1])
@@ -50,15 +53,34 @@
       (~seq vars:binds body:expr ...)
       #:attr [var 1] #'(vars.var ...)
       #:attr [val 1] #'(vars.val ...)))
+  
+  
+  ; === Functional programming utilities, part 1 ===
+  
+  (define-simple-macro (fn parms ... body:expr)
+    (lambda (parms ...)
+      body))
+  
 )
 (require 'part1)
 (require #/for-syntax 'part1)
 (provide #/all-from-out 'part1)
 
 
+; === Binding syntax utilities, part 2 ===
+
 (define-simple-macro (normalize-binds [op ...] bb:bindbody)
   (op ... ([bb.var bb.val] ...)
     bb.body ...))
+
+
+; === Functional programming utilities ===
+
+
+; == Bindings and recursion ==
+
+(define (pass arg func)
+  (func arg))
 
 (define-simple-macro (w- bb:bindbody)
   (normalize-binds (let) bb))
@@ -71,8 +93,7 @@
     name))
 
 
-(define (pass arg func)
-  (func arg))
+; == Conditionals ==
 
 (define-simple-macro
   (mat subject:expr pattern:expr then:expr else:expr ...)
@@ -95,7 +116,7 @@
   (match-lambda [pattern (void) then ...]))
 
 
-; This takes something that might or might not be syntax, and it
-; "de-syntaxes" it recursively.
+; ===== Unit testing utilities =======================================
+
 (define (destx x)
   (syntax->datum #/datum->syntax #'foo x))
