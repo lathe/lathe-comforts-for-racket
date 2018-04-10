@@ -82,7 +82,7 @@ TODO: Write this documentation.
   TODO: Document this.
 }
 
-@defform[(fn arg ... body-expr)]{
+@defform[(fn arg-id ... body-expr)]{
   TODO: Document this.
 }
 
@@ -90,14 +90,14 @@ TODO: Write this documentation.
   TODO: Document this.
 }
 
-@defform[(loopfn next-id arg ... body-expr)]{
+@defform[(loopfn next-id arg-id ... body-expr)]{
   TODO: Document this.
 }
 
 
 @subsubsection[#:tag "conditionals"]{Conditionals}
 
-@defform[(mat val-expr pat then-expr else-expr ...)]{
+@defform[(mat val-expr pat then-expr else-expr)]{
   TODO: Document this.
 }
 
@@ -105,19 +105,19 @@ TODO: Write this documentation.
   TODO: Document this.
 }
 
-@defform[(expect val-expr pat else-expr then-expr ...)]{
+@defform[(expect val-expr pat else-expr then-expr)]{
   TODO: Document this.
 }
 
-@defform[(expectfn pat else-expr then-expr ...)]{
+@defform[(expectfn pat else-expr then-expr)]{
   TODO: Document this.
 }
 
-@defform[(dissect val-expr pat then-expr ...)]{
+@defform[(dissect val-expr pat then-expr)]{
   TODO: Document this.
 }
 
-@defform[(dissectfn pat then-expr ...)]{
+@defform[(dissectfn pat then-expr)]{
   TODO: Document this.
 }
 

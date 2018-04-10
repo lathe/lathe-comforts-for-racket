@@ -33,7 +33,7 @@
 (module part1 racket/base
   (require #/only-in syntax/parse
     ~or* ~peek-not ~seq define-splicing-syntax-class expr id pattern)
-  (require #/only-in syntax/parse/define expr define-simple-macro)
+  (require #/only-in syntax/parse/define define-simple-macro expr id)
   (provide #/all-defined-out)
   
   
@@ -57,7 +57,7 @@
   
   ; === Functional programming utilities, part 1 ===
   
-  (define-simple-macro (fn args ... body:expr)
+  (define-simple-macro (fn args:id ... body:expr)
     (lambda (args ...)
       body))
   
@@ -88,7 +88,7 @@
 (define-simple-macro (w-loop next:id bb:bindbody)
   (normalize-binds (let next) bb))
 
-(define-simple-macro (loopfn name:id args ... body:expr)
+(define-simple-macro (loopfn name:id args:id ... body:expr)
   (letrec ([name (fn args ... body)])
     name))
 
@@ -96,24 +96,24 @@
 ; == Conditionals ==
 
 (define-simple-macro
-  (mat subject:expr pattern:expr then:expr else:expr ...)
-  (match subject [pattern then] [_ (void) else ...]))
+  (mat subject:expr pattern:expr then:expr else:expr)
+  (match subject [pattern then] [_ else]))
 
 (define-simple-macro (matfns pattern:expr then:expr elsefn:expr)
   (match-lambda [pattern then] [subject (elsefn subject)]))
 
 (define-simple-macro
-  (expect subject:expr pattern:expr else:expr then:expr ...)
-  (match subject [pattern (void) then ...] [_ else]))
+  (expect subject:expr pattern:expr else:expr then:expr)
+  (match subject [pattern then] [_ else]))
 
-(define-simple-macro (expectfn pattern:expr else:expr then:expr ...)
-  (match-lambda [pattern (void) then ...] [_ else]))
+(define-simple-macro (expectfn pattern:expr else:expr then:expr)
+  (match-lambda [pattern then] [_ else]))
 
-(define-simple-macro (dissect subject:expr pattern:expr then:expr ...)
-  (match subject [pattern (void) then ...]))
+(define-simple-macro (dissect subject:expr pattern:expr then:expr)
+  (match subject [pattern then]))
 
-(define-simple-macro (dissectfn pattern:expr then:expr ...)
-  (match-lambda [pattern (void) then ...]))
+(define-simple-macro (dissectfn pattern:expr then:expr)
+  (match-lambda [pattern then]))
 
 
 ; ===== Unit testing utilities =======================================
