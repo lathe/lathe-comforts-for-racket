@@ -22,6 +22,7 @@
 @(require #/for-label racket/base)
 @(require #/for-label lathe-comforts)
 @(require #/for-label #/only-in racket/contract/base -> any any/c)
+@(require #/for-label #/only-in syntax/parse expr id)
 
 
 @title{Lathe Comforts}
@@ -41,7 +42,31 @@ TODO: Write this documentation.
 
 @subsection[#:tag "binding-syntax"]{Binding syntax utilities}
 
-TODO: Write this section.
+@defidform[#:kind "splicing syntax class" binds]{
+  Matches syntax in any of three formats:
+  
+  @itemlist[
+    @item{
+      A single syntax object which is a list of two-element lists which each contain an identifier and an expression. This uses the pattern @racket[([_var:id _val:expr] ...)], and the user writes something like @racket[(w- ([_a 1] [_b 2]) (+ _a _b))] when they use this format.
+    }
+    @item{
+      A single syntax object which is a list of an even number of elements which alternate between identifiers and expressions. This uses the pattern @racket[[(~seq _var:id _val:expr) ...]], and the user writes something like @racket[(w- [_a 1 _b 2] (+ _a _b))] when they use this format.
+    }
+    @item{
+      An even number of syntax objects alternating between identifiers and expressions, preceding the end of the list being matched or preceding another syntax object (not included in the match) which is not an identifier. This uses the head pattern @racket[(~seq (~seq _var:id _val:expr) ... (~peek-not __:id))], and the user writes something like @racket[(w- _a 1 _b 2 (+ _a _b))] when they use this format.
+    }
+  ]
+  
+  In all cases, this binds two attributes of ellipsis depth 1, namely @racket[_var] and @racket[_val], and they carry the same number of matches.
+  
+  (See @racket[_], @racket[expr], and @racket[id].)
+}
+
+@defidform[#:kind "splicing syntax class" bindbody]{
+  Matches according to the @racket[binds] splicing syntax class, then matches zero or more expressions after that (as in the @racket[expr] syntax class).
+  
+  This binds three attributes. The @racket[_var] and @racket[_val] attributes are of ellipsis depth 1 and carry the same number of matches. The @racket[_body] attribute is of ellipsis depth 1 as well, but its number of matches is independent of the others.
+}
 
 
 @subsection[#:tag "fp"]{Functional programming utilities}
@@ -49,16 +74,52 @@ TODO: Write this section.
 
 @subsubsection[#:tag "bindings-and-recursion"]{Bindings and recursion}
 
-TODO: Document the rest of the utilities in this section.
-
 @defproc[(pass [arg any/c] [func (-> any/c any)]) any]{
   Invokes the given procedure with the given argument value. In other words, @racket[(pass arg func)] is just like @racket[(func arg)] but in a different order.
+}
+
+@defform[(w- bindbody)]{
+  TODO: Document this.
+}
+
+@defform[(fn arg ... body-expr)]{
+  TODO: Document this.
+}
+
+@defform[(w-loop next-id bindbody)]{
+  TODO: Document this.
+}
+
+@defform[(loopfn next-id arg ... body-expr)]{
+  TODO: Document this.
 }
 
 
 @subsubsection[#:tag "conditionals"]{Conditionals}
 
-TODO: Write this section.
+@defform[(mat val-expr pat then-expr else-expr ...)]{
+  TODO: Document this.
+}
+
+@defform[(matfns val-expr pat then-expr elsefn-expr)]{
+  TODO: Document this.
+}
+
+@defform[(expect val-expr pat else-expr then-expr ...)]{
+  TODO: Document this.
+}
+
+@defform[(expectfn pat else-expr then-expr ...)]{
+  TODO: Document this.
+}
+
+@defform[(dissect val-expr pat then-expr ...)]{
+  TODO: Document this.
+}
+
+@defform[(dissectfn pat then-expr ...)]{
+  TODO: Document this.
+}
 
 
 @section[#:tag "test"]{Unit testing utilities}

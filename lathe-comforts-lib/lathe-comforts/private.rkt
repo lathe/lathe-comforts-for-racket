@@ -57,8 +57,8 @@
   
   ; === Functional programming utilities, part 1 ===
   
-  (define-simple-macro (fn parms ... body:expr)
-    (lambda (parms ...)
+  (define-simple-macro (fn args ... body:expr)
+    (lambda (args ...)
       body))
   
 )
@@ -88,8 +88,8 @@
 (define-simple-macro (w-loop next:id bb:bindbody)
   (normalize-binds (let next) bb))
 
-(define-simple-macro (loopfn name:id parms ... body:expr)
-  (letrec ([name (fn parms ... body)])
+(define-simple-macro (loopfn name:id args ... body:expr)
+  (letrec ([name (fn args ... body)])
     name))
 
 
