@@ -20,34 +20,23 @@
 (require lathe-comforts/private)
 
 (provide
-  fn
-  thunk
-  zap!
+  binds
+  bindbody
+  normalize-binds
+
   w-
-  ret
-  accum
-  magic-withlike
-  namedlet
-  named
-  rfn
-  letr
-  w-stxparam
-  w-anaphor
-  define-simple-syntax-parameter
-  a
-  b
-  abfn
-  it
-  zapit!
-  next
-  nextlet
-  nextfn
-  (contract-out [pass (-> any/c (-> any/c any) any)])
+  fn
+  w-loop
+  loopfn
   mat
   matfns
   expect
   expectfn
   dissect
   dissectfn
-  destx
+  (contract-out [pass (-> any/c (-> any/c any) any)])
+
+  ; TODO: Move this somewhere more appropriate. A module for unit test
+  ; utilities, perhaps?
+  (contract-out [destx (-> any/c any)])
 )
