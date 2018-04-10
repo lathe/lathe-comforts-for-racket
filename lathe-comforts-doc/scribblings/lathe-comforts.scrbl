@@ -21,7 +21,8 @@
 
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base -> any any/c)
-@(require #/for-label #/only-in racket/match match match-lambda)
+@(require #/for-label #/only-in racket/match
+  exn:misc:match? match match-lambda)
 @(require #/for-label #/only-in syntax/parse expr id)
 @(require #/for-label #/only-in syntax/parse/define
   define-simple-macro)
@@ -93,9 +94,6 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   As an example, @racket[w-] and @racket[w-loop] are defined straightforwardly in terms of @racket[let]:
   
   @racketblock[
-    ; Since we just said "as an example," we suppress the "Examples:"
-    ; label.
-    #:label #f
     (define-simple-normalizing-binder (w-)
       (let))
     (define-simple-normalizing-binder (w-loop _proc:id)
