@@ -29,8 +29,7 @@
   
   ; == Binding syntax utilities ==
   binds
-  bindbody
-  normalize-binds
+  define-simple-normalizing-binder
   
   ; == Functional programming utilities ==
   
@@ -43,8 +42,8 @@
   
   ; Conditionals
   mat
-  matfns
   expect
+  matfns
   expectfn
   dissect
   dissectfn

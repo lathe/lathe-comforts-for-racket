@@ -21,6 +21,7 @@
 
 (require #/for-syntax racket/base)
 
+(require #/only-in racket/match match)
 (require #/only-in syntax/parse/define define-simple-macro expr id)
 
 (provide #/all-defined-out)
@@ -47,15 +48,11 @@
         [(~seq var:id val:expr) ...]
         (~seq (~seq var:id val:expr) ... (~peek-not _:id)))))
   
-  (define-splicing-syntax-class bindbody
-    #:attributes ([var 1] [val 1] [body 1])
-    (pattern
-      (~seq vars:binds body:expr ...)
-      #:attr [var 1] #'(vars.var ...)
-      #:attr [val 1] #'(vars.val ...)))
-  
   
   ; === Functional programming utilities, part 1 ===
+  
+  
+  ; == Bindings and recursion, part 1 ==
   
   (define-simple-macro (fn args:id ... body:expr)
     (lambda (args ...)
@@ -69,28 +66,32 @@
 
 ; === Binding syntax utilities, part 2 ===
 
-(define-simple-macro (normalize-binds [op ...] bb:bindbody)
-  (op ... ([bb.var bb.val] ...)
-    bb.body ...))
+(define-simple-macro
+  (define-simple-normalizing-binder (name:id pattern:expr ...)
+    (template:expr ...))
+  (define-simple-macro
+    (name pattern ... vars:binds body:expr #/... ...)
+    (template ... ([vars.var vars.val] #/... ...)
+      body #/... ...)))
 
 
-; === Functional programming utilities ===
+; === Functional programming utilities, part 2 ===
 
 
-; == Bindings and recursion ==
+; == Bindings and recursion, part 2 ==
 
 (define (pass arg func)
   (func arg))
 
-(define-simple-macro (w- bb:bindbody)
-  (normalize-binds (let) bb))
+(define-simple-normalizing-binder (w-)
+  (let))
 
-(define-simple-macro (w-loop next:id bb:bindbody)
-  (normalize-binds (let next) bb))
+(define-simple-normalizing-binder (w-loop proc:id)
+  (let proc))
 
-(define-simple-macro (loopfn name:id args:id ... body:expr)
-  (letrec ([name (fn args ... body)])
-    name))
+(define-simple-macro (loopfn proc:id args:id ... body:expr)
+  (letrec ([proc (fn args ... body)])
+    proc))
 
 
 ; == Conditionals ==
@@ -99,12 +100,12 @@
   (mat subject:expr pattern:expr then:expr else:expr)
   (match subject [pattern then] [_ else]))
 
-(define-simple-macro (matfns pattern:expr then:expr elsefn:expr)
-  (match-lambda [pattern then] [subject (elsefn subject)]))
-
 (define-simple-macro
   (expect subject:expr pattern:expr else:expr then:expr)
   (match subject [pattern then] [_ else]))
+
+(define-simple-macro (matfns pattern:expr then:expr elsefn:expr)
+  (match-lambda [pattern then] [subject (elsefn subject)]))
 
 (define-simple-macro (expectfn pattern:expr else:expr then:expr)
   (match-lambda [pattern then] [_ else]))
