@@ -19,7 +19,14 @@
 @;   language governing permissions and limitations under the License.
 
 
-@(require #/for-label racket/base)
+@(require #/for-label
+  ; NOTE: Scribble docs don't seem to distinguish between things like
+  ; module variables and local variables when they hyperlink variable
+  ; occurrences in example code. In our examples here, we use `/` as a
+  ; local variable, namely as the weak open paren of a call to
+  ; Parendown's `pd`, so we exclude it from our `racket/base` import
+  ; here.
+  (except-in racket/base /))
 @(require #/for-label #/only-in racket/contract/base -> any any/c)
 @(require #/for-label #/only-in racket/match
   exn:misc:match? match match-lambda)
@@ -27,13 +34,17 @@
 @(require #/for-label #/only-in syntax/parse/define
   define-simple-macro)
 
+@; TODO: Once Parendown has documentation, make sure the references to
+@; `pd` in these docs become hyperlinks.
+(require #/for-label #/only-in parendown pd)
+
 @(require #/for-label lathe-comforts)
 
 @(require #/only-in scribble/example examples make-eval-factory)
 
 @(define example-eval
   (make-eval-factory
-  #/list 'racket/base 'racket/match 'lathe-comforts))
+  #/list 'racket/base 'racket/match 'lathe-comforts 'parendown))
 
 
 @title{Lathe Comforts}
@@ -42,7 +53,7 @@
 
 Lathe Comforts for Racket is a collection of utilities that are handy for writing Racket code. This is a non-intrusive toolkit; in most cases it should only make certain Racket code easier to write, without substantially changing the architecture of the project it's used in.
 
-Some of these utilities are designed with Parendown in mind. In some cases, Parendown's weak opening brackets make it easier to get by with higher-order functions instead of custom syntax.
+Some of these utilities are designed with Parendown in mind. In some cases, Parendown's weak opening brackets make it easier to get by with higher-order functions instead of custom syntax. (Note that due to limitations of Scribble's Racket code formatter, we use Parendown's `pd` macro to achieve these weak parens, rather than using its custom reader syntax.)
 
 
 
@@ -112,8 +123,6 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   This utility can come in handy when experimenting with a new operation that returns procedures---for example, @racket[match-lambda]. Instead of going to the trouble to define another operation that acts as a let binding---in this case, @racket[match]---it's easy enough to use @tt{pass} and a weak bracket to accomplish basically the same programming style:
   
-  (TODO: These examples use Parendown's weak opening bracket @tt{#/} which doesn't currently display properly in this documentation. See if there's a way to fix this.)
-  
   @examples[
     ; Since we just introduced this with a colon, we suppress the
     ; "Examples:" label.
@@ -122,7 +131,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
     (match (list 1 2 3)
       [(list) #f]
       [(cons first rest) rest])
-    (pass (list 1 2 3) #/match-lambda
+    (pd / pass (list 1 2 3) / match-lambda
       [(list) #f]
       [(cons first rest) rest])
   ]
@@ -147,13 +156,11 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   This is only a frequently useful shorthand, not a full replacement of @racket[lambda]. Unlike @racket[lambda], @tt{fn} can only be used to create functions of fixed arity, with no keyword arguments, and the body may only consist of one expression (although this expression may be a @racket[begin] form of course). Hence, programs that use @racket[fn] may still need to use @racket[lambda] on occasion.
   
-  (TODO: These examples use Parendown's weak opening bracket @tt{#/} which doesn't currently display properly in this documentation. See if there's a way to fix this.)
-  
   @examples[
     #:eval (example-eval)
-    (hash-map (hash 'a 1 'b 2) #/fn k v
+    (pd / hash-map (hash 'a 1 'b 2) / fn k v
       (format "(~s, ~s)" k v))
-    (build-list 5 #/fn ~ #/* 10 ~)
+    (pd / build-list 5 / fn ~ / * 10 ~)
   ]
 }
 
@@ -162,17 +169,15 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   This example reverses and squares the numbers in a list, using the @racket[_next] procedure to continue the loop:
   
-  (TODO: This example use Parendown's weak opening bracket @tt{#/} which doesn't currently display properly in this documentation. See if there's a way to fix this.)
-  
   @examples[
     ; Since we just said "this example," we suppress the "Example:"
     ; label.
     #:label #f
     #:eval (example-eval)
     
-    (w-loop next original (list 1 2 3) result (list)
+    (pd / w-loop next original (list 1 2 3) result (list)
       (expect original (cons first rest) result
-      #/next rest #/cons (* first first) result))
+      / next rest / cons (* first first) result))
   ]
 }
 
@@ -191,11 +196,9 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   The only difference between @tt{mat} and @tt{expect} is the order of @racket[then-expr] and @racket[else-expr] in the form. When these are used with Parendown's weak opening brackets, they enable a programming style where run time error checking and other early exit conditions are kept toward the top of a procedure body, without affecting the indentation of the procedure's main logic.
   
-  (TODO: These examples use Parendown's weak opening bracket @tt{#/} which doesn't currently display properly in this documentation. See if there's a way to fix this.)
-  
   @examples[
     #:eval (example-eval)
-    (define (rev lst)
+    (pd / define (rev lst)
       (w-loop next lst lst result (list)
         
         ; If the list is empty, we're done.
@@ -203,13 +206,13 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
         
         ; Take apart the list, which must be a cons cell. If this
         ; doesn't work, raise an error.
-        #/expect lst (cons first rest)
+        / expect lst (cons first rest)
           (error "Expected a list")
         
         ; Continue the loop, removing `first` from the input and
         ; adding it to the output.
-        #/next rest #/cons first result)))
-    (rev #/list 1 2 3)
+        / next rest / cons first result)))
+    (rev (list 1 2 3))
     (eval:error (rev 3))
   ]
 }
