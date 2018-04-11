@@ -21,7 +21,7 @@
 
 (require #/for-syntax racket/base)
 
-(require #/only-in racket/match match)
+(require #/only-in racket/match match match-lambda)
 (require #/only-in syntax/parse/define define-simple-macro expr id)
 
 (provide #/all-defined-out)
