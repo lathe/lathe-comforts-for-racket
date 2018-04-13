@@ -115,9 +115,3 @@
 
 (define-simple-macro (dissectfn pattern:expr then:expr)
   (match-lambda [pattern then]))
-
-
-; ===== Unit testing utilities =======================================
-
-(define (destx x)
-  (syntax->datum #/datum->syntax #'foo x))

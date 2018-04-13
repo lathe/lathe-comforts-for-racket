@@ -239,10 +239,3 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   If you need a custom error message, use @racket[expectfn] with an expression that raises an exeption.
 }
-
-
-@section[#:tag "test"]{Unit testing utilities}
-
-@defproc[(destx [x any/c]) any]{
-  Deeply traverses the given datum and converts every syntax object inside to a datum. This simply uses @racket[datum->syntax] followed by @racket[syntax->datum].
-}

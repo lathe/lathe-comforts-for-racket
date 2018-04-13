@@ -47,11 +47,4 @@
   expectfn
   dissect
   dissectfn
-  
-  
-  ; === Unit testing utilities ===
-  ;
-  ; TODO: Move this into its own module.
-  
-  (contract-out [destx (-> any/c any)])
 )

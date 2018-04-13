@@ -34,11 +34,6 @@
 (check-equal? (pass 3 add1) 4
   "Test `pass`")
 
-(check-equal?
-  (destx (list #'(a b c) (list #'d #'e)))
-  (list '(a b c) (list 'd 'e))
-  "Test `destx`")
-
 
 ; Tests corresponding to documentation examples
 
