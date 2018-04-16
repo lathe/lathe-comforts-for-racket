@@ -9,6 +9,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 ## Installation and use
 
-This is a library for Racket. To install it, run `raco pkg install --deps search-auto` from the `lathe-comforts/` directory, and then put an import like `(require lathe-comforts)` in your Racket program.
+This is a library for Racket. To install it from the Racket package index, run `raco pkg install lathe-comforts`. Then you can put an import like `(require lathe-comforts)` in your Racket program.
 
-Most of the utilities in Lathe Comforts are pretty unstable. The stable ones will eventually be documented in the `lathe-comforts-doc/` package's documentation.
+To install it from source, run `raco pkg install --deps search-auto` from the `lathe-comforts-lib/` directory.
+
+[Documentation for Lathe Comforts for Racket](http://docs.racket-lang.org/lathe-comforts/index.html) is available at the Racket documentation website, and it's maintained in the `lathe-comforts-doc/` directory.
