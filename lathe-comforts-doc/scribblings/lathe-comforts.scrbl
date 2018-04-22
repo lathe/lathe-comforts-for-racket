@@ -4,7 +4,7 @@
 @;
 @; Evergreen utilities.
 
-@;   Copyright 2018 The Lathe Authors
+@;   Copyright 2017-2018 The Lathe Authors
 @;
 @;   Licensed under the Apache License, Version 2.0 (the "License");
 @;   you may not use this file except in compliance with the License.
@@ -34,9 +34,9 @@
 @(require #/for-label #/only-in syntax/parse/define
   define-simple-macro)
 
-@; TODO: Once Parendown has documentation, make sure the references to
-@; `pd` in these docs become hyperlinks.
-(require #/for-label #/only-in parendown pd)
+@; TODO: Once Parendown has documentation, make the references to `pd`
+@; in these docs become hyperlinks like so.
+@;(require #/for-label #/only-in parendown pd)
 
 @(require #/for-label lathe-comforts)
 
@@ -49,8 +49,6 @@
 
 @title{Lathe Comforts}
 
-@defmodule[lathe-comforts]
-
 Lathe Comforts for Racket is a collection of utilities that are handy for writing Racket code. This is a non-intrusive toolkit; in most cases it should only make certain Racket code easier to write, without substantially changing the architecture of the project it's used in.
 
 Some of these utilities are designed with Parendown in mind. In some cases, Parendown's weak opening brackets make it easier to get by with higher-order functions instead of custom syntax. (Note that due to limitations of Scribble's Racket code formatter, we use Parendown's `pd` macro to achieve these weak parens, rather than using its custom reader syntax.)
@@ -62,6 +60,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 
 @section[#:tag "evergreen"]{Evergreen utilities for binding syntax and pure FP}
+
+@defmodule[lathe-comforts]
 
 
 @subsection[#:tag "binding-syntax"]{Binding syntax utilities}
@@ -239,3 +239,34 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   If you need a custom error message, use @racket[expectfn] with an expression that raises an exeption.
 }
+
+
+
+@section[#:tag "maybe"]{Maybe}
+
+@defmodule[lathe-comforts/maybe]
+
+Maybe values are a way to encode optional data. Using maybe values can simplify some interfaces that would otherwise use run time errors or special-cased sentinel values like @racket[#f].
+
+
+@defstruct*[nothing ()]{
+  A maybe value that does not contain a value.
+  
+  Every two @tt{nothing} values are @racket[equal?].
+}
+
+@defstruct*[just ([value any/c])]{
+  A maybe value that does contain a value.
+  
+  Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] values.
+}
+
+@defproc[(maybe? [x any/c]) boolean?]{
+  Returns whether the given value is a maybe value. That is, it checks that the value is either a @racket[nothing] value or a @racket[just] value.
+}
+
+@defproc[(maybe/c [c chaperone-contract?]) chaperone-contract?]{
+  Returns a chaperone contract that recognizes a maybe value where the contained value, if any, abides by the given chaperone contract.
+}
+
+@; TODO: Document `maybe-map`.
