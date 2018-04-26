@@ -34,7 +34,7 @@
   nat->maybe
   
   ; Utilities for lists
-  list-foldl
+  list-foldl list-foldr
   list-bind
   list-map list-any list-all list-each
   list-kv-map list-kv-any list-kv-all list-kv-each
@@ -62,6 +62,10 @@
 (define/contract (list-foldl state lst func)
   (-> any/c list? (-> any/c any/c any/c) any)
   (foldl (fn elem state #/func state elem) state lst))
+
+(define/contract (list-foldr lst state func)
+  (-> list? any/c (-> any/c any/c any/c) any)
+  (foldr (fn elem state #/func elem state) state lst))
 
 (define/contract (list-bind lst func)
   (-> list? (-> any/c list?) list?)
