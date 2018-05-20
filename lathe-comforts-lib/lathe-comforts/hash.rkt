@@ -74,9 +74,13 @@
 
 (define/contract (hash-ref-maybe hash key)
   (-> hash? any/c maybe?)
-  (if (hash-has-key? hash key)
-    (just #/hash-ref hash key)
-    (nothing)))
+  ; NOTE: We don't implement this using `hash-has-key?` followed by
+  ; `hash-ref` because that could be prone to a race condition.
+  (w- dummy (list #/list)
+  #/w- result (hash-ref hash key #/fn dummy)
+  #/if (eq? dummy result)
+    (nothing)
+    (just result)))
 
 (define/contract (hash-set-maybe hash key maybe-value)
   (-> hash? any/c maybe? hash?)
