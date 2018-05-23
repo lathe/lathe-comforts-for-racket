@@ -24,7 +24,7 @@
   -> any/c chaperone-contract? or/c struct/c)
 (require #/only-in racket/contract/region define/contract)
 
-(require #/only-in lathe-comforts expect)
+(require #/only-in lathe-comforts expect fn)
 (require #/only-in lathe-comforts/struct struct-easy)
 
 
@@ -33,7 +33,8 @@
   (struct-out just)
   maybe? maybe/c
   
-  ; TODO: Document this export.
+  ; TODO: Document these exports.
+  maybe-bind
   maybe-map
 )
 
@@ -49,7 +50,12 @@
   (-> chaperone-contract? chaperone-contract?)
   (or/c nothing? #/struct/c just c))
 
+(define/contract (maybe-bind m func)
+  (-> maybe? (-> any/c maybe?) maybe?)
+  (expect m (just value) (nothing)
+  #/func value))
+
 (define/contract (maybe-map m func)
   (-> maybe? (-> any/c any/c) maybe?)
-  (expect m (just value) (nothing)
+  (maybe-bind m #/fn value
   #/just #/func value))
