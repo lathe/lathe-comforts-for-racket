@@ -1,5 +1,5 @@
 #lang info
 
-(define collection 'multi)
+(define collection "lathe-comforts")
 
 (define deps (list "base" "parendown"))
