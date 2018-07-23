@@ -32,9 +32,14 @@
 
 
 (module part1 racket/base
+  
+  (require #/for-syntax racket/base)
+  (require #/for-syntax #/only-in syntax/parse syntax-parse)
+  
   (require #/only-in syntax/parse
     ~or* ~peek-not ~seq define-splicing-syntax-class expr id pattern)
-  (require #/only-in syntax/parse/define define-simple-macro expr id)
+  (require #/only-in syntax/parse/define expr id)
+  
   (provide #/all-defined-out)
   
   
@@ -54,9 +59,16 @@
   
   ; == Bindings and recursion, part 1 ==
   
-  (define-simple-macro (fn args:id ... body:expr)
-    (lambda (args ...)
-      body))
+  ; NOTE: We could use `define-simple-macro` here, but instead we use
+  ; `define-syntax` and `syntax-parse` so that we can use
+  ; `syntax/loc`. If we don't do this, stack traces which involve this
+  ; `lambda` function will use the source location of this code,
+  ; rather than the code where `fn` was used.
+  (define-syntax (fn stx)
+    (syntax-parse stx #/ (_ args:id ... body:expr)
+    #/syntax/loc stx
+      (lambda (args ...)
+        body)))
   
 )
 (require 'part1)
