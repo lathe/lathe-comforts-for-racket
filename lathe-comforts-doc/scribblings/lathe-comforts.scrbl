@@ -270,3 +270,16 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
 }
 
 @; TODO: Document `maybe-map`.
+
+
+
+@section[#:tag "string"]{Strings}
+
+@defmodule[lathe-comforts/string]
+
+
+@defproc[(immutable-string? [v any/c]) boolean?]{
+  Returns whether the given value is an immutable string.
+  
+  Equivalent to @racket[(and (string? v) (immutable? v))].
+}
