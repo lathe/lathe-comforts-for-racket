@@ -39,6 +39,7 @@
 @;(require #/for-label #/only-in parendown pd)
 
 @(require #/for-label lathe-comforts)
+@(require #/for-label lathe-comforts/trivial)
 
 @(require #/only-in scribble/example examples make-eval-factory)
 
@@ -242,7 +243,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 
 
-@section[#:tag "maybe"]{Maybe}
+@section[#:tag "maybe"]{Maybe values}
 
 @defmodule[lathe-comforts/maybe]
 
@@ -282,4 +283,23 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
   Returns whether the given value is an immutable string.
   
   Equivalent to @racket[(and (string? v) (immutable? v))].
+}
+
+
+
+@section[#:tag "trivial"]{Trivial values}
+
+@defmodule[lathe-comforts/trivial]
+
+Some values never really vary at all. Perhaps some library accepts an argument that it'll pass through, but the library's client has no need for its pass-through services this time. Perhaps some data structure can store annotations on certain nodes, but the client doesn't really care to annotate any of the nodes this time. In cases like these, it's useful to have a particular value that doesn't mean anything.
+
+Racket programs sometimes use @racket[(void)] for this purpose, but that value is more commonly used as the return value of side-effecting operations which will never have a meaningful result to print at the top level. If a user exploring at the top level uses an operation that typically returns a pass-through value or label, but in this case it happens to return a trivial pass-through value or a trivial label, that's potentially interesting information for the user, since they may not have even known they were dealing with trivial data yet.
+
+So Lathe Comforts provides a very simple structure type, @racket[trivial], to represent trivial values.
+
+
+@defstruct*[trivial ()]{
+  A trivial value.
+  
+  Every two @tt{trivial} values are @racket[equal?].
 }
