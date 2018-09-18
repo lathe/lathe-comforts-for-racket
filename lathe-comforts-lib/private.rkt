@@ -51,7 +51,8 @@
       (~or*
         ([var:id val:expr] ...)
         [(~seq var:id val:expr) ...]
-        (~seq (~seq var:id val:expr) ... (~peek-not _:id)))))
+        (~seq (~seq var:id val:expr) ...
+          (~peek-not #/~seq _:id _:expr)))))
   
   
   ; === Functional programming utilities, part 1 ===

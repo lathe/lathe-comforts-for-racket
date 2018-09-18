@@ -78,7 +78,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
       A single syntax object which is a list of an even number of elements which alternate between identifiers and expressions. This uses the pattern @racket[[(~seq _var:id _val:expr) ...]], and the user writes something like @racket[(w- [_a 1 _b 2] (+ _a _b))] when they use this format.
     }
     @item{
-      An even number of syntax objects alternating between identifiers and expressions, preceding the end of the list being matched or preceding another syntax object (not included in the match) which is not an identifier. This uses the head pattern @racket[(~seq (~seq _var:id _val:expr) ... (~peek-not __:id))], and the user writes something like @racket[(w- _a 1 _b 2 (+ _a _b))] when they use this format.
+      An even number of syntax objects alternating between identifiers and expressions, proceeding as far as possible. This uses the head pattern @racket[(~seq (~seq _var:id _val:expr) ... (~peek-not (~seq __:id __:expr)))], and the user writes something like @racket[(w- _a 1 _b 2 (+ _a _b))] when they use this format.
     }
   ]
   
