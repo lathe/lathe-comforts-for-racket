@@ -53,7 +53,7 @@
   struct-predicate
   struct-accessor-by-name
 ;  struct-mutator-by-name
-;  istruct/c
+  istruct/c
   )
 
 
