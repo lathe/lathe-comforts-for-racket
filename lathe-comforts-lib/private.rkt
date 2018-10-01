@@ -129,8 +129,8 @@
 (define-simple-macro (expectfn pattern:expr else:expr then:expr)
   (match-lambda [pattern then] [_ else]))
 
-(define-simple-macro (dissect subject:expr pattern:expr then:expr)
+(define-simple-macro/loc (dissect subject:expr pattern:expr then:expr)
   (match subject [pattern then]))
 
-(define-simple-macro (dissectfn pattern:expr then:expr)
+(define-simple-macro/loc (dissectfn pattern:expr then:expr)
   (match-lambda [pattern then]))
