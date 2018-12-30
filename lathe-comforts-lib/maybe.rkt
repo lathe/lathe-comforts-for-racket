@@ -21,41 +21,39 @@
 
 
 (require #/only-in racket/contract/base
-  -> any/c chaperone-contract? or/c struct/c)
-(require #/only-in racket/contract/region define/contract)
+  -> any/c contract? contract-out or/c)
 
 (require #/only-in lathe-comforts expect fn)
-(require #/only-in lathe-comforts/struct struct-easy)
+(require #/only-in lathe-comforts/struct istruct/c struct-easy)
 
 
 (provide
   (struct-out nothing)
   (struct-out just)
-  maybe? maybe/c
-  
-  ; TODO: Document these exports.
-  maybe-bind
-  maybe-map
+)
+(provide #/contract-out
+  [maybe? (-> any/c boolean?)]
+  [maybe/c (-> contract? contract?)]
+  [maybe-bind (-> maybe? (-> any/c maybe?) maybe?)]
+  [maybe-map (-> maybe? (-> any/c any/c) maybe?)]
 )
 
 
 (struct-easy (nothing) #:equal)
 (struct-easy (just value) #:equal)
 
-(define/contract (maybe? x)
-  (-> any/c boolean?)
+(define (maybe? x)
   (or (nothing? x) (just? x)))
 
-(define/contract (maybe/c c)
-  (-> chaperone-contract? chaperone-contract?)
-  (or/c nothing? #/struct/c just c))
+; TODO: Give the resulting contract a better name, check that it has
+; good `contract-stronger?` behavior, etc.
+(define (maybe/c c)
+  (or/c nothing? #/istruct/c just c))
 
-(define/contract (maybe-bind m func)
-  (-> maybe? (-> any/c maybe?) maybe?)
+(define (maybe-bind m func)
   (expect m (just value) (nothing)
   #/func value))
 
-(define/contract (maybe-map m func)
-  (-> maybe? (-> any/c any/c) maybe?)
+(define (maybe-map m func)
   (maybe-bind m #/fn value
   #/just #/func value))

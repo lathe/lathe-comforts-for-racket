@@ -21,7 +21,7 @@
 
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base
-  -> any any/c listof or/c)
+  -> any any/c contract? listof or/c)
 @(require #/for-label #/only-in racket/list append-map)
 @(require #/for-label #/only-in racket/match
   exn:misc:match? match match-lambda)
@@ -269,26 +269,32 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
 
 
 @defstruct*[nothing ()]{
-  A maybe value that does not contain a value.
+  A maybe value that does not contain an element.
   
   Every two @tt{nothing} values are @racket[equal?].
 }
 
 @defstruct*[just ([value any/c])]{
-  A maybe value that does contain a value.
+  A maybe value that contains an element.
   
-  Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] values.
+  Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] elements.
 }
 
 @defproc[(maybe? [x any/c]) boolean?]{
-  Returns whether the given value is a maybe value. That is, it checks that the value is either a @racket[nothing] value or a @racket[just] value.
+  Returns whether the given value is a maybe value. That is, it checks that the value is either a @racket[nothing?] value or a @racket[just?] value.
 }
 
-@defproc[(maybe/c [c chaperone-contract?]) chaperone-contract?]{
-  Returns a chaperone contract that recognizes a maybe value where the contained value, if any, abides by the given chaperone contract.
+@defproc[(maybe/c [c contract?]) contract?]{
+  Returns a contract that recognizes a maybe value where the element, if any, abides by the given contract.
 }
 
-@; TODO: Document `maybe-map`.
+@defproc[(maybe-bind [m maybe?] [func (-> any/c maybe?)]) maybe?]{
+  Creates a maybe value by replacing the element of the given maybe value, if any, with zero or one elements according to the given function.
+}
+
+@defproc[(maybe-map [m maybe?] [func (-> any/c any/c)]) maybe?]{
+  Creates a maybe value by replacing the element of the given maybe value, if any, with another according to the given function.
+}
 
 
 
