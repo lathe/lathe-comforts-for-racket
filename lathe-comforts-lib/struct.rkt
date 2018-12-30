@@ -42,11 +42,10 @@
 
 (require #/only-in lathe-comforts dissect dissectfn expect fn w-)
 
-; TODO: Document these exports.
 (provide struct-easy)
 
-; TODO: Export the commented-out ones if and when we have a use for
-; them.
+; TODO: Export and document the commented-out ones if and when we have
+; a use for them.
 (provide
 ;  struct-descriptor
 ;  struct-constructor
@@ -93,7 +92,7 @@
           ; the contract of `struct-easy`.
           (define/contract phrase string?
             #,(mat maybe-phrase (list phrase) phrase
-              (format "a value of the ~s structure type"
+              (format "an instance of the ~s structure type"
               #/symbol->string #/syntax-e #'name)))
           (struct name (slot ...) #,@options))
         (next #'(#:write #/fn this #/list slot ...) #f maybe-phrase

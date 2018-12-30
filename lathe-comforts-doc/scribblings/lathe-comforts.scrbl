@@ -21,11 +21,15 @@
 
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base
-  -> any any/c contract? listof or/c)
+  -> any any/c contract? listof or/c struct/c)
 @(require #/for-label #/only-in racket/list append-map)
 @(require #/for-label #/only-in racket/match
   exn:misc:match? match match-lambda)
 @(require #/for-label #/only-in racket/math natural?)
+@(require #/for-label #/only-in racket/struct
+  make-constructor-style-printer)
+@(require #/for-label #/only-in racket/struct-info
+  extract-struct-info)
 @(require #/for-label #/only-in syntax/parse expr id)
 @(require #/for-label #/only-in syntax/parse/define
   define-simple-macro)
@@ -253,7 +257,6 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   @examples[
     #:eval (example-eval)
-    
     (fix/c simple-s-expression/c
       (or/c symbol? (listof simple-s-expression/c)))
   ]
@@ -656,4 +659,59 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Iterates over the given hash table's mapped values in an unspecified order and calls the given procedure on each one. Ignores the procedure's results.
   
   If the given hash table is modified partway through this operation, the resulting behavior may be unpredictable.
+}
+
+
+
+@section[#:tag "struct"]{Utilities for Structs}
+
+@defmodule[lathe-comforts/struct]
+
+@defform[(struct-easy (name-id slot-id ...) rest ...)]{
+  This is a convenience layer over @racket[struct], which has some features to automate the implementation of the struct's print behavior and @racket[equal?] behavior.
+  
+  The interface is rather unstable at this point. It's not even clear at this point which pieces of the behavior here are by design and which are temporary kludges.
+  
+  @; TODO: See if we can make it more stable.
+  
+  Here are some non-normative examples of how it can be used:
+  
+  The definition @racket[(@#,tt{struct-easy} (_my-data _field-one _field-two))] behaves the same way as @racket[(struct _my-data (_field-one _field-two))] except that it also implements a @racket[gen:custom-write] behavior based on @racket[make-constructor-style-printer].
+  
+  In the @racket[rest] section, the first occurrence of the @racket[#:other] keyword begins passing the rest of the subforms through to the @racket[struct] form. To illustrate, this means the definition @racket[(@#,tt{struct-easy} (_my-data _field-one _field-two) #:other ...)] behaves the same way as @racket[(struct _my-data (_field-one _field-two) ...)], aside from that custom write behavior.
+  
+  If @racket[#:equal] appears in the @racket[rest] section (before any occurrence of  @racket[#:other]), then an implementation of @racket[gen:equal+hash] will be generated so that the resulting structure type's instances are @racket[equal?] if their corresponding fields are @racket[equal?].
+  
+  If a list of the form @racket[(#:guard-easy _body-expr ...)] appears in the @racket[rest] section (before any occurrence of  @racket[#:other]), then the resulting structure type runs each @racket[_body-expr] when an instance is constructed. In those expressions, local variables corresponding to each field (e.g. @racket[_field-one] and @racket[_field-two]) are bound to the values that instance is being constructed with. The results of each @racket[_body-expr] are ignored; they're expected to raise exceptions if the field values are unacceptable.
+  
+  If @racket[#:write] followed by an expression appears, then whenever an instance of this structure type would have its @racket[gen:custom-write] behavior invoked, it runs that expression with local variables in scope corresponding to each field name (e.g. @racket[_field-one] and @racket[_field-two]), each bound to the instance's respective field value. The expression is expected to return a procedure that takes the instance value itself and returns a list of values to be printed. (Since these are redundant, typically the expression will either ignore the field variables or ignore the instance value.) The resulting list of values is printed according to the behavior of @racket[make-constructor-style-printer].
+  
+  If @racket[#:error-message-phrase] followed by an expression appears, then that expression will be evaluated as the structure type is defined, and its result will be used in certain error messages of the generated @racket[gen:custom-write] and @racket[gen:equal+hash] implementations, particularly the errors that occur when these methods are called with a value that isn't actually an instance of this structure type. The errors are of the form "Expected <this> to be <phrase>", and the default "<phrase>" is "an instance of the <name> structure type". For certain structure types, it may make sense to use @racket[#:error-message-phrase] to change this to a more pithy phrase, like "an RGB color" rather than "an instance of the rgb-color structure type." (However, is it even possible for clients of @racket[struct-easy] to observe these errors in their programs? This feature might not make any visible difference.)
+  
+  @; TODO: See if it does. That is to say, see if
+  @; `#:error-message-phrase` makes any difference.
+}
+
+@defform[(struct-predicate struct-name-id)]{
+  Expands to the predicate identifier associated with the given structure type name.
+  
+  For instance, if a struct is defined as @racket[(struct _my-data (_field-one _field-two))], then traditionally we can recognize instances of the struct using @racket[(_my-data? _x)], and now we can also recognize them using @racket[((@#,tt{struct-predicate} _my-data) _x)].
+  
+  This comes in handy mostly when defining other syntax transformers that deal with structure type names. Sometimes it allows those syntax transformers to be written using simple syntax templates, saving the trouble of making manual calls to @racket[syntax-local-value] and @racket[extract-struct-info].
+}
+
+@defform[(struct-accessor-by-name struct-name-id field-name-id)]{
+  Expands to the struct field accessor identifier associated with the given structure type name and field name.
+  
+  For instance, if a struct is defined as @racket[(struct _my-data (_field-one _field-two))], then traditionally we can extract the first field using @racket[(_my-data-field-one _x)], and now we can also extract it using @racket[((@#,tt{struct-accessor-by-name} _my-data _field-one) _x)].
+  
+  This comes in handy mostly when defining other syntax transformers that deal with structure type names. Sometimes it allows those syntax transformers to be written using simple syntax templates, saving the trouble of making manual calls to @racket[syntax-local-value] and @racket[extract-struct-info].
+}
+
+@defform[(istruct/c name-id field/c-expr ...)]{
+  Returns a contract that recognizes an instance of structure type @racket[name-id] where the fields abide by the respective @racket[field/c-expr] coontracts.
+  
+  Unlike @racket[struct/c], this works even when @racket[name-id] is an immutable struct and the @racket[field/c-expr] values contain one or more impersonator contracts.
+  
+  However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
 }
