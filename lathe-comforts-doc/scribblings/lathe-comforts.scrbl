@@ -60,7 +60,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 
 
-@section[#:tag "evergreen"]{Evergreen utilities for binding syntax and pure FP}
+@section[#:tag "evergreen"]{Evergreen Utilities for Binding Syntax and Pure FP}
 
 @defmodule[lathe-comforts]
 
@@ -243,7 +243,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 
 
-@section[#:tag "maybe"]{Maybe values}
+@section[#:tag "maybe"]{Maybe Values}
 
 @defmodule[lathe-comforts/maybe]
 
@@ -287,7 +287,7 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
 
 
 
-@section[#:tag "trivial"]{Trivial values}
+@section[#:tag "trivial"]{Trivial Values}
 
 @defmodule[lathe-comforts/trivial]
 
@@ -302,4 +302,174 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   A trivial value.
   
   Every two @tt{trivial} values are @racket[equal?].
+}
+
+
+
+@section[#:tag "hash"]{Hash Tables}
+
+@defmodule[lathe-comforts/hash]
+
+Various utilities for Racket's hash tables.
+
+
+@defproc[
+  (make-similar-hash [example hash?] [assocs (listof pair?)])
+  hash?
+]{
+  Returns a hash table with the same key-comparison procedure, key-holding strength, and mutability as @racket[example] but with entries populated from @racket[assocs] instead. If @racket[assocs] contains duplicate keys, the last entry in the list takes precedence.
+}
+
+@defproc[(hash-comparison-same? [a hash?] [b hash?]) boolean?]{
+  Returns whether the two given hash tables have the same comparison procedure (@racket[equal?], @racket[eqv?], or @racket[eq?]).
+}
+
+@defproc[(hash-keys-same? [a hash?] [b hash?]) boolean?]{
+  Returns whether the two given hash tables have the same set of keys according to their comparison procedure. If the two hash tables don't even have the same comparison procedure, the @racket[exn:fail:contract] exception is raised.
+  
+  If the thread performing this operation is terminated and the given hash tables use @racket[eqv?] or @racket[equal?] as their comparison procedure, all current and future operations on those hash tables may block indefinitely.
+  
+  If either of the given hash tables is modified partway through this operation, or if either one is an @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
+}
+
+@defproc[(hash-ref-maybe [hash hash?] [key any/c]) maybe?]{
+  Looks up the given key in the given hash table. Returns a @racket[just?] of the value found or a @racket[nothing?] if no entry for that key exists.
+  
+  If the thread performing this operation is terminated and the given hash table uses @racket[eqv?] or @racket[equal?] as its comparison procedure, all current and future operations on that hash table may block indefinitely.
+  
+  If the given hash table is modified partway through this operation, or if it's an @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
+}
+
+@defproc[
+  (hash-set-maybe [hash hash?] [key any/c] [maybe-value maybe?])
+  hash?
+]{
+  Returns a hash table with the same key-comparison procedure, key-holding strength, and mutability as the given one, where the given key's mapping has been deleted (if @racket[maybe-value] is a @racket[nothing?]) or replaced (if it's a @racket[just?] of some value to use as the replacement).
+  
+  If the given hash table is an @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
+  
+  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+}
+
+@defproc[
+  (hash-kv-map-sorted
+    [key<? (-> any/c any/c boolean?)]
+    [hash hash?]
+    [func (-> any/c any/c any/c)])
+  list?
+]{
+  Returns a list constructed by converting the given hash table to a list, sorting it in ascending order by comparing keys according to the given @racket[key<?] behavior, and then transforming each entry in ascending order by calling the given @racket[func] with the entry's key and value.
+  
+  The number of times @racket[key<?] is called is unspecified. The particular argument values it receives are unspecified, aside from the fact that they are all keys of @racket[hash].
+  
+  If the given hash table is modified while this operation is setting up (before it calls either of the given functions for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
+}
+
+@defproc[
+  (hash-kv-bind [hash hash?] [func (-> any/c any/c hash?)])
+  hash?
+]{
+  Returns a hash table constructed by iterating over the given hash table @racket[hash]'s entries in an unspecified order, calling the given function @racket[func] with each entry's key and value, and collecting the entries of the resulting hash tables into a single result hash table.
+  
+  If multiple results of @racket[func] have the same key, the last one to be computed takes precedence.
+  
+  The resulting hash table has the same key-comparison procedure, key-holding strength, and mutability as @racket[hash]. Each result of @racket[func] may have its own combination of key-comparison procedure, key-holding strength, and mutability; these properties will be ignored.
+  
+  If @racket[hash] is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries this operation processes may be unpredictable. Modifications after that will not affect the operation.
+  
+  Likewise, if a result of @racket[func] is modified between the time it is returned and the time this operation either returns or calls @racket[func] again, then the particular list of entries this operation collects from that @racket[func] result may be unpredictable.
+  
+  If the overall result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+}
+
+@defproc[
+  (hash-kv-map-maybe [hash hash?] [func (-> any/c any/c maybe?)])
+  hash?
+]{
+  Returns a hash table constructed by iterating over the given hash table's entries in an unspecified order, calling the given function with each entry's key and value, and collecting the results. If for some input entry, the function returns a @racket[nothing?], then there is no corresponding output entry. When the function returns a @racket[just?], then there is a corresponding output entry which maps the input entry's key to the the value of the @racket[just?].
+  
+  The resulting hash table has the same key-comparison procedure, key-holding strength, and mutability as the given one.
+  
+  If the given hash table is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
+  
+  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+}
+
+@defproc[
+  (hash-kv-map [hash hash?] [func (-> any/c any/c any/c)])
+  hash?
+]{
+  Returns a hash table with the same keys as the given one. The result is constructed by iterating over the given hash table's entries in an unspecified order and calling the given function with each entry's key and value to determine the corresponding result entry's mapped value.
+  
+  The resulting hash table has the same key-comparison procedure, key-holding strength, and mutability as the given one.
+  
+  If the given hash table is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
+  
+  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+}
+
+@defproc[
+  (hash-kv-any [hash hash?] [func (-> any/c any/c boolean?)])
+  boolean?
+]{
+  Iterates over the given hash table's entries in an unspecified order and calls the given function on each entry's key and value, stopping early if the function returns @racket[#t]. If the function does return @racket[#t], then the overall result is @racket[#t]; otherwise, it's @racket[#f].
+  
+  If the given hash table is modified partway through this operation, the resulting behavior may be unpredictable.
+}
+
+@defproc[
+  (hash-kv-all [hash hash?] [func (-> any/c any/c boolean?)])
+  boolean?
+]{
+  Iterates over the given hash table's entries in an unspecified order and calls the given function on each entry's key and value, stopping early if the function returns @racket[#f]. If the function does return @racket[#f], then the overall result is @racket[#f]; otherwise, it's @racket[#t].
+  
+  If the given hash table is modified partway through this operation, the resulting behavior may be unpredictable.
+}
+
+@defproc[
+  (hash-kv-each [hash hash?] [body (-> any/c any/c any)])
+  void?
+]{
+  Iterates over the given hash table's entries in an unspecified order and calls the given procedure on each entry's key and value. Ignores the procedure's results.
+  
+  If the given hash table is modified partway through this operation, the resulting behavior may be unpredictable.
+}
+
+@defproc[
+  (hash-v-map-maybe [hash hash?] [func (-> any/c maybe?)])
+  hash?
+]{
+  Returns a hash table constructed by iterating over the given hash table's entries in an unspecified order, calling the given function with each entry's mapped value, and collecting the results. If for some input entry, the function returns a @racket[nothing?], then there is no corresponding output entry. When the function returns a @racket[just?], then there is a corresponding output entry which maps the input entry's key to the the value of the @racket[just?].
+  
+  The resulting hash table has the same key-comparison procedure, key-holding strength, and mutability as the given one.
+  
+  If the given hash table is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
+  
+  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+}
+
+@defproc[(hash-v-map [hash hash?] [func (-> any/c any/c)]) hash?]{
+  Returns a hash table with the same keys as the given one. The result is constructed by iterating over the given hash table's entries in an unspecified order and calling the given function with each entry's mapped value to determine the corresponding result entry's mapped value.
+  
+  The resulting hash table has the same key-comparison procedure, key-holding strength, and mutability as the given one.
+  
+  If the given hash table is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
+}
+
+@defproc[(hash-v-any [hash hash?] [func (-> any/c boolean?)]) boolean?]{
+  Iterates over the given hash table's mapped values in an unspecified order and calls the given function on each one, stopping early if the function returns @racket[#t]. If the function does return @racket[#t], then the overall result is @racket[#t]; otherwise, it's @racket[#f].
+  
+  If the given hash table is modified partway through this operation, the resulting behavior may be unpredictable.
+}
+
+@defproc[(hash-v-all [hash hash?] [func (-> any/c boolean?)]) boolean?]{
+  Iterates over the given hash table's mapped values in an unspecified order and calls the given function on each one, stopping early if the function returns @racket[#f]. If the function does return @racket[#f], then the overall result is @racket[#f]; otherwise, it's @racket[#t].
+  
+  If the given hash table is modified partway through this operation, the resulting behavior may be unpredictable.
+}
+
+@defproc[(hash-v-each [hash hash?] [func (-> any/c any)]) void?]{
+  Iterates over the given hash table's mapped values in an unspecified order and calls the given procedure on each one. Ignores the procedure's results.
+  
+  If the given hash table is modified partway through this operation, the resulting behavior may be unpredictable.
 }
