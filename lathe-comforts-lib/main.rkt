@@ -27,11 +27,11 @@
   
   ; === Evergreen utilities for binding syntax and FP ===
   
-  ; == Binding syntax utilities ==
+  ; == Utilities for binding syntax ==
   binds
   define-simple-normalizing-binder
   
-  ; == Functional programming utilities ==
+  ; == Utilities for functional programming ==
   
   ; Bindings and recursion
   (contract-out [pass (-> any/c (-> any/c any) any)])

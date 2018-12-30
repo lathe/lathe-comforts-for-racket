@@ -22,8 +22,10 @@
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base
   -> any any/c listof or/c)
+@(require #/for-label #/only-in racket/list append-map)
 @(require #/for-label #/only-in racket/match
   exn:misc:match? match match-lambda)
+@(require #/for-label #/only-in racket/math natural?)
 @(require #/for-label #/only-in syntax/parse expr id)
 @(require #/for-label #/only-in syntax/parse/define
   define-simple-macro)
@@ -64,7 +66,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 @defmodule[lathe-comforts]
 
 
-@subsection[#:tag "binding-syntax"]{Binding syntax utilities}
+@subsection[#:tag "binding-syntax"]{Utilities for Binding Syntax}
 
 @defidform[#:kind "splicing syntax class" binds]{
   Matches syntax in any of three formats:
@@ -113,7 +115,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 
-@subsection[#:tag "fp"]{Functional programming utilities}
+@subsection[#:tag "fp"]{Utilities for Functional Programming}
 
 
 @subsubsection[#:tag "bindings-and-recursion"]{Bindings and recursion}
@@ -242,7 +244,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 
 
-@section[#:tag "contract"]{Contracts}
+@section[#:tag "contract"]{Utilities for Contracts}
 
 @defmodule[lathe-comforts/contract]
 
@@ -290,7 +292,7 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
 
 
 
-@section[#:tag "string"]{Strings}
+@section[#:tag "string"]{Utilities for Strings}
 
 @defmodule[lathe-comforts/string]
 
@@ -322,12 +324,172 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 
 
 
-@section[#:tag "hash"]{Hash Tables}
+@section[#:tag "list"]{Utilities for Lists and Natural Numbers}
+
+@defmodule[lathe-comforts/list]
+
+
+@subsection[#:tag "list-nat"]{Utilities for Natural Numbers}
+
+@defproc[(nat->maybe [n natural?]) (maybe/c natural?)]{
+  Finds the predecessor of the given natural number, if any. If there is one, the result is a @racket[just?] of that value. If there isn't, the result is a @racket[nothing?].
+}
+
+
+@subsection[#:tag "list-list"]{Utilities for Lists}
+
+@defproc[
+  (list-foldl [state any/c] [lst list?] [func (-> any/c any/c any/c)])
+  any/c
+]{
+  Returns the final state value obtained by initializing the state as the given value @racket[state] and updating the state by calling the given function @racket[func] with each element of the list @racket[lst] from first to last.
+  
+  The function @racket[func] is passed two values: The current state value and the list element to process. Its return value is used as the updated state value.
+  
+  Racket already provides a @racket[foldl] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[
+  (list-foldr [lst list?] [state any/c] [func (-> any/c any/c any/c)])
+  any/c
+]{
+  Returns the final state value obtained by initializing the state as the given value @racket[state] and updating the state by calling the given function @racket[func] with each element of the list @racket[lst] from last to first.
+  
+  The function @racket[func] is passed two values: The list element to process and the current state value. Its return value is used as the updated state value.
+  
+  Racket already provides a @racket[foldr] function, but this one arranges the function to be the last argument, and it switches the order of the list and initial state arguments so the initial state is visually closer to the side of the list it interacts with.
+}
+
+@defproc[(list-bind [lst list?] [func (-> any/c list?)]) list?]{
+  Creates a list by replacing every element of the given list with zero, one, or more elements according to the given function.
+  
+  The elements are processed from first to last.
+  
+  Racket already provides an @racket[append-map] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[(list-map [lst list?] [func (-> any/c any/c)]) list?]{
+  Creates a list by replacing every element of the given list with another according to the given function.
+  
+  The elements are processed from first to last.
+  
+  Racket already provides a @racket[map] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[(list-any [lst list?] [func (-> any/c any)]) any]{
+  Iterates over the given list's elements from first to last and calls the given function on each one, stopping early if the function returns a non-@racket[#f] value for any but the last element.
+  
+  If the list is empty, the overall result is @racket[#f]. Otherwise, if the function does return a non-@racket[#f] value for any but the last element, then that value is used as the overall result. Otherwise, the (possibly multiple) return values of calling the function with the last element are used as the result.
+  
+  Racket already provides an @racket[ormap] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[(list-all [lst list?] [func (-> any/c any)]) any]{
+  Iterates over the given list's elements from first to last and calls the given function on each one, stopping early if the function returns @racket[#f] for any but the last element.
+  
+  If the list is empty, the overall result is @racket[#t]. Otherwise, if the function does return @racket[#f] for any but the last element, then the overall result is @racket[#f]. Otherwise, the (possibly multiple) return values of calling the function with the last element are used as the result.
+  
+  Racket already provides an @racket[andmap] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[(list-each [lst list?] [func (-> any/c any)]) void?]{
+  Iterates over the given list's elements from first to last and calls the given procedure on each one. Ignores the procedure's results.
+  
+  Racket already provides a @racket[for-each] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[
+  (list-kv-map [lst list?] [func (-> natural? any/c any/c)])
+  list?
+]{
+  Returns a list constructed by iterating over the given list's entries from first to last, calling the given function with each entry's index and value, and collecting the results.
+}
+
+@defproc[
+  (list-kv-any [lst list?] [func (-> natural? any/c any)])
+  any
+]{
+  Iterates over the given list's entries from first to last and calls the given function on each entry's index and value, stopping early if the function returns a non-@racket[#f] value for any but the last element.
+  
+  If the list is empty, the overall result is @racket[#f]. Otherwise, if the function does return a non-@racket[#f] value for any but the last entry, then that value is used as the overall result. Otherwise, the (possibly multiple) return values of calling the function with the last entry's index and value are used as the result.
+}
+
+@defproc[
+  (list-kv-all [lst list?] [func (-> natural? any/c any)])
+  any
+]{
+  Iterates over the given list's entries from first to last and calls the given function on each entry's index and value, stopping early if the function returns @racket[#f] for any but the last element.
+  
+  If the list is empty, the overall result is @racket[#t]. Otherwise, if the function does return @racket[#f] for any but the last entry, then the overall result is @racket[#f]. Otherwise, the (possibly multiple) return values of calling the function with the last entry's index and value are used as the result.
+}
+
+@defproc[
+  (list-kv-each [lst list?] [func (-> natural? any/c any)])
+  void?
+]{
+  Iterates over the given list's entries from first to last and calls the given procedure on each entry's index and value. Ignores the procedure's results.
+}
+
+@defproc[
+  (list-zip-map [a list?] [b list?] [func (-> any/c any/c any/c)])
+  list?
+]{
+  Creates a list by replacing every pair of elements of the given two lists (which must be of the same length) with a single element according to the given function.
+  
+  The elements are processed from first to last.
+  
+  Racket already provides a @racket[map] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[
+  (list-zip-any [a list?] [b list?] [func (-> any/c any/c any)])
+  any
+]{
+  Iterates over the given two lists (which must be of the same length) and calls the given function on each pair of elements from first to last, stopping early if the function returns a non-@racket[#f] value for any but the last pair of elements.
+  
+  If the lists are empty, the overall result is @racket[#f]. Otherwise, if the function does return a non-@racket[#f] value for any but the last pair of elements, then that value is used as the overall result. Otherwise, the (possibly multiple) return values of calling the function with the last pair of elements are used as the result.
+  
+  Racket already provides an @racket[ormap] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[
+  (list-zip-all [a list?] [b list?] [func (-> any/c any/c any)])
+  any
+]{
+  Iterates over the given two lists (which must be of the same length) and calls the given function on each pair of elements from first to last, stopping early if the function returns @racket[#f] for any but the last pair of elements.
+  
+  If the lists are empty, the overall result is @racket[#t]. Otherwise, if the function does return @racket[#f] for any but the last pair of elements, then the overall result is @racket[#f]. Otherwise, the (possibly multiple) return values of calling the function with the last pair of elements are used as the result.
+  
+  Racket already provides an @racket[andmap] function, but this one arranges the function to be the last argument.
+}
+
+@defproc[
+  (list-zip-each [a list?] [b list?] [func (-> any/c any/c any)])
+  void?
+]{
+  Iterates over the given two lists (which must be of the same length) and calls the given procedure on each pair of elements from first to last. Ignores the procedure's results.
+  
+  Racket already provides a @racket[for-each] function, but this one arranges the function to be the last argument.
+}
+
+
+@subsection[#:tag "list-together"]{Utilities for Natural Numbers and Lists Together}
+
+@defproc*[(
+  [(list-length<=nat? [lst list?] [n natural?]) boolean?]
+  [(nat<=list-length? [n natural?] [lst list?]) boolean?]
+  [(list-length=nat? [lst list?] [n natural?]) boolean?]
+  [(list-length<nat? [lst list?] [n natural?]) boolean?]
+  [(nat<list-length? [n natural?] [lst list?]) boolean?]
+)]{
+  These procedures compare a given natural number with the length of a given list. This can be more efficient than comparing the number to @racket[(length lst)] when that length is larger than the number.
+}
+
+
+
+@section[#:tag "hash"]{Utilities for Hash Tables}
 
 @defmodule[lathe-comforts/hash]
-
-Various utilities for Racket's hash tables.
-
 
 @defproc[
   (make-similar-hash [example hash?] [assocs (listof pair?)])

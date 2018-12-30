@@ -43,7 +43,7 @@
   (provide #/all-defined-out)
   
   
-  ; === Binding syntax utilities, part 1 ===
+  ; === Utilities for binding syntax, part 1 ===
   
   (define-splicing-syntax-class binds
     #:attributes ([var 1] [val 1])
@@ -55,7 +55,7 @@
           (~peek-not #/~seq _:id _:expr)))))
   
   
-  ; === Functional programming utilities, part 1 ===
+  ; === Utilities for functional programming, part 1 ===
   
   
   ; == Bindings and recursion, part 1 ==
@@ -82,7 +82,7 @@
 (provide #/all-from-out 'part1)
 
 
-; === Binding syntax utilities, part 2 ===
+; === Utilities for binding syntax, part 2 ===
 
 (define-simple-macro
   (define-simple-normalizing-binder (name:id pattern:expr ...)
@@ -94,7 +94,7 @@
       (... ...))))
 
 
-; === Functional programming utilities, part 2 ===
+; === Utilities for functional programming, part 2 ===
 
 
 ; == Bindings and recursion, part 2 ==
