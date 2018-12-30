@@ -19,15 +19,13 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/only-in racket/contract/base -> any/c)
-(require #/only-in racket/contract/region define/contract)
+(require #/only-in racket/contract/base -> any/c contract-out)
 
 
-(provide
-  immutable-string?
+(provide #/contract-out
+  [immutable-string? (-> any/c boolean?)]
 )
 
 
-(define/contract (immutable-string? v)
-  (-> any/c boolean?)
+(define (immutable-string? v)
   (and (string? v) (immutable? v)))
