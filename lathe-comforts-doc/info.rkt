@@ -6,6 +6,7 @@
 (define build-deps
   (list
     "lathe-comforts-lib"
+    "parendown-doc"
     "parendown-lib"
     "racket-doc"
     "scribble-lib"))

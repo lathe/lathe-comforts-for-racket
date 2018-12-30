@@ -19,33 +19,32 @@
 @;   language governing permissions and limitations under the License.
 
 
-@(require #/for-label
-  ; NOTE: Scribble docs don't seem to distinguish between things like
-  ; module variables and local variables when they hyperlink variable
-  ; occurrences in example code. In our examples here, we use `/` as a
-  ; local variable, namely as the weak open paren of a call to
-  ; Parendown's `pd`, so we exclude it from our `racket/base` import
-  ; here.
-  (except-in racket/base /))
-@(require #/for-label #/only-in racket/contract/base -> any any/c)
+@(require #/for-label racket/base)
+@(require #/for-label #/only-in racket/contract/base
+  -> any any/c listof or/c)
 @(require #/for-label #/only-in racket/match
   exn:misc:match? match match-lambda)
 @(require #/for-label #/only-in syntax/parse expr id)
 @(require #/for-label #/only-in syntax/parse/define
   define-simple-macro)
 
-@; TODO: Once Parendown has documentation, make the references to `pd`
-@; in these docs become hyperlinks like so.
-@;(require #/for-label #/only-in parendown pd)
+@(require #/for-label #/only-in parendown pd)
 
 @(require #/for-label lathe-comforts)
+@(require #/for-label lathe-comforts/contract)
 @(require #/for-label lathe-comforts/trivial)
+@(require #/for-label lathe-comforts/maybe)
 
 @(require #/only-in scribble/example examples make-eval-factory)
 
 @(define example-eval
-  (make-eval-factory
-  #/list 'racket/base 'racket/match 'lathe-comforts 'parendown))
+  (make-eval-factory #/list
+    'racket/base
+    'racket/contract/base
+    'racket/match
+    'lathe-comforts
+    'lathe-comforts/contract
+    'parendown))
 
 
 @title{Lathe Comforts}
@@ -132,7 +131,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
     (match (list 1 2 3)
       [(list) #f]
       [(cons first rest) rest])
-    (pd / pass (list 1 2 3) / match-lambda
+    (pd _/ pass (list 1 2 3) _/ match-lambda
       [(list) #f]
       [(cons first rest) rest])
   ]
@@ -159,9 +158,9 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   @examples[
     #:eval (example-eval)
-    (pd / hash-map (hash 'a 1 'b 2) / fn k v
+    (pd _/ hash-map (hash 'a 1 'b 2) _/ fn k v
       (format "(~s, ~s)" k v))
-    (pd / build-list 5 / fn ~ / * 10 ~)
+    (pd _/ build-list 5 _/ fn ~ _/ * 10 ~)
   ]
 }
 
@@ -176,9 +175,9 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
     #:label #f
     #:eval (example-eval)
     
-    (pd / w-loop next original (list 1 2 3) result (list)
+    (pd _/ w-loop next original (list 1 2 3) result (list)
       (expect original (cons first rest) result
-      / next rest / cons (* first first) result))
+      _/ next rest _/ cons (* first first) result))
   ]
 }
 
@@ -199,7 +198,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   @examples[
     #:eval (example-eval)
-    (pd / define (rev lst)
+    (pd _/ define (rev lst)
       (w-loop next lst lst result (list)
         
         ; If the list is empty, we're done.
@@ -207,12 +206,12 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
         
         ; Take apart the list, which must be a cons cell. If this
         ; doesn't work, raise an error.
-        / expect lst (cons first rest)
+        _/ expect lst (cons first rest)
           (error "Expected a list")
         
         ; Continue the loop, removing `first` from the input and
         ; adding it to the output.
-        / next rest / cons first result)))
+        _/ next rest _/ cons first result)))
     (rev (list 1 2 3))
     (eval:error (rev 3))
   ]
@@ -239,6 +238,23 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Returns a procedure. The procedure takes a single argument value and checks whether it matches the @racket[match] pattern @racket[pat]. If it does, the procedure evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the @racket[exn:misc:match?] exception is raised.
   
   If you need a custom error message, use @racket[expectfn] with an expression that raises an exeption.
+}
+
+
+
+@section[#:tag "contract"]{Contracts}
+
+@defmodule[lathe-comforts/contract]
+
+@defform[(fix/c id options ... contract-expr)]{
+  A fixed-point syntax for contracts. Returns the result of running @racket[contract-expr] with a certain contract in scope as @racket[id]. The contract functionality of @racket[id] should be used only after @racket[contract-expr] has returned a contract, and it behaves just like that contract. This functionality is based on @racket[recursive-contract], and the @racket[options] given here supply the optional arguments of the @racket[recursive-contract] operation.
+  
+  @examples[
+    #:eval (example-eval)
+    
+    (fix/c simple-s-expression/c
+      (or/c symbol? (listof simple-s-expression/c)))
+  ]
 }
 
 

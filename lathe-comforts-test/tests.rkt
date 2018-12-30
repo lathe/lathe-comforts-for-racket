@@ -19,12 +19,14 @@
 ;   language governing permissions and limitations under the License.
 
 
+(require #/only-in racket/contract/base contract? listof or/c)
 (require #/only-in racket/match match match-lambda)
 (require rackunit)
 
 (require #/only-in parendown pd)
 
 (require lathe-comforts)
+(require lathe-comforts/contract)
 
 ; (We provide nothing from this module.)
 
@@ -103,3 +105,9 @@
 
 (check-exn exn:fail? #/fn
   (rev 3))
+
+(check-equal?
+  (contract?
+    (fix/c simple-s-expression/c
+      (or/c symbol? (listof simple-s-expression/c))))
+  #t)

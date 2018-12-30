@@ -20,11 +20,12 @@
 
 
 (require #/for-syntax #/only-in syntax/parse expr id)
+
+(require #/only-in racket/contract/base recursive-contract)
 (require #/only-in syntax/parse/define define-simple-macro)
 
 (require #/only-in lathe-comforts w-)
 
-; TODO: Document these exports.
 (provide fix/c)
 
 
