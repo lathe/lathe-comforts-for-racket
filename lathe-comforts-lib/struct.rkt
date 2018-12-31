@@ -275,7 +275,7 @@
             '(expected: "~e" given: "~e")
             foo?-name v)
         #/apply make-foo
-          (for/list ([field (in-list fields)])
+          (for/list ([field (in-list fields-with-projections)])
             (dissect field (list get-field field-late-neg-projection)
             #/field-late-neg-projection (get-field v)
               missing-party)))))))
