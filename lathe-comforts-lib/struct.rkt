@@ -60,7 +60,8 @@
 (define (guard-easy guard)
   (lambda slots-and-name
     (expect (reverse slots-and-name) (cons name rev-slots)
-      (error "Expected a guard procedure to be called with at least a struct name argument")
+      (raise-arguments-error 'guard-easy
+        "expected a guard procedure to be called with at least a struct name argument")
     #/w- slots (reverse rev-slots)
       (apply guard slots)
       (apply values slots))))
@@ -102,12 +103,16 @@
       
       [(#:error-message-phrase phrase:expr rest ...)
       #/expect maybe-phrase (list)
-        (error "Supplied #:error-message-phrase more than once")
+        (raise-syntax-error #f
+          "supplied #:error-message-phrase more than once"
+          stx #'phrase)
       #/next #'(rest ...) #f (list #'phrase) #'#/rest ...]
       
       [(#:write writefn:expr rest ...)
       #/if has-write
-        (error "Supplied #:write more than once")
+        (raise-syntax-error #f
+          "supplied #:write more than once"
+          stx #'writefn)
       #/next #'(rest ...) #t maybe-phrase
       #'#/#:methods gen:custom-write #/
         (define write-proc
@@ -115,7 +120,9 @@
             (fn this 'name)
             (fn this
               (expect this (name slot ...)
-                (error #/string-append "Expected this to be " phrase)
+                (raise-arguments-error 'write-proc
+                  (string-append "expected this to be " phrase)
+                  "this" this)
               #/writefn this))))]
       
       [(#:equal rest ...)
@@ -123,10 +130,14 @@
       #'#/#:methods gen:equal+hash #/
         (define (equal-proc a b recursive-equal?)
           (expect a (name slot ...)
-            (error #/string-append "Expected a to be " phrase)
+            (raise-arguments-error 'equal-proc
+              (string-append "expected a to be " phrase)
+              "a" a)
           #/w- a-slots (list slot ...)
           #/expect b (name slot ...)
-            (error #/string-append "Expected b to be " phrase)
+            (raise-arguments-error 'equal-proc
+              (string-append "expected b to be " phrase)
+              "b" b)
           #/w- b-slots (list slot ...)
           ; NOTE: It's tempting to use `list-zip-all` from
           ; `lathe-comforts/list` instead of `for/and`, but `for/and`
@@ -135,11 +146,15 @@
             (recursive-equal? a b)))
         (define (hash-proc this recursive-equal-hash-code)
           (expect this (name slot ...)
-            (error #/string-append "Expected this to be " phrase)
+            (raise-arguments-error 'hash-proc
+              (string-append "expected this to be " phrase)
+              "this" this)
           #/recursive-equal-hash-code #/list slot ...))
         (define (hash2-proc this recursive-equal-secondary-hash-code)
           (expect this (name slot ...)
-            (error #/string-append "Expected this to be " phrase)
+            (raise-arguments-error 'hash2-proc
+              (string-append "expected this to be " phrase)
+              "this" this)
           #/recursive-equal-secondary-hash-code #/list slot ...))]
       
       [((#:guard-easy body:expr ...) rest ...)
