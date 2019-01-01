@@ -22,7 +22,9 @@
 (require #/for-syntax racket/base)
 
 (require #/only-in racket/match match match-lambda)
-(require #/only-in syntax/parse/define define-simple-macro expr id)
+(require #/only-in racket/contract/base -> any any/c)
+(require #/only-in syntax/parse/define define-simple-macro
+  expr expr/c id)
 
 (provide #/all-defined-out)
 
@@ -123,8 +125,9 @@
   (expect subject:expr pattern:expr else:expr then:expr)
   (match subject [pattern then] [_ else]))
 
-(define-simple-macro (matfns pattern:expr then:expr elsefn:expr)
-  (match-lambda [pattern then] [subject (elsefn subject)]))
+(define-simple-macro (matfns pattern:expr then:expr elsefn)
+  #:declare elsefn (expr/c #'(-> any/c any) #:name "elsefn argument")
+  (match-lambda [pattern then] [subject (elsefn.c subject)]))
 
 (define-simple-macro (expectfn pattern:expr else:expr then:expr)
   (match-lambda [pattern then] [_ else]))

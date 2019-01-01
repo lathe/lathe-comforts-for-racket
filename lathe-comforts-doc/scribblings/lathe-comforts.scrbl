@@ -252,7 +252,10 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @defmodule[lathe-comforts/contract]
 
-@defform[(fix/c id options ... contract-expr)]{
+@defform[
+  (fix/c id options ... contract-expr)
+  #:contracts ([contract-expr contract?])
+]{
   A fixed-point syntax for contracts. Returns the result of running @racket[contract-expr] with a certain contract in scope as @racket[id]. The contract functionality of @racket[id] should be used only after @racket[contract-expr] has returned a contract, and it behaves just like that contract. This functionality is based on @racket[recursive-contract], and the @racket[options] given here supply the optional arguments of the @racket[recursive-contract] operation.
   
   @examples[
@@ -708,7 +711,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   This comes in handy mostly when defining other syntax transformers that deal with structure type names. Sometimes it allows those syntax transformers to be written using simple syntax templates, saving the trouble of making manual calls to @racket[syntax-local-value] and @racket[extract-struct-info].
 }
 
-@defform[(istruct/c name-id field/c-expr ...)]{
+@defform[
+  (istruct/c name-id field/c-expr ...)
+  #:contracts ([field/c-expr contract?])
+]{
   Returns a contract that recognizes an instance of structure type @racket[name-id] where the fields abide by the respective @racket[field/c-expr] coontracts.
   
   Unlike @racket[struct/c], this works even when @racket[name-id] is an immutable struct and the @racket[field/c-expr] values contain one or more impersonator contracts.

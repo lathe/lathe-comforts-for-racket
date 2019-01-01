@@ -19,9 +19,10 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/for-syntax #/only-in syntax/parse expr id)
+(require #/for-syntax racket/base)
+(require #/for-syntax #/only-in syntax/parse expr/c id)
 
-(require #/only-in racket/contract/base recursive-contract)
+(require #/only-in racket/contract/base contract? recursive-contract)
 (require #/only-in syntax/parse/define define-simple-macro)
 
 (require #/only-in lathe-comforts w-)
@@ -31,9 +32,10 @@
 
 ; NOTE: This takes the same options `recursive-contract` does, and it
 ; passes them along unmodified.
-(define-simple-macro (fix/c var:id options ... contract:expr)
+(define-simple-macro (fix/c var:id options ... contract)
+  #:declare contract (expr/c #'contract? #:name "contract argument")
   (let ()
     (define var
       (w- var (recursive-contract var options ...)
-        contract))
+        contract.c))
     var))

@@ -35,7 +35,7 @@
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
-  -> any/c contract-name flat-contract?)
+  -> any/c contract? contract-name flat-contract?)
 (require #/only-in racket/contract/combinator
   blame-add-context contract-first-order-passes? make-contract
   make-flat-contract raise-blame-error)
@@ -301,7 +301,8 @@
               missing-party)))))))
 
 (define-syntax (istruct/c stx)
-  (syntax-parse stx #/ (_ name:id field/c:expr ...)
+  (syntax-parse stx #/ (_ name:id field/c ...)
+    #:declare field/c (expr/c #'contract? #:name "one of the fields")
   #/dissect (get-struct-info stx #'name)
     (list struct:foo make-foo foo? rev-getters rev-setters super)
   #/mat make-foo #f
@@ -319,7 +320,7 @@
       (format "structure type ~a is not associated with a full list of field accessors"
         (syntax->datum #'name))
       stx #'name)
-  #/w- field/cs (syntax->list #'(field/c ...))
+  #/w- field/cs (syntax->list #'(field/c.c ...))
   #/w- n (length rev-getters)
   #/expect (= n #/length field/cs) #t
     (raise-syntax-error #f
