@@ -91,8 +91,8 @@
   #/list-bind (hash->list hash) #/dissectfn (cons k v)
     (hash->list #/func k v)))
 
-(define (hash-kv-map-maybe hash func)
-  (hash-kv-bind hash #/fn k v
+(define (hash-kv-map-maybe h func)
+  (hash-kv-bind h #/fn k v
     (expect (func k v) (just v) (hash)
     #/hash k v)))
 
