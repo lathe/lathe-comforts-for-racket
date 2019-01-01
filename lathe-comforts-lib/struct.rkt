@@ -23,7 +23,8 @@
 (require #/for-syntax #/only-in racket/list append*)
 (require #/for-syntax #/only-in racket/struct-info
   extract-struct-info struct-info?)
-(require #/for-syntax #/only-in syntax/parse expr id syntax-parse)
+(require #/for-syntax #/only-in syntax/parse
+  expr expr/c id syntax-parse)
 
 (require #/for-syntax #/only-in lathe-comforts
   dissect expect fn mat w- w-loop)
@@ -33,7 +34,8 @@
 ; `racket/contract/base`. Since it's also in `racket/contract` and the
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
-(require #/only-in racket/contract/base contract-name flat-contract?)
+(require #/only-in racket/contract/base
+  -> any/c contract-name flat-contract?)
 (require #/only-in racket/contract/combinator
   blame-add-context contract-first-order-passes? make-contract
   make-flat-contract raise-blame-error)
@@ -86,12 +88,7 @@
       [()
       #/if has-write
         #`(begin
-          ; TODO: This raises an error if the phrase expression
-          ; doesn't evaluate to a string, but it could probably raise
-          ; a better error. It raises a "broke its own contract"
-          ; error, but ideally the error would say the caller broke
-          ; the contract of `struct-easy`.
-          (define/contract phrase string?
+          (define phrase
             #,(mat maybe-phrase (list phrase) phrase
               (format "an instance of the ~s structure type"
               #/symbol->string #/syntax-e #'name)))
@@ -101,14 +98,22 @@
       
       [(#:other rest ...) #/next #'() #f maybe-phrase #'#/rest ...]
       
-      [(#:error-message-phrase phrase:expr rest ...)
+      [ (#:error-message-phrase phrase rest ...)
+        #:declare
+        phrase
+        (expr/c #'string? #:context stx
+          #:name "option #:error-message-phrase")
       #/expect maybe-phrase (list)
         (raise-syntax-error #f
           "supplied #:error-message-phrase more than once"
           stx #'phrase)
-      #/next #'(rest ...) #f (list #'phrase) #'#/rest ...]
+      #/next #'(rest ...) #f (list #'phrase.c) #'#/rest ...]
       
-      [(#:write writefn:expr rest ...)
+      [ (#:write writefn rest ...)
+        #:declare
+        writefn
+        (expr/c #'(-> any/c list?) #:context stx
+          #:name "option #:write")
       #/if has-write
         (raise-syntax-error #f
           "supplied #:write more than once"
@@ -123,7 +128,7 @@
                 (raise-arguments-error 'write-proc
                   (string-append "expected this to be " phrase)
                   "this" this)
-              #/writefn this))))]
+              #/writefn.c this))))]
       
       [(#:equal rest ...)
       #/next #'(rest ...) #f maybe-phrase
