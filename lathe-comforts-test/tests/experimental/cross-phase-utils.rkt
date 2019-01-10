@@ -61,10 +61,6 @@
   (define blah 2)
   (define (blah-get) blah)
   (define (blah-pass f) (f blah))
-  
-  ; TODO: This fails on Racket 6.12 but succeeds on 7.2.0.1. See what
-  ; we should do with this information.
-  #;
   (define-struct my-struct (val) #:omit-define-syntaxes))
 
 (module/cross-phase eternals
