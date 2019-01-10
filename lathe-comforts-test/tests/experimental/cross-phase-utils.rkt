@@ -27,6 +27,7 @@
 ;   language governing permissions and limitations under the License.
 
 
+(require (for-syntax (only-in racket/list range)))
 (require (for-syntax syntax/parse))
 
 ; TODO: Use `syntax-protect` for the macros defined here.
@@ -124,15 +125,12 @@
       #:declare inst->maybe-vect
       (expr/c #'(-> any/c any/c) #:name "inst->maybe-vect argument")
       
-      ; TODO: See if there's a more hygienic way to do this.
-      #:with ((arg/c-result local local.c) ...)
-      (build-list (length (syntax->list #'(arg/c ...)))
-        (lambda (i)
-          (map
-            (lambda (var)
-              (datum->syntax #'anything
-                (string->symbol (format var i))))
-            (list "__arg/c-result-~a" "__arg-~a" "__arg-~a.c"))))
+      #:with (arg/c-result ...) (generate-temporaries #'(arg/c ...))
+      #:with (local ...) (generate-temporaries #'(arg/c ...))
+      #:with (local.c ...)
+      (for/list ([var (in-list (syntax->list #'(local ...)))])
+        (datum->syntax var
+          (string->symbol (format "~a.c" (syntax-e var)))))
       
       #'(begin
           
@@ -173,14 +171,9 @@
       #:declare name-expr
         (expr/c #'(and/c symbol? symbol-interned?)
           #:name "name argument")
-      ; TODO: See if there's a more hygienic way to do this.
-      #:with ((field-i local) ...)
-      (build-list (length (syntax->list #'(inst-field ...)))
-        (lambda (i)
-          (list
-            i
-            (datum->syntax #'anything
-              (string->symbol (format "__field-~a" i))))))
+      #:with (local ...) (generate-temporaries #'(inst-field ...))
+      #:with (field-i ...)
+      (range (length (syntax->list #'(inst-field ...))))
       #'(begin
           (define-values
             (
