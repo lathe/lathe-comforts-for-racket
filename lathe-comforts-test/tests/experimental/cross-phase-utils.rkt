@@ -8,9 +8,21 @@
 ; messaging if the module uses features that aren't allowed for
 ; cross-phase persistent modules. We've defined a utility
 ; `define-eternal-struct` that creates a struct-like encapsulated
-; product type that (hopefully) can only be taken apart using a
-; variable reference of a module that was loaded from the same module
-; path index.
+; product type that can only be taken apart using a variable reference
+; of a module that was loaded from the same module path index.
+;
+; The "eternal structure type" approach has hit a slight roadblock.
+; See the TODO at the end of the
+; `lathe-comforts/tests/experimental/cross-phase-utils-b` module for
+; notes on different approach we might take here. The goal of these
+; approaches is to make Lathe Comforts and other libraries continue to
+; be in contexts like Effection and the Cene language, where the
+; Racket style of allocating a new structure type every time `struct`
+; is called constitutes too much of a side effect. The Effection/Cene
+; style would be for a module author to achieve exclusive access to a
+; structure type by nature of the exclusive access they already have
+; to their identity as a module author (which is likely best
+; approximated in Racket using their module's module path index).
 
 ;   Copyright 2019 The Lathe Authors
 ;

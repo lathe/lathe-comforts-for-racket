@@ -196,3 +196,60 @@
        (submod lathe-comforts/tests/experimental/cross-phase-utils-b
          m6)))
   (eval 'result))
+
+
+; This returns `#f` because the different module registries contain
+; different instances of the
+; `(submod lathe-comforts/tests/experimental/cross-phase-utils eternals)`
+; module itself. That's the module where the implementation details of
+; eternal structure types are defined, so they're only as "eternal" as
+; that module is.
+
+; TODO: See if we can make eternal structure types "more eternal" than
+; this.
+;
+; Maybe the approach we can take is, instead of designing libraries
+; like Lathe Comforts to define their eternal structure types from
+; within the Racket module language, we design them to be affected by
+; compile-time parameters in such a way that they can they can
+; sometimes reuse structs and other top-level objects supplied to them
+; by the compiler.
+;
+; The `current-module-name-resolver` parameter seems like a perfect
+; choice: If we put each top-level object definition in its own tiny
+; "config" module, then a custom resolver can cause a different module
+; to be loaded in each one's place.
+;
+; Backwards compatibility would be backwards for config modules:
+; Putting a new export into an existing config module would *break*
+; compatibility since not all clients would necessarily have that
+; export in their substitute implementations. This is usually the case
+; for metaprogramming over other people's code -- since treating that
+; code as data makes it possible for any code change to be a breaking
+; change -- but we can still do a little bit better than usual. By
+; making sure we only introduce new config options in *new config
+; modules*, and even then only in ways that remain invisible when not
+; using *new library features*, we can maintain backwards
+; compatibility for any clients whose only use of metaprogramming is
+; to replace the config modules.
+;
+; Maybe we can take a hybrid approach, where we use a config module to
+; define hybrid structure types, and we use a cross-persistent module
+; to implement that module at first, but any client who can use
+; `current-module-name-resolver` to establish a "more eternal"
+; implementation for their use case is welcome to do so.
+
+(let ()
+  (define make-just
+    (parameterize ([current-namespace (make-base-namespace)])
+      (eval
+        '(require
+           lathe-comforts/tests/experimental/cross-phase-utils))
+      (eval 'make-just)))
+  (define just?
+    (parameterize ([current-namespace (make-base-namespace)])
+      (eval
+        '(require
+           lathe-comforts/tests/experimental/cross-phase-utils))
+      (eval 'just?)))
+  (just? (make-just 4)))
