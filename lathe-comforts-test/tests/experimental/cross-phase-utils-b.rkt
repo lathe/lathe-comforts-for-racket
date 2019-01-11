@@ -107,7 +107,8 @@
 ; We test that eternal structs like `just?` are cross-phase
 ; persistent.
 
-; Returns 'caught because eternal structs are cross-phase persistent.
+; Returns `'caught` because eternal structs are cross-phase
+; persistent.
 (parameterize ([current-namespace (make-base-namespace)])
   (eval
     '(require lathe-comforts/tests/experimental/cross-phase-utils))
@@ -123,7 +124,7 @@
           (require (for-syntax lathe-comforts/tests/experimental/cross-phase-utils))
           (begin-for-syntax (raise (cons 1 (make-just 4)))))))))
 
-; Returns 'not-caught because regular structs are different in each
+; Returns `'not-caught` because regular structs are different in each
 ; phase level.
 (parameterize ([current-namespace (make-base-namespace)])
   (eval
@@ -142,9 +143,8 @@
 
 
 ; We test that the eternal structure types procured by one module
-; using `(#%variable-reference)` can't be procured by another module
-; by using `(#%variable-reference)`. The variable references obtained
-; are different.
+; can't be procured by another module (short of sharing their
+; `(#%variable-reference)` results).
 
 ; Returns `#f` because variable references for different module path
 ; indexes obtain different eternal structure types.
@@ -152,45 +152,47 @@
 (module m5 racket
   (require lathe-comforts/tests/experimental/cross-phase-utils)
   
+  (provide result)
+  
   (define-eternal-struct just
     imitation-just-matcher imitation-just? make-imitation-just
     (#%variable-reference)
     ([imitation-just-value any/c]))
   
-  (imitation-just? (make-just 4)))
+  (define result (imitation-just? (make-just 4))))
 
 (parameterize ([current-namespace (make-base-namespace)])
   (eval
     '(require
        (submod lathe-comforts/tests/experimental/cross-phase-utils-b
-         m5))))
+         m5)))
+  (eval 'result))
 
 
-; We test that the eternal structure types procured by one module
-; using `(#%variable-reference)` can't be procured by another module
-; by using `(#%variable-reference foo)`, where `foo` is imported from
-; the first module.
-
-; Returns `#f` because variable references for different module path
-; indexes obtain different eternal structure types, even when the
-; referenced variable is an import.
-
-; TODO: Actually, this returns `#t`. Good thing we tested this. We
-; should change `define-eternal-struct` so that this isn't possible to
-; do, somehow.
+; This returns `(list #t #f)` because eternal structure types procured
+; by the same module are the same if and only if they have the same
+; name.
 
 (module m6 racket
   (require lathe-comforts/tests/experimental/cross-phase-utils)
   
-  (define-eternal-struct just
-    imitation-just-matcher imitation-just? make-imitation-just
-    (#%variable-reference make-just)
-    ([imitation-just-value any/c]))
+  (provide result)
   
-  (imitation-just? (make-just 4)))
+  (define-eternal-struct s1 s1-matcher s1? make-s1
+    (#%variable-reference)
+    ())
+  (define-eternal-struct s1 s2-matcher s2? make-s2
+    (#%variable-reference)
+    ())
+  (define-eternal-struct s3 s3-matcher s3? make-s3
+    (#%variable-reference)
+    ())
+  
+  (define result (list (s2? (make-s1)) (s3? (make-s1)))))
 
 (parameterize ([current-namespace (make-base-namespace)])
   (eval
     '(require
        (submod lathe-comforts/tests/experimental/cross-phase-utils-b
-         m6))))
+         m6)))
+  (eval 'result))

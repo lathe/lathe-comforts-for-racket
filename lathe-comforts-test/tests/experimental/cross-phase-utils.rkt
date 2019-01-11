@@ -86,6 +86,15 @@
         (raise-arguments-error 'variable-reference->eternalizer
           "expected vr to be a variable reference"
           "vr" vr))
+      
+      ; NOTE: We run this just to produce an error if the variable
+      ; reference isn't anonymous. This prevents modules from gaining
+      ; access to another module's eternal structure types just by
+      ; using `(#%variable-reference foo)` where `foo` is a variable
+      ; imported from the other module.
+      ;
+      (variable-reference->module-declaration-inspector vr)
+      
       (define mpi (variable-reference->module-path-index vr))
       (unless mpi
         (raise-arguments-error 'variable-reference->eternalizer
