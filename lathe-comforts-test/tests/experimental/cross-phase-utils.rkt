@@ -30,6 +30,11 @@
 (require (for-syntax (only-in racket/list range)))
 (require (for-syntax syntax/parse))
 
+(require rackunit)
+
+(provide
+  define-eternal-struct make-just just? struct-just struct-just?)
+
 ; TODO: Use `syntax-protect` for the macros defined here.
 
 
@@ -218,18 +223,15 @@
   (#%variable-reference)
   ([just-value any/c]))
 
-(make-just 4)
-(just? (make-just 4))
-(just-value (make-just 4))
-(just-value (just-matcher 4))
-(match (just-matcher 4)
-  [(just-matcher x) x])
+(check-equal? (format "~s" (make-just 4)) "#<just>")
+(check-equal? (just? (make-just 4)) #t)
+(check-equal? (just-value (make-just 4)) 4)
+(check-equal? (just-value (just-matcher 4)) 4)
+(check-equal?
+  (match (just-matcher 4)
+    [(just-matcher x) x])
+  4)
 
-(variable-reference->module-path-index (#%variable-reference))
+(struct struct-just (value))
 
-; TODO: Test that the `just?` values are cross-phase persistent.
-
-; TODO: Test that the `just?` values can't be taken apart by another
-; module that uses `define-eternal-struct` using a variable reference
-; that refers to that module's import of one of the identifiers of
-; this module.
+;(variable-reference->module-path-index (#%variable-reference))
