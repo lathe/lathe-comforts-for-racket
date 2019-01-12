@@ -124,7 +124,7 @@
     
     #:late-neg-projection
     (fn blame
-      (w- args-with-projections
+      (w- arg-projections
         (for/list ([arg (in-list args)])
           (dissect arg (list arg/c arg-blame-message)
           #/(get/build-late-neg-projection arg/c)
@@ -138,10 +138,9 @@
         #/list->foo
           (for/list
             (
-              [arg (in-list args-with-projections)]
+              [arg-late-neg-projection (in-list arg-projections)]
               [v-arg (in-list v-list)])
-            (dissect arg (list get-arg arg-late-neg-projection)
-            #/arg-late-neg-projection (get-arg v) missing-party)))))))
+            (arg-late-neg-projection v-arg missing-party)))))))
 
 (define-syntax (match/c stx)
   (syntax-protect #/syntax-parse stx #/ (_ name:id arg/c ...)
