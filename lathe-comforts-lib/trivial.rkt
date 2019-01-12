@@ -19,12 +19,24 @@
 ;   language governing permissions and limitations under the License.
 
 
+(require #/only-in racket/contract/base -> any/c contract-out)
+
 (require #/only-in lathe-comforts/struct struct-easy)
+(require #/only-in lathe-comforts/match
+  define-match-expander-attenuated)
 
 
-(provide
-  (struct-out trivial)
-)
+(provide trivial)
+(provide #/contract-out [trivial? (-> any/c boolean?)])
 
 
-(struct-easy (trivial) #:equal)
+(module private/struct racket/base
+  (require #/only-in lathe-comforts/struct struct-easy)
+  (provide #/all-defined-out)
+  (struct-easy (trivial) #:equal))
+(require #/prefix-in struct: 'private/struct)
+
+(define-match-expander-attenuated trivial struct:trivial)
+
+(define (trivial? v)
+  (struct:trivial? v))

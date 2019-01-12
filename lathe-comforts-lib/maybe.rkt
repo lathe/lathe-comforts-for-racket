@@ -24,14 +24,16 @@
   -> any/c contract? contract-out or/c)
 
 (require #/only-in lathe-comforts expect fn)
-(require #/only-in lathe-comforts/struct istruct/c struct-easy)
+(require #/only-in lathe-comforts/struct struct-easy)
+(require #/only-in lathe-comforts/match
+  define-match-expander-attenuated match/c)
 
 
-(provide
-  (struct-out nothing)
-  (struct-out just)
-)
+(provide nothing just)
 (provide #/contract-out
+  [nothing? (-> any/c boolean?)]
+  [just? (-> any/c boolean?)]
+  [just-value (-> just? any/c)]
   [maybe? (-> any/c boolean?)]
   [maybe/c (-> contract? contract?)]
   [maybe-bind (-> maybe? (-> any/c maybe?) maybe?)]
@@ -39,8 +41,24 @@
 )
 
 
-(struct-easy (nothing) #:equal)
-(struct-easy (just value) #:equal)
+(module private/struct racket/base
+  (require #/only-in lathe-comforts/struct struct-easy)
+  (provide #/all-defined-out)
+  (struct-easy (nothing) #:equal)
+  (struct-easy (just value) #:equal))
+(require #/prefix-in struct: 'private/struct)
+
+(define-match-expander-attenuated nothing struct:nothing)
+(define-match-expander-attenuated just struct:just any/c)
+
+(define (nothing? v)
+  (struct:nothing? v))
+
+(define (just? v)
+  (struct:just? v))
+
+(define (just-value inst)
+  (struct:just-value inst))
 
 (define (maybe? x)
   (or (nothing? x) (just? x)))
@@ -48,7 +66,7 @@
 ; TODO: Give the resulting contract a better name, check that it has
 ; good `contract-stronger?` behavior, etc.
 (define (maybe/c c)
-  (or/c nothing? #/istruct/c just c))
+  (or/c nothing? #/match/c just c))
 
 (define (maybe-bind m func)
   (expect m (just value) (nothing)

@@ -38,8 +38,13 @@
 
 @(require #/for-label lathe-comforts)
 @(require #/for-label lathe-comforts/contract)
-@(require #/for-label lathe-comforts/trivial)
+@(require #/for-label lathe-comforts/hash)
+@(require #/for-label lathe-comforts/list)
+@(require #/for-label lathe-comforts/match)
 @(require #/for-label lathe-comforts/maybe)
+@(require #/for-label lathe-comforts/string)
+@(require #/for-label lathe-comforts/struct)
+@(require #/for-label lathe-comforts/trivial)
 
 @(require #/only-in scribble/example examples make-eval-factory)
 
@@ -274,13 +279,22 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 Maybe values are a way to encode optional data. Using maybe values can simplify some interfaces that would otherwise use run time errors or special-cased sentinel values like @racket[#f].
 
 
-@defstruct*[nothing ()]{
+@deftogether[(
+  @defform[(nothing)]
+  @defform[#:kind "match expander" #:link-target? #f (nothing)]
+  @defproc[(nothing? [v any/c]) boolean?]
+)]{
   A maybe value that does not contain an element.
   
   Every two @tt{nothing} values are @racket[equal?].
 }
 
-@defstruct*[just ([value any/c])]{
+@deftogether[(
+  @defform[(just value-expr)]
+  @defform[#:kind "match expander" #:link-target? #f (just value-pat)]
+  @defproc[(just? [v any/c]) boolean?]
+  @defproc[(just-value [inst just?]) any/c]
+)]{
   A maybe value that contains an element.
   
   Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] elements.
@@ -328,7 +342,11 @@ Racket programs sometimes use @racket[(void)] for this purpose, but that value i
 So Lathe Comforts provides a very simple structure type, @racket[trivial], to represent trivial values.
 
 
-@defstruct*[trivial ()]{
+@deftogether[(
+  @defform[(trivial)]
+  @defform[#:kind "match expander" #:link-target? #f (trivial)]
+  @defproc[(trivial? [v any/c]) boolean?]
+)]{
   A trivial value.
   
   Every two @tt{trivial} values are @racket[equal?].
@@ -715,9 +733,36 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   (istruct/c name-id field/c-expr ...)
   #:contracts ([field/c-expr contract?])
 ]{
-  Returns a contract that recognizes an instance of structure type @racket[name-id] where the fields abide by the respective @racket[field/c-expr] coontracts.
+  Returns a contract that recognizes an instance of structure type @racket[name-id] where the fields abide by the respective @racket[field/c-expr] contracts.
   
-  Unlike @racket[struct/c], this works even when @racket[name-id] is an immutable struct and the @racket[field/c-expr] values contain one or more impersonator contracts.
+  Unlike @racket[struct/c] (but like @racket[match/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[field/c-expr] contracts contain one or more impersonator contracts.
   
   However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
+}
+
+
+
+@section[#:tag "match"]{Utilities for Match Expanders}
+
+@defmodule[lathe-comforts/match]
+
+@defform[
+  (define-match-expander-attenuated
+    new-name-id old-name-id arg/c-expr ...)
+  #:contracts ([arg/c-expr contract?])
+]{
+  Defines @racket[new-name-id] as a syntax that acts as a match expander with one subpattern for each @racket[arg/c-expr] and expands into an identical pattern using @racket[old-name-id]. When used instead as an expression syntax with one subexpression for each @racket[arg/c-expr], it first executes each subexpression, projecting each result through the corresponding @racket[arg/c-expr] contract as it goes along, and then it executes an expression of the form @racket[(old-name-id _arg-id ...)], where each @racket[_arg-id] is an identifier locally bound to the corresponding contract projection.
+  
+  @; TODO: This description seems a bit too terse. It might be good to give examples.
+}
+
+@defform[
+  (match/c name-id arg/c-expr ...)
+  #:contracts ([arg/c-expr contract?])
+]{
+  Returns a contract that recognizes a value if it matches a pattern of the form @racket[(name-id _arg-id ...)], where each @racket[_arg-id] is an identifier, and only as long as each value bound to a @racket[_arg-id] this way abides by the respective @racket[arg/c-expr] contract.
+  
+  The value's projection is computed by taking the projections of each of the arguments and then executing @racket[(name-id _arg-id ...)], where this time each @racket[_arg-id] is an identifier already bound to the argument's projection value. For some match patterns, this may cause substantial changes to the value when projected by this contract: If @racket[name-id] is @racket[vector], it changes immutable vectors to mutable ones. If @racket[name-id] is a structure type name, it changes instances of subtypes of @racket[name-id] into instances of @racket[name-id] itself.
+  
+  Unlike @racket[struct/c] (but like @racket[istruct/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[arg/c-expr] contracts contain one or more impersonator contracts.
 }

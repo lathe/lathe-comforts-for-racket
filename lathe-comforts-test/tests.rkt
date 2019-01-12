@@ -4,7 +4,7 @@
 ;
 ; Unit tests.
 
-;   Copyright 2018 The Lathe Authors
+;   Copyright 2018, 2019 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@
 
 (require lathe-comforts)
 (require lathe-comforts/contract)
+(require lathe-comforts/match)
+(require lathe-comforts/private/experimental/match)
 
 ; (We provide nothing from this module.)
 
@@ -35,6 +37,62 @@
 
 (check-equal? (pass 3 add1) 4
   "Test `pass`")
+
+
+(struct should-only-contain-strings (value))
+
+(define-match-expander-attenuated make-should-only-contain-strings
+  should-only-contain-strings string?)
+
+(check-equal?
+  (dissect (make-should-only-contain-strings "hello")
+    (make-should-only-contain-strings value)
+    value)
+  "hello"
+  "Call and match on an attenuated match expander successfully")
+
+(check-exn exn:fail:contract?
+  (fn
+    (make-should-only-contain-strings 4))
+  "Erroneously call an attenuated match expander with values that don't meet the contracts")
+
+(define test-ns (make-base-namespace))
+(void
+  (eval
+    '(begin
+       (require lathe-comforts/match)
+       (define-match-expander-attenuated
+         make-should-only-contain-strings
+         should-only-contain-strings
+         string?))
+    test-ns))
+
+(check-exn exn:fail:syntax?
+  (fn
+    (eval
+      '(make-should-only-contain-strings "hello" "world")
+      test-ns))
+  "Erroneously call an attenuated match expander with the wrong number of values")
+
+(check-exn exn:fail:syntax?
+  (fn
+    (eval 'make-should-only-contain-strings test-ns))
+  "Erroneously use an attenuated match expander as an identifier")
+
+
+(define-match-expander-via-lists my-vector vector
+  (fn v n #/and (vector? v) (= n #/vector-length v) #/vector->list v))
+
+(check-equal?
+  (dissect (my-vector 1 2 3) (my-vector a b c)
+    c)
+  3
+  "Call and match on a via-lists match expander successfully")
+
+(check-equal?
+  (object-name my-vector)
+  'vector
+  "The name of a via-lists match expander is not modified from its function version")
 
 
 ; Tests corresponding to documentation examples
