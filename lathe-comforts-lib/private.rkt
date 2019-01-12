@@ -4,7 +4,7 @@
 ;
 ; Implementation details.
 
-;   Copyright 2011, 2017-2018 The Lathe Authors
+;   Copyright 2011, 2017-2019 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -21,10 +21,12 @@
 
 (require #/for-syntax racket/base)
 
-(require #/only-in racket/match match match-lambda)
+(require #/for-syntax #/only-in syntax/parse
+  expr expr/c id syntax-parse)
+
+(require #/only-in racket/match match match/derived match-lambda)
 (require #/only-in racket/contract/base -> any any/c)
-(require #/only-in syntax/parse/define define-simple-macro
-  expr expr/c id)
+(require #/only-in syntax/parse/define define-simple-macro)
 
 (provide #/all-defined-out)
 
@@ -132,8 +134,12 @@
 (define-simple-macro (expectfn pattern:expr else:expr then:expr)
   (match-lambda [pattern then] [_ else]))
 
-(define-simple-macro/loc (dissect subject:expr pattern:expr then:expr)
-  (match subject [pattern then]))
+(define-syntax (dissect stx)
+  (syntax-parse stx #/ (op subject:expr pattern:expr then:expr)
+    #`(match/derived subject #,stx [pattern then])))
 
-(define-simple-macro/loc (dissectfn pattern:expr then:expr)
-  (match-lambda [pattern then]))
+(define-syntax (dissectfn stx)
+  (syntax-parse stx #/ (op pattern:expr then:expr)
+    #`(lambda (subject)
+        (match/derived subject #,stx
+          [pattern then]))))
