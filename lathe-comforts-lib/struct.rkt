@@ -20,11 +20,11 @@
 
 
 (require #/for-syntax racket/base)
-(require #/for-syntax #/only-in racket/list append*)
+(require #/for-syntax #/only-in racket/list append* range)
 (require #/for-syntax #/only-in racket/struct-info
   extract-struct-info struct-info?)
 (require #/for-syntax #/only-in syntax/parse
-  expr expr/c id syntax-parse)
+  ~or* expr expr/c id nat syntax-parse)
 
 (require #/for-syntax #/only-in lathe-comforts
   dissect expect fn mat w- w-loop)
@@ -35,14 +35,17 @@
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
-  -> any/c contract? contract-name flat-contract?)
+  -> ->i </c and/c any/c cons/c contract? contract-name contract-out
+  flat-contract? listof none/c or/c)
 (require #/only-in racket/contract/combinator
   blame-add-context contract-first-order-passes? make-contract
   make-flat-contract raise-blame-error)
 (require #/only-in racket/contract/region define/contract)
+(require #/only-in racket/list range)
+(require #/only-in racket/math natural?)
 (require #/only-in racket/struct make-constructor-style-printer)
 
-(require #/only-in lathe-comforts dissect dissectfn expect fn w-)
+(require #/only-in lathe-comforts dissect dissectfn expect fn mat w-)
 
 (provide struct-easy)
 
@@ -55,6 +58,62 @@
   struct-accessor-by-name
 ;  struct-mutator-by-name
   istruct/c
+  )
+; TODO: Document all the exports below.
+; TODO: Add keywords or utilities that can be used with the
+; `...-simple-struct` forms to make it as convenient to create
+; automatic `write` and `equal?` behaviors with them as it is to use
+; `struct-easy`.
+(provide #/contract-out
+  [tupler? (-> any/c boolean?)]
+  [tupler-length (-> tupler? natural?)]
+  [tupler/c (-> flat-contract? flat-contract?)]
+  [tupler-make-fn
+    (->i ([t tupler?]) #/_ (t) #/-> any/c ... #/tupler-pred?-fn t)]
+  [tupler-pred?-fn (-> tupler? #/-> any/c boolean?)]
+  [tupler-ref-fn
+    (->i ([t tupler?]) #/_ (t)
+    #/-> (tupler-pred?-fn t) (and/c natural? (</c #/tupler-length t))
+      any/c)]
+  [tupler-from-pred-and-ref-and-make
+    (->i
+      (
+        [length natural?]
+        [pred?-fn (-> any/c boolean?)]
+        [ref-fn (length pred?-fn)
+          (-> pred?-fn (and/c natural? (</c length)) any/c)]
+        [make-fn (pred?-fn) (-> any/c ... pred?-fn)])
+      [_ tupler?])]
+  [tupler-from-pred-and-projs-and-make
+    (->i
+      (
+        [pred?-fn (-> any/c boolean?)]
+        [proj-fns (pred?-fn) (listof #/-> pred?-fn any/c)]
+        [make-fn (pred?-fn) (-> any/c ... pred?-fn)])
+      [_ tupler?])]
+  [tupler-for-simple-make-struct-type
+    (->i
+      (
+        [inspector (or/c inspector? #f 'prefab)]
+        [reflection-name symbol?]
+        [length natural?]
+        [props (inspector)
+          (listof
+            (mat inspector #f none/c
+            #/cons/c struct-type-property? any/c))])
+      [_ tupler?])]
+  )
+(provide
+  tupler-for-simple-struct
+  tupler-for-simple-struct/derived
+  define-pred-and-projs-from-tupler
+  define-value-imitation-simple-struct
+  define-value-imitation-simple-struct/derived
+  define-match-expander-from-tupler
+  define-syntax-and-value-imitation-simple-struct
+  define-syntax-and-value-imitation-simple-struct/derived
+  define-imitation-simple-struct
+  define-imitation-simple-struct/derived
   )
 
 
@@ -144,9 +203,6 @@
               (string-append "expected b to be " phrase)
               "b" b)
           #/w- b-slots (list slot ...)
-          ; NOTE: It's tempting to use `list-zip-all` from
-          ; `lathe-comforts/list` instead of `for/and`, but `for/and`
-          ; lets us avoid a circular dependency between modules.
           #/for/and ([a (in-list a-slots)] [b (in-list b-slots)])
             (recursive-equal? a b)))
         (define (hash-proc this recursive-equal-hash-code)
@@ -345,3 +401,292 @@
                    #,(format "field ~e (position ~a) of"
                        (syntax-e getter)
                        i)))))))
+
+
+(struct -tupler (length pred?-fn ref-fn proj-fns make-fn)
+  #:reflection-name 'tupler)
+
+(define (tupler? v)
+  (-tupler? v))
+
+(define (tupler-length tupler)
+  (-tupler-length tupler))
+
+(define (tupler/c length/c)
+  (make-flat-contract #:name `(tupler/c ,(contract-name length/c))
+    #:first-order
+    (fn v
+      (and (tupler? v)
+        (contract-first-order-passes? length/c #/tupler-length v)))))
+
+(define (tupler-make-fn tupler)
+  (-tupler-make-fn tupler))
+
+(define (tupler-pred?-fn tupler)
+  (-tupler-pred?-fn tupler))
+
+(define (tupler-ref-fn tupler)
+  (-tupler-ref-fn tupler))
+
+(define (tupler-proj-fns tupler)
+  (-tupler-proj-fns tupler))
+
+(define
+  (tupler-from-pred-and-ref-and-make length pred?-fn ref-fn make-fn)
+  (-tupler
+    length
+    (fn v #/pred?-fn v)
+    (fn self i #/ref-fn self i)
+    (build-list length #/fn i
+      (fn self #/ref-fn self i))
+    (lambda args #/apply make-fn args)))
+
+(define
+  (tupler-from-pred-and-projs-and-make make-fn pred?-fn proj-fns)
+  (w- vec-proj-fns (list->vector proj-fns)
+  #/-tupler
+    (vector-length vec-proj-fns)
+    (fn v #/pred?-fn v)
+    (fn self i
+      ((vector-ref vec-proj-fns i) self))
+    (for/list ([proj-fn (in-list proj-fns)])
+      (fn self #/proj-fn self))
+    (lambda args #/apply make-fn args)))
+
+
+(define
+  (tupler-for-simple-make-struct-type
+    inspector reflection-name length props)
+  (define-values (struct:inst make-inst inst? inst-ref inst-set!)
+    (make-struct-type
+      #;name reflection-name
+      #;super-type #f
+      #;init-field-cnt length
+      #;auto-field-cnt 0
+      #;auto-v #f
+      #;props props
+      #;inspector inspector
+      #;proc-spec #f
+      #;immutables (range length)
+      ))
+  (tupler-from-pred-and-ref-and-make length inst? inst-ref make-inst))
+
+
+(define-for-syntax
+  (expand-tupler-for-simple-struct/derived orig-stx args)
+  (syntax-protect
+  #/syntax-parse args #/
+    (inspector reflection-name len:nat
+      (~or*
+        (#:prop prop-key prop-val)
+        (#:gen gen-name:id methods ...))
+      ...)
+    
+    #:declare inspector
+    (expr/c #'(or/c inspector? #f 'prefab) #:context orig-stx
+      #:name "inspector argument")
+    
+    #:declare reflection-name
+    (expr/c #'symbol? #:name "reflection-name argument")
+    
+    #:declare prop-key
+    (expr/c #'struct-type-property? #:context orig-stx
+      #:name "one of the structure type properties")
+    
+    #:declare prop-val
+    (expr/c #'any/c #:context orig-stx
+      #:name "one of the associated structure type property values")
+    
+    #:with ((field inst-field) ...)
+    (build-list (syntax-e #'len) #/fn i
+      (for/list ([format-string (in-list (list "~a" "inst-~a"))])
+        (datum->syntax #'anything
+          (string->symbol #/format format-string i))))
+    
+    #`(let ()
+        (define-struct/derived #,orig-stx inst (field ...)
+          #:constructor-name inst
+          #:inspector inspector.c
+          #:reflection-name reflection-name.c
+          #:omit-define-syntaxes
+          (~?
+            (~@ #:property prop-key.c prop-val.c)
+            (~@ #:methods gen-name [methods ...]))
+          ...)
+        (tupler-from-make-and-pred-and-projs inst inst?
+          (list inst-field ...)))))
+
+(define-syntax (tupler-for-simple-struct stx)
+  (syntax-parse stx #/ (_ arg ...)
+  #/expand-tupler-for-simple-struct/derived stx #'(arg ...)))
+
+(define-syntax (tupler-for-simple-struct/derived stx)
+  (syntax-parse stx #/ (_ orig-stx arg ...)
+  #/expand-tupler-for-simple-struct/derived #'orig-stx #'(arg ...)))
+
+
+(define-syntax (define-pred-and-projs-from-tupler stx)
+  (syntax-protect
+  #/syntax-parse stx #/ (_ pred?:id proj:id ... tupler)
+    #:declare tupler
+    (expr/c #`(tupler/c #,(length #/syntax->list #'(proj ...)))
+      #:name "tupler argument")
+    #:with (proj-fn ...) (generate-temporaries #'(proj ...))
+    #'(define-values (pred? proj ...)
+        (w- tupler-val tupler.c
+          (match-define (list proj-fn ...)
+            (tupler-proj-fns tupler-val))
+          (values
+            (procedure-rename (tupler-pred?-fn tupler-val) 'pred?)
+            (procedure-rename proj-fn 'proj)
+            ...)))))
+
+
+(define-for-syntax
+  (expand-define-value-imitation-simple-struct/derived orig-stx args)
+  (syntax-protect
+  #/syntax-parse args #/
+    (tupler:id pred?:id (proj:id ...) inspector reflection-name
+      (~or*
+        (#:prop prop-key prop-val)
+        (#:gen gen-name:id methods ...))
+      ...)
+    
+    #:declare inspector
+    (expr/c #'(or/c inspector? #f 'prefab) #:context orig-stx
+      #:name "inspector argument")
+    
+    #:declare reflection-name
+    (expr/c #'symbol? #:name "reflection-name argument")
+    
+    #:declare prop-key
+    (expr/c #'struct-type-property? #:context orig-stx
+      #:name "one of the structure type properties")
+    
+    #:declare prop-val
+    (expr/c #'any/c #:context orig-stx
+      #:name "one of the associated structure type property values")
+    
+    #`(begin
+        (define tupler
+          (tupler-for-simple-struct/derived #,orig-stx
+            inspector.c reflection-name.c
+            #,(length #/syntax->list #'(proj ...))
+            (~?
+              (#:prop prop-key.c prop-val.c)
+              (#:gen gen-name methods ...))
+            ...))
+        (define-pred-and-projs-from-tupler pred? proj ... tupler))))
+
+(define-syntax (define-value-imitation-simple-struct stx)
+  (syntax-parse stx #/ (_ arg ...)
+  #/expand-define-value-imitation-simple-struct/derived
+    stx
+    #'(arg ...)))
+
+(define-syntax (define-value-imitation-simple-struct/derived stx)
+  (syntax-parse stx #/ (_ orig-stx arg ...)
+  #/expand-define-value-imitation-simple-struct/derived
+    #'orig-stx
+    #'(arg ...)))
+
+
+(define-syntax (define-match-expander-from-tupler stx)
+  (syntax-protect #/syntax-parse stx #/ (_ name:id len:nat tupler)
+    
+    #:declare tupler
+    (expr/c #'(tupler/c len) #:name "tupler argument")
+    
+    #:with (arg ...) (generate-temporaries #/range #/syntax-e #'len)
+    
+    #'(begin
+        
+        (define tupler-result tupler.c)
+        (define pred? (tupler-pred?-fn tupler-result))
+        (define projs (tupler-proj-fns tupler-result))
+        (define make (tupler-make-fn tupler-result))
+        
+        (define-match-expander name
+          (lambda (stx)
+            ; TODO: We should really use a syntax class for match
+            ; patterns rather than `expr` here, but it doesn't look
+            ; like one exists yet.
+            (syntax-protect
+            #/syntax-parse stx #/ (_ arg ...)
+              (~@ #:declare arg expr) ...
+              #`(app
+                  (fn v #/let ()
+                    (and (pred? v)
+                    #/for/list ([proj (in-list projs)])
+                      (proj v)))
+                #/list arg ...)))
+          (lambda (stx)
+            (syntax-protect #/syntax-parse stx
+              [_:id #'function-version]
+              [(_ arg ...) #'(make arg ...)]))))))
+
+
+
+(define-for-syntax
+  (expand-define-syntax-and-value-imitation-simple-struct/derived
+    orig-stx args)
+  (syntax-protect
+  #/syntax-parse args #/
+    (make:id tupler:id pred?:id (proj:id ...)
+      inspector
+      reflection-name
+      (~or*
+        (#:prop prop-key prop-val)
+        (#:gen gen-name:id methods ...))
+      ...)
+    
+    #:declare inspector
+    (expr/c #'(or/c inspector? #f 'prefab) #:context orig-stx
+      #:name "inspector argument")
+    
+    #:declare reflection-name
+    (expr/c #'symbol? #:name "reflection-name argument")
+    
+    #:declare prop-key
+    (expr/c #'struct-type-property? #:context orig-stx
+      #:name "one of the structure type properties")
+    
+    #:declare prop-val
+    (expr/c #'any/c #:context orig-stx
+      #:name "one of the associated structure type property values")
+    
+    #`(begin
+        (define-value-imitation-simple-struct/derived #,orig-stx
+          tupler pred? (proj ...) inspector.c reflection-name.c
+          (~?
+            (#:prop prop-key.c prop-val.c)
+            (#:gen gen-name methods ...))
+          ...)
+        (define-match-expander-from-tupler make
+          #,(length #/syntax->list #'(proj ...))
+          tupler))))
+
+(define-syntax (define-syntax-and-value-imitation-simple-struct stx)
+  (syntax-parse stx #/ (_ arg ...)
+  #/expand-define-syntax-and-value-imitation-simple-struct/derived
+    stx
+    #'(arg ...)))
+
+(define-syntax
+  (define-syntax-and-value-imitation-simple-struct/derived stx)
+  (syntax-parse stx #/ (_ orig-stx arg ...)
+  #/expand-define-syntax-and-value-imitation-simple-struct/derived
+    #'orig-stx
+    #'(arg ...)))
+
+(define-syntax (define-imitation-simple-struct stx)
+  (syntax-parse stx #/ (_ make arg ...)
+  #/expand-define-syntax-and-value-imitation-simple-struct/derived
+    stx
+    #'(make tupler arg ...)))
+
+(define-syntax (define-imitation-simple-struct/derived stx)
+  (syntax-parse stx #/ (_ orig-stx make arg ...)
+  #/expand-define-syntax-and-value-imitation-simple-struct/derived
+    #'orig-stx
+    #'(make tupler arg ...)))
