@@ -533,7 +533,7 @@
           #/w- expand (struct-property-expander-ref op)
           #/expand op len reflection-name-id tupler-id #'call))
         (~bind #/ [expansion 1]
-          (syntax->list #'((~@ repeat.expansion ...) ...))))))
+          (syntax->list #'(repeat.expansion ... ...))))))
   
   )
 
@@ -555,6 +555,8 @@
       #'reflection-name-result
       #'tupler)
     
+    ; NOTE: We can't use `struct-accessor-by-name` to simplify this
+    ; `inst-field` code because we're using `#:omit-define-syntaxes`.
     #:with ((field inst-field) ...)
     (build-list (syntax-e #'len) #/fn i
       (for/list ([format-string (in-list (list "~a" "inst-~a"))])
@@ -571,8 +573,7 @@
               #:inspector inspector-result
               #:reflection-name reflection-name-result
               #:omit-define-syntaxes
-              (~@ args.expansion ...)
-              ...)
+              args.expansion ... ...)
             (tupler-from-pred-and-projs-and-make
               inst?
               (list inst-field ...)
@@ -651,8 +652,8 @@
             ; TODO: We should really use a syntax class for match
             ; patterns rather than `expr` here, but it doesn't look
             ; like one exists yet.
-            (syntax-protect #/syntax-parse stx #/ (_ arg ...)
-              (~@ #:declare arg expr) ...
+            (syntax-protect
+            #/syntax-parse stx #/ (_ (~var arg expr) ...)
               #'(app
                   (fn v #/let ()
                     (and (pred? v)
