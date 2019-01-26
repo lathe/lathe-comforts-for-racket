@@ -24,7 +24,8 @@
   -> any/c contract? contract-out or/c)
 
 (require #/only-in lathe-comforts expect fn)
-(require #/only-in lathe-comforts/struct struct-easy)
+(require #/only-in lathe-comforts/struct
+  auto-equal auto-write define-imitation-simple-struct)
 (require #/only-in lathe-comforts/match
   define-match-expander-attenuated match/c)
 
@@ -41,24 +42,17 @@
 )
 
 
-(module private/struct racket/base
-  (require #/only-in lathe-comforts/struct struct-easy)
-  (provide #/all-defined-out)
-  (struct-easy (nothing) #:equal)
-  (struct-easy (just value) #:equal))
-(require #/prefix-in struct: 'private/struct)
+(define-imitation-simple-struct nothing nothing? ()
+  (current-inspector)
+  'nothing
+  (auto-write)
+  (auto-equal))
 
-(define-match-expander-attenuated nothing struct:nothing)
-(define-match-expander-attenuated just struct:just any/c)
-
-(define (nothing? v)
-  (struct:nothing? v))
-
-(define (just? v)
-  (struct:just? v))
-
-(define (just-value inst)
-  (struct:just-value inst))
+(define-imitation-simple-struct just just? (just-value)
+  (current-inspector)
+  'just
+  (auto-write)
+  (auto-equal))
 
 (define (maybe? x)
   (or (nothing? x) (just? x)))

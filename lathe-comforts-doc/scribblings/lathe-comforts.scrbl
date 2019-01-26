@@ -280,7 +280,8 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
 
 
 @deftogether[(
-  @defform[(nothing)]
+  @defidform[nothing]
+  @defform[#:link-target? #f (nothing)]
   @defform[#:kind "match expander" #:link-target? #f (nothing)]
   @defproc[(nothing? [v any/c]) boolean?]
 )]{
@@ -290,7 +291,8 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
 }
 
 @deftogether[(
-  @defform[(just value-expr)]
+  @defidform[just]
+  @defform[#:link-target? #f (just value-expr)]
   @defform[#:kind "match expander" #:link-target? #f (just value-pat)]
   @defproc[(just? [v any/c]) boolean?]
   @defproc[(just-value [inst just?]) any/c]
@@ -343,7 +345,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 
 
 @deftogether[(
-  @defform[(trivial)]
+  @defidform[trivial]
+  @defform[#:link-target? #f (trivial)]
   @defform[#:kind "match expander" #:link-target? #f (trivial)]
   @defproc[(trivial? [v any/c]) boolean?]
 )]{

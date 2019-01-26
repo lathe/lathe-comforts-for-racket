@@ -4,7 +4,7 @@
 ;
 ; A structure type, `trivial`, intended for values that never vary.
 
-;   Copyright 2018 The Lathe Authors
+;   Copyright 2018, 2019 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -21,22 +21,16 @@
 
 (require #/only-in racket/contract/base -> any/c contract-out)
 
-(require #/only-in lathe-comforts/struct struct-easy)
-(require #/only-in lathe-comforts/match
-  define-match-expander-attenuated)
+(require #/only-in lathe-comforts/struct
+  auto-equal auto-write define-imitation-simple-struct)
 
 
 (provide trivial)
 (provide #/contract-out [trivial? (-> any/c boolean?)])
 
 
-(module private/struct racket/base
-  (require #/only-in lathe-comforts/struct struct-easy)
-  (provide #/all-defined-out)
-  (struct-easy (trivial) #:equal))
-(require #/prefix-in struct: 'private/struct)
-
-(define-match-expander-attenuated trivial struct:trivial)
-
-(define (trivial? v)
-  (struct:trivial? v))
+(define-imitation-simple-struct trivial trivial? ()
+  (current-inspector)
+  'trivial
+  (auto-write)
+  (auto-equal))

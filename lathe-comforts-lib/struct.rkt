@@ -4,7 +4,7 @@
 ;
 ; Utilities for structs.
 
-;   Copyright 2017-2018 The Lathe Authors
+;   Copyright 2017-2019 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -643,7 +643,8 @@
         (define tupler-result tupler.c)
         (define pred? (tupler-pred?-fn tupler-result))
         (define projs (tupler-proj-fns tupler-result))
-        (define make (tupler-make-fn tupler-result))
+        (define make
+          (procedure-rename (tupler-make-fn tupler-result) 'name))
         
         (define-match-expander name
           (fn stx
@@ -660,16 +661,17 @@
                 #/list arg ...)))
           (fn stx
             (syntax-protect #/syntax-parse stx
-              ; TODO: It would be this easy to allow the expander to
-              ; expand into a construction-only version of itself when
-              ; used directly as an identifier. Let's not do that
-              ; unless we have to, but let's keep an eye on whether we
-              ; have to.
-;              [
-;                _:id
-;                #'(procedure-rename
-;                    (fn arg ... #/make arg ...)
-;                    'name)]
+              
+              ; NOTE: We allow the expander to expand into a reference
+              ; to a construction-only procedure version of itself
+              ; when it's used directly as an identifier. That way,
+              ; we have leeway to upgrade constructor-like functions
+              ; into match expanders, and this constructor-like match
+              ; expander looks like the result of an upgrade like
+              ; that.
+              ;
+              [ _:id #'make]
+              
               [(_ arg ...) #'(make arg ...)]))))))
 
 
