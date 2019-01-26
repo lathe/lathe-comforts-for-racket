@@ -21,6 +21,7 @@
 
 (require #/only-in racket/contract/base contract? listof or/c)
 (require #/only-in racket/match match match-lambda)
+(require #/only-in racket/port with-output-to-string)
 (require rackunit)
 
 (require #/only-in parendown pd)
@@ -29,6 +30,7 @@
 (require lathe-comforts/contract)
 (require lathe-comforts/match)
 (require lathe-comforts/private/experimental/match)
+(require lathe-comforts/struct)
 
 ; (We provide nothing from this module.)
 
@@ -93,6 +95,30 @@
   (object-name my-vector)
   'vector
   "The name of a via-lists match expander is not modified from its function version")
+
+(let ()
+  (define-imitation-simple-struct foo foo? (foo-val1 foo-val2)
+    (current-inspector)
+    'foo
+    (auto-write))
+  
+  (check-equal?
+    (with-output-to-string #/fn #/write #/foo (list 1) 2)
+    "#<foo: (1) 2>"
+    "Writing a structure whose structure type uses (auto-write) writes an unreadable value with all the contents exposed")
+  
+  (check-equal?
+    (with-output-to-string #/fn #/print #/foo (list 1) 2)
+    "(foo '(1) 2)"
+    "Printing a structure whose structure type uses (auto-write) with quoting depth 0 writes a constructor-style expression with all the contents exposed")
+  
+  (check-equal?
+    (with-output-to-string #/fn
+      (print (foo (list 1) 2) (current-output-port) 1))
+    "#<foo: (1) 2>"
+    "Writing a structure whose structure type uses (auto-write) with quoting depth 1 writes an unreadable value with all the contents exposed")
+  
+  )
 
 
 ; Tests corresponding to documentation examples
