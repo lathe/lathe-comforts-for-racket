@@ -100,7 +100,8 @@
   (define-imitation-simple-struct foo foo? (foo-val1 foo-val2)
     (current-inspector)
     'foo
-    (auto-write))
+    (auto-write)
+    (auto-equal))
   
   (check-equal?
     (with-output-to-string #/fn #/write #/foo (list 1) 2)
@@ -117,6 +118,16 @@
       (print (foo (list 1) 2) (current-output-port) 1))
     "#<foo: (1) 2>"
     "Writing a structure whose structure type uses (auto-write) with quoting depth 1 writes an unreadable value with all the contents exposed")
+  
+  (check-equal?
+    (equal? (foo (list 1) 2) (foo (list 1) 2))
+    #t
+    "A structure whose structure type uses (auto-equal) can be successfully compared with `equal?`")
+  
+  (check-equal?
+    (equal? (foo (list 1) 2) (foo (list 2) 2))
+    #f
+    "A structure whose structure type uses (auto-equal) can be unsuccessfully compared with `equal?`")
   
   )
 

@@ -63,11 +63,8 @@
   istruct/c
   )
 ; TODO: Document all the exports below.
-; TODO: Add keywords or utilities that can be used with the
-; `...-simple-struct` forms to make it as convenient to create
-; automatic `write` and `equal?` behaviors with them as it is to use
-; `struct-easy`. We now have `auto-write`, and we should also make
-; `auto-equal`.
+; TODO: Deprecate `struct-easy` in favor of using
+; `define-imitation-simple-struct` with `auto-write` and `auto-equal`.
 (provide #/contract-out
   [tupler? (-> any/c boolean?)]
   [tupler-length (-> tupler? natural?)]
@@ -119,6 +116,7 @@
   define-imitation-simple-struct
   define-imitation-simple-struct/derived
   auto-write
+  auto-equal
   )
 
 
@@ -736,3 +734,50 @@
                       "self" self)
                   #/for/list ([proj (in-list projs)])
                     (proj self))))))])))
+
+(define-syntax auto-equal
+  (make-struct-property-expander
+  #/fn len reflection-name-id tupler-id stx
+    ; TODO: See if we can use `syntax-protect` here.
+    (syntax-parse stx #/ (_)
+      #`[
+          (#:gen gen:equal+hash
+            
+            (define (equal-proc a b recursive-equal?)
+              (w- pred? (tupler-pred?-fn #,tupler-id)
+              #/w- projs (tupler-proj-fns #,tupler-id)
+              #/expect (pred? a) #t
+                (raise-arguments-error 'equal-proc
+                  "expected the first argument to be an instance of the structure type where this gen:equal+hash behavior was installed"
+                  "a" a
+                  "b" b)
+              #/expect (pred? b) #t
+                (raise-arguments-error 'equal-proc
+                  "expected the second argument to be an instance of the structure type where this gen:equal+hash behavior was installed"
+                  "a" a
+                  "b" b)
+              #/for/and ([proj (in-list projs)])
+                (recursive-equal? (proj a) (proj b))))
+            
+            (define (hash-proc self recursive-equal-hash-code)
+              (w- pred? (tupler-pred?-fn #,tupler-id)
+              #/w- projs (tupler-proj-fns #,tupler-id)
+              #/expect (pred? self) #t
+                (raise-arguments-error 'hash-proc
+                  "expected self to be an instance of the structure type where this gen:equal+hash behavior was installed"
+                  "self" self)
+              #/recursive-equal-hash-code
+                (map (fn proj #/proj self) projs)))
+            
+            (define
+              (hash2-proc self recursive-equal-secondary-hash-code)
+              (w- pred? (tupler-pred?-fn #,tupler-id)
+              #/w- projs (tupler-proj-fns #,tupler-id)
+              #/expect (pred? self) #t
+                (raise-arguments-error 'hash-proc
+                  "expected self to be an instance of the structure type where this gen:equal+hash behavior was installed"
+                  "self" self)
+              #/recursive-equal-secondary-hash-code
+                (map (fn proj #/proj self) projs)))
+            
+            )])))
