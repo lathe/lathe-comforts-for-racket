@@ -304,7 +304,7 @@
 
 (define-syntax (struct-accessor-by-name stx)
   (syntax-parse stx #/ (_ struct-name:id field-name:id)
-  #/dissect (get-struct-info stx #'name)
+  #/dissect (get-struct-info stx #'struct-name)
     (list struct:foo make-foo foo? rev-getters rev-setters super)
   ; TODO: Have this look up the result from the struct info of `super`
   ; if it's not directly in this list.
@@ -313,7 +313,7 @@
 
 (define-syntax (struct-mutator-by-name stx)
   (syntax-parse stx #/ (_ struct-name:id field-name:id)
-  #/dissect (get-struct-info stx #'name)
+  #/dissect (get-struct-info stx #'struct-name)
     (list struct:foo make-foo foo? rev-getters rev-setters super)
   ; TODO: Have this look up the result from the struct info of `super`
   ; if it's not directly in this list.
