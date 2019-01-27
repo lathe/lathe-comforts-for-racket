@@ -54,8 +54,8 @@
   (auto-write)
   (auto-equal))
 
-(define (maybe? x)
-  (or (nothing? x) (just? x)))
+(define (maybe? v)
+  (or (nothing? v) (just? v)))
 
 ; TODO: Give the resulting contract a better name, check that it has
 ; good `contract-stronger?` behavior, etc.

@@ -21,7 +21,8 @@
 
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base
-  -> any any/c contract? listof or/c struct/c)
+  -> </c and/c any any/c cons/c contract? flat-contract? listof or/c
+  struct/c)
 @(require #/for-label #/only-in racket/list append-map)
 @(require #/for-label #/only-in racket/match
   exn:misc:match? match match-lambda)
@@ -302,7 +303,7 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
   Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] elements.
 }
 
-@defproc[(maybe? [x any/c]) boolean?]{
+@defproc[(maybe? [v any/c]) boolean?]{
   Returns whether the given value is a maybe value. That is, it checks that the value is either a @racket[nothing?] value or a @racket[just?] value.
 }
 
@@ -741,6 +742,96 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Unlike @racket[struct/c] (but like @racket[match/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[field/c-expr] contracts contain one or more impersonator contracts.
   
   However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
+}
+
+@defproc[(tupler? [v any/c]) boolean?]{
+  Returns whether the given value is a tupler.
+  
+  A tupler bundles a set of procedures that behave as though they're the constructor, predicate, and positional accessors for an immutable tagged tuple type. Essentially, a tupler carries most of the functionality an immutable @racket[struct] definition creates except for its structure type descriptor. Unlike @racket[struct] definitions, tuplers may be created which represent their values in arbitrary ways, including as values created by other tuplers.
+}
+
+@defproc[(tupler-length [t tupler?]) natural?]{
+  Returns the number of projections the given tupler has. This is the number of projections can be accessed from a tuple value and the number of projection values that must be supplied to the tupler's constructor.
+}
+
+@defproc[(tupler/c [length/c flat-contract?]) flat-contract?]{
+  Returns a contract that recognizes a tupler whose length abides by the given contract.
+}
+
+@; TODO: Move this below `tupler-pred?-fn` and `tupler-ref-fn`.
+@; TODO: See if we can change the contract to enforce arity.
+@defproc[
+  ((tupler-make-fn [t tupler?]) [proj any/c] ...)
+  (tupler-pred?-fn t)
+]{
+  Constructs a tuple value using the given tupler. There should be as many @racket[proj] arguments as the tupler's length.
+}
+
+@defproc[((tupler-pred?-fn [t tupler?]) [v any/c]) boolean?]{
+  Returns whether the given value is recognized by the given tupler as one of its tuple values.
+}
+
+@defproc[
+  (
+    (tupler-ref-fn [t tupler?])
+    [v (tupler-pred?-fn t)]
+    [i (and/c natural? (</c (tupler-length t)))])
+  any/c
+]{
+  Returns the projection at the given index in the given tuple value as observed by the given tupler.
+}
+
+@defproc[
+  (tupler-proj-fns [t tupler?])
+  (listof (-> (tupler-pred?-fn t) any/c))
+]{
+  Returns a list of projection procedures based on the given tupler.
+}
+
+@; TODO: See if we can change the contract of `make-fn` to enforce its
+@; arity.
+@defproc[
+  (tupler-from-pred-and-ref-and-make
+    [length natural?]
+    [pred?-fn (-> any/c boolean?)]
+    [ref-fn (-> pred?-fn (and/c natural? (</c length)) any/c)]
+    [make-fn (-> any/c ... pred?-fn)])
+  tupler?
+]{
+  Returns a tupler which has the given length and uses the given predicate, positional-index-based accessor procedure, and constructor procedure.
+}
+
+@; TODO: See if we can change the contract of `make-fn` to enforce its
+@; arity.
+@defproc[
+  (tupler-from-pred-and-projs-and-make
+    [pred?-fn (-> any/c boolean?)]
+    [proj-fns (listof (-> pred?-fn any/c))]
+    [make-fn (-> any/c ... pred?-fn)])
+  tupler?
+]{
+  Returns a tupler which uses the given predicate, projection procedures, and constructor procedure.
+}
+
+@defproc[
+  (tupler-for-simple-make-struct-type
+    [inspector (or/c inspector? #f 'prefab)]
+    [reflection-name symbol?]
+    [length natural?]
+    [props (listof (cons/c struct-type-property? any/c))])
+  tupler?
+]{
+  Creates a new immutable structure type with the given inspector, reflection name, number of fields, and list of structure type property bindings.
+  
+  The reflection name is used for certain reflective operations.
+  
+  If the inspector is the value @racket['prefab], this accesses a prefab structure type instead of creating a new one, and there must be no structure type property bindings in the list.
+  
+  If the inspector is the value @racket[#f], the resulting structure type is transparent.
+  
+  Note that unlike @racket[make-struct-type], this has no support for creating structure types that have supertypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining a second constructor procedure to call instead of calling this tupler's constructor directly.
+  
+  To have more complete control over the structure type created, use @racket[make-struct-type], and then create a tupler out of those results by using @racket[tupler-from-pred-and-ref-and-make].
 }
 
 

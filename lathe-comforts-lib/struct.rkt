@@ -50,6 +50,8 @@
 
 (require #/only-in lathe-comforts dissect dissectfn expect fn mat w-)
 
+; TODO: Deprecate `struct-easy` in favor of using
+; `define-imitation-simple-struct` with `auto-write` and `auto-equal`.
 (provide struct-easy)
 
 ; TODO: Export and document the commented-out ones if and when we have
@@ -62,9 +64,6 @@
 ;  struct-mutator-by-name
   istruct/c
   )
-; TODO: Document all the exports below.
-; TODO: Deprecate `struct-easy` in favor of using
-; `define-imitation-simple-struct` with `auto-write` and `auto-equal`.
 (provide #/contract-out
   [tupler? (-> any/c boolean?)]
   [tupler-length (-> tupler? natural?)]
@@ -76,6 +75,9 @@
     (->i ([t tupler?]) #/_ (t)
     #/-> (tupler-pred?-fn t) (and/c natural? (</c #/tupler-length t))
       any/c)]
+  [tupler-proj-fns
+    (->i ([t tupler?]) #/_ (t)
+    #/listof #/-> (tupler-pred?-fn t) any/c)]
   [tupler-from-pred-and-ref-and-make
     (->i
       (
@@ -104,6 +106,7 @@
             #/cons/c struct-type-property? any/c))])
       [_ tupler?])]
   )
+; TODO: Document all the exports below.
 (provide
   tupler-for-simple-struct
   tupler-for-simple-struct/derived
