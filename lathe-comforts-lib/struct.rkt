@@ -102,7 +102,7 @@
         [length natural?]
         [props (inspector)
           (listof
-            (mat inspector #f none/c
+            (mat inspector 'prefab none/c
             #/cons/c struct-type-property? any/c))])
       [_ tupler?])]
   )
