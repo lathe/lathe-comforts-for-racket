@@ -772,6 +772,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
 }
 
+@; TODO: Document these once we need to export them.
+@;{
 @defproc[(tupler? [v any/c]) boolean?]{
   Returns whether the given value is a tupler.
   
@@ -861,6 +863,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   To have more complete control over the structure type created, use @racket[make-struct-type], and then create a tupler out of those results by using @racket[tupler-from-pred-and-ref-and-make].
 }
+}
 
 @defform[
   (define-imitation-simple-struct inst-id inst?-id
@@ -901,9 +904,9 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   An @racket[option] of the form @racket[(auto-equal)] specifies an implementation of @racket[gen:equal+hash] which treats any two of these structures as @racket[equal?] if their fields are @racket[equal?].
   
-  Note that unlike @racket[struct], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling this tupler's constructor directly.
+  Note that unlike @racket[struct], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling the defined constructor directly.
   
-  @; TODO: Once we document `define-match-expander-from-tupler` and `define-pred-and-projs-from-tupler`, uncomment this.
+  @; TODO: Document `define-match-expander-from-tupler` and `define-pred-and-projs-from-tupler` once we need to export them. When we do, uncomment this paragraph as well.
 @;  To have more complete control over the structure type created, use @racket[struct], create a tupler in terms of those definitions by using @racket[tupler-from-pred-and-ref-and-make], and then use @racket[define-match-expander-from-tupler] and @racket[define-pred-and-projs-from-tupler].
 }
 

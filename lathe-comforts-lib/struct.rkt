@@ -64,6 +64,11 @@
 ;  struct-mutator-by-name
   istruct/c
   )
+; TODO: When we need to export these tupler-related functions,
+; uncomment these exports, and uncomment their documentation in
+; lathe-comforts.scrbl. We'll probably want to document and export
+; some of the tupler-related macros at the same time.
+#;
 (provide #/contract-out
   [tupler? (-> any/c boolean?)]
   [tupler-length (-> tupler? natural?)]
