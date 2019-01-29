@@ -681,7 +681,7 @@
               ; expander looks like the result of an upgrade like
               ; that.
               ;
-              [ _:id #'make]
+              [_:id #'make]
               
               [(_ arg ...) #'(make arg ...)]))))))
 

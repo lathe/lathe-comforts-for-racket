@@ -926,10 +926,16 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 
 @defform[
   (define-match-expander-attenuated
-    new-name-id old-name-id arg/c-expr ...)
+    new-name-id old-name-id [arg-id arg/c-expr] ... guard-expr)
   #:contracts ([arg/c-expr contract?])
 ]{
-  Defines @racket[new-name-id] as a syntax that acts as a match expander with one subpattern for each @racket[arg/c-expr] and expands into an identical pattern using @racket[old-name-id]. When used instead as an expression syntax with one subexpression for each @racket[arg/c-expr], it first executes each subexpression, projecting each result through the corresponding @racket[arg/c-expr] contract as it goes along, and then it executes an expression of the form @racket[(old-name-id _arg-id ...)], where each @racket[_arg-id] is an identifier locally bound to the corresponding contract projection.
+  Defines @racket[new-name-id] as a syntax that acts as a match expander which takes one subform for each @racket[arg-id] and expands into a pattern using @racket[old-name-id] with the same number of subforms.
+  
+  When the syntax defined this way used as an expression syntax with one subexpression for each @racket[arg/c-expr], it first executes each subexpression, projects them each through the corresponding @racket[arg/c-expr] contract, and evaluates @racket[guard-expr] with @racket[arg-id] bound to those projections. If the result of @racket[guard-expr] is @racket[#f], a precondition representing to this guard fails, raising an @racket[exn:fail:contract] exception. Otherwise, this returns the result of @racket[(old-name-id arg-id ...)].
+  
+  When the syntax defined this way is used as an identifier, it returns a function that performs the expression syntax behavior when it's called.
+  
+  When the syntax defined this way is used as a match expander with one pattern for each @racket[arg-id], it first tries to match the same arguments according to @racket[(old-name-id arg-id ...)], and it fails if that pattern fails. Then it tries to check each of the @racket[arg/c-expr] contracts' @racket[contract-first-order-passes?] behavior against the respective argument value, and it fails if any of those fails. Then it projects the arguments through those contracts, and it attempts to check the @racket[guard-expr] with those projections, failing if the @racket[guard-expr] returns @racket[#f]. If it hasn't failed yet, it proceeds to match those projections according to the patterns given at the call site.
   
   @; TODO: This description seems a bit too terse. It might be good to give examples.
 }

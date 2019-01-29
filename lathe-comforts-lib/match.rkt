@@ -21,8 +21,8 @@
 
 (require #/for-syntax racket/base)
 
-(require #/for-syntax #/only-in syntax/parse
-  expr expr/c id syntax-parse)
+(require #/for-syntax #/only-in syntax/contract wrap-expr/c)
+(require #/for-syntax #/only-in syntax/parse expr/c id syntax-parse)
 
 (require #/for-syntax #/only-in lathe-comforts fn)
 
@@ -32,13 +32,14 @@
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
-  contract? contract-name flat-contract?)
+  ->i any any/c contract? contract-name flat-contract?)
 (require #/only-in racket/contract/combinator
   blame-add-context contract-first-order-passes? make-contract
   make-flat-contract raise-blame-error)
 (require #/only-in racket/match define-match-expander)
 
-(require #/only-in lathe-comforts dissect dissectfn expect fn mat w-)
+(require #/only-in lathe-comforts
+  dissect dissectfn expect expectfn fn mat w-)
 
 (provide define-match-expander-attenuated match/c)
 
@@ -46,58 +47,85 @@
 
 (define-syntax (define-match-expander-attenuated stx)
   (syntax-protect
-  #/syntax-parse stx #/ (_ new-name:id old-name:id arg/c ...)
-    
+  #/syntax-parse stx #/
+    (_ new-name:id old-name:id [arg arg/c] ... guard-expr)
     #:declare arg/c (expr/c #'contract? #:name "an argument contract")
-    
+    #:with (arg-pat ...) (generate-temporaries #'(arg ...))
+    #:with (contracted-arg ...) (generate-temporaries #'(arg ...))
     #:with (arg/c-result ...) (generate-temporaries #'(arg/c ...))
-    #:with (arg ...) (generate-temporaries #'(arg/c ...))
-    #:with (arg.c ...)
-    (for/list ([var (in-list (syntax->list #'(arg ...)))])
-      (datum->syntax var
-        (string->symbol (format "~a.c" (syntax-e var)))))
-    #:with (arg-result ...) (generate-temporaries #'(arg/c ...))
-    
     #'(begin
         
         (define arg/c-result arg/c.c)
         ...
+        (define (passes-guard? arg ...)
+          guard-expr)
         
         (define-match-expander new-name
           (fn stx
             ; TODO: We should really use a syntax class for match
             ; patterns rather than `expr` here, but it doesn't look
             ; like one exists yet.
-            (syntax-protect #/syntax-parse stx #/ (_ arg ...)
-              (~@ #:declare arg expr) ...
-              #'(old-name arg ...)))
+            (syntax-protect
+            #/with-syntax
+              (
+                [contracted-guard
+                  (wrap-expr/c
+                    #'(->i ([arg arg/c-result] ...) [_ any/c])
+                    #'(fn arg ... #/passes-guard? arg ...)
+                    ; NOTE: The `#:positive` and `#:negative`
+                    ; arguments here are the usual values but swapped.
+                    #:positive 'from-macro
+                    #:negative 'use-site
+                    #:context stx)]
+                [contracted-arg
+                  (wrap-expr/c #'arg/c-result #'arg #:context stx)]
+                ...)
+            #/syntax-parse stx #/ (_ arg-pat ...)
+              #'(app
+                  (expectfn (old-name arg ...) #f
+                  #/and
+                    (contract-first-order-passes? arg/c-result arg)
+                    ...
+                  #/let ([arg contracted-arg] ...)
+                  #/and (contracted-guard arg ...)
+                  #/list arg ...)
+                #/list arg-pat ...)))
           (fn stx
-            (syntax-protect #/syntax-parse stx
+            (syntax-protect
+            #/with-syntax
+              (
+                [contracted-function
+                  (wrap-expr/c
+                    #'(->i ([arg arg/c-result] ...)
+                        #:pre (arg ...) (passes-guard? arg ...)
+                        any)
+                    #'(fn arg ... #/old-name arg ...)
+                    ; NOTE: The `#:positive` and `#:negative` arguments
+                    ; here are the usual values but swapped.
+                    #:positive 'from-macro
+                    #:negative 'use-site
+                    #:context stx)])
+            #/syntax-parse stx
               
-              ; NOTE: We intentionally do not allow the syntax to be
-              ; used as a plain identifier. Even if we did, it
-              ; wouldn't have the argument contracts enforced.
+              ; NOTE: We allow the expander to expand into an
+              ; expression that creates a construction-only procedure
+              ; version of itself when it's used directly as an
+              ; identifier. That way, we have leeway to upgrade
+              ; constructor-like functions into match expanders that
+              ; are defined this way.
               ;
-              ; TODO: Is there an easy way to enforce the argument
-              ; contracts *and* have the procedure's name match this
-              ; match expander's name *and* have contract violations
-              ; reported in terms of the client's code locations
-              ; (as with `contract-out`)? It looks like we'd have to
-              ; dig into undocumented details about how
-              ; `provide/contract-original-contract` is used. The
-              ; documentation of this syntax is probably easier if it
-              ; doesn't need to support plain identifier use anyway.
+              ; NOTE: We have the procedure report contract errors in
+              ; terms of the place this expansion has been performed.
+              ; If we defined a single procedure and returned that one
+              ; every time, it would have to report its contract
+              ; errors in terms of the place
+              ; `define-match-expander-attenuated` was called, which
+              ; would be less specific.
               ;
-;              [_:id #'old-name]
+              [ _:id
+                #'(procedure-rename contracted-function 'new-name)]
               
-              [ (_ arg ...)
-                ; TODO: See if we can give this `expr/c` a better
-                ; `#:name`.
-                (~@ #:declare arg
-                  (expr/c #'arg/c-result #:name "an argument"))
-                ...
-                #'(let ([arg-result arg.c] ...)
-                    (old-name arg-result ...))]))))))
+              [(_ arg ...) #'(contracted-function arg ...)]))))))
 
 
 (define (match/c-impl foo-name foo->maybe-list list->foo args)

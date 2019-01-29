@@ -44,7 +44,7 @@
 (struct should-only-contain-strings (value))
 
 (define-match-expander-attenuated make-should-only-contain-strings
-  should-only-contain-strings string?)
+  should-only-contain-strings [value string?] #t)
 
 (check-equal?
   (dissect (make-should-only-contain-strings "hello")
@@ -52,6 +52,13 @@
     value)
   "hello"
   "Call and match on an attenuated match expander successfully")
+
+(check-equal?
+  (dissect ((begin make-should-only-contain-strings) "hello")
+    (make-should-only-contain-strings value)
+    value)
+  "hello"
+  "Use an attenuated match expander as an identifier successfully")
 
 (check-exn exn:fail:contract?
   (fn
@@ -75,11 +82,6 @@
       '(make-should-only-contain-strings "hello" "world")
       test-ns))
   "Erroneously call an attenuated match expander with the wrong number of values")
-
-(check-exn exn:fail:syntax?
-  (fn
-    (eval 'make-should-only-contain-strings test-ns))
-  "Erroneously use an attenuated match expander as an identifier")
 
 
 (define-match-expander-via-lists my-vector vector

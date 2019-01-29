@@ -26,8 +26,7 @@
 (require #/only-in lathe-comforts expect fn)
 (require #/only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-struct)
-(require #/only-in lathe-comforts/match
-  define-match-expander-attenuated match/c)
+(require #/only-in lathe-comforts/match match/c)
 
 
 (provide nothing just)
