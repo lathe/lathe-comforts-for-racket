@@ -29,8 +29,5 @@
 (provide #/contract-out [trivial? (-> any/c boolean?)])
 
 
-(define-imitation-simple-struct trivial trivial? ()
-  (current-inspector)
-  'trivial
-  (auto-write)
-  (auto-equal))
+(define-imitation-simple-struct (trivial?) trivial
+  'trivial (current-inspector) (auto-write) (auto-equal))

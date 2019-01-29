@@ -788,15 +788,6 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Returns a contract that recognizes a tupler whose length abides by the given contract.
 }
 
-@; TODO: Move this below `tupler-pred?-fn` and `tupler-ref-fn`.
-@; TODO: See if we can change the contract to enforce arity.
-@defproc[
-  ((tupler-make-fn [t tupler?]) [proj any/c] ...)
-  (tupler-pred?-fn t)
-]{
-  Constructs a tuple value using the given tupler. There should be as many @racket[proj] arguments as the tupler's length.
-}
-
 @defproc[((tupler-pred?-fn [t tupler?]) [v any/c]) boolean?]{
   Returns whether the given value is recognized by the given tupler as one of its tuple values.
 }
@@ -816,6 +807,14 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   (listof (-> (tupler-pred?-fn t) any/c))
 ]{
   Returns a list of projection procedures based on the given tupler.
+}
+
+@; TODO: See if we can change the contract to enforce arity.
+@defproc[
+  ((tupler-make-fn [t tupler?]) [proj any/c] ...)
+  (tupler-pred?-fn t)
+]{
+  Constructs a tuple value using the given tupler. There should be as many @racket[proj] arguments as the tupler's length.
 }
 
 @; TODO: See if we can change the contract of `make-fn` to enforce its
@@ -845,13 +844,13 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 
 @defproc[
   (tupler-for-simple-make-struct-type
-    [inspector (or/c inspector? #f 'prefab)]
-    [reflection-name symbol?]
     [length natural?]
+    [reflection-name symbol?]
+    [inspector (or/c inspector? #f 'prefab)]
     [props (listof (cons/c struct-type-property? any/c))])
   tupler?
 ]{
-  Creates a new immutable structure type with the given inspector, reflection name, number of fields, and list of structure type property bindings.
+  Creates a new immutable structure type with the given number of fields, reflection name, inspector, and list of structure type property bindings.
   
   The reflection name is used for certain reflective operations.
   
@@ -866,9 +865,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 }
 
 @defform[
-  (define-imitation-simple-struct inst-id inst?-id
-    (inst-field-id ...)
-    inspector-expr reflection-name-expr option ...)
+  (define-imitation-simple-struct
+    (inst?-id inst-field-id ...)
+    inst-id
+    reflection-name-expr inspector-expr option ...)
   #:grammar
   [
     (option
@@ -884,13 +884,13 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 ]{
   Creates a new structure type, and defines struct-like operations which construct and deconstruct an actual structure value of that type.
   
-  The variable @racket[inst-id] is defined to be a match expander that can be used to construct or match these structures.
-  
   The variable @racket[inst?-id] is defined to be a predicate that detects these structures.
   
   Each variable @racket[inst-field-id] is defined to be a procedure that accesses the corresponding positional field of any given one of these structures.
   
-  The structure type is created with the given inspector, the given reflection name, a number of fields equal to the number of @racket[inst-field-id] variables specified, and structure type property bindings determined by the given @racket[option] entries.
+  The variable @racket[inst-id] is defined to be a match expander that can be used to construct or match these structures.
+  
+  The structure type is created with the given reflection name, the given inspector, a number of fields equal to the number of @racket[inst-field-id] variables specified, and structure type property bindings determined by the given @racket[option] entries.
   
   The reflection name is used for certain reflective operations.
   

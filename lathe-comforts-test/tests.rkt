@@ -97,11 +97,8 @@
   "The name of a via-lists match expander is not modified from its function version")
 
 (let ()
-  (define-imitation-simple-struct foo foo? (foo-val1 foo-val2)
-    (current-inspector)
-    'foo
-    (auto-write)
-    (auto-equal))
+  (define-imitation-simple-struct (foo? foo-val1 foo-val2) foo
+    'foo (current-inspector) (auto-write) (auto-equal))
   
   (check-equal?
     (with-output-to-string #/fn #/write #/foo (list 1) 2)

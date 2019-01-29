@@ -42,17 +42,11 @@
 )
 
 
-(define-imitation-simple-struct nothing nothing? ()
-  (current-inspector)
-  'nothing
-  (auto-write)
-  (auto-equal))
+(define-imitation-simple-struct (nothing?) nothing
+  'nothing (current-inspector) (auto-write) (auto-equal))
 
-(define-imitation-simple-struct just just? (just-value)
-  (current-inspector)
-  'just
-  (auto-write)
-  (auto-equal))
+(define-imitation-simple-struct (just? just-value) just
+  'just (current-inspector) (auto-write) (auto-equal))
 
 (define (maybe? v)
   (or (nothing? v) (just? v)))
