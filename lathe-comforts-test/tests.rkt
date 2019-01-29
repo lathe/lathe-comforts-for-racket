@@ -72,8 +72,7 @@
        (require lathe-comforts/match)
        (define-match-expander-attenuated
          make-should-only-contain-strings
-         should-only-contain-strings
-         string?))
+         should-only-contain-strings [value string?] #t))
     test-ns))
 
 (check-exn exn:fail:syntax?
