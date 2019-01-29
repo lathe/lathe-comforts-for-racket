@@ -925,6 +925,13 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 @defmodule[lathe-comforts/match]
 
 @defform[
+  (define-match-expander-from-match-and-make
+    new-name-id match-name-id make-id-name-id make-list-name-id)
+]{
+  Defines @racket[new-name-id] as a syntax that expands into a call to @racket[match-name-id] if it's used a match expander, @racket[make-id-name-id] if it's used as an standalone identifier in an expression context, and @racket[make-list-name-id] if it's used at the beginning of a list in an expression context.
+}
+
+@defform[
   (define-match-expander-attenuated
     new-name-id old-name-id [arg-id arg/c-expr] ... guard-expr)
   #:contracts ([arg/c-expr contract?])

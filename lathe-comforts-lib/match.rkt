@@ -22,7 +22,8 @@
 (require #/for-syntax racket/base)
 
 (require #/for-syntax #/only-in syntax/contract wrap-expr/c)
-(require #/for-syntax #/only-in syntax/parse expr/c id syntax-parse)
+(require #/for-syntax #/only-in syntax/parse
+  ~var expr expr/c id syntax-parse)
 
 (require #/for-syntax #/only-in lathe-comforts fn)
 
@@ -41,8 +42,25 @@
 (require #/only-in lathe-comforts
   dissect dissectfn expect expectfn fn mat w-)
 
-(provide define-match-expander-attenuated match/c)
+(provide
+  define-match-expander-from-match-and-make
+  define-match-expander-attenuated
+  match/c)
 
+
+
+(define-syntax (define-match-expander-from-match-and-make stx)
+  (syntax-protect
+  #/syntax-parse stx #/
+    (_ new-name:id match-name:id make-id-name:id make-list-name:id)
+    #'(... #/define-match-expander new-name
+        (fn stx
+          (syntax-protect #/syntax-parse stx #/ (_ arg ...)
+            #'(match-name arg ...)))
+        (fn stx
+          (syntax-protect #/syntax-parse stx
+            [_:id #'make-id-name]
+            [(_ arg ...) #'(make-list-name arg ...)])))))
 
 
 (define-syntax (define-match-expander-attenuated stx)
@@ -80,7 +98,7 @@
                 [contracted-arg
                   (wrap-expr/c #'arg/c-result #'arg #:context stx)]
                 ...)
-            #/syntax-parse stx #/ (_ arg-pat ...)
+            #/syntax-parse stx #/ (_ (~var arg-pat expr) ...)
               #'(app
                   (expectfn (old-name arg ...) #f
                   #/and
