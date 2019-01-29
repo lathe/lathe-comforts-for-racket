@@ -111,18 +111,20 @@
             #/cons/c struct-type-property? any/c))])
       [_ tupler?])]
   )
-; TODO: Document all the exports below.
+; TODO: When we need to export these tupler-related macros and
+; `define-imitation-simple-struct/derived`, uncomment and document
+; these exports.
 (provide
-  tupler-for-simple-struct
-  tupler-for-simple-struct/derived
-  define-pred-and-projs-from-tupler
-  define-value-imitation-simple-struct
-  define-value-imitation-simple-struct/derived
-  define-match-expander-from-tupler
-  define-syntax-and-value-imitation-simple-struct
-  define-syntax-and-value-imitation-simple-struct/derived
+;  tupler-for-simple-struct
+;  tupler-for-simple-struct/derived
+;  define-pred-and-projs-from-tupler
+;  define-value-imitation-simple-struct
+;  define-value-imitation-simple-struct/derived
+;  define-match-expander-from-tupler
+;  define-syntax-and-value-imitation-simple-struct
+;  define-syntax-and-value-imitation-simple-struct/derived
   define-imitation-simple-struct
-  define-imitation-simple-struct/derived
+;  define-imitation-simple-struct/derived
   auto-write
   auto-equal
   )
