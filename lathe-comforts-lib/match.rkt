@@ -35,8 +35,8 @@
 (require #/only-in racket/contract/base
   ->i any any/c contract? contract-name flat-contract?)
 (require #/only-in racket/contract/combinator
-  blame-add-context contract-first-order-passes? make-contract
-  make-flat-contract raise-blame-error)
+  blame-add-context coerce-contract contract-first-order-passes?
+  make-contract make-flat-contract raise-blame-error)
 (require #/only-in racket/match define-match-expander)
 
 (require #/only-in lathe-comforts
@@ -147,7 +147,11 @@
 
 
 (define (match/c-impl foo-name foo->maybe-list list->foo args)
-  (w- arg/cs
+  (w- args
+    (for/list ([arg (in-list args)])
+      (dissect arg (list arg/c arg-blame-message)
+      #/list (coerce-contract 'match/c arg/c) arg-blame-message))
+  #/w- arg/cs
     (for/list ([arg (in-list args)])
       (dissect arg (list arg/c arg-blame-message)
         arg/c))
