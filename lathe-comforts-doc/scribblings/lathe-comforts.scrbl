@@ -22,7 +22,7 @@
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base
   -> </c and/c any any/c cons/c contract? flat-contract? listof or/c
-  struct/c)
+  recursive-contract struct/c)
 @(require #/for-label #/only-in racket/list append-map)
 @(require #/for-label #/only-in racket/match
   exn:misc:match? match match-lambda)
@@ -274,7 +274,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 ]{
   Evaluates each @racket[val-expr], renames each of those resulting contracts to its respective @racket['var-id], evaluates the @racket[body-expr] with those values in scope under respective @racket[var-id] variables, and renames the resulting contract to @racket[`(let/c [var-id ,_val-name] ... ,_body-name)], where @racket[_val-name] and @racket[_body-name] are the original names of the contracts.
   
-  This can come in handy when composiing relatively large contracts that use the same contract in multiple places. It keeps the name more concise than it would usually be.
+  This can come in handy when composiing relatively large contracts that use the same contract in multiple places. It keeps the name more concise than it usually would be.
 }
 
 @defform[
@@ -857,9 +857,62 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   If the inspector is the value @racket[#f], the resulting structure type is transparent.
   
-  Note that unlike @racket[make-struct-type], this has no support for creating structure types that have supertypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining a second constructor procedure to call instead of calling this tupler's constructor directly.
+  Note that unlike @racket[make-struct-type], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling this tupler's constructor directly.
   
   To have more complete control over the structure type created, use @racket[make-struct-type], and then create a tupler out of those results by using @racket[tupler-from-pred-and-ref-and-make].
+}
+
+@defform[
+  (define-imitation-simple-struct inst-id inst?-id
+    (inst-field-id ...)
+    inspector-expr reflection-name-expr option ...)
+  #:grammar
+  [
+    (option
+      (#:prop prop-expr prop-val-expr)
+      (#:gen gen:name method-definition ...)
+      (@#,racket[auto-write])
+      (@#,racket[auto-equal]))]
+  #:contracts
+  (
+    [inspector-expr (or/c inspector? #f 'prefab)]
+    [reflection-name-expr symbol?]
+    [prop-expr struct-type-property?])
+]{
+  Creates a new structure type, and defines struct-like operations which construct and deconstruct an actual structure value of that type.
+  
+  The variable @racket[inst-id] is defined to be a match expander that can be used to construct or match these structures.
+  
+  The variable @racket[inst?-id] is defined to be a predicate that detects these structures.
+  
+  Each variable @racket[inst-field-id] is defined to be a procedure that accesses the corresponding positional field of any given one of these structures.
+  
+  The structure type is created with the given inspector, the given reflection name, a number of fields equal to the number of @racket[inst-field-id] variables specified, and structure type property bindings determined by the given @racket[option] entries.
+  
+  The reflection name is used for certain reflective operations.
+  
+  If the inspector is the value @racket['prefab], this accesses a prefab structure type instead of creating a new one, and there must be no @racket[option] entries specified.
+  
+  An @racket[option] of the form @racket[(#:prop prop-expr prop-val-expr)] is like providing the @racket[struct] option @racket[#:property prop-expr prop-val-expr]. It specifies a binding of the @racket[prop-expr] structure type property to the value @racket[prop-val-expr].
+  
+  An @racket[option] of the form @racket[(#:gen gen:name method-definition ...)] is like providing the @racket[struct] option @racket[#:methods gen:name [method-definition ...]]. The @racket[gen:name] must be an identifier with a transformer binding that specifies a generic interface as defined by @racket[define-generics]. The @racket[method-definition] forms define the implementation of this interface's methods for this new structure type just as they do in @racket[struct].
+  
+  An @racket[option] of the form @racket[(auto-write)] specifies implementations of @racket[gen:custom-write] and @racket[prop:custom-print-quotable] which use @racket[make-constructor-style-printer] to display the value.
+  
+  An @racket[option] of the form @racket[(auto-equal)] specifies an implementation of @racket[gen:equal+hash] which treats any two of these structures as @racket[equal?] if their fields are @racket[equal?].
+  
+  Note that unlike @racket[struct], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling this tupler's constructor directly.
+  
+  @; TODO: Once we document `define-match-expander-from-tupler` and `define-pred-and-projs-from-tupler`, uncomment this.
+@;  To have more complete control over the structure type created, use @racket[struct], create a tupler in terms of those definitions by using @racket[tupler-from-pred-and-ref-and-make], and then use @racket[define-match-expander-from-tupler] and @racket[define-pred-and-projs-from-tupler].
+}
+
+@defform[#:kind "structure type property expander" (auto-write)]{
+  A syntax which is only useful as an option to @racket[define-imitation-simple-struct]. In that context, it specifies that the created structure type should have implementations of @racket[gen:custom-write] and @racket[prop:custom-print-quotable] which use @racket[make-constructor-style-printer] to display a structure value.
+}
+
+@defform[#:kind "structure type property expander" (auto-equal)]{
+  A syntax which is only useful as an option to @racket[define-imitation-simple-struct]. In that context, it specifies that the created structure type should have an implementation of @racket[gen:equal+hash] which treats any two of the structure values as @racket[equal?] if their fields are @racket[equal?].
 }
 
 
