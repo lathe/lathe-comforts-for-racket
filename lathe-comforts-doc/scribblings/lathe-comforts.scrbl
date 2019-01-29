@@ -149,7 +149,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   ]
 }
 
-@defform[(w- binds body-expr ...)]{
+@defform[(w- local-binds body-expr ...)]{
   Works just like a @racket[let] form with no @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
   
   @examples[
@@ -176,7 +176,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   ]
 }
 
-@defform[(w-loop proc-id binds body ...)]{
+@defform[(w-loop proc-id local-binds body ...)]{
   Works just like a @racket[let] form with a @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
   
   This example reverses and squares the numbers in a list, using the @racket[_next] procedure to continue the loop:
@@ -240,14 +240,24 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Returns a procedure. The procedure takes a single argument value and checks whether it matches the @racket[match] pattern @racket[pat]. If it does, the procedure evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the procedure evaluates @racket[else-expr] in tail position without any new bindings.
 }
 
-@defform[(dissect val-expr pat then-expr)]{
+@deftogether[(
+  @defform[(dissect val-expr pat then-expr)]
+  @defform[(dissect/derived orig val-expr pat then-expr)]
+)]{
   Checks whether @racket[pat] matches the result of @racket[val-expr]. If it does, this evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the @racket[exn:misc:match?] exception is raised.
+  
+  The @tt{dissect/derived} variant reports errors in terms of @racket[orig].
   
   If you need a custom error message, use @racket[expect] with an expression that raises an exeption.
 }
 
-@defform[(dissectfn pat then-expr)]{
+@deftogether[(
+  @defform[(dissectfn pat then-expr)]
+  @defform[(dissectfn/derived orig pat then-expr)]
+)]{
   Returns a procedure. The procedure takes a single argument value and checks whether it matches the @racket[match] pattern @racket[pat]. If it does, the procedure evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the @racket[exn:misc:match?] exception is raised.
+  
+  The @tt{dissectfn/derived} variant reports errors in terms of @racket[orig].
   
   If you need a custom error message, use @racket[expectfn] with an expression that raises an exeption.
 }
@@ -257,6 +267,15 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 @section[#:tag "contract"]{Utilities for Contracts}
 
 @defmodule[lathe-comforts/contract]
+
+@defform[
+  (let/c [var-id val-expr] ... body-expr)
+  #:contracts ([val-expr contract?] [body-expr contract?])
+]{
+  Evaluates each @racket[val-expr], renames each of those resulting contracts to its respective @racket['var-id], evaluates the @racket[body-expr] with those values in scope under respective @racket[var-id] variables, and renames the resulting contract to @racket[`(let/c [var-id ,_val-name] ... ,_body-name)], where @racket[_val-name] and @racket[_body-name] are the original names of the contracts.
+  
+  This can come in handy when composiing relatively large contracts that use the same contract in multiple places. It keeps the name more concise than it would usually be.
+}
 
 @defform[
   (fix/c id options ... contract-expr)
@@ -269,6 +288,15 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
     (fix/c simple-s-expression/c
       (or/c symbol? (listof simple-s-expression/c)))
   ]
+}
+
+@defform[
+  (by-own-method/c pat body-expr)
+  #:contracts ([body-expr contract?])
+]{
+  A syntax for contracts that depend on the value they apply to. Returns a contract that tries to match the value against the match pattern @racket[pat], and if successful, executes the @racket[body-expr] (with all the bound variables from @racket[pat] in scope) and behaves according to that contract. If the match is not successful, then the value is not considered to meet this contract.
+  
+  The name of the returned contract includes @racket[pat] and @racket[body-expr] verbatim. If they contain references to variables defined elsewhere, @racket[let/c] may be useful to ensure those variable bindings are apparent in the overall contract name.
 }
 
 
@@ -286,7 +314,7 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
   @defform[#:kind "match expander" #:link-target? #f (nothing)]
   @defproc[(nothing? [v any/c]) boolean?]
 )]{
-  A maybe value that does not contain an element.
+  Struct-like operations which construct and deconstruct a maybe value that does not contain an element.
   
   Every two @tt{nothing} values are @racket[equal?].
 }
@@ -298,7 +326,7 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
   @defproc[(just? [v any/c]) boolean?]
   @defproc[(just-value [inst just?]) any/c]
 )]{
-  A maybe value that contains an element.
+  Struct-like operations which construct and deconstruct a maybe value that contains an element.
   
   Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] elements.
 }
@@ -351,7 +379,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   @defform[#:kind "match expander" #:link-target? #f (trivial)]
   @defproc[(trivial? [v any/c]) boolean?]
 )]{
-  A trivial value.
+  Struct-like operations which construct and deconstruct a trivial value.
   
   Every two @tt{trivial} values are @racket[equal?].
 }

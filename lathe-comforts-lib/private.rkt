@@ -134,12 +134,32 @@
 (define-simple-macro (expectfn pattern:expr else:expr then:expr)
   (match-lambda [pattern then] [_ else]))
 
+(define-for-syntax (expand-dissect/derived orig-stx args)
+  (syntax-protect
+  #/syntax-parse args #:context orig-stx #/
+    (subject:expr pattern:expr then:expr)
+    #`(match/derived subject #,orig-stx [pattern then])))
+
 (define-syntax (dissect stx)
-  (syntax-parse stx #/ (op subject:expr pattern:expr then:expr)
-    #`(match/derived subject #,stx [pattern then])))
+  (syntax-parse stx #/ (_ args ...)
+  #/expand-dissect/derived stx #'(args ...)))
+
+(define-syntax (dissect/derived stx)
+  (syntax-parse stx #/ (_ orig-stx args ...)
+  #/expand-dissect/derived #'orig-stx #'(args ...)))
+
+(define-for-syntax (expand-dissectfn/derived orig-stx args)
+  (syntax-protect
+  #/syntax-parse args #:context orig-stx #/
+    (pattern:expr then:expr)
+    #`(fn subject
+        (match/derived subject #,orig-stx
+          [pattern then]))))
 
 (define-syntax (dissectfn stx)
-  (syntax-parse stx #/ (op pattern:expr then:expr)
-    #`(lambda (subject)
-        (match/derived subject #,stx
-          [pattern then]))))
+  (syntax-parse stx #/ (_ args ...)
+  #/expand-dissectfn/derived stx #'(args ...)))
+
+(define-syntax (dissectfn/derived stx)
+  (syntax-parse stx #/ (_ orig-stx args ...)
+  #/expand-dissectfn/derived #'orig-stx #'(args ...)))

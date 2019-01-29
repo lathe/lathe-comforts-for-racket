@@ -541,7 +541,8 @@
 (define-for-syntax
   (expand-tupler-for-simple-struct/derived orig-stx args)
   (syntax-protect
-  #/syntax-parse args #/ (inspector reflection-name len:nat args ...)
+  #/syntax-parse args #:context orig-stx #/
+    (inspector reflection-name len:nat args ...)
     
     #:declare inspector
     (expr/c #'(or/c inspector? #f 'prefab) #:context orig-stx
@@ -609,7 +610,7 @@
 (define-for-syntax
   (expand-define-value-imitation-simple-struct/derived orig-stx args)
   (syntax-protect
-  #/syntax-parse args #/
+  #/syntax-parse args #:context orig-stx #/
     (tupler:id pred?:id (proj:id ...) inspector reflection-name
       arg ...)
     #`(begin
@@ -683,7 +684,7 @@
   (expand-define-syntax-and-value-imitation-simple-struct/derived
     orig-stx args)
   (syntax-protect
-  #/syntax-parse args #/
+  #/syntax-parse args #:context orig-stx #/
     (make:id tupler:id pred?:id (proj:id ...) arg ...)
     #`(begin
         (define-value-imitation-simple-struct/derived #,orig-stx

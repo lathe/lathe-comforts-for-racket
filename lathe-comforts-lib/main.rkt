@@ -46,5 +46,7 @@
   matfns
   expectfn
   dissect
+  dissect/derived
   dissectfn
+  dissectfn/derived
 )
