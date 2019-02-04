@@ -127,6 +127,7 @@
 ;  define-imitation-simple-struct/derived
   auto-write
   auto-equal
+  define-imitation-simple-generics
   )
 
 
@@ -801,3 +802,68 @@
                 (map (fn proj #/proj self) projs)))
             
             )])))
+
+
+(define-syntax (define-imitation-simple-generics stx)
+  (syntax-protect
+  #/syntax-parse stx #/
+    (_ inst?:id inst-impl?:id
+      (#:method method:id
+        (~and ()
+          (~parse (arg-before) #/generate-temporaries #'(before)))
+        ...
+        (~and (#:this)
+          (~parse (arg-this) #/generate-temporaries #'(this)))
+        (~and ()
+          (~parse (arg-after) #/generate-temporaries #'(after)))
+        ...)
+      ...
+      prop-inst:id build-inst-impl:id
+      prop-reflection-name inst-impl-reflection-name supers)
+    
+    #:declare prop-reflection-name
+    (expr/c #'symbol? #:name "prop-reflection-name argument")
+    
+    #:declare inst-impl-reflection-name
+    (expr/c #'symbol? #:name "inst-impl-reflection-name argument")
+    
+    #:declare supers
+    (expr/c #'(listof (cons/c struct-type-property? (-> any/c any/c)))
+      #:name "supers argument")
+    
+    #:with (method-impl ...) (generate-temporaries #'(method ...))
+    
+    #'(define-values
+        (inst? inst-impl? method ... prop-inst build-inst-impl)
+        (let ()
+          (define prop-reflection-name-result prop-reflection-name.c)
+          (define inst-impl-reflection-name-result
+            inst-impl-reflection-name.c)
+          (define supers-result supers.c)
+          (define-value-imitation-simple-struct
+            (inst-impl? method-impl ...)
+            tupler
+            inst-impl-reflection-name-result (current-inspector))
+          (define-values (prop-inst inst? prop-ref)
+            (make-struct-type-property prop-reflection-name-result
+              (fn impl struct-info #/begin0 impl
+                (unless (inst-impl? impl)
+                  (raise-arguments-error
+                    (string->symbol
+                      (format "prop:~a" prop-reflection-name-result))
+                    "expected an instance of the specific structure type used to represent instances of this property"
+                    
+                    "impl" impl
+                    
+                    "expected-structure-type"
+                    inst-impl-reflection-name-result)))
+              supers-result))
+          (define (method arg-before ... arg-this arg-after ...)
+            ( (method-impl (prop-ref arg-this))
+              arg-before ... arg-this arg-after ...))
+          ...
+          (define make-inst-impl (tupler-make-fn tupler))
+          (define (build-inst-impl method-impl ...)
+            (make-inst-impl method-impl ...))
+          (values
+            inst? inst-impl? method ... prop-inst build-inst-impl)))))
