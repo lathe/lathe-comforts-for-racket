@@ -935,15 +935,15 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 ]{
   Creates a new structure type property, creates a new structure type for use as the type of implementations of that property, and defines generic-interface-like operations for using these things.
   
-  The variable @racket[prop:inst-id] is defined to a structure type property descriptor. When a structure type has an implementation associated with @racket[prop:inst-id], that implementation is also associated with the property the rest of these operations interact with. (In fact, for now this is the descriptor of the property itself.)
-  
-  The variable @racket[inst?-id] is defined to be a predicate which determines whether the given value implements the property. A structure type descriptor is considered to implement the property if the structure type it's a descriptor for has an implementation associated iwth the property. Any other value is considered to implement the property if its structure type has an implementation associated with the property.
+  The variable @racket[inst?-id] is defined to be a predicate which determines whether the given value implements the property. Usually a value is considered to implement the property if its structure type has an implementation associated with the property. A structure type descriptor is special; it's considered to implement the property if the structure type it's a descriptor for has an implementation associated with the property.
   
   The variable @racket[inst-impl?-id] is defined to be a predicate which recognizes values of the structure type created for representing implementations of this property.
   
-  The variable @racket[build-inst-impl-id] is defined to be a procedure which constructs a value which represents an implementation of this property from N arguments, where N is the number of @racket[#:method] clauses in this definition. Each argument must be an implementation to use for the corresponding method.
+  Each variable @racket[method-id] is defined to be a procedure of the indicated number of arguments. Each @racket[()] occurrence represents one argument, and the occurrence of @racket[(#:this)] represents one argument which receives special treatment. The argument in the @racket[(#:this)] position is expected to be a value which implements the property. Its implementation for the property determines the rest of the procedure's behavior.
   
-  Each variable @racket[method-id] is defined to be a procedure of the indicated number of arguments. Each @racket[()] occurrence represents one argument, and the occurrence of @racket[(#:this)] represents one argument which receives special treatment. The argument in the @racket[(#:this)] position is expected to be a value which implements the property. Its implementation determines the rest of this procedure's behavior.
+  The variable @racket[prop:inst-id] is defined to a structure type property descriptor. When a structure type has an implementation associated with the descriptor @racket[prop:inst-id], that implementation is also associated with the property the rest of these operations interact with. (In fact, for now this is the descriptor of the property itself.)
+  
+  The variable @racket[build-inst-impl-id] is defined to be a procedure which constructs a value which represents an implementation of this property from N arguments, where N is the number of @racket[#:method] clauses in this definition. Each argument must be an implementation to use for the corresponding method.
   
   The symbol resulting from @racket[prop-name-expr] is used for certain reflective operations on the structure type property descriptor.
   
