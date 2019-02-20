@@ -21,9 +21,10 @@
 
 
 (require #/only-in racket/contract/base
-  -> any/c contract? contract-out or/c)
+  -> any/c contract? contract-name contract-out or/c rename-contract)
+(require #/only-in racket/contract/combinator coerce-contract)
 
-(require #/only-in lathe-comforts expect fn)
+(require #/only-in lathe-comforts expect fn w-)
 (require #/only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-struct)
 (require #/only-in lathe-comforts/match match/c)
@@ -53,7 +54,9 @@
 ; TODO: Give the resulting contract a better name, check that it has
 ; good `contract-stronger?` behavior, etc.
 (define (maybe/c c)
-  (or/c nothing? #/match/c just c))
+  (w- c (coerce-contract 'maybe/c c)
+  #/rename-contract (or/c nothing? #/match/c just c)
+    `(maybe/c ,(contract-name c))))
 
 (define (maybe-bind m func)
   (expect m (just value) (nothing)
