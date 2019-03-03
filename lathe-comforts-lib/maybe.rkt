@@ -39,6 +39,7 @@
   [maybe/c (-> contract? contract?)]
   [maybe-bind (-> maybe? (-> any/c maybe?) maybe?)]
   [maybe-map (-> maybe? (-> any/c any/c) maybe?)]
+  [maybe-if (-> any/c (-> any/c) maybe?)]
 )
 
 
@@ -65,3 +66,8 @@
 (define (maybe-map m func)
   (maybe-bind m #/fn value
   #/just #/func value))
+
+(define (maybe-if condition get-value)
+  (if condition
+    (just #/get-value)
+    (nothing)))

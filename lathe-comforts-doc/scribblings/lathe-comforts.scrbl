@@ -348,6 +348,10 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
   Creates a maybe value by replacing the element of the given maybe value, if any, with another according to the given function.
 }
 
+@defproc[(maybe-if [condition any/c] [get-value (-> any/c)]) maybe?]{
+  Creates a maybe value that has an element if and only if the given @racket[condition] is not @racket[#f]. The element is computed by calling the given function @racket[get-value] with no arguments.
+}
+
 
 
 @section[#:tag "string"]{Utilities for Strings}
