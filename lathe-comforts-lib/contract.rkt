@@ -29,7 +29,8 @@
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
-  contract? contract-name recursive-contract rename-contract)
+  -> any/c contract? contract-name contract-out flat-contract?
+  recursive-contract rename-contract)
 (require #/only-in racket/contract/combinator
   blame-add-context contract-first-order-passes? make-contract
   raise-blame-error)
@@ -38,6 +39,8 @@
 (require #/only-in lathe-comforts dissectfn expect expectfn fn w-)
 
 (provide let/c fix/c by-own-method/c)
+(provide #/contract-out
+  [equal/c (-> any/c flat-contract?)])
 
 
 (define (let/c-impl var-exprs body-expr vals body)
@@ -105,3 +108,7 @@
     #'(by-own-method/c-impl 'pat 'body
         (expectfn pat (list)
           (list body.c)))))
+
+
+(define (equal/c example)
+  (rename-contract (fn v #/equal? example v) `(equal/c ,example)))

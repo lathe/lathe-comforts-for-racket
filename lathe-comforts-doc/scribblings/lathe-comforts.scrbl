@@ -300,6 +300,10 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   The name of the returned contract includes @racket[pat] and @racket[body-expr] verbatim. If they contain references to variables defined elsewhere, @racket[let/c] may be useful to ensure those variable bindings are apparent in the overall contract name.
 }
 
+@defproc[(equal/c [example any/c]) flat-contract?]{
+  Returns a contract that recognizes a value if the given value is @racket[equal?] to it.
+}
+
 
 
 @section[#:tag "maybe"]{Maybe Values}
