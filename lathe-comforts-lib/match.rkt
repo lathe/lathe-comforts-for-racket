@@ -56,11 +56,13 @@
     #'(... #/define-match-expander new-name
         (fn stx
           (syntax-protect #/syntax-parse stx #/ (_ arg ...)
-            #'(match-name arg ...)))
+            (quasisyntax/loc stx (match-name arg ...))))
         (fn stx
           (syntax-protect #/syntax-parse stx
-            [_:id #'make-id-name]
-            [(_ arg ...) #'(make-list-name arg ...)])))))
+            [_:id (quasisyntax/loc stx make-id-name)]
+            [
+              (_ arg ...)
+              (quasisyntax/loc stx (make-list-name arg ...))])))))
 
 
 (define-syntax (define-match-expander-attenuated stx)
@@ -200,7 +202,7 @@
     #`(match/c-impl
         'name
         (fn v
-          (expect v (name arg ...) #f
+          (expect v #,(quasisyntax/loc stx (name arg ...)) #f
           #/list arg ...))
         (dissectfn (list arg ...)
           (name arg ...))
