@@ -38,7 +38,10 @@
 
 (require #/only-in lathe-comforts dissectfn expect expectfn fn w-)
 
-(provide let/c fix/c by-own-method/c)
+(provide
+  let/c
+  fix/c
+  by-own-method/c)
 (provide #/contract-out
   [equal/c (-> any/c flat-contract?)])
 
@@ -80,8 +83,7 @@
     var))
 
 
-(define
-  (by-own-method/c-impl pat-expr body-expr body)
+(define (by-own-method/c-impl pat-expr body-expr body)
   (w- name `(by-own-method/c ,pat-expr ,body-expr)
   #/w- first-order
     (fn v
