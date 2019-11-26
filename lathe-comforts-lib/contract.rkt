@@ -38,6 +38,8 @@
 
 (require #/only-in lathe-comforts dissectfn expect expectfn fn w-)
 
+(provide #/contract-out
+  [value-name-for-contract (-> any/c any/c)])
 (provide
   let/c
   fix/c
@@ -46,41 +48,62 @@
   [equal/c (-> any/c flat-contract?)])
 
 
-(define (let/c-impl var-exprs body-expr vals body)
-  (define result
-    (body #/for/list ([var-expr var-exprs] [val vals])
-      (rename-contract val var-expr)))
-  (rename-contract result
-    `(let/c
-       ,@(for/list ([var-expr var-exprs] [val vals])
-           `([,var-expr ,(contract-name val)]))
-       ,(contract-name result))))
+(define (value-name-for-contract v)
+  (if (contract? v)
+    (contract-name v)
+    v))
+
 
 (define-syntax (let/c stx)
   (syntax-protect #/syntax-parse stx #/ (_ [var:id val] ... body)
     
-    #:declare val
-    (expr/c #'contract? #:name "one of the val arguments")
-    
     #:declare body (expr/c #'contract? #:name "body result")
     
-    #'(let/c-impl (list 'var ...) 'body (list val.c ...)
-      #/dissectfn (list var ...)
-        body.c)))
+    #'(let ([var val] ...)
+        (rename-contract body.c
+          `(let/c [var ,(value-name-for-contract var)] ...
+             body)))))
 
 
 ; NOTE: This takes the same options `recursive-contract` does, and it
 ; passes them along unmodified.
-(define-simple-macro (fix/c var:id options ... contract)
-  #:declare contract (expr/c #'contract? #:name "contract argument")
-  (let ()
-    (define var
-      (w- var
-        (rename-contract (recursive-contract var options ...) 'var)
-      #/w- contract-result contract.c
-        (rename-contract contract-result
-          `(fix/c var ,(contract-name contract-result)))))
-    var))
+(define-syntax (fix/c stx)
+  (syntax-protect #/syntax-parse stx
+    [
+      (fix/c var:id options ... contract)
+      
+      #:declare contract
+      (expr/c #'contract? #:name "contract argument")
+      
+      #'(let ()
+          (define var
+            (w- var
+              (rename-contract (recursive-contract var options ...)
+                'var)
+            #/rename-contract contract.c
+              `(fix/c var options ... contract)))
+          var)]
+    [
+      (fix/c (var:id [arg-var:id arg-val:expr] ...) options ...
+        contract)
+      
+      #:declare contract
+      (expr/c #'contract? #:name "contract argument")
+      
+      #'(let ()
+          (define var
+            (lambda (arg-var ...)
+              (w- var
+                (lambda (arg-var ...)
+                  (rename-contract
+                    (recursive-contract (var arg-var ...) options ...)
+                    `(var ,(contract-name-or-value arg-var) ...)))
+              #/rename-contract contract.c
+                `(fix/c
+                  (var [arg-var ,(contract-name-or-value arg-var)] ...)
+                  options ...
+                  contract))))
+          (var arg-val ...))]))
 
 
 (define (by-own-method/c-impl pat-expr body-expr body)

@@ -21,8 +21,8 @@
 
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base
-  -> </c and/c any any/c cons/c contract? flat-contract? listof or/c
-  recursive-contract struct/c)
+  -> </c and/c any any/c cons/c contract? contract-name flat-contract?
+  listof or/c recursive-contract struct/c)
 @(require #/for-label #/only-in racket/generic define-generics)
 @(require #/for-label #/only-in racket/list append-map)
 @(require #/for-label #/only-in racket/match
@@ -269,20 +269,32 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @defmodule[lathe-comforts/contract]
 
-@defform[
-  (let/c [var-id val-expr] ... body-expr)
-  #:contracts ([val-expr contract?] [body-expr contract?])
-]{
-  Evaluates each @racket[val-expr], renames each of those resulting contracts to its respective @racket['var-id], evaluates the @racket[body-expr] with those values in scope under respective @racket[var-id] variables, and renames the resulting contract to @racket[`(let/c [var-id ,_val-name] ... ,_body-name)], where @racket[_val-name] and @racket[_body-name] are the original names of the contracts.
-  
-  This can come in handy when composiing relatively large contracts that use the same contract in multiple places. It keeps the name more concise than it usually would be.
+@defproc[(value-name-for-contract [v any/c]) any/c]{
+  Gets the @racket[contract-name] of the given value if it's a contract, and merely returns the value otherwise. This can be handy when defining a new contract where the @racket[contract-name] may embed arbitrary values, but embedded contracts in particular should be easy to read.
 }
 
 @defform[
-  (fix/c id options ... contract-expr)
+  (let/c [var-id val-expr] ... body-expr)
+  #:contracts ([body-expr contract?])
+]{
+  Evaluates each @racket[val-expr], evaluates the @racket[body-expr] with those values in scope under respective @racket[var-id] variables, and renames the resulting contract to @racket[`(let/c [var-id ,(value-name-for-contract _val)] ... ,body-expr)], where each @racket[_val] is the result of a @racket[val-expr].
+  
+  This can come in handy when composiing relatively large contracts that use the same value in multiple places. It keeps the name more concise than it usually would be.
+}
+
+@defform*[
+  [
+    (fix/c self-id options ... contract-expr)
+    (fix/c (self-id [arg-id arg-expr] ...) options ... contract-expr)]
   #:contracts ([contract-expr contract?])
 ]{
-  A fixed-point syntax for contracts. Returns the result of running @racket[contract-expr] with a certain contract in scope as @racket[id]. The contract functionality of @racket[id] should be used only after @racket[contract-expr] has returned a contract, and it behaves just like that contract. This functionality is based on @racket[recursive-contract], and the @racket[options] given here supply the optional arguments of the @racket[recursive-contract] operation.
+  A fixed-point syntax for contracts. Returns the result of running @racket[contract-expr] with a certain contract or contract-returning function in scope as @racket[self-id], and with each given @racket[arg-expr]'s result in scope as the corresponding @racket[arg-id].
+  
+  In the unparenthesized case, @racket[self-id] is bound to a contract. The contract functionality of @racket[self-id] should be used only after @racket[contract-expr] has returned a contract, and it behaves just like that contract.
+  
+  In the parenthesized case, @racket[self-id] is bound to a contract-returning function that takes one argument for each @racket[arg-id]. The contract functionality of the result of @racket[self-id] should be used only after @racket[contract-expr] has returned a contract, and it works by evaluating @racket[contract-expr] again with @racket[arg-id] bound to each function argument.
+  
+  In both cases, the contract obtained from @racket[self-id] is delayed so that it can be used without causing an infinite loop. This functionality is based on @racket[recursive-contract], and the given @racket[options] supply the optional arguments of the @racket[recursive-contract] operation.
   
   @examples[
     #:eval (example-eval)
