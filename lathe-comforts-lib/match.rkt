@@ -120,8 +120,8 @@
                         #:pre (arg ...) (passes-guard? arg ...)
                         any)
                     #'(fn arg ... #/old-name arg ...)
-                    ; NOTE: The `#:positive` and `#:negative` arguments
-                    ; here are the usual values but swapped.
+                    ; NOTE: The `#:positive` and `#:negative`
+                    ; arguments here are the usual values but swapped.
                     #:positive 'from-macro
                     #:negative 'use-site
                     #:context stx)])
