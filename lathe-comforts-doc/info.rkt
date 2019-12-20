@@ -12,4 +12,4 @@
     "scribble-lib"))
 
 (define scribblings
-  (list (list "scribblings/lathe-comforts.scrbl" (list))))
+  (list (list "scribblings/lathe-comforts.scrbl" (list 'multi-page))))
