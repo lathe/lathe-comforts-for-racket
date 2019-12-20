@@ -322,7 +322,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @defmodule[lathe-comforts/maybe]
 
-Maybe values are a way to encode optional data. Using maybe values can simplify some interfaces that would otherwise use run time errors or special-cased sentinel values like @racket[#f].
+@deftech{Maybe values} are a way to encode optional data. Using maybe values can simplify some interfaces that would otherwise use run time errors or special-cased sentinel values like @racket[#f].
 
 
 @deftogether[(
@@ -331,7 +331,7 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
   @defform[#:kind "match expander" #:link-target? #f (nothing)]
   @defproc[(nothing? [v any/c]) boolean?]
 )]{
-  Struct-like operations which construct and deconstruct a maybe value that does not contain an element.
+  Struct-like operations which construct and deconstruct a @tech{maybe value} that does not contain an element.
   
   Every two @tt{nothing} values are @racket[equal?].
 }
@@ -343,29 +343,29 @@ Maybe values are a way to encode optional data. Using maybe values can simplify 
   @defproc[(just? [v any/c]) boolean?]
   @defproc[(just-value [inst just?]) any/c]
 )]{
-  Struct-like operations which construct and deconstruct a maybe value that contains an element.
+  Struct-like operations which construct and deconstruct a @tech{maybe value} that contains an element.
   
   Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] elements.
 }
 
 @defproc[(maybe? [v any/c]) boolean?]{
-  Returns whether the given value is a maybe value. That is, it checks that the value is either a @racket[nothing?] value or a @racket[just?] value.
+  Returns whether the given value is a @tech{maybe value}. That is, it checks that the value is either a @racket[nothing?] value or a @racket[just?] value.
 }
 
 @defproc[(maybe/c [c contract?]) contract?]{
-  Returns a contract that recognizes a maybe value where the element, if any, abides by the given contract.
+  Returns a contract that recognizes a @tech{maybe value} where the element, if any, abides by the given contract.
 }
 
 @defproc[(maybe-bind [m maybe?] [func (-> any/c maybe?)]) maybe?]{
-  Creates a maybe value by replacing the element of the given maybe value, if any, with zero or one elements according to the given function.
+  Creates a @tech{maybe value} by replacing the element of the given maybe value, if any, with zero or one elements according to the given function.
 }
 
 @defproc[(maybe-map [m maybe?] [func (-> any/c any/c)]) maybe?]{
-  Creates a maybe value by replacing the element of the given maybe value, if any, with another according to the given function.
+  Creates a @tech{maybe value} by replacing the element of the given maybe value, if any, with another according to the given function.
 }
 
 @defproc[(maybe-if [condition any/c] [get-value (-> any/c)]) maybe?]{
-  Creates a maybe value that has an element if and only if the given @racket[condition] is not @racket[#f]. The element is computed by calling the given function @racket[get-value] with no arguments.
+  Creates a @tech{maybe value} that has an element if and only if the given @racket[condition] is not @racket[#f]. The element is computed by calling the given function @racket[get-value] with no arguments.
 }
 
 
@@ -391,7 +391,7 @@ Some values never really vary at all. Perhaps some library accepts an argument t
 
 Racket programs sometimes use @racket[(void)] for this purpose, but that value is more commonly used as the return value of side-effecting operations which will never have a meaningful result to print at the top level. If a user exploring at the top level uses an operation that typically returns a pass-through value or label, but in this case it happens to return a trivial pass-through value or a trivial label, that's potentially interesting information for the user, since they may not have even known they were dealing with trivial data yet.
 
-So Lathe Comforts provides a very simple structure type, @racket[trivial], to represent trivial values.
+So Lathe Comforts provides a very simple structure type, @racket[trivial], to represent @deftech{trivial values}.
 
 
 @deftogether[(
@@ -400,7 +400,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   @defform[#:kind "match expander" #:link-target? #f (trivial)]
   @defproc[(trivial? [v any/c]) boolean?]
 )]{
-  Struct-like operations which construct and deconstruct a trivial value.
+  Struct-like operations which construct and deconstruct a @tech{trivial value}.
   
   Every two @tt{trivial} values are @racket[equal?].
 }
