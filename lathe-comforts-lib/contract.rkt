@@ -29,10 +29,12 @@
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
-  -> any/c contract? contract-name contract-out flat-contract?
-  recursive-contract rename-contract)
+  -> any/c chaperone-contract? contract? contract-name contract-out
+  flat-contract? list-contract? recursive-contract rename-contract)
 (require #/only-in racket/contract/combinator
-  blame-add-context contract-first-order-passes? make-contract
+  blame-add-context blame-swap coerce-contract
+  contract-first-order-passes? contract-equivalent? contract-stronger?
+  make-chaperone-contract make-contract make-flat-contract
   raise-blame-error)
 (require #/only-in syntax/parse/define define-simple-macro)
 
@@ -45,7 +47,8 @@
   fix/c
   by-own-method/c)
 (provide #/contract-out
-  [equal/c (-> any/c flat-contract?)])
+  [equal/c (-> any/c flat-contract?)]
+  [swap/c (-> contract? contract?)])
 
 
 (define (value-name-for-contract v)
@@ -137,3 +140,22 @@
 
 (define (equal/c example)
   (rename-contract (fn v #/equal? example v) `(equal/c ,example)))
+
+
+(define (swap/c c)
+  (w- c (coerce-contract 'swap/c c)
+  #/w- name `(swap/c ,(contract-name c))
+  #/w- c-late-neg-projection (get/build-late-neg-projection c)
+  #/
+    (if (flat-contract? c) make-flat-contract
+      (if (chaperone-contract? c) make-chaperone-contract
+        make-contract))
+    #:is-list-contract? (list-contract? c)
+    #:name name
+    #:stronger (fn self other #/contract-stronger? c other)
+    #:equivalent (fn self other #/contract-equivalent? c other)
+    
+    #:first-order (fn v #/contract-first-order-passes? c v)
+    
+    #:late-neg-projection
+    (fn blame #/c-late-neg-projection #/blame-swap blame)))

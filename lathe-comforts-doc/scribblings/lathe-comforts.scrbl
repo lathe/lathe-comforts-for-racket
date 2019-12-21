@@ -20,6 +20,7 @@
 
 
 @(require #/for-label racket/base)
+@(require #/for-label #/only-in racket/contract/combinator blame-swap)
 @(require #/for-label #/only-in racket/contract/base
   -> </c and/c any any/c cons/c contract? contract-name flat-contract?
   listof or/c recursive-contract struct/c)
@@ -314,6 +315,12 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @defproc[(equal/c [example any/c]) flat-contract?]{
   Returns a contract that recognizes a value if the given value is @racket[equal?] to it.
+}
+
+@defproc[(swap/c [c contract?]) contract?]{
+  Returns a contract that behaves like the given contract, but which uses @racket[blame-swap] to report blame errors in terms of the opposite party.
+  
+  This is rarely useful, but it can be a way to assign appropriate blame in the contract of a function where one of the conditions on the input is that it be something that transforms into a compliant output. Since the "compliant output" isn't an argument to the function, a typical function contract could only check first-order properties of it; even if it took a higher-order projection, it couldn't pass that projected value into the function, and hence that projection value could never catch higher-order contract violations. Fortunately, since the "compliant output" is the @emph{result} of the function, the return value contract can use @tt{swap/c} to impose the full higher-order obligations while still blaming any violations on the input.
 }
 
 
