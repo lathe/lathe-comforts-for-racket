@@ -29,8 +29,9 @@
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
-  -> any/c chaperone-contract? contract? contract-name contract-out
-  flat-contract? list-contract? recursive-contract rename-contract)
+  -> and/c any/c chaperone-contract? contract? contract-name
+  contract-out flat-contract? list-contract? recursive-contract
+  rename-contract)
 (require #/only-in racket/contract/combinator
   blame-add-context blame-swap coerce-contract
   contract-first-order-passes? contract-equivalent? contract-stronger?
@@ -48,7 +49,8 @@
   by-own-method/c)
 (provide #/contract-out
   [equal/c (-> any/c flat-contract?)]
-  [swap/c (-> contract? contract?)])
+  [swap/c (-> contract? contract?)]
+  [flat-contract-accepting/c (-> any/c flat-contract?)])
 
 
 (define (value-name-for-contract v)
@@ -139,7 +141,8 @@
 
 
 (define (equal/c example)
-  (rename-contract (fn v #/equal? example v) `(equal/c ,example)))
+  (rename-contract (fn v #/equal? example v)
+    `(equal/c ,(value-name-for-contract example))))
 
 
 (define (swap/c c)
@@ -159,3 +162,9 @@
     
     #:late-neg-projection
     (fn blame #/c-late-neg-projection #/blame-swap blame)))
+
+
+(define (flat-contract-accepting/c v)
+  (rename-contract
+    (and/c flat-contract? (fn c #/contract-first-order-passes? c v))
+    `(flat-contract-accepting/c ,(value-name-for-contract v))))

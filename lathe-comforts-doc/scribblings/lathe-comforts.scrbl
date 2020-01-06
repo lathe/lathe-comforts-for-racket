@@ -323,6 +323,10 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   This is rarely useful, but it can be a way to assign appropriate blame in the contract of a function where one of the conditions on the input is that it be something that transforms into a compliant output. Since the "compliant output" isn't an argument to the function, a typical function contract could only check first-order properties of it; even if it took a higher-order projection, it couldn't pass that projected value into the function, and hence that projection value could never catch higher-order contract violations. Fortunately, since the "compliant output" is the @emph{result} of the function, the return value contract can use @tt{swap/c} to impose the full higher-order obligations while still blaming any violations on the input.
 }
 
+@defproc[(flat-contract-accepting/c [v any/c]) flat-contract?]{
+  Returns a flat contract that recognizes any flat contract that recognizes the given value.
+}
+
 
 
 @section[#:tag "maybe"]{Maybe Values}
