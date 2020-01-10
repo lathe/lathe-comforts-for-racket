@@ -161,18 +161,23 @@
     (list* 'match/c foo-name
     #/for/list ([arg/c (in-list arg/cs)])
       (contract-name arg/c))
-  #/w- first-order
+  #/w- is-flat-contract?
+    (for/and ([arg/c (in-list arg/cs)])
+      (flat-contract? arg/c))
+  #/
+    (if is-flat-contract?
+      make-flat-contract
+      make-contract)
+    
+    #:name name
+    
+    #:first-order
     (fn v
       (w- v-list (foo->maybe-list v)
       #/and v-list
       #/for/and
         ([arg/c (in-list arg/cs)] [v-arg (in-list v-list)])
         (contract-first-order-passes? arg/c v-arg)))
-  #/if
-    (for/and ([arg/c (in-list arg/cs)])
-      (flat-contract? arg/c))
-    (make-flat-contract #:name name #:first-order first-order)
-  #/make-contract #:name name #:first-order first-order
     
     #:late-neg-projection
     (fn blame
@@ -187,6 +192,14 @@
           (raise-blame-error blame #:missing-party missing-party v
             '(expected: "~e" given: "~e")
             name v)
+        #/if is-flat-contract?
+          (begin
+            (for
+              (
+                [arg-late-neg-projection (in-list arg-projections)]
+                [v-arg (in-list v-list)])
+              (arg-late-neg-projection v-arg missing-party))
+            v)
         #/list->foo
           (for/list
             (
