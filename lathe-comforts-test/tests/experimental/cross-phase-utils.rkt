@@ -16,15 +16,16 @@
 ; `lathe-comforts/tests/experimental/cross-phase-utils-b` module for
 ; notes on different approach we might take here. The goal of these
 ; approaches is to make Lathe Comforts and other libraries continue to
-; be in contexts like Effection and the Cene language, where the
-; Racket style of allocating a new structure type every time `struct`
-; is called constitutes too much of a side effect. The Effection/Cene
-; style would be for a module author to achieve exclusive access to a
-; structure type by nature of the exclusive access they already have
-; to their identity as a module author (which is likely best
-; approximated in Racket using their module's module path index).
+; be useful in contexts like Interconfection and the Cene language,
+; where the Racket style of allocating a new structure type every time
+; `struct` is called constitutes too much of a side effect. The
+; Interconfection/Cene style would be for a module author to achieve
+; exclusive access to a structure type by nature of the exclusive
+; access they already have to their identity as a module author (which
+; is likely best approximated in Racket using their module's module
+; path index).
 
-;   Copyright 2019 The Lathe Authors
+;   Copyright 2019, 2020 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
