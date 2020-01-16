@@ -5,7 +5,7 @@
 ; A pair of structure types, `nothing` and `just`, intended for values
 ; that may or may not be provided.
 
-;   Copyright 2017-2018 The Lathe Authors
+;   Copyright 2017-2019 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
