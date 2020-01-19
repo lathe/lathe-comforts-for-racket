@@ -38,7 +38,8 @@
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
   -> ->i </c and/c any/c cons/c contract? contract-name contract-out
-  flat-contract? listof none/c or/c)
+  flat-contract? listof none/c or/c procedure-arity-includes/c
+  unconstrained-domain->)
 (require #/only-in racket/contract/combinator
   blame-add-context contract-first-order-passes? make-contract
   make-flat-contract raise-blame-error)
@@ -64,11 +65,6 @@
 ;  struct-mutator-by-name
   istruct/c
   )
-; TODO: When we need to export these tupler-related functions,
-; uncomment these exports, and uncomment their documentation in
-; lathe-comforts.scrbl. We'll probably want to document and export
-; some of the tupler-related macros at the same time.
-#;
 (provide #/contract-out
   [tupler? (-> any/c boolean?)]
   [tupler-length (-> tupler? natural?)]
@@ -82,7 +78,15 @@
     (->i ([t tupler?]) #/_ (t)
     #/listof #/-> (tupler-pred?-fn t) any/c)]
   [tupler-make-fn
-    (->i ([t tupler?]) #/_ (t) #/-> any/c ... #/tupler-pred?-fn t)]
+    (->i ([t tupler?])
+      [_ (t)
+        (and/c (procedure-arity-includes/c #/tupler-length t)
+        #/unconstrained-domain-> #/tupler-pred?-fn t)])]
+  ; NOTE: These are unsafe because they can create misbehaving
+  ; tuplers, but if we exported them, these would be their contracts.
+  ; Their documentation is also available but commented out in
+  ; lathe-comforts.scrbl.
+  #|
   [tupler-from-pred-and-ref-and-make
     (->i
       (
@@ -99,6 +103,10 @@
         [proj-fns (pred?-fn) (listof #/-> pred?-fn any/c)]
         [make-fn (pred?-fn) (-> any/c ... pred?-fn)])
       [_ tupler?])]
+  |#
+  ; TODO: When we need to export this, uncomment it, and uncomment its
+  ; documentation in lathe-comforts.scrbl.
+  #;
   [tupler-for-simple-make-struct-type
     (->i
       (
@@ -121,7 +129,7 @@
 ;  define-value-imitation-simple-struct
 ;  define-value-imitation-simple-struct/derived
 ;  define-match-expander-from-tupler
-;  define-syntax-and-value-imitation-simple-struct
+  define-syntax-and-value-imitation-simple-struct
 ;  define-syntax-and-value-imitation-simple-struct/derived
   define-imitation-simple-struct
 ;  define-imitation-simple-struct/derived

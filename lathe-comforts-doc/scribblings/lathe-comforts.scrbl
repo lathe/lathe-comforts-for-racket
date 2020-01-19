@@ -797,12 +797,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
 }
 
-@; TODO: Document these once we need to export them.
-@;{
 @defproc[(tupler? [v any/c]) boolean?]{
   Returns whether the given value is a tupler.
   
-  A tupler bundles a set of procedures that behave as though they're the constructor, predicate, and positional accessors for an immutable tagged tuple type. Essentially, a tupler carries most of the functionality an immutable @racket[struct] definition creates except for its structure type descriptor. Unlike @racket[struct] definitions, tuplers may be created which represent their values in arbitrary ways, including as values created by other tuplers.
+  A tupler is an object that carries the constructor, predicate, and positional accessor functionality of an immutable tagged tuple type that's distinct from the type manipulated by any other tupler. Essentially, a tupler carries most of the functionality an immutable @racket[struct] definition creates except for its structure type descriptor. A tupler can only be created by @racket[define-syntax-and-value-imitation-simple-struct].
 }
 
 @defproc[(tupler-length [t tupler?]) natural?]{
@@ -810,7 +808,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 }
 
 @defproc[(tupler/c [length/c flat-contract?]) flat-contract?]{
-  Returns a contract that recognizes a tupler whose length abides by the given contract.
+  Returns a flat contract that recognizes a tupler whose length abides by the given flat contract.
 }
 
 @defproc[((tupler-pred?-fn [t tupler?]) [v any/c]) boolean?]{
@@ -834,7 +832,9 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Returns a list of projection procedures based on the given tupler.
 }
 
-@; TODO: See if we can change the contract to enforce arity.
+@; NOTE: Even though we've expressed the contract in a way that
+@; enforces arity, it's a somewhat convoluted contract to look at, so
+@; we don't use it in the documentation here.
 @defproc[
   ((tupler-make-fn [t tupler?]) [proj any/c] ...)
   (tupler-pred?-fn t)
@@ -842,6 +842,9 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Constructs a tuple value using the given tupler. There should be as many @racket[proj] arguments as the tupler's length.
 }
 
+@; NOTE: These are unsafe because they can create misbehaving tuplers,
+@; but if we exported them, this would be their documentation.
+@;{
 @; TODO: See if we can change the contract of `make-fn` to enforce its
 @; arity.
 @defproc[
@@ -853,6 +856,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   tupler?
 ]{
   Returns a tupler which has the given length and uses the given predicate, positional-index-based accessor procedure, and constructor procedure.
+  
+  The given procedures should satisfy certain laws. For instance, any value which results from @racket[make-fn] should satisfy @racket[pred?-fn], and the values seen by @racket[ref-fn] should be the same ones that were given to @racket[make-fn]. The procedures shouldn't perform side effects except for the generation of new object identities for the purposes of @racket[eq?]. The values created by @racket[make-fn] shouldn't be accepted by the @racket[pred?-fn] of any other tupler. The procedures shouldn't have important qualities other than their behavior; things like their object names, their @racket[eq?] identities, and the particular @racket[prop:procedure]-implementing structure types they're instances of may or may not be passed through to the results of operations like @racket[tupler-make-fn].
+  
+  Since this doesn't verify that the given procedures are law-abiding and since other ways of creating tuplers are law-abiding automatically, this operation is considered unsafe.
 }
 
 @; TODO: See if we can change the contract of `make-fn` to enforce its
@@ -865,8 +872,15 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   tupler?
 ]{
   Returns a tupler which uses the given predicate, projection procedures, and constructor procedure.
+  
+  The given procedures should satisfy certain laws. For instance, any value which results from @racket[make-fn] should satisfy @racket[pred?-fn], and the values seen by @racket[proj-fns] should be the same ones that were given to @racket[make-fn]. The procedures shouldn't perform side effects except for the generation of new object identities for the purposes of @racket[eq?]. The values created by @racket[make-fn] shouldn't be accepted by the @racket[pred?-fn] of any other tupler. The procedures shouldn't have important qualities other than their behavior; things like their object names, their @racket[eq?] identities, and the particular @racket[prop:procedure]-implementing structure types they're instances of may or may not be passed through to the results of operations like @racket[tupler-make-fn].
+  
+  Since this doesn't verify that the given procedures are law-abiding and since other ways of creating tuplers are law-abiding automatically, this operation is considered unsafe.
+}
 }
 
+@; TODO: Uncomment this once we need to export it.
+@;{
 @defproc[
   (tupler-for-simple-make-struct-type
     [length natural?]
@@ -885,28 +899,37 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   Note that unlike @racket[make-struct-type], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling this tupler's constructor directly.
   
-  To have more complete control over the structure type created, use @racket[make-struct-type], and then create a tupler out of those results by using @racket[tupler-from-pred-and-ref-and-make].
+  To have more complete control over the structure type created, use @racket[make-struct-type]. However, that will not produce a tupler value.
 }
 }
 
-@defform[
-  (define-imitation-simple-struct
-    (inst?-id inst-field-id ...)
-    inst-id
-    reflection-name-expr inspector-expr option ...)
-  #:grammar
-  [
-    (option
-      (#:prop prop-expr prop-val-expr)
-      (#:gen gen:name method-definition ...)
-      (@#,racket[auto-write])
-      (@#,racket[auto-equal]))]
-  #:contracts
-  (
-    [inspector-expr (or/c inspector? #f 'prefab)]
-    [reflection-name-expr symbol?]
-    [prop-expr struct-type-property?])
-]{
+@deftogether[(
+  @defform[
+    (define-imitation-simple-struct
+      (inst?-id inst-field-id ...)
+      inst-id
+      reflection-name-expr inspector-expr option ...)
+  ]
+  @defform[
+    (define-syntax-and-value-imitation-simple-struct
+      (inst?-id inst-field-id ...)
+      inst-id
+      tupler-id
+      reflection-name-expr inspector-expr option ...)
+    #:grammar
+    [
+      (option
+        (#:prop prop-expr prop-val-expr)
+        (#:gen gen:name method-definition ...)
+        (@#,racket[auto-write])
+        (@#,racket[auto-equal]))]
+    #:contracts
+    (
+      [inspector-expr (or/c inspector? #f 'prefab)]
+      [reflection-name-expr symbol?]
+      [prop-expr struct-type-property?])
+  ]
+)]{
   Creates a new structure type, and defines struct-like operations which construct and deconstruct an actual structure value of that type.
   
   The variable @racket[inst?-id] is defined to be a predicate that detects these structures.
@@ -914,6 +937,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Each variable @racket[inst-field-id] is defined to be a procedure that accesses the corresponding positional field of any given one of these structures.
   
   The variable @racket[inst-id] is defined to be a match expander that can be used to construct or match these structures.
+  
+  The variable @racket[tupler-id] (when using @tt{define-syntax-and-value-imitation-simple-struct}) is defined to be a first-class tupler object that can be used to construct or match these structures.
   
   The structure type is created with the given reflection name, the given inspector, a number of fields equal to the number of @racket[inst-field-id] variables specified, and structure type property bindings determined by the given @racket[option] entries.
   
@@ -931,16 +956,15 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   Note that unlike @racket[struct], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling the defined constructor directly.
   
-  @; TODO: Document `define-match-expander-from-tupler` and `define-pred-and-projs-from-tupler` once we need to export them. When we do, uncomment this paragraph as well.
-@;  To have more complete control over the structure type created, use @racket[struct], create a tupler in terms of those definitions by using @racket[tupler-from-pred-and-ref-and-make], and then use @racket[define-match-expander-from-tupler] and @racket[define-pred-and-projs-from-tupler].
+  To have more complete control over the structure type created, use @racket[struct]. However, that will not produce a tupler value.
 }
 
 @defform[#:kind "structure type property expander" (auto-write)]{
-  A syntax which is only useful as an option to @racket[define-imitation-simple-struct]. In that context, it specifies that the created structure type should have implementations of @racket[gen:custom-write] and @racket[prop:custom-print-quotable] which use @racket[make-constructor-style-printer] to display a structure value.
+  A syntax which is only useful as an option to @racket[define-imitation-simple-struct] and @racket[define-syntax-and-value-imitation-simple-struct]. In that context, it specifies that the created structure type should have implementations of @racket[gen:custom-write] and @racket[prop:custom-print-quotable] which use @racket[make-constructor-style-printer] to display a structure value.
 }
 
 @defform[#:kind "structure type property expander" (auto-equal)]{
-  A syntax which is only useful as an option to @racket[define-imitation-simple-struct]. In that context, it specifies that the created structure type should have an implementation of @racket[gen:equal+hash] which treats any two of the structure values as @racket[equal?] if their fields are @racket[equal?].
+  A syntax which is only useful as an option to @racket[define-imitation-simple-struct] and @racket[define-syntax-and-value-imitation-simple-struct]. In that context, it specifies that the created structure type should have an implementation of @racket[gen:equal+hash] which treats any two of the structure values as @racket[equal?] if their fields are @racket[equal?].
 }
 
 @defform[
