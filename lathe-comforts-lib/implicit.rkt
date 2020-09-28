@@ -141,10 +141,10 @@
 
 (define-simple-macro
   (using-implicit-4-as-an-implementation-detail body:expr)
-  (let-implicit 4 "inner"
-    body))
+  (let-implicit 4 "rect"
+    (string-append body (quote-implicit 4))))
 
-(let-implicit 4 "correct"
+(let-implicit 4 "cor"
   (using-implicit-4-as-an-implementation-detail
     (quote-implicit 4)))
 
