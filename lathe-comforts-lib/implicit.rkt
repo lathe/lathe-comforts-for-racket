@@ -27,12 +27,9 @@
 
 (require #/for-syntax #/only-in lathe-comforts/list
   list-foldl list-map)
-(require #/for-syntax #/only-in lathe-comforts/struct
-  auto-equal auto-write define-imitation-simple-struct)
 (require #/for-syntax #/only-in syntax/parse ~and expr syntax-parse)
 
 (require #/for-syntax #/only-in lathe-comforts dissect expect fn w-)
-(require #/for-syntax #/only-in lathe-comforts/hash hash-ref-maybe)
 (require #/for-syntax #/only-in lathe-comforts/maybe just)
 
 
@@ -43,37 +40,59 @@
 (require #/only-in lathe-comforts/maybe maybe?)
 
 
-(provide
-  define-empty-aux-env
-  let-implicit
-  quote-implicit)
-; TODO NOW: Figure out how to uncomment this. We might need a few
-; intermediate submodules.
-#;
 (provide #/contract-out
   [syntax-local-implicit-value-maybe
     (-> (or/c #f syntax?) any/c maybe?)])
+(provide
+  define-empty-aux-env
+  let-implicits-with-scopes
+  let-implicits
+  let-implicit
+  quote-implicit)
 
 
-(begin-for-syntax
+(module private/part-1 racket/base
+  
+  (require #/only-in lathe-comforts/struct
+    auto-equal auto-write define-imitation-simple-struct)
+  
+  (require #/only-in lathe-comforts expect w-)
+  (require #/only-in lathe-comforts/hash hash-ref-maybe)
+  
+  
+  (provide #/all-defined-out)
+  
+  
   (define-imitation-simple-struct (aux-env? aux-hash) aux-env
-    'aux-env (current-inspector) (auto-write) (auto-equal)))
+    'aux-env (current-inspector) (auto-write) (auto-equal))
+  
+  (define introduce-aux-env-scope
+    (make-interned-syntax-introducer
+      (string->uninterned-symbol "aux-env-ns")))
+  
+  (define (aux-env-id stx)
+    (introduce-aux-env-scope #/datum->syntax stx '#%aux-env))
+  
+  (define (syntax-local-aux-env stx)
+    (syntax-local-value #/aux-env-id stx))
+  
+  (define (syntax-local-implicit-value-maybe stx var)
+    (w- env (syntax-local-aux-env stx)
+    #/expect env (aux-env hash)
+      (raise-arguments-error 'syntax-local-implicit-value-maybe
+        "encountered an unexpected value as the auxiliary environment"
+        "aux-env" env)
+    #/hash-ref-maybe hash var))
+)
+(require #/for-syntax 'private/part-1)
+(require 'private/part-1)
 
-(define-for-syntax introduce-aux-env-scope
-  (make-interned-syntax-introducer
-    (string->uninterned-symbol "aux-env-ns")))
-
-(define-for-syntax (aux-env-id stx)
-  (introduce-aux-env-scope #/datum->syntax stx '#%aux-env))
 
 (define-syntax (define-empty-aux-env stx)
   (syntax-protect
   #/syntax-parse stx #/ (_)
     #`(define-syntax #,(syntax-local-introduce #/aux-env-id #f)
         (aux-env #/hash))))
-
-(define-for-syntax (syntax-local-aux-env stx)
-  (syntax-local-value #/aux-env-id stx))
 
 (define-for-syntax (let-implicits-fn bindings env)
   (dissect env (aux-env shadowed)
@@ -190,14 +209,6 @@
         body)))
 |#
 
-(define-for-syntax (syntax-local-implicit-value-maybe stx var)
-  (w- env (syntax-local-aux-env stx)
-  #/expect env (aux-env hash)
-    (raise-arguments-error 'syntax-local-implicit-value-maybe
-      "encountered an unexpected value as the auxiliary environment"
-      "aux-env" env)
-  #/hash-ref-maybe hash var))
-
 (define-syntax (quote-implicit stx)
   (syntax-protect
   #/syntax-parse stx #/ (_ var-expr:expr)
@@ -210,11 +221,6 @@
       #'var-expr)
     #`'#,val))
 
-
-; TODO NOW: Figure out some more tests to do on these. Everything
-; seems to be passing with flying colors. We should write at least one
-; test where we use `let-implicits-with-scopes` to bind at least two
-; implicit variables at the same time with different scope sets.
 
 ; TODO NOW: Consider also making an easy way for the right-hand-sides
 ; of the `let-implicit...` operations to to refer to existing implicit
@@ -232,29 +238,3 @@
 ; bindings that execute Turing-complete predicates when looking up a
 ; variable to find a candidate binding list. If there are two or more
 ; candidates in the nearest level of scope, that's an error.
-
-; TODO NOW: Move these to the lathe-comforts-test package, and make
-; them proper RackUnit unit tests.
-
-(define-empty-aux-env)
-(begin-for-syntax (displayln (syntax-local-aux-env #'())))
-
-(w- x 1
-  (let-implicit 4 "correct"
-    (w- x 2
-      (quote-implicit 4))))
-
-(let-implicit 4 "cor"
-  (let-syntax ([four (syntax-id-rules () [_ (quote-implicit 4)])])
-    (let-implicit 4 "rect"
-      (string-append four (quote-implicit 4)))))
-
-(define-simple-macro
-  (using-implicit-4-as-an-implementation-detail body:expr)
-  (let-implicit 4 "rect"
-    (string-append body (quote-implicit 4))))
-
-(let-implicit 4 "cor"
-  (using-implicit-4-as-an-implementation-detail
-    (quote-implicit 4)))
-
