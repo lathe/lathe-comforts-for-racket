@@ -24,12 +24,11 @@
 (require #/for-syntax #/only-in racket/syntax syntax-local-eval)
 (require #/for-syntax #/only-in syntax/id-table
   bound-id-table-ref bound-id-table-set make-immutable-bound-id-table)
-
-(require #/for-syntax #/only-in lathe-comforts/list
-  list-foldl list-map)
 (require #/for-syntax #/only-in syntax/parse ~and expr syntax-parse)
 
 (require #/for-syntax #/only-in lathe-comforts dissect expect fn w-)
+(require #/for-syntax #/only-in lathe-comforts/list
+  list-foldl list-map)
 (require #/for-syntax #/only-in lathe-comforts/maybe just)
 
 

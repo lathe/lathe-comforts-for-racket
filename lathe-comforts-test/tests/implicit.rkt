@@ -19,7 +19,11 @@
 ;   language governing permissions and limitations under the License.
 
 
+(require #/for-syntax racket/base)
+(require #/for-syntax #/only-in syntax/parse expr)
+
 (require rackunit)
+(require #/only-in syntax/parse/define define-simple-macro)
 
 (require lathe-comforts)
 (require lathe-comforts/implicit)
@@ -34,9 +38,8 @@
 ; `let-implicits-with-scopes` to bind at least two implicit variables
 ; at the same time with different scope sets.
 
-;(define-empty-aux-env)
+(define-empty-aux-env)
 
-#|
 (check-equal? "correct"
   (w- x 1
     (let-implicit 4 "correct"
@@ -61,4 +64,3 @@
     (using-implicit-4-as-an-implementation-detail
       (quote-implicit 4)))
   "Test that a quoted instance of `let-implicit` in a macro definition doesn't interfere with the caller's implicit variables")
-|#
