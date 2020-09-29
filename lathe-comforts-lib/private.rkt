@@ -4,7 +4,7 @@
 ;
 ; Implementation details.
 
-;   Copyright 2011, 2017-2019 The Lathe Authors
+;   Copyright 2011, 2017-2020 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@
 ; ===== Evergreen utilities for binding syntax and FP ================
 
 
-(module part1 racket/base
+(module part-1 racket/base
   
   (require #/for-syntax racket/base)
   (require #/for-syntax #/only-in syntax/parse syntax-parse)
@@ -81,9 +81,9 @@
       body))
   
 )
-(require 'part1)
-(require #/for-syntax 'part1)
-(provide #/all-from-out 'part1)
+(require #/for-syntax 'part-1)
+(require 'part-1)
+(provide #/all-from-out 'part-1)
 
 
 ; === Utilities for binding syntax, part 2 ===
