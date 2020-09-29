@@ -20,11 +20,16 @@
 
 
 (require #/for-syntax racket/base)
+(require #/for-syntax #/only-in racket/hash hash-union)
 (require #/for-syntax #/only-in racket/syntax syntax-local-eval)
+(require #/for-syntax #/only-in syntax/id-table
+  bound-id-table-ref bound-id-table-set make-immutable-bound-id-table)
 
+(require #/for-syntax #/only-in lathe-comforts/list
+  list-foldl list-map)
 (require #/for-syntax #/only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-struct)
-(require #/for-syntax #/only-in syntax/parse expr syntax-parse)
+(require #/for-syntax #/only-in syntax/parse ~and expr syntax-parse)
 
 (require #/for-syntax #/only-in lathe-comforts dissect expect fn w-)
 (require #/for-syntax #/only-in lathe-comforts/hash hash-ref-maybe)
@@ -54,32 +59,136 @@
   (define-imitation-simple-struct (aux-env? aux-hash) aux-env
     'aux-env (current-inspector) (auto-write) (auto-equal)))
 
+(define-for-syntax introduce-aux-env-scope
+  (make-interned-syntax-introducer
+    (string->uninterned-symbol "aux-env-ns")))
+
+(define-for-syntax (aux-env-id stx)
+  (introduce-aux-env-scope #/datum->syntax stx '#%aux-env))
+
 (define-syntax (define-empty-aux-env stx)
   (syntax-protect
   #/syntax-parse stx #/ (_)
-    #`(define-syntax
-        #,(syntax-local-introduce #/datum->syntax #f '#%aux-env)
+    #`(define-syntax #,(syntax-local-introduce #/aux-env-id #f)
         (aux-env #/hash))))
 
+(define-for-syntax (syntax-local-aux-env stx)
+  (syntax-local-value #/aux-env-id stx))
+
+(define-for-syntax (let-implicits-fn bindings env)
+  (dissect env (aux-env shadowed)
+  #/w- bindings
+    (list-foldl (hash) bindings #/fn bindings binding
+      (dissect binding (list var val)
+      #/hash-union bindings (hash var val) #:combine/key
+      #/fn var existing new
+        ; TODO: See if this should be a `raise-syntax-error`.
+        (raise-arguments-error 'let-implicits-with-scopes
+          "duplicate implicit variable"
+          "var" var)))
+  #/aux-env #/hash-union shadowed bindings #:combine #/fn shadowed new
+    new))
+
+(define-syntax (let-implicits-with-scopes stx)
+  (syntax-protect
+  #/syntax-parse stx #/
+    (_ ([(~and () scopes) var-expr:expr val:expr] ...) body:expr)
+    
+    #:with (var-expr-result ...) (generate-temporaries #'(scopes ...))
+    #:with (val-result ...) (generate-temporaries #'(scopes ...))
+    
+    #:with (scope-id ...)
+    (list-map (syntax->list #'(scopes ...)) #/fn scope
+      (datum->syntax scope '-))
+    
+  #/dissect
+    (list-foldl
+      (list (make-immutable-bound-id-table) (list))
+      (syntax->list #'((scope-id var-expr-result val-result) ...))
+    #/fn state stx
+      (dissect state (list seen-table rev-seen-list)
+      #/syntax-parse stx #/ (scope-id var-expr-result val-result)
+      #/dissect
+        (bound-id-table-ref seen-table #'scope-id
+          (list #'scope-id (list)))
+        (list seen-first seen-rev-entries)
+      #/list
+        (bound-id-table-set seen-table #'scope-id
+          (list seen-first
+            (cons #'(var-expr-result val-result) seen-rev-entries)))
+        (cons seen-first rev-seen-list)))
+    (list seen-table rev-seen-list)
+  #/w- seen-list (reverse rev-seen-list)
+  #/with-syntax
+    (
+      [
+        (
+          (
+            unique-aux-env-id
+            ((unique-var-expr-result unique-val-result) ...)
+            unique-quoted-aux-env)
+          ...)
+        (list-map seen-list #/fn scope-id
+          (w- aux-env (syntax-local-aux-env scope-id)
+          #/dissect (bound-id-table-ref seen-table scope-id)
+            (list seen-first seen-rev-entries)
+          #/list
+            (aux-env-id scope-id)
+            (reverse seen-rev-entries)
+            #`('#,(fn aux-env))))])
+    #`(let-syntaxes
+        (
+          [
+            (unique-aux-env-id ...)
+            (let ()
+              (begin
+                (define var-expr-result var-expr)
+                (define val-result val))
+              ...
+              (values
+                (let-implicits-fn
+                  (list
+                    (list unique-var-expr-result unique-val-result)
+                    ...)
+                  unique-quoted-aux-env)
+                ...))])
+        body)))
+
+(define-simple-macro
+  (let-implicits ([var-expr:expr val:expr] ...) body:expr)
+  
+  #:with (scopes ...)
+  (list-map (syntax->list #'(var-expr ...)) #/fn var-expr
+    (datum->syntax var-expr '()))
+  
+  (let-implicits-with-scopes ([scopes var-expr val] ...)
+    body))
+
+(define-simple-macro (let-implicit var-expr:expr val:expr body:expr)
+  (let-implicits ([var-expr val])
+    body))
+
+; NOTE: In case `let-implicits-with-scopes` is a bit too much to
+; understand at once, here's a simple standalone implementation of
+; `let-implicit`. The additional logic in `let-implicits-with-scopes`
+; has to do with allowing multiple implicit variables to be bound at
+; once and respecting the bindings' individual scope sets.
+#|
 (define-for-syntax (let-implicit-fn var val env)
   (dissect env (aux-env hash)
-  ; TODO: Also track sets of scopes.
   #/aux-env #/hash-set hash var val))
-
-(define-for-syntax (syntax-local-aux-env stx)
-  (syntax-local-value #/datum->syntax stx '#%aux-env))
 
 (define-syntax (let-implicit stx)
   (syntax-protect
   #/syntax-parse stx #/ (_ var-expr:expr val:expr body:expr)
-  #/w- aux-env (syntax-local-aux-env stx)
-  #/w- var (syntax-local-eval #'var-expr)
+  #/w- aux-env (syntax-local-aux-env #'var-expr)
     #`(let-syntax
         (
           [
-            #,(datum->syntax stx '#%aux-env)
+            #,(aux-env-id stx)
             (let-implicit-fn var-expr val ('#,(fn aux-env)))])
         body)))
+|#
 
 (define-for-syntax (syntax-local-implicit-value-maybe stx var)
   (w- env (syntax-local-aux-env stx)
@@ -103,14 +212,15 @@
 
 
 ; TODO NOW: Figure out some more tests to do on these. Everything
-; seems to be passing with flying colors.
+; seems to be passing with flying colors. We should write at least one
+; test where we use `let-implicits-with-scopes` to bind at least two
+; implicit variables at the same time with different scope sets.
 
-; TODO NOW: Change `let-implicit` so it can bind more than one thing
-; at a time. Consider also making an easy way for its right-hand-sides
-; to refer to existing implicit bindings (but first, we should see if
-; we can do it the long way using
-; `syntax-local-implicit-value-maybe`). Together, these will make it
-; possible for `let-implicit` to express permutations of the implicit
+; TODO NOW: Consider also making an easy way for the right-hand-sides
+; of the `let-implicit...` operations to to refer to existing implicit
+; bindings (but first, we should see if we can do it the long way
+; using `syntax-local-implicit-value-maybe`). This will make it
+; possible for `let-implicits` to express permutations of the implicit
 ; bindings.
 
 ; TODO: Consider having `eval-implicit`, like `quote-implicit` but
