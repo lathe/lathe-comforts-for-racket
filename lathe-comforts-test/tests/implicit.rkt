@@ -22,6 +22,9 @@
 (require #/for-syntax racket/base)
 (require #/for-syntax #/only-in syntax/parse expr)
 
+(require #/for-syntax lathe-comforts/implicit)
+(require #/for-syntax lathe-comforts/maybe)
+
 (require rackunit)
 (require #/only-in syntax/parse/define define-simple-macro)
 
@@ -64,3 +67,31 @@
     (using-implicit-4-as-an-implementation-detail
       (quote-implicit 4)))
   "Test that a quoted instance of `let-implicit` in a macro definition doesn't interfere with the caller's implicit variables")
+
+(check-equal? "correct"
+  (w- x 1
+    (let-implicits ([4 "cor"] [5 "rect"])
+      (w- x 2
+        (let-implicits ([4 (local-implicit 5)] [5 (local-implicit 4)])
+          (w- x 3
+            (string-append (quote-implicit 5) (quote-implicit 4)))))))
+  "Test using `let-implicits` and `local-implicit` to permute bindings")
+
+(check-equal?
+  (let-implicit 4 "correct"
+    (let-implicit 5 (local-implicit 4)
+      (quote-implicit 5)))
+  (let-implicit 4 "correct"
+    (let-implicit 5 (syntax-local-implicit-value #'() 4)
+      (quote-implicit 5)))
+  "Test that using `local-implicit` is similar to using `syntax-local-implicit-value`")
+
+(check-equal?
+  (let-implicit 4 "correct"
+    (let-implicit 5 (local-implicit 4)
+      (quote-implicit 5)))
+  (let-implicit 4 "correct"
+    (let-implicit 5
+      (just-value #/syntax-local-implicit-value-maybe #'() 4)
+      (quote-implicit 5)))
+  "Test that using `local-implicit` is similar to using `syntax-local-implicit-value-maybe`")
