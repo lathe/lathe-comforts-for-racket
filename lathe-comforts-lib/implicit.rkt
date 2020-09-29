@@ -41,17 +41,17 @@
 
 
 (provide #/contract-out
-  [syntax-local-implicit-value-maybe
+  [syntax-local-implicit-equals-transformer-part-maybe
     (-> (or/c #f syntax?) any/c maybe?)]
-  [syntax-local-implicit-value
+  [syntax-local-implicit-equals-transformer-part
     (-> (or/c #f syntax?) any/c any/c)])
 (provide
   define-empty-aux-env
-  let-implicits-with-scopes
-  let-implicits
-  let-implicit
-  quote-implicit
-  local-implicit)
+  let-implicit-equals-transformer-bindings-with-scopes
+  let-implicit-equals-transformer-bindings
+  let-implicit-equals-transformer-binding
+  quote-implicit-equals-transformer-part
+  local-implicit-equals-transformer-part)
 
 
 (module private/part-1 racket/base
@@ -59,8 +59,9 @@
   (require #/only-in lathe-comforts/struct
     auto-equal auto-write define-imitation-simple-struct)
   
-  (require #/only-in lathe-comforts dissect expect fn w-)
+  (require #/only-in lathe-comforts dissect dissectfn expect fn w-)
   (require #/only-in lathe-comforts/hash hash-ref-maybe)
+  (require #/only-in lathe-comforts/maybe maybe-map)
   
   
   (provide #/all-defined-out)
@@ -68,6 +69,15 @@
   
   (define-imitation-simple-struct (aux-env? aux-hash) aux-env
     'aux-env (current-inspector) (auto-write) (auto-equal))
+  
+  (define-imitation-simple-struct
+    (aux-env-equals-entry?
+      aux-env-equals-entry-transformer-part
+      aux-env-equals-entry-run-time-part-ids)
+    aux-env-equals-entry
+    'aux-env-equals-entry (current-inspector)
+    (auto-write)
+    (auto-equal))
   
   (define introduce-aux-env-scope
     (make-interned-syntax-introducer
@@ -87,18 +97,31 @@
         "aux-env" env)
       env))
   
-  (define (syntax-local-implicit-value-maybe stx var)
+  (define
+    (syntax-local-implicit-equals-transformer-part-maybe stx var)
     (dissect
-      (syntax-local-aux-env 'syntax-local-implicit-value-maybe stx)
+      (syntax-local-aux-env
+        'syntax-local-implicit-equals-transformer-part-maybe
+        stx)
       (aux-env hash)
-    #/hash-ref-maybe hash var))
+    #/maybe-map (hash-ref-maybe hash var)
+    #/dissectfn
+      (aux-env-equals-entry transformer-part run-time-part-ids)
+      transformer-part))
   
-  (define (syntax-local-implicit-value stx var)
-    (dissect (syntax-local-aux-env 'syntax-local-implicit-value stx)
+  (define (syntax-local-implicit-equals-transformer-part stx var)
+    (dissect
+      (syntax-local-aux-env
+        'syntax-local-implicit-equals-transformer-part
+        stx)
       (aux-env hash)
-    #/hash-ref hash var #/fn
-      (raise-arguments-error 'syntax-local-implicit-value
-        (format "unbound implicit variable: ~a" var))))
+    #/dissect
+      (hash-ref hash var #/fn
+        (raise-arguments-error
+          'syntax-local-implicit-equals-transformer-part
+          (format "unbound implicit variable: ~a" var)))
+      (aux-env-equals-entry transformer-part run-time-part-ids)
+      transformer-part))
 )
 (require #/for-syntax 'private/part-1)
 (require 'private/part-1)
@@ -110,21 +133,26 @@
     #`(define-syntax #,(syntax-local-introduce #/aux-env-id #f)
         (aux-env #/hash))))
 
-(define-for-syntax (let-implicits-fn bindings env)
+(define-for-syntax
+  (let-implicit-equals-transformer-bindings-fn bindings env)
   (dissect env (aux-env shadowed)
   #/w- bindings
     (list-foldl (hash) bindings #/fn bindings binding
       (dissect binding (list var val)
-      #/hash-union bindings (hash var val) #:combine/key
+      #/hash-union bindings
+        (hash var #/aux-env-equals-entry val #/list)
+        #:combine/key
       #/fn var existing new
         ; TODO: See if this should be a `raise-syntax-error`.
-        (raise-arguments-error 'let-implicits-with-scopes
+        (raise-arguments-error
+          'let-implicit-equals-transformer-bindings-with-scopes
           "duplicate implicit variable"
           "var" var)))
   #/aux-env #/hash-union shadowed bindings #:combine #/fn shadowed new
     new))
 
-(define-syntax (let-implicits-with-scopes stx)
+(define-syntax
+  (let-implicit-equals-transformer-bindings-with-scopes stx)
   (syntax-protect
   #/syntax-parse stx #/
     (_ ([(~and () scopes) var-expr:expr val:expr] ...) body:expr)
@@ -166,7 +194,9 @@
           (w- aux-env
             ; TODO: Let the `who` argument depend on the macro call
             ; that expands to this one.
-            (syntax-local-aux-env 'let-implicits-with-scopes scope-id)
+            (syntax-local-aux-env
+              'let-implicit-equals-transformer-bindings-with-scopes
+              scope-id)
           #/w- seen-rev-entries
             (bound-id-table-ref seen-table scope-id)
           #/list
@@ -183,7 +213,7 @@
                 (define val-result val))
               ...
               (values
-                (let-implicits-fn
+                (let-implicit-equals-transformer-bindings-fn
                   (list
                     (list unique-var-expr-result unique-val-result)
                     ...)
@@ -192,74 +222,99 @@
         body)))
 
 (define-simple-macro
-  (let-implicits ([var-expr:expr val:expr] ...) body:expr)
+  (let-implicit-equals-transformer-bindings
+    ([var-expr:expr val:expr] ...)
+    body:expr)
   
   #:with (scopes ...)
   (list-map (syntax->list #'(var-expr ...)) #/fn var-expr
     (datum->syntax var-expr '()))
   
-  (let-implicits-with-scopes ([scopes var-expr val] ...)
+  (let-implicit-equals-transformer-bindings-with-scopes
+    ([scopes var-expr val] ...)
     body))
 
-(define-simple-macro (let-implicit var-expr:expr val:expr body:expr)
-  (let-implicits ([var-expr val])
+(define-simple-macro
+  (let-implicit-equals-transformer-binding
+    var-expr:expr val:expr body:expr)
+  (let-implicit-equals-transformer-bindings ([var-expr val])
     body))
 
-; NOTE: In case `let-implicits-with-scopes` is a bit too much to
-; understand at once, here's a simple standalone implementation of
-; `let-implicit`. The additional logic in `let-implicits-with-scopes`
-; has to do with allowing multiple implicit variables to be bound at
-; once and respecting the bindings' individual scope sets.
+; NOTE: In case `let-implicit-equals-transformer-bindings-with-scopes`
+; is a bit too much to understand at once, here's a simple standalone
+; implementation of `let-implicit-equals-transformer-binding`. The
+; additional logic in
+; `let-implicit-equals-transformer-bindings-with-scopes` has to do
+; with allowing multiple implicit variables to be bound at once and
+; respecting the bindings' individual scope sets.
 #|
-(define-for-syntax (let-implicit-fn var val env)
+(define-for-syntax
+  (let-implicit-equals-transformer-binding-fn var val env)
   (dissect env (aux-env hash)
-  #/aux-env #/hash-set hash var val))
+  #/aux-env #/hash-set hash var #/aux-env-equals-entry val #/list))
 
-(define-syntax (let-implicit stx)
+(define-syntax (let-implicit-equals-transformer-binding stx)
   (syntax-protect
   #/syntax-parse stx #/ (_ var-expr:expr val:expr body:expr)
-  #/w- aux-env (syntax-local-aux-env 'let-implicit #'var-expr)
+  #/w- aux-env
+    (syntax-local-aux-env 'let-implicit-equals-transformer-binding
+      #'var-expr)
     #`(let-syntax
         (
           [
             #,(aux-env-id stx)
-            (let-implicit-fn var-expr val ('#,(fn aux-env)))])
+            (let-implicit-equals-transformer-binding-fn var-expr val
+              ('#,(fn aux-env)))])
         body)))
 |#
 
-(define-syntax (quote-implicit stx)
+(define-syntax (quote-implicit-equals-transformer-part stx)
   (syntax-protect
   #/syntax-parse stx #/ (_ var-expr:expr)
-  #/w- aux-env (syntax-local-aux-env 'quote-implicit #'var-expr)
+  #/w- aux-env
+    (syntax-local-aux-env 'quote-implicit-equals-transformer-part
+      #'var-expr)
   #/w- var (syntax-local-eval #'var-expr)
-  #/expect (syntax-local-implicit-value-maybe stx var) (just val)
+  #/expect
+    (syntax-local-implicit-equals-transformer-part-maybe stx var)
+    (just val)
     (raise-syntax-error #f
       (format "unbound implicit variable: ~a" var)
       stx
       #'var-expr)
     #`'#,val))
 
-(define (local-implicit-fn stx var)
-  (expect (syntax-local-implicit-value-maybe stx var) (just val)
-    (raise-arguments-error 'local-implicit
+(define (local-implicit-equals-transformer-part-fn stx var)
+  (expect
+    (syntax-local-implicit-equals-transformer-part-maybe stx var)
+    (just val)
+    (raise-arguments-error 'local-implicit-equals-transformer-part
       (format "unbound implicit variable: ~a" var))
     val))
 
 ; NOTE: This offers an easy way for the right-hand-sides of the
-; `let-implicit...` operations to to refer to existing implicit
-; bindings. The expression `(local-implicit _)` is effectively
+; `let-implicit-equals-transformer-binding...` operations to to refer
+; to existing implicit `equals?` transformer binding. The expression
+; `(local-implicit-equals-transformer-part _)` is effectively
 ; shorthand for
-; `(just-value #/syntax-local-implicit-value-maybe #'() _)` or
-; `(syntax-local-implicit-value #'() _)`.
-(define-syntax (local-implicit stx)
+; `(just-value #/syntax-local-implicit-equals-transformer-part-maybe #'() _)`
+; or `(syntax-local-implicit-equals-transformer-part #'() _)`.
+(define-syntax (local-implicit-equals-transformer-part stx)
   (syntax-protect
   #/syntax-parse stx #/ (_ var-expr:expr)
-    #`(local-implicit-fn #'#,(datum->syntax #'var-expr '()) var-expr)))
+    #`(local-implicit-equals-transformer-part-fn
+        #'#,(datum->syntax #'var-expr '())
+        var-expr)))
 
 
-; TODO: Consider having `eval-implicit`, like `quote-implicit` but
-; without the quotation. Maybe we should call it `begin-implicit` or
-; something just to avoid the `eval` connotations.
+; TODO NOW: Consider run-time uses of implicits other than
+; `quote-implicit-equals-transformer-part`. We're midway through
+; adding support for an implicit `equals?` binding to have run-time
+; parts. We should probably have an
+; `implicit-equals-run-time-part-values` operation that returns the
+; run time parts. Other families of implicit bindings (rather than the
+; `equals?` family we have now) will likely make more interesting use
+; of run-time parts.
 
 ; TODO NOW: Add other features to realize a more complete,
 ; type-class-like vision, such as the ability to install local
