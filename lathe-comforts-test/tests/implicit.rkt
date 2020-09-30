@@ -160,3 +160,18 @@
       seven))
   "correct"
   "Test that a `let-implicit-equals-transformer-bindings` can have two pairs of bindings, each pair of which shares a different set of scopes")
+
+(check-equal?
+  (let-implicit-equals-bindings
+    (
+      [4 "c" "o" "r"]
+      [5 "r" "e" "c" "t"])
+    (string-append
+      (quote-implicit-equals-transformer-part 4)
+      (apply string-append
+        (local-implicit-equals-run-time-parts-as-list 4))
+      (quote-implicit-equals-transformer-part 5)
+      (apply string-append
+        (local-implicit-equals-run-time-parts-as-list 5))))
+  "correct"
+  "Test that `let-implicit-equals-bindings` can bind both transformer bindings (available via `quote-implicit-equals-transformer-part`) and run-time bindings (available via `local-implicit-equals-run-time-parts-as-list`)")
