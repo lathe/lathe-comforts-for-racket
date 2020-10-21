@@ -358,6 +358,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @defproc[(maybe/c [c contract?]) contract?]{
   Returns a contract that recognizes a @tech{maybe value} where the element, if any, abides by the given contract.
+  
+  @; TODO: See if we should guarantee a flat contract or chaperone contract under certain circumstances.
 }
 
 @defproc[(maybe-bind [m maybe?] [func (-> any/c maybe?)]) maybe?]{
