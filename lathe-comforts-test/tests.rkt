@@ -163,8 +163,10 @@
   "Test `w-` with low verbosity.")
 
 (check-equal?
-  (pd / hash-map (hash 'a 1 'b 2) / fn k v
-    (format "(~s, ~s)" k v))
+  (sort
+    (pd / hash-map (hash 'a 1 'b 2) / fn k v
+      (format "(~s, ~s)" k v))
+    string<?)
   (list "(a, 1)" "(b, 2)"))
 
 (check-equal?
