@@ -222,12 +222,11 @@
   (syntax-protect #/syntax-parse stx #/
     (_
       (~optional (~seq #:obstinacy ob)
-        #:defaults ([ob #'(impersonator-obstinacy)]))
+        #:defaults ([ob.c #'(impersonator-obstinacy)]))
       pat:expr
       body)
     
-    #:declare ob
-    (expr/c #'obstinacy? #:name "obstinacy argument")
+    #:declare ob (expr/c #'obstinacy? #:name "obstinacy argument")
     
     #:declare body
     (expr/c #'(obstinacy-contract/c ob-c) #:name "body result")

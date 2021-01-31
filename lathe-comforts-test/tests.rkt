@@ -234,3 +234,8 @@
       (-> integer? integer?)))
   #t
   "`by-own-method/c` returns a contract that's at least as obstinate as the given contract obstinacy")
+
+(check-equal?
+  (contract? #/by-own-method/c identity #/-> integer? integer?)
+  #t
+  "`by-own-method/c` works without providing an obstinacy")
