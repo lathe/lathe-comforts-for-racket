@@ -21,7 +21,7 @@
 
 (require #/for-syntax racket/base)
 (require #/for-syntax #/only-in syntax/parse
-  expr expr/c id syntax-parse)
+  expr expr/c id ~optional ~seq syntax-parse)
 
 ; NOTE: The Racket documentation says `get/build-late-neg-projection`
 ; is in `racket/contract/combinator`, but it isn't. It's in
@@ -29,16 +29,38 @@
 ; documentation correctly says it is, we require it from there.
 (require #/only-in racket/contract get/build-late-neg-projection)
 (require #/only-in racket/contract/base
-  -> and/c any/c contract? contract-name contract-out flat-contract?
-  recursive-contract rename-contract)
+  -> ->i and/c any/c chaperone-contract? contract? contract-name
+  contract-out flat-contract? recursive-contract rename-contract)
 (require #/only-in racket/contract/combinator
-  blame-add-context contract-first-order-passes? make-contract
+  blame-add-context coerce-chaperone-contract coerce-contract
+  coerce-flat-contract contract-first-order-passes?
+  make-chaperone-contract make-contract make-flat-contract
   raise-blame-error)
 (require #/only-in syntax/parse/define define-simple-macro)
 
-(require #/only-in lathe-comforts dissectfn expect expectfn fn w-)
+(require #/only-in lathe-comforts
+  dissect dissectfn expect expectfn fn mat w-)
+(require #/only-in lathe-comforts/struct
+  auto-equal auto-write define-imitation-simple-struct)
 
+(provide
+  impersonator-obstinacy)
 (provide #/contract-out
+  [impersonator-obstinacy? (-> any/c boolean?)])
+(provide
+  chaperone-obstinacy)
+(provide #/contract-out
+  [chaperone-obstinacy? (-> any/c boolean?)])
+(provide
+  flat-obstinacy)
+(provide #/contract-out
+  [flat-obstinacy? (-> any/c boolean?)]
+  [obstinacy? (-> any/c boolean?)]
+  [obstinacy-contract/c (-> obstinacy? flat-contract?)]
+  [obstinacy-get-make-contract (-> obstinacy? procedure?)]
+  [obstinacy-get-coerce-contract-for-id
+    (->i ([ob obstinacy?] [id symbol?])
+      [_ (ob) (-> any/c #/obstinacy-contract/c ob)])]
   [value-name-for-contract (-> any/c any/c)])
 (provide
   let/c
@@ -47,6 +69,71 @@
 (provide #/contract-out
   [equal/c (-> any/c flat-contract?)]
   [flat-contract-accepting/c (-> any/c flat-contract?)])
+
+
+(define-imitation-simple-struct
+  (impersonator-obstinacy?)
+  impersonator-obstinacy
+  'impersonator-obstinacy (current-inspector)
+  (auto-write)
+  (auto-equal))
+(define-imitation-simple-struct
+  (chaperone-obstinacy?)
+  chaperone-obstinacy
+  'chaperone-obstinacy (current-inspector)
+  (auto-write)
+  (auto-equal))
+(define-imitation-simple-struct
+  (flat-obstinacy?)
+  flat-obstinacy
+  'flat-obstinacy (current-inspector)
+  (auto-write)
+  (auto-equal))
+
+(define (obstinacy? v)
+  (or
+    (impersonator-obstinacy? v)
+    (chaperone-obstinacy? v)
+    (flat-obstinacy? v)))
+
+(define (obstinacy-contract/c ob)
+  (mat ob (impersonator-obstinacy) contract?
+  #/mat ob (chaperone-obstinacy) chaperone-contract?
+  #/dissect ob (flat-obstinacy) flat-contract?))
+
+; TODO: See if we should use `begin-suggest-inline` for this. Would it
+; help at all?
+(define (obstinacy-get-make-contract ob)
+  (mat ob (impersonator-obstinacy) make-contract
+  #/mat ob (chaperone-obstinacy) make-chaperone-contract
+  #/dissect ob (flat-obstinacy) make-flat-contract))
+
+(define (obstinacy-get-coerce-contract-for-id ob id)
+  (mat ob (impersonator-obstinacy) (fn c #/coerce-contract id c)
+  #/mat ob (chaperone-obstinacy)
+    (fn c #/coerce-chaperone-contract id c)
+  #/dissect ob (flat-obstinacy) (fn c #/coerce-flat-contract id c)))
+
+; TODO: See if we should export this. It may just be an implementation
+; detail of `obstinacy-late-contract-projector`.
+(define
+  (obstinacy-project-late ob project-v-and-late-party v late-party)
+  (w- next-v (project-v-and-late-party v late-party)
+  #/mat ob (impersonator-obstinacy) next-v
+  #/mat ob (chaperone-obstinacy) next-v
+  #/dissect ob (flat-obstinacy) v))
+
+; TODO: See if we should export this. It doesn't seem as universally
+; useful as `obstinacy-project-late`, since usually the contract `c`
+; is known before `missing-party` is.
+(define
+  (obstinacy-late-contract-projector ob coerce blame missing-party)
+  (fn c v context
+    (w- c-proj
+      (
+        (get/build-late-neg-projection #/coerce c)
+        (blame-add-context blame context))
+    #/obstinacy-project-late ob c-proj v missing-party)))
 
 
 (define (value-name-for-contract v)
@@ -107,31 +194,46 @@
           (var arg-val ...))]))
 
 
-(define (by-own-method/c-impl pat-expr body-expr body)
-  (w- name `(by-own-method/c ,pat-expr ,body-expr)
+(define (by-own-method/c-impl ob name body)
+  (w- coerce
+    (obstinacy-get-coerce-contract-for-id ob 'by-own-method/c)
   #/w- first-order
     (fn v
       (expect (body v) (list c) #f
       #/contract-first-order-passes? c v))
-  #/make-contract #:name name #:first-order first-order
+  #/ (obstinacy-get-make-contract ob)
+    
+    #:name name
+    #:first-order first-order
     
     #:late-neg-projection
     (fn blame
       (fn v missing-party
-        (expect (body v) (list c)
+        (w- project-late-contract
+          (obstinacy-late-contract-projector
+            ob coerce blame missing-party)
+        #/expect (body v) (list c)
           (raise-blame-error blame #:missing-party missing-party v
             '(expected: "~e" given: "~e")
             name v)
-        #/
-          (
-            (get/build-late-neg-projection c)
-            (blame-add-context blame "the body of"))
-          v missing-party)))))
+        #/project-late-contract c v "the body of")))))
 
 (define-syntax (by-own-method/c stx)
-  (syntax-protect #/syntax-parse stx #/ (_ pat:expr body)
-    #:declare body (expr/c #'contract? #:name "body result")
-    #'(by-own-method/c-impl 'pat 'body
+  (syntax-protect #/syntax-parse stx #/
+    (_
+      (~optional (~seq #:obstinacy ob)
+        #:defaults ([ob #'(impersonator-obstinacy)]))
+      pat:expr
+      body)
+    
+    #:declare ob
+    (expr/c #'obstinacy? #:name "obstinacy argument")
+    
+    #:declare body
+    (expr/c #'(obstinacy-contract/c ob-c) #:name "body result")
+    
+    #'(w- ob-c ob.c
+      #/by-own-method/c-impl ob-c '(by-own-method/c pat body)
         (expectfn pat (list)
           (list body.c)))))
 

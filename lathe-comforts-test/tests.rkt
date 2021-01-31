@@ -19,7 +19,9 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/only-in racket/contract/base contract? listof or/c)
+(require #/only-in racket/contract/base
+  -> chaperone-contract? contract? listof or/c)
+(require #/only-in racket/contract/region define/contract)
 (require #/only-in racket/match match match-lambda)
 (require #/only-in racket/port with-output-to-string)
 (require rackunit)
@@ -206,3 +208,29 @@
     (fix/c simple-s-expression/c
       (or/c symbol? (listof simple-s-expression/c))))
   #t)
+
+(check-exn exn:fail?
+  (lambda ()
+    (define/contract (identity x)
+      (by-own-method/c #:obstinacy (flat-obstinacy) identity
+        (-> integer? integer?))
+      x)
+    identity)
+  "`by-own-method/c` checks that its body returns a contract of the given contract obstinacy")
+
+(check-equal?
+  (let ()
+    (define/contract (identity x)
+      (by-own-method/c #:obstinacy (chaperone-obstinacy) identity
+        (-> integer? integer?))
+      x)
+    (identity 10))
+  10
+  "`by-own-method/c` allows a body of the given contract obstinacy to succeed")
+
+(check-equal?
+  (chaperone-contract?
+    (by-own-method/c #:obstinacy (chaperone-obstinacy) identity
+      (-> integer? integer?)))
+  #t
+  "`by-own-method/c` returns a contract that's at least as obstinate as the given contract obstinacy")

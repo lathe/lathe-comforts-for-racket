@@ -21,8 +21,12 @@
 
 @(require #/for-label racket/base)
 @(require #/for-label #/only-in racket/contract/base
-  -> </c and/c any any/c cons/c contract? contract-name flat-contract?
-  listof or/c recursive-contract struct/c)
+  -> </c and/c any any/c cons/c chaperone-contract? contract?
+  contract-name flat-contract? listof or/c recursive-contract
+  struct/c)
+@(require #/for-label #/only-in racket/contract/combinator
+  coerce-chaperone-contract coerce-contract coerce-flat-contract
+  make-chaperone-contract make-contract make-flat-contract)
 @(require #/for-label #/only-in racket/generic define-generics)
 @(require #/for-label #/only-in racket/list append-map)
 @(require #/for-label #/only-in racket/match
@@ -269,6 +273,76 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @defmodule[lathe-comforts/contract]
 
+@defproc[(obstinacy? [v any/c]) boolean?]{
+  Returns whether the given value is a @deftech{contract obstinacy}, which is an enumeration that distinguishes between impersonator contracts, chaperone contracts, and flat contracts.
+  
+  Contract obstinacy can be thought of as a scale with two ends. Impersonator contracts are the most @deftech{obstinate} since they can go to any length to impose behavior on the values that pass through, while flat contracts are the most @deftech{reticent} since they don't pass any more judgment on a value after they've ferried it through.
+  
+  By default, Racket contracts are usually as obstinate as can be; @racket[contract?] refers generally to impersonator contracts. Only certain contracts exercise reticence.
+}
+
+@deftogether[(
+  @defidform[impersonator-obstinacy]
+  @defform[#:link-target? #f (impersonator-obstinacy)]
+  @defform[
+    #:kind "match expander"
+    #:link-target? #f
+    (impersonator-obstinacy)
+  ]
+  @defproc[(impersonator-obstinacy? [v any/c]) boolean?]
+)]{
+  Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents impersonator contracts.
+  
+  Every two @tt{impersonator-obstinacy} values are @racket[equal?].
+}
+
+@deftogether[(
+  @defidform[chaperone-obstinacy]
+  @defform[#:link-target? #f (chaperone-obstinacy)]
+  @defform[
+    #:kind "match expander"
+    #:link-target? #f
+    (chaperone-obstinacy)
+  ]
+  @defproc[(chaperone-obstinacy? [v any/c]) boolean?]
+)]{
+  Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents chaperone contracts.
+  
+  Every two @tt{chaperone-obstinacy} values are @racket[equal?].
+}
+
+@deftogether[(
+  @defidform[flat-obstinacy]
+  @defform[#:link-target? #f (flat-obstinacy)]
+  @defform[
+    #:kind "match expander"
+    #:link-target? #f
+    (flat-obstinacy)
+  ]
+  @defproc[(flat-obstinacy? [v any/c]) boolean?]
+)]{
+  Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents flat contracts.
+  
+  Every two @tt{flat-obstinacy} values are @racket[equal?].
+}
+
+@defproc[(obstinacy-contract/c [ob obstinacy?]) flat-contract?]{
+  Returns a flat contract that recognizes contracts that are at least as @tech{reticent} as the given @tech{contract obstinacy}. For instance, @racket[(obstinacy-contract/c (chaperone-obstinacy))] returns a flat contract that's equivalent to (perhaps even identical to) @racket[chaperone-contract?].
+}
+
+@defproc[(obstinacy-get-make-contract [ob obstinacy?]) procedure?]{
+  Given a @tech{contract obstinacy}, returns the analogous @racket[make-contract], @racket[make-chaperone-contract], or @racket[make-flat-contract] procedure.
+}
+
+@defproc[
+  (obstinacy-get-coerce-contract-for-id [ob obstinacy?] [id symbol?])
+  (-> any/c (obstinacy-contract/c ob))
+]{
+  Returns a procedure that takes a single value and coerces it to a contract that's at least as @tech{reticent} as the given @tech{contract obstinacy}. This is done using @racket[coerce-contract], @racket[coerce-chaperone-contract], or @racket[coerce-flat-contract].
+  
+  If the value to be converted is not one of the coercible values, the coercion procedure signals an error with @racket[id] in its error message.
+}
+
 @defproc[(value-name-for-contract [v any/c]) any/c]{
   Gets the @racket[contract-name] of the given value if it's a contract, and merely returns the value otherwise. This can be handy when defining a new contract where the @racket[contract-name] may embed arbitrary values, but embedded contracts in particular should be easy to read.
 }
@@ -304,10 +378,20 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 @defform[
-  (by-own-method/c pat body-expr)
-  #:contracts ([body-expr contract?])
+  (by-own-method/c maybe-obstinacy pat body-expr)
+  #:grammar
+  [
+    (maybe-obstinacy
+      (code:line)
+      (code:line #:obstinacy obstinacy-expr))]
+  #:contracts
+  (
+    [obstinacy-expr obstinacy?]
+    [body-expr (obstinacy-contract/c obstinacy-expr)])
 ]{
   A syntax for contracts that depend on the value they apply to. Returns a contract that tries to match the value against the match pattern @racket[pat], and if successful, executes the @racket[body-expr] (with all the bound variables from @racket[pat] in scope) and behaves according to that contract. If the match is not successful, then the value is not considered to meet this contract.
+  
+  A @tech{contract obstinacy} may be given as @racket[obstinacy-expr], which defaults to @racket[(impersonator-obstinacy)]. The overall result is a contract of that contract obsinacy (e.g. a chaperone contract if using @racket[(chaperone-obstinacy)], or any contract at all if using @racket[(impersonator-obstinacy)]). The result of @racket[body-expr] must be a contract of that contract obstinacy as well.
   
   The name of the returned contract includes @racket[pat] and @racket[body-expr] verbatim. If they contain references to variables defined elsewhere, @racket[let/c] may be useful to ensure those variable bindings are apparent in the overall contract name.
 }
