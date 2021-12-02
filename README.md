@@ -1,6 +1,6 @@
 # Lathe Comforts for Racket
 
-[![Travis build](https://travis-ci.org/lathe/lathe-comforts-for-racket.svg?branch=main)](https://travis-ci.org/lathe/lathe-comforts-for-racket)
+[![CI](https://github.com/lathe/lathe-comforts-for-racket/actions/workflows/ci.yml/badge.svg)](https://github.com/lathe/lathe-comforts-for-racket/actions/workflows/ci.yml)
 
 Lathe Comforts for Racket is a collection of utilities that are handy for writing Racket code. This is a non-intrusive toolkit; in most cases it should only make certain Racket code easier to write, without substantially changing the architecture of the project it's used in.
 
