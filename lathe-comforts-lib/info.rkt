@@ -2,4 +2,5 @@
 
 (define collection "lathe-comforts")
 
-(define deps (list "base" "parendown"))
+(define deps (list "base"))
+(define build-deps (list "parendown-lib"))
