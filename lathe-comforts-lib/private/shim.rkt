@@ -2,8 +2,10 @@
 
 ; shim.rkt
 ;
-; Import lists, debugging constants, and other utilities that are
-; useful primarily for this codebase.
+; Import lists, debugging constants, other utilities that are useful
+; primarily for this codebase, preliminary utilities for defining
+; these things, and various utilities that could come in handy in
+; other codebases for making shim files like this one.
 
 ;   Copyright 2021, 2022 The Lathe Authors
 ;
@@ -45,6 +47,8 @@
   recontract-unlessc-out
   (for-syntax
     module-path)
+;  define-requirer
+;  define-requirer-in
   (for-syntax
     own-contract-scope
     own-contract-policy-scope
