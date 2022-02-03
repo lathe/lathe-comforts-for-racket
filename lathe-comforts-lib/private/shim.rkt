@@ -52,7 +52,8 @@
   (for-syntax
     own-contract-scope
     own-contract-policy-scope
-    make-own-contract-policy-id)
+    make-own-contract-policy-id
+    mangle-for-own-contract)
   define-own-contract-policies
   (for-syntax
     own-contracted-id)
@@ -305,10 +306,34 @@
 (define-for-syntax (make-own-contract-policy-id stx name)
   (own-contract-policy-scope /datum->syntax stx name))
 
+(define-for-syntax
+  (mangle-for-own-contract stx-where-policy-is-in-scope orig)
+  (
+    (syntax-local-value
+      (make-own-contract-policy-id stx-where-policy-is-in-scope
+        '#%own-contract-policy-mangle)
+      
+      ; NOTE: By default, we just add a scope to the identifier. This
+      ; works within a single module, but the identifier's bindings
+      ; won't be visible to `module*` or `module+` submodules. To
+      ; achieve that visibility, the name needs to be interned, with a
+      ; user-supplied naming convention to set it apart from other
+      ; variables in that context. This is what the mangle policy is
+      ; for.
+      ;
+      (lambda () /lambda (orig) /own-contract-scope orig))
+    orig))
+
 (define-syntax-parse-rule
   (define-own-contract-policies
+    #:mangle mangle
     #:using-external-contracts? using-external-contracts?
     #:using-internal-contracts? using-internal-contracts?)
+  
+  #:declare mangle
+  (expr/c #'(-> identifier? identifier?)
+    #:phase (add1 /syntax-local-phase-level)
+    #:name "the mangle policy")
   
   #:declare using-external-contracts?
   (expr/c #'boolean? #:phase (add1 /syntax-local-phase-level)
@@ -322,6 +347,10 @@
   #`(begin
       (define-syntax
         #,(make-own-contract-policy-id this-syntax
+            '#%own-contract-policy-mangle)
+        mangle.c)
+      (define-syntax
+        #,(make-own-contract-policy-id this-syntax
             '#%own-contract-policy-using-external-contracts?)
         using-external-contracts?.c)
       (define-syntax
@@ -333,8 +362,12 @@
 
 (begin-for-syntax /define-syntax-class own-contracted-id
   #:attributes (val/c)
-  (pattern var:id
-    #:with val/c-unguarded (own-contract-scope #'var)
+  (pattern
+    {~and var:id /~not /~or {~literal struct} {~literal rename}}
+    
+    #:with val/c-unguarded
+    (mangle-for-own-contract (syntax-local-introduce this-syntax)
+      #'var)
     
     #:declare val/c-unguarded
     (expr/c #'contract?
@@ -345,6 +378,20 @@
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-ignored-out var:own-contracted-id ...)
   (contract-ignored-out [var var.val/c] ...))
+
+(define-provide-pre-transformer-syntax-parse-rule
+  (own-contract-out var:own-contracted-id ...)
+  
+  #:with result
+  #`(contract-whenc-out
+      (syntax-local-value
+        #'#,(make-own-contract-policy-id this-syntax
+              '#%own-contract-policy-using-external-contracts?)
+        (lambda () #t))
+      [var var.val/c]
+      ...)
+  
+  result)
 
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-whenc-out next-phase-condition:expr
@@ -365,13 +412,9 @@
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-unlessc-out next-phase-condition:expr
     var:own-contracted-id ...)
-  (own-contract-whenc-out (not next-phase-condition)
+  (contract-whenc-out (not next-phase-condition)
     [var var.val/c]
     ...))
-
-(define-provide-pre-transformer-syntax-parse-rule
-  (own-contract-out var:own-contracted-id ...)
-  (own-contract-whenc-out #t var ...))
 
 (define-syntax-parse-rule (ascribe-own-contract var:id val/c)
   
@@ -379,7 +422,15 @@
   (expr/c #'contract?
     #:name "the variable's ascribed contract")
   
-  #:with own-contract-var (own-contract-scope #'var)
+  #:with own-contract-var (mangle-for-own-contract this-syntax #'var)
+  
+  #:do
+  [
+    (when (equal? 'expression (syntax-local-context))
+      (raise-syntax-error #f
+        "not allowed in an expression context"
+        this-syntax))]
+  
   (define own-contract-var val/c.c))
 
 (begin-for-syntax /define-splicing-syntax-class lambda-param
@@ -410,19 +461,23 @@
     (expr/c #'contract?
       #:name "the variable's ascribed contract")
     
-    #:with own-contract-var (own-contract-scope #'var)
+    #:with own-contract-var (mangle-for-own-contract this-syntax #'var)
+    
     #`(begin
-        (ascribe-own-contract var val/c.c)
+        #,(datum->syntax this-syntax /syntax->list
+            #'(ascribe-own-contract var val/c.c))
         #,(if
             (syntax-local-value
-              (make-own-contract-policy-id this-syntax
+              (make-own-contract-policy-id
+                (syntax-local-introduce this-syntax)
                 '#%own-contract-policy-using-internal-contracts?)
               (lambda () #f))
             #'(define var (invariant-assertion own-contract-var body))
             #'(define var body)))]
   [
     (_ (head . args:lambda-params) val/c:expr body:expr ...+)
-    #'(define/own-contract head val/c (lambda args body ...))])
+    (datum->syntax this-syntax /syntax->list
+      #'(define/own-contract head val/c (lambda args body ...)))])
 
 
 
@@ -439,15 +494,18 @@
 (define-syntax-parse-rule (init-shim)
   
   #:with result
-  (syntax-local-introduce
-    #`( #,(syntax-local-introduce #'define-own-contract-policies)
-        
-        #:using-external-contracts?
-        #,(syntax-local-introduce /datum->syntax #'()
-            using-external-contracts?)
-        
-        #:using-internal-contracts?
-        #,(syntax-local-introduce /datum->syntax #'()
-            using-internal-contracts?)))
+  (datum->syntax this-syntax
+    `(,#'define-own-contract-policies
+       
+       #:mangle
+       ,#`(lambda (orig)
+            (own-contract-scope orig) #;
+            (format-id orig "~a/sig-c" orig #:subs? #t))
+       
+       #:using-external-contracts?
+       ,(datum->syntax #'() using-external-contracts?)
+       
+       #:using-internal-contracts?
+       ,(datum->syntax #'() using-internal-contracts?)))
   
   result)

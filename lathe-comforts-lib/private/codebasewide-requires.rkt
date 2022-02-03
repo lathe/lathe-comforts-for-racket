@@ -21,12 +21,13 @@
 
 (for-syntax /combine-in/fallback
   (combine-in
+    (only-in racket/contract/base ->)
     (only-in racket/format ~a)
     (only-in racket/list append* check-duplicates last range)
     (only-in racket/provide-transform
       make-provide-pre-transformer pre-expand-export)
     (only-in racket/struct-info extract-struct-info struct-info?)
-    (only-in racket/syntax syntax-local-eval)
+    (only-in racket/syntax format-id syntax-local-eval)
     (only-in racket/unit rename)
     (only-in syntax/contract wrap-expr/c)
     (only-in syntax/parse
