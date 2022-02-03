@@ -5,7 +5,7 @@
 ; A pair of structure types, `nothing` and `just`, intended for values
 ; that may or may not be provided.
 
-;   Copyright 2017-2019 The Lathe Authors
+;   Copyright 2017-2019, 2022 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -20,9 +20,8 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/only-in racket/contract/base
-  -> any/c contract? contract-name contract-out or/c rename-contract)
-(require #/only-in racket/contract/combinator coerce-contract)
+(require lathe-comforts/private/shim)
+(init-shim)
 
 (require #/only-in lathe-comforts expect fn w-)
 (require #/only-in lathe-comforts/struct
@@ -30,44 +29,53 @@
 (require #/only-in lathe-comforts/match match/c)
 
 
-(provide nothing just)
-(provide #/contract-out
-  [nothing? (-> any/c boolean?)]
-  [just? (-> any/c boolean?)]
-  [just-value (-> just? any/c)]
-  [maybe? (-> any/c boolean?)]
-  [maybe/c (-> contract? contract?)]
-  [maybe-bind (-> maybe? (-> any/c maybe?) maybe?)]
-  [maybe-map (-> maybe? (-> any/c any/c) maybe?)]
-  [maybe-if (-> any/c (-> any/c) maybe?)]
-)
+(provide
+  nothing
+  just)
+(provide #/own-contract-out
+  nothing?
+  just?
+  just-value
+  maybe?
+  maybe/c
+  maybe-bind
+  maybe-map
+  maybe-if)
 
 
 (define-imitation-simple-struct (nothing?) nothing
   'nothing (current-inspector) (auto-write) (auto-equal))
+(ascribe-own-contract nothing? (-> any/c boolean?))
 
 (define-imitation-simple-struct (just? just-value) just
   'just (current-inspector) (auto-write) (auto-equal))
+(ascribe-own-contract just? (-> any/c boolean?))
+(ascribe-own-contract just-value (-> just? any/c))
 
-(define (maybe? v)
+(define/own-contract (maybe? v)
+  (-> any/c boolean?)
   (or (nothing? v) (just? v)))
 
 ; TODO: Give the resulting contract a better name, check that it has
 ; good `contract-stronger?` behavior, etc.
-(define (maybe/c c)
+(define/own-contract (maybe/c c)
+  (-> contract? contract?)
   (w- c (coerce-contract 'maybe/c c)
   #/rename-contract (or/c nothing? #/match/c just c)
     `(maybe/c ,(contract-name c))))
 
-(define (maybe-bind m func)
+(define/own-contract (maybe-bind m func)
+  (-> maybe? (-> any/c maybe?) maybe?)
   (expect m (just value) (nothing)
   #/func value))
 
-(define (maybe-map m func)
+(define/own-contract (maybe-map m func)
+  (-> maybe? (-> any/c any/c) maybe?)
   (maybe-bind m #/fn value
   #/just #/func value))
 
-(define (maybe-if condition get-value)
+(define/own-contract (maybe-if condition get-value)
+  (-> any/c (-> any/c) maybe?)
   (if condition
     (just #/get-value)
     (nothing)))

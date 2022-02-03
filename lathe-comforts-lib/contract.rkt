@@ -4,7 +4,7 @@
 ;
 ; Utilities for contracts.
 
-;   Copyright 2017-2020 The Lathe Authors
+;   Copyright 2017-2022 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -19,24 +19,8 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/for-syntax racket/base)
-(require #/for-syntax #/only-in syntax/parse
-  expr expr/c id ~optional ~seq syntax-parse)
-
-; NOTE: The Racket documentation says `get/build-late-neg-projection`
-; is in `racket/contract/combinator`, but it isn't. It's in
-; `racket/contract/base`. Since it's also in `racket/contract` and the
-; documentation correctly says it is, we require it from there.
-(require #/only-in racket/contract get/build-late-neg-projection)
-(require #/only-in racket/contract/base
-  -> ->i and/c any/c chaperone-contract? contract? contract-name
-  contract-out flat-contract? recursive-contract rename-contract)
-(require #/only-in racket/contract/combinator
-  blame-add-context coerce-chaperone-contract coerce-contract
-  coerce-flat-contract contract-first-order-passes?
-  make-chaperone-contract make-contract make-flat-contract
-  raise-blame-error)
-(require #/only-in syntax/parse/define define-simple-macro)
+(require lathe-comforts/private/shim)
+(init-shim)
 
 (require #/only-in lathe-comforts
   dissect dissectfn expect expectfn fn mat w-)
@@ -45,30 +29,28 @@
 
 (provide
   impersonator-obstinacy)
-(provide #/contract-out
-  [impersonator-obstinacy? (-> any/c boolean?)])
+(provide #/own-contract-out
+  impersonator-obstinacy?)
 (provide
   chaperone-obstinacy)
-(provide #/contract-out
-  [chaperone-obstinacy? (-> any/c boolean?)])
+(provide #/own-contract-out
+  chaperone-obstinacy?)
 (provide
   flat-obstinacy)
-(provide #/contract-out
-  [flat-obstinacy? (-> any/c boolean?)]
-  [obstinacy? (-> any/c boolean?)]
-  [obstinacy-contract/c (-> obstinacy? flat-contract?)]
-  [obstinacy-get-make-contract (-> obstinacy? procedure?)]
-  [obstinacy-get-coerce-contract-for-id
-    (->i ([ob obstinacy?] [id symbol?])
-      [_ (ob) (-> any/c #/obstinacy-contract/c ob)])]
-  [value-name-for-contract (-> any/c any/c)])
+(provide #/own-contract-out
+  flat-obstinacy?
+  obstinacy?
+  obstinacy-contract/c
+  obstinacy-get-make-contract
+  obstinacy-get-coerce-contract-for-id
+  value-name-for-contract)
 (provide
   let/c
   fix/c
   by-own-method/c)
-(provide #/contract-out
-  [equal/c (-> any/c flat-contract?)]
-  [flat-contract-accepting/c (-> any/c flat-contract?)])
+(provide #/own-contract-out
+  equal/c
+  flat-contract-accepting/c)
 
 
 (define-imitation-simple-struct
@@ -77,38 +59,46 @@
   'impersonator-obstinacy (current-inspector)
   (auto-write)
   (auto-equal))
+(ascribe-own-contract impersonator-obstinacy? (-> any/c boolean?))
 (define-imitation-simple-struct
   (chaperone-obstinacy?)
   chaperone-obstinacy
   'chaperone-obstinacy (current-inspector)
   (auto-write)
   (auto-equal))
+(ascribe-own-contract chaperone-obstinacy? (-> any/c boolean?))
 (define-imitation-simple-struct
   (flat-obstinacy?)
   flat-obstinacy
   'flat-obstinacy (current-inspector)
   (auto-write)
   (auto-equal))
+(ascribe-own-contract flat-obstinacy? (-> any/c boolean?))
 
-(define (obstinacy? v)
+(define/own-contract (obstinacy? v)
+  (-> any/c boolean?)
   (or
     (impersonator-obstinacy? v)
     (chaperone-obstinacy? v)
     (flat-obstinacy? v)))
 
-(define (obstinacy-contract/c ob)
+(define/own-contract (obstinacy-contract/c ob)
+  (-> obstinacy? flat-contract?)
   (mat ob (impersonator-obstinacy) contract?
   #/mat ob (chaperone-obstinacy) chaperone-contract?
   #/dissect ob (flat-obstinacy) flat-contract?))
 
 ; TODO: See if we should use `begin-suggest-inline` for this. Would it
 ; help at all?
-(define (obstinacy-get-make-contract ob)
+(define/own-contract (obstinacy-get-make-contract ob)
+  (-> obstinacy? procedure?)
   (mat ob (impersonator-obstinacy) make-contract
   #/mat ob (chaperone-obstinacy) make-chaperone-contract
   #/dissect ob (flat-obstinacy) make-flat-contract))
 
-(define (obstinacy-get-coerce-contract-for-id ob id)
+(define/own-contract (obstinacy-get-coerce-contract-for-id ob id)
+  (->i ([ob obstinacy?] [id symbol?])
+    [_ (ob) (-> any/c #/obstinacy-contract/c ob)])
   (mat ob (impersonator-obstinacy) (fn c #/coerce-contract id c)
   #/mat ob (chaperone-obstinacy)
     (fn c #/coerce-chaperone-contract id c)
@@ -136,7 +126,8 @@
     #/obstinacy-project-late ob c-proj v missing-party)))
 
 
-(define (value-name-for-contract v)
+(define/own-contract (value-name-for-contract v)
+  (-> any/c any/c)
   (if (contract? v)
     (contract-name v)
     v))
@@ -188,9 +179,11 @@
                     `(var ,(contract-name-or-value arg-var) ...)))
               #/rename-contract contract.c
                 `(fix/c
-                  (var [arg-var ,(contract-name-or-value arg-var)] ...)
-                  options ...
-                  contract))))
+                   (var
+                     [arg-var ,(contract-name-or-value arg-var)]
+                     ...)
+                   options ...
+                   contract))))
           (var arg-val ...))]))
 
 
@@ -237,12 +230,14 @@
           (list body.c)))))
 
 
-(define (equal/c example)
+(define/own-contract (equal/c example)
+  (-> any/c flat-contract?)
   (rename-contract (fn v #/equal? example v)
     `(equal/c ,(value-name-for-contract example))))
 
 
-(define (flat-contract-accepting/c v)
+(define/own-contract (flat-contract-accepting/c v)
+  (-> any/c flat-contract?)
   (rename-contract
     (and/c flat-contract? (fn c #/contract-first-order-passes? c v))
     `(flat-contract-accepting/c ,(value-name-for-contract v))))

@@ -4,7 +4,7 @@
 ;
 ; Utilities for structs.
 
-;   Copyright 2017-2020 The Lathe Authors
+;   Copyright 2017-2020, 2022 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -19,35 +19,11 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/for-syntax racket/base)
-(require #/for-syntax #/only-in racket/list append* range)
-(require #/for-syntax #/only-in racket/struct-info
-  extract-struct-info struct-info?)
-(require #/for-syntax #/only-in syntax/parse
-  ~! ~and ~bind ~fail ~or* ~parse ~seq ~var
-  define-splicing-syntax-class expr expr/c id nat pattern
-  syntax-parse)
+(require lathe-comforts/private/shim)
+(init-shim)
 
 (require #/for-syntax #/only-in lathe-comforts
   dissect expect fn mat w- w-loop)
-
-; NOTE: The Racket documentation says `get/build-late-neg-projection`
-; is in `racket/contract/combinator`, but it isn't. It's in
-; `racket/contract/base`. Since it's also in `racket/contract` and the
-; documentation correctly says it is, we require it from there.
-(require #/only-in racket/contract get/build-late-neg-projection)
-(require #/only-in racket/contract/base
-  -> ->i </c and/c any/c cons/c contract? contract-name contract-out
-  flat-contract? listof none/c or/c procedure-arity-includes/c
-  unconstrained-domain->)
-(require #/only-in racket/contract/combinator
-  blame-add-context contract-first-order-passes? make-contract
-  make-flat-contract raise-blame-error)
-(require #/only-in racket/contract/region define/contract)
-(require #/only-in racket/list range)
-(require #/only-in racket/match define-match-expander)
-(require #/only-in racket/math natural?)
-(require #/only-in racket/struct make-constructor-style-printer)
 
 (require #/only-in lathe-comforts dissect dissectfn expect fn mat w-)
 
@@ -65,59 +41,23 @@
 ;  struct-mutator-by-name
   istruct/c
   )
-(provide #/contract-out
-  [tupler? (-> any/c boolean?)]
-  [tupler-length (-> tupler? natural?)]
-  [tupler/c (-> flat-contract? flat-contract?)]
-  [tupler-pred?-fn (-> tupler? #/-> any/c boolean?)]
-  [tupler-ref-fn
-    (->i ([t tupler?]) #/_ (t)
-    #/-> (tupler-pred?-fn t) (and/c natural? (</c #/tupler-length t))
-      any/c)]
-  [tupler-proj-fns
-    (->i ([t tupler?]) #/_ (t)
-    #/listof #/-> (tupler-pred?-fn t) any/c)]
-  [tupler-make-fn
-    (->i ([t tupler?])
-      [_ (t)
-        (and/c (procedure-arity-includes/c #/tupler-length t)
-        #/unconstrained-domain-> #/tupler-pred?-fn t)])]
+(provide #/own-contract-out
+  tupler?
+  tupler-length
+  tupler/c
+  tupler-pred?-fn
+  tupler-ref-fn
+  tupler-proj-fns
+  tupler-make-fn
   ; NOTE: These are unsafe because they can create misbehaving
-  ; tuplers, but if we exported them, these would be their contracts.
-  ; Their documentation is also available but commented out in
+  ; tuplers. If we ever want to export them anyway, their
+  ; documentation is available but commented out in
   ; lathe-comforts.scrbl.
-  #|
-  [tupler-from-pred-and-ref-and-make
-    (->i
-      (
-        [length natural?]
-        [pred?-fn (-> any/c boolean?)]
-        [ref-fn (length pred?-fn)
-          (-> pred?-fn (and/c natural? (</c length)) any/c)]
-        [make-fn (pred?-fn) (-> any/c ... pred?-fn)])
-      [_ tupler?])]
-  [tupler-from-pred-and-projs-and-make
-    (->i
-      (
-        [pred?-fn (-> any/c boolean?)]
-        [proj-fns (pred?-fn) (listof #/-> pred?-fn any/c)]
-        [make-fn (pred?-fn) (-> any/c ... pred?-fn)])
-      [_ tupler?])]
-  |#
+;  tupler-from-pred-and-ref-and-make
+;  tupler-from-pred-and-projs-and-make
   ; TODO: When we need to export this, uncomment it, and uncomment its
   ; documentation in lathe-comforts.scrbl.
-  #;
-  [tupler-for-simple-make-struct-type
-    (->i
-      (
-        [length natural?]
-        [reflection-name symbol?]
-        [inspector (or/c inspector? #f 'prefab)]
-        [props (inspector)
-          (listof
-            (mat inspector 'prefab none/c
-            #/cons/c struct-type-property? any/c))])
-      [_ tupler?])]
+;  tupler-for-simple-make-struct-type
   )
 ; TODO: When we need to export these tupler-related macros and
 ; `define-imitation-simple-struct/derived`, uncomment and document
@@ -428,33 +368,54 @@
 (struct -tupler (length pred?-fn ref-fn proj-fns make-fn)
   #:reflection-name 'tupler)
 
-(define (tupler? v)
+(define/own-contract (tupler? v)
+  (-> any/c boolean?)
   (-tupler? v))
 
-(define (tupler-length tupler)
+(define/own-contract (tupler-length tupler)
+  (-> tupler? natural?)
   (-tupler-length tupler))
 
-(define (tupler/c length/c)
+(define/own-contract (tupler/c length/c)
+  (-> flat-contract? flat-contract?)
   (make-flat-contract #:name `(tupler/c ,(contract-name length/c))
     #:first-order
     (fn v
       (and (tupler? v)
         (contract-first-order-passes? length/c #/tupler-length v)))))
 
-(define (tupler-pred?-fn tupler)
+(define/own-contract (tupler-pred?-fn tupler)
+  (-> tupler? #/-> any/c boolean?)
   (-tupler-pred?-fn tupler))
 
-(define (tupler-ref-fn tupler)
+(define/own-contract (tupler-ref-fn tupler)
+  (->i ([t tupler?]) #/_ (t)
+    (-> (tupler-pred?-fn t) (and/c natural? (</c #/tupler-length t))
+      any/c))
   (-tupler-ref-fn tupler))
 
-(define (tupler-proj-fns tupler)
+(define/own-contract (tupler-proj-fns tupler)
+  (->i ([t tupler?]) #/_ (t)
+    (listof #/-> (tupler-pred?-fn t) any/c))
   (-tupler-proj-fns tupler))
 
-(define (tupler-make-fn tupler)
+(define/own-contract (tupler-make-fn tupler)
+  (->i ([t tupler?])
+    [_ (t)
+      (and/c (procedure-arity-includes/c #/tupler-length t)
+      #/unconstrained-domain-> #/tupler-pred?-fn t)])
   (-tupler-make-fn tupler))
 
-(define
+(define/own-contract
   (tupler-from-pred-and-ref-and-make length pred?-fn ref-fn make-fn)
+  (->i
+    (
+      [length natural?]
+      [pred?-fn (-> any/c boolean?)]
+      [ref-fn (length pred?-fn)
+        (-> pred?-fn (and/c natural? (</c length)) any/c)]
+      [make-fn (pred?-fn) (unconstrained-domain-> pred?-fn)])
+    [_ tupler?])
   (-tupler
     length
     (fn v #/pred?-fn v)
@@ -463,8 +424,14 @@
       (fn self #/ref-fn self i))
     (lambda args #/apply make-fn args)))
 
-(define
+(define/own-contract
   (tupler-from-pred-and-projs-and-make pred?-fn proj-fns make-fn)
+  (->i
+    (
+      [pred?-fn (-> any/c boolean?)]
+      [proj-fns (pred?-fn) (listof #/-> pred?-fn any/c)]
+      [make-fn (pred?-fn) (unconstrained-domain-> pred?-fn)])
+    [_ tupler?])
   (w- vec-proj-fns (list->vector proj-fns)
   #/-tupler
     (vector-length vec-proj-fns)
@@ -476,9 +443,19 @@
     (lambda args #/apply make-fn args)))
 
 
-(define
+(define/own-contract
   (tupler-for-simple-make-struct-type
     length reflection-name inspector props)
+  (->i
+    (
+      [length natural?]
+      [reflection-name symbol?]
+      [inspector (or/c inspector? #f 'prefab)]
+      [props (inspector)
+        (listof
+          (mat inspector 'prefab none/c
+          #/cons/c struct-type-property? any/c))])
+    [_ tupler?])
   (define-values (struct:inst make-inst inst? inst-ref inst-set!)
     (make-struct-type
       #;name reflection-name

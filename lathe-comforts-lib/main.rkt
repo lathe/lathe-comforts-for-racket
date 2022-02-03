@@ -4,7 +4,7 @@
 ;
 ; Evergreen utilities.
 
-;   Copyright 2018, 2019 The Lathe Authors
+;   Copyright 2018-2019, 2022 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/only-in racket/contract/base -> any any/c contract-out)
+(require lathe-comforts/private/shim)
+(init-shim)
 
 (require lathe-comforts/private)
 
@@ -34,7 +35,8 @@
   ; == Utilities for functional programming ==
   
   ; Bindings and recursion
-  (contract-out [pass (-> any/c (-> any/c any) any)])
+  (recontract-out
+    pass)
   w-
   fn
   w-loop

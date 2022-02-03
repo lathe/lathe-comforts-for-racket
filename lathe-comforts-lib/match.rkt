@@ -4,7 +4,7 @@
 ;
 ; Utilities for match expanders.
 
-;   Copyright 2019, 2020 The Lathe Authors
+;   Copyright 2019-2020, 2022 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -19,28 +19,14 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/for-syntax racket/base)
-
-(require #/for-syntax #/only-in syntax/contract wrap-expr/c)
-(require #/for-syntax #/only-in syntax/parse
-  ~var expr expr/c id syntax-parse)
+(require lathe-comforts/private/shim)
+(init-shim)
 
 (require #/for-syntax #/only-in lathe-comforts fn)
 
-; NOTE: The Racket documentation says `get/build-late-neg-projection`
-; is in `racket/contract/combinator`, but it isn't. It's in
-; `racket/contract/base`. Since it's also in `racket/contract` and the
-; documentation correctly says it is, we require it from there.
-(require #/only-in racket/contract get/build-late-neg-projection)
-(require #/only-in racket/contract/base
-  ->i any any/c contract? contract-name flat-contract?)
-(require #/only-in racket/contract/combinator
-  blame-add-context coerce-contract contract-first-order-passes?
-  make-contract make-flat-contract raise-blame-error)
-(require #/only-in racket/match define-match-expander)
-
 (require #/only-in lathe-comforts
   dissect dissectfn expect expectfn fn mat w-)
+
 
 (provide
   define-match-expander-from-match-and-make

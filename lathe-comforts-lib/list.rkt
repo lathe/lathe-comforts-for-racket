@@ -4,7 +4,7 @@
 ;
 ; Utilities for lists and natural numbers.
 
-;   Copyright 2017-2018 The Lathe Authors
+;   Copyright 2017-2018, 2022 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -19,61 +19,61 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/only-in racket/contract/base -> any any/c contract-out)
-(require #/only-in racket/list append-map range)
-(require #/only-in racket/math natural?)
+(require lathe-comforts/private/shim)
+(init-shim)
 
 (require #/only-in lathe-comforts expect fn w-loop)
 (require #/only-in lathe-comforts/maybe just maybe/c nothing)
 
-(provide #/contract-out
+(provide #/own-contract-out
   
   
   ; Utilities for natural numbers
   
-  [nat->maybe (-> natural? #/maybe/c natural?)]
+  nat->maybe
   
   
   ; Utilities for lists
   
-  [list-foldl (-> any/c list? (-> any/c any/c any/c) any/c)]
-  [list-foldr (-> list? any/c (-> any/c any/c any/c) any/c)]
+  list-foldl
+  list-foldr
   
-  [list-bind (-> list? (-> any/c list?) list?)]
+  list-bind
   
-  [list-map (-> list? (-> any/c any/c) list?)]
-  [list-any (-> list? (-> any/c any) any)]
-  [list-all (-> list? (-> any/c any) any)]
-  [list-each (-> list? (-> any/c any) void?)]
+  list-map
+  list-any
+  list-all
+  list-each
   
-  [list-kv-map (-> list? (-> natural? any/c any/c) list?)]
-  [list-kv-any (-> list? (-> natural? any/c any) any)]
-  [list-kv-all (-> list? (-> natural? any/c any) any)]
-  [list-kv-each (-> list? (-> natural? any/c any) void?)]
+  list-kv-map
+  list-kv-any
+  list-kv-all
+  list-kv-each
   
-  [list-zip-map (-> list? list? (-> any/c any/c any/c) list?)]
-  [list-zip-any (-> list? list? (-> any/c any/c any) any)]
-  [list-zip-all (-> list? list? (-> any/c any/c any) any)]
-  [list-zip-each (-> list? list? (-> any/c any/c any) void?)]
+  list-zip-map
+  list-zip-any
+  list-zip-all
+  list-zip-each
   
   
   ; Utilities for natural numbers and lists together
-  [list-length<=nat? (-> list? natural? boolean?)]
-  [nat<=list-length? (-> natural? list? boolean?)]
+  list-length<=nat?
+  nat<=list-length?
   
-  [list-length=nat? (-> list? natural? boolean?)]
+  list-length=nat?
   
-  [list-length<nat? (-> list? natural? boolean?)]
-  [nat<list-length? (-> natural? list? boolean?)]
+  list-length<nat?
+  nat<list-length?
   
   
-)
+  )
 
 
 
 ; ===== Utilities for natural numbers ================================
 
-(define (nat->maybe n)
+(define/own-contract (nat->maybe n)
+  (-> natural? #/maybe/c natural?)
   (if (= n 0)
     (nothing)
     (just #/sub1 n)))
@@ -81,31 +81,40 @@
 
 ; ===== Utilities for lists ==========================================
 
-(define (list-foldl state lst func)
+(define/own-contract (list-foldl state lst func)
+  (-> any/c list? (-> any/c any/c any/c) any/c)
   (foldl (fn elem state #/func state elem) state lst))
 
-(define (list-foldr lst state func)
+(define/own-contract (list-foldr lst state func)
+  (-> list? any/c (-> any/c any/c any/c) any/c)
   (foldr (fn elem state #/func elem state) state lst))
 
-(define (list-bind lst func)
+(define/own-contract (list-bind lst func)
+  (-> list? (-> any/c list?) list?)
   (append-map func lst))
 
-(define (list-map lst func)
+(define/own-contract (list-map lst func)
+  (-> list? (-> any/c any/c) list?)
   (map func lst))
 
-(define (list-any lst func)
+(define/own-contract (list-any lst func)
+  (-> list? (-> any/c any) any)
   (ormap func lst))
 
-(define (list-all lst func)
+(define/own-contract (list-all lst func)
+  (-> list? (-> any/c any) any)
   (andmap func lst))
 
-(define (list-each lst body)
+(define/own-contract (list-each lst body)
+  (-> list? (-> any/c any) void?)
   (for-each body lst))
 
-(define (list-kv-map lst func)
+(define/own-contract (list-kv-map lst func)
+  (-> list? (-> natural? any/c any/c) list?)
   (map func (range #/length lst) lst))
 
-(define (list-kv-any lst func)
+(define/own-contract (list-kv-any lst func)
+  (-> list? (-> natural? any/c any) any)
   (expect lst (cons v lst) #f
   #/w-loop next k 0 v v lst lst
     
@@ -118,7 +127,8 @@
     #/or (func k v)
     #/next (add1 k) new-v lst)))
 
-(define (list-kv-all lst func)
+(define/own-contract (list-kv-all lst func)
+  (-> list? (-> natural? any/c any) any)
   (expect lst (cons v lst) #t
   #/w-loop next k 0 v v lst lst
     
@@ -131,41 +141,51 @@
     #/and (func k v)
     #/next (add1 k) new-v lst)))
 
-(define (list-kv-each lst body)
+(define/own-contract (list-kv-each lst body)
+  (-> list? (-> natural? any/c any) void?)
   (for-each body (range #/length lst) lst))
 
-(define (list-zip-map a b func)
+(define/own-contract (list-zip-map a b func)
+  (-> list? list? (-> any/c any/c any/c) list?)
   (map func a b))
 
-(define (list-zip-any a b func)
+(define/own-contract (list-zip-any a b func)
+  (-> list? list? (-> any/c any/c any) any)
   (ormap func a b))
 
-(define (list-zip-all a b func)
+(define/own-contract (list-zip-all a b func)
+  (-> list? list? (-> any/c any/c any) any)
   (andmap func a b))
 
-(define (list-zip-each a b body)
+(define/own-contract (list-zip-each a b body)
+  (-> list? list? (-> any/c any/c any) void?)
   (for-each body a b))
 
 
 ; ===== Utilities for natural numbers and lists together =============
 
-(define (list-length<=nat? lst n)
+(define/own-contract (list-length<=nat? lst n)
+  (-> list? natural? boolean?)
   (expect lst (cons _ lst) #t
   #/expect (nat->maybe n) (just n) #f
   #/list-length<=nat? lst n))
 
-(define (nat<=list-length? n lst)
+(define/own-contract (nat<=list-length? n lst)
+  (-> natural? list? boolean?)
   (expect (nat->maybe n) (just n) #t
   #/expect lst (cons _ lst) #f
   #/nat<=list-length? n lst))
 
-(define (list-length=nat? lst n)
+(define/own-contract (list-length=nat? lst n)
+  (-> list? natural? boolean?)
   (expect lst (cons _ lst) (= 0 n)
   #/expect (nat->maybe n) (just n) #f
   #/list-length=nat? lst n))
 
-(define (list-length<nat? lst n)
+(define/own-contract (list-length<nat? lst n)
+  (-> list? natural? boolean?)
   (not #/nat<=list-length? n lst))
 
-(define (nat<list-length? n lst)
+(define/own-contract (nat<list-length? n lst)
+  (-> natural? list? boolean?)
   (not #/list-length<=nat? lst n))

@@ -4,7 +4,7 @@
 ;
 ; Utilities for hash tables.
 
-;   Copyright 2017-2018 The Lathe Authors
+;   Copyright 2017-2018, 2022 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 ;   language governing permissions and limitations under the License.
 
 
-(require #/only-in racket/contract/base
-  -> ->i any any/c contract-out listof)
+(require lathe-comforts/private/shim)
+(init-shim)
 
 (require #/only-in lathe-comforts
   dissect dissectfn expect fn mat w- w-loop)
@@ -28,46 +28,47 @@
 (require #/only-in lathe-comforts/list
   list-any list-bind list-foldl list-map)
 
-(provide #/contract-out
-  [make-similar-hash (-> hash? (listof pair?) hash?)]
-  [hash-comparison-same? (-> hash? hash? boolean?)]
-  [hash-keys-same?
-    (->i ([a hash?] [b hash?])
-      ; The two hash tables must have the same comparison function.
-      #:pre [a b] (hash-comparison-same? a b)
-      [_ boolean?])]
-  [hash-ref-maybe (-> hash? any/c maybe?)]
-  [hash-set-maybe (-> hash? any/c maybe? hash?)]
-  [hash-kv-map-sorted
-    (-> (-> any/c any/c boolean?) hash? (-> any/c any/c any/c) list?)]
-  [hash-kv-bind (-> hash? (-> any/c any/c hash?) hash?)]
-  [hash-kv-map-maybe (-> hash? (-> any/c any/c maybe?) hash?)]
-  [hash-kv-map (-> hash? (-> any/c any/c any/c) hash?)]
-  [hash-kv-any (-> hash? (-> any/c any/c boolean?) boolean?)]
-  [hash-kv-all (-> hash? (-> any/c any/c boolean?) boolean?)]
-  [hash-kv-each (-> hash? (-> any/c any/c any) void?)]
-  [hash-v-map-maybe (-> hash? (-> any/c maybe?) hash?)]
-  [hash-v-map (-> hash? (-> any/c any/c) hash?)]
-  [hash-v-any (-> hash? (-> any/c boolean?) boolean?)]
-  [hash-v-all (-> hash? (-> any/c boolean?) boolean?)]
-  [hash-v-each (-> hash? (-> any/c any) void?)]
-)
+(provide #/own-contract-out
+  make-similar-hash
+  hash-comparison-same?
+  hash-keys-same?
+  hash-ref-maybe
+  hash-set-maybe
+  hash-kv-map-sorted
+  hash-kv-bind
+  hash-kv-map-maybe
+  hash-kv-map 
+  hash-kv-any 
+  hash-kv-all 
+  hash-kv-each
+  hash-v-map-maybe 
+  hash-v-map
+  hash-v-any
+  hash-v-all
+  hash-v-each)
 
 
 
-(define (make-similar-hash example assocs)
+(define/own-contract (make-similar-hash example assocs)
+  (-> hash? (listof pair?) hash?)
   (list-foldl (hash-copy-clear example) assocs #/fn result entry
     (dissect entry (cons k v)
     #/hash-set result k v)))
 
-(define (hash-comparison-same? a b)
+(define/own-contract (hash-comparison-same? a b)
+  (-> hash? hash? boolean?)
   (list-any (list hash-equal? hash-eqv? hash-eq?) #/fn check
     (and (check a) (check b))))
 
-(define (hash-keys-same? a b)
+(define/own-contract (hash-keys-same? a b)
+  (->i ([a hash?] [b hash?])
+    ; The two hash tables must have the same comparison function.
+    #:pre [a b] (hash-comparison-same? a b)
+    [_ boolean?])
   (and (= (hash-count a) (hash-count b)) #/hash-keys-subset? a b))
 
-(define (hash-ref-maybe hash key)
+(define/own-contract (hash-ref-maybe hash key)
+  (-> hash? any/c maybe?)
   ; NOTE: We don't implement this using `hash-has-key?` followed by
   ; `hash-ref` because that could be prone to a race condition.
   (w- dummy (list #/list)
@@ -76,32 +77,38 @@
     (nothing)
     (just result)))
 
-(define (hash-set-maybe hash key maybe-value)
+(define/own-contract (hash-set-maybe hash key maybe-value)
+  (-> hash? any/c maybe? hash?)
   (expect maybe-value (just value)
     (hash-remove hash key)
     (hash-set hash key value)))
 
-(define (hash-kv-map-sorted key<? hash func)
+(define/own-contract (hash-kv-map-sorted key<? hash func)
+  (-> (-> any/c any/c boolean?) hash? (-> any/c any/c any/c) list?)
   (list-map (sort (hash->list hash) key<? #:key car)
   #/dissectfn (cons k v)
     (func k v)))
 
-(define (hash-kv-bind hash func)
+(define/own-contract (hash-kv-bind hash func)
+  (-> hash? (-> any/c any/c hash?) hash?)
   (make-similar-hash hash
   #/list-bind (hash->list hash) #/dissectfn (cons k v)
     (hash->list #/func k v)))
 
-(define (hash-kv-map-maybe h func)
+(define/own-contract (hash-kv-map-maybe h func)
+  (-> hash? (-> any/c any/c maybe?) hash?)
   (hash-kv-bind h #/fn k v
     (expect (func k v) (just v) (hash)
     #/hash k v)))
 
-(define (hash-kv-map hash func)
+(define/own-contract (hash-kv-map hash func)
+  (-> hash? (-> any/c any/c any/c) hash?)
   (hash-kv-map-maybe hash #/fn k v #/just #/func k v))
 
 ; NOTE: We only return booleans from this so as not to reveal the
 ; iteration order.
-(define (hash-kv-any hash func)
+(define/own-contract (hash-kv-any hash func)
+  (-> hash? (-> any/c any/c boolean?) boolean?)
   ; NOTE: We go to all this trouble with `hash-iterate-first`,
   ; `hash-iterate-pair`, and `hash-iterate-next` just so that when we
   ; exit early, we avoid the cost of a full `hash->list`.
@@ -113,29 +120,36 @@
 
 ; NOTE: We only return booleans from this so as not to reveal the
 ; iteration order.
-(define (hash-kv-all hash func)
+(define/own-contract (hash-kv-all hash func)
+  (-> hash? (-> any/c any/c boolean?) boolean?)
   (not #/hash-kv-any hash #/fn k v #/not #/func k v))
 
-(define (hash-kv-each hash body)
+(define/own-contract (hash-kv-each hash body)
+  (-> hash? (-> any/c any/c any) void?)
   (hash-for-each hash #/fn k v
     (body k v)))
 
-(define (hash-v-map-maybe hash func)
+(define/own-contract (hash-v-map-maybe hash func)
+  (-> hash? (-> any/c maybe?) hash?)
   (hash-kv-map-maybe hash #/fn k v #/func v))
 
-(define (hash-v-map hash func)
+(define/own-contract (hash-v-map hash func)
+  (-> hash? (-> any/c any/c) hash?)
   (hash-kv-map hash #/fn k v #/func v))
 
 ; NOTE: We only return booleans from this so as not to reveal the
 ; iteration order.
-(define (hash-v-any hash func)
+(define/own-contract (hash-v-any hash func)
+  (-> hash? (-> any/c boolean?) boolean?)
   (hash-kv-any hash #/fn k v #/func v))
 
 ; NOTE: We only return booleans from this so as not to reveal the
 ; iteration order.
-(define (hash-v-all hash func)
+(define/own-contract (hash-v-all hash func)
+  (-> hash? (-> any/c boolean?) boolean?)
   (hash-kv-all hash #/fn k v #/func v))
 
-(define (hash-v-each hash body)
+(define/own-contract (hash-v-each hash body)
+  (-> hash? (-> any/c any) void?)
   (hash-kv-each hash #/fn k v
     (body v)))
