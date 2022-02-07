@@ -53,7 +53,7 @@
     own-contract-scope
     own-contract-policy-scope
     make-own-contract-policy-id
-    mangle-for-own-contract)
+    make-signature-contract-id)
   define-own-contract-policies
   (for-syntax
     own-contracted-id)
@@ -67,8 +67,8 @@
     lambda-params)
   define/own-contract
   (for-syntax
-    using-external-contracts?
-    using-internal-contracts?)
+    suppressing-external-contracts?
+    activating-internal-contracts?)
   init-shim)
 
 
@@ -125,16 +125,16 @@
       {~seq
         [
           {~and next-phase-condition:expr
-            {~not /~or {~literal else} {~literal =>}}}
+            {~not /~or* {~literal else} {~literal =>}}}
           {~and branch:expr
-            {~not /~or {~literal else} {~literal =>}}}
+            {~not /~or* {~literal else} {~literal =>}}}
           ...]
         ...
         {~optional
           {~and {~bind [has-else-clause? #t]}
             [ {~literal else}
               {~and else-branch:expr
-                {~not /~or {~literal else} {~literal =>}}}
+                {~not /~or* {~literal else} {~literal =>}}}
               ...]}
           #:defaults
           ([has-else-clause? #f] [(else-branch 1) (list)])}}})
@@ -160,14 +160,14 @@
   #:attributes ([parts 1])
   (pattern
     {~and
-      {~or
+      {~or*
         {~seq
-          #:declare _:id {~or _:id (_:id _ ...)}
-          {~optional /~seq #:role _:expr}}
+          #:declare _:id {~or* _:id (_:id _ ...)}
+          {~or* {~seq} /~seq #:role _:expr}}
         {~seq #:post _:expr}
         {~seq #:and _:expr}
         {~seq #:with _ _:expr}
-        {~seq #:attr {~or _:id [_:id _:nat]} _:expr}
+        {~seq #:attr {~or* _:id [_:id _:nat]} _:expr}
         {~seq #:fail-when _:expr _:expr}
         {~seq #:fail-unless _:expr _:expr}
         {~seq #:when _:expr}
@@ -184,7 +184,7 @@
   (define-syntax name
     (make-provide-pre-transformer /lambda (stx modes)
       (syntax-parse stx / (_ . pattern)
-        directive.parts ... ...
+        {~@ directive.parts ...} ...
         (pre-expand-export #'template modes)))))
 
 ; TODO: See if we'll use this.
@@ -205,7 +205,7 @@
 
 (define-provide-pre-transformer-syntax-parse-rule
   (contract-ignored-out
-    [ {~and var:id /~not /~or {~literal struct} {~literal rename}}
+    [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
       val/c]
     ...)
   
@@ -219,7 +219,7 @@
 
 (define-provide-pre-transformer-syntax-parse-rule
   (contract-whenc-out next-phase-condition:expr
-    [ {~and var:id /~not /~or {~literal struct} {~literal rename}}
+    [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
       val/c]
     ...)
   
@@ -233,7 +233,7 @@
 
 (define-provide-pre-transformer-syntax-parse-rule
   (contract-unlessc-out next-phase-condition:expr
-    [ {~and var:id /~not /~or {~literal struct} {~literal rename}}
+    [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
       val/c]
     ...)
   
@@ -263,7 +263,9 @@
 (define-syntax-parser define-requirer /
   (_ name:id
     {~and clause
-      {~or _:module-path ({~literal only-in} _:module-path _:id ...)}}
+      {~or*
+        _:module-path
+        ({~literal only-in} _:module-path _:id ...)}}
     ...)
   #`(define-syntax-parser name / (_)
       #`(require
@@ -284,7 +286,9 @@
 (define-syntax-parser define-requirer-in /
   (_ name:id
     {~and clause
-      {~or _:module-path ({~literal only-in} _:module-path _:id ...)}}
+      {~or*
+        _:module-path
+        ({~literal only-in} _:module-path _:id ...)}}
     ...)
   #`(define-syntax name /make-require-transformer /syntax-parser / (_)
       (expand-import
@@ -307,67 +311,88 @@
   (own-contract-policy-scope /datum->syntax stx name))
 
 (define-for-syntax
-  (mangle-for-own-contract stx-where-policy-is-in-scope orig)
+  (make-signature-contract-id antecedent-land orig on-unbound)
   (
-    (syntax-local-value
-      (make-own-contract-policy-id stx-where-policy-is-in-scope
-        '#%own-contract-policy-mangle)
+    (or
+      (syntax-local-value
+        (make-own-contract-policy-id antecedent-land
+          '#%own-contract-policy-make-signature-contract-id)
+        (lambda () /on-unbound))
       
       ; NOTE: By default, we just add a scope to the identifier. This
       ; works within a single module, but the identifier's bindings
       ; won't be visible to `module*` or `module+` submodules. To
       ; achieve that visibility, the name needs to be interned, with a
       ; user-supplied naming convention to set it apart from other
-      ; variables in that context. This is what the mangle policy is
-      ; for.
+      ; variables in that context. This is what the
+      ; `#:make-signature-contract-id` policy is for.
       ;
-      (lambda () /lambda (orig) /own-contract-scope orig))
+      (lambda (orig) /own-contract-scope orig))
     orig))
 
 (define-syntax-parse-rule
   (define-own-contract-policies
-    #:mangle mangle
-    #:using-external-contracts? using-external-contracts?
-    #:using-internal-contracts? using-internal-contracts?)
+    {~alt
+      {~optional {~seq #:antecedent-land antecedent-land}
+        #:defaults
+        ([antecedent-land (datum->syntax this-syntax '())])}
+      {~optional
+        {~seq #:make-signature-contract-id make-signature-contract-id}
+        #:defaults ([make-signature-contract-id.c #'#f])}
+      {~optional
+        {~seq #:suppressing-external-contracts?
+          suppressing-external-contracts?}
+        #:defaults ([suppressing-external-contracts?.c #'#f])}
+      {~optional
+        {~seq #:activating-internal-contracts?
+          activating-internal-contracts?}
+        #:defaults ([activating-internal-contracts?.c #'#f])}}
+    ...)
   
-  #:declare mangle
-  (expr/c #'(-> identifier? identifier?)
+  #:declare make-signature-contract-id
+  (expr/c #'(or/c #f /-> identifier? identifier?)
     #:phase (add1 /syntax-local-phase-level)
-    #:name "the mangle policy")
+    #:name "the signature contract identifier naming policy")
   
-  #:declare using-external-contracts?
+  #:declare suppressing-external-contracts?
   (expr/c #'boolean? #:phase (add1 /syntax-local-phase-level)
-    #:name "the external contract policy")
+    #:name "the external contract suppression policy")
   
-  #:declare using-internal-contracts?
+  #:declare activating-internal-contracts?
   (expr/c #'boolean? #:phase (add1 /syntax-local-phase-level)
-    #:name "the internal contract policy")
+    #:name "the internal contract activation policy")
   
   #:with result
   #`(begin
       (define-syntax
-        #,(make-own-contract-policy-id this-syntax
-            '#%own-contract-policy-mangle)
-        mangle.c)
+        #,(make-own-contract-policy-id #'antecedent-land
+            '#%own-contract-policy-make-signature-contract-id)
+        make-signature-contract-id.c)
       (define-syntax
-        #,(make-own-contract-policy-id this-syntax
-            '#%own-contract-policy-using-external-contracts?)
-        using-external-contracts?.c)
+        #,(make-own-contract-policy-id #'antecedent-land
+            '#%own-contract-policy-suppressing-external-contracts?)
+        suppressing-external-contracts?.c)
       (define-syntax
-        #,(make-own-contract-policy-id this-syntax
-            '#%own-contract-policy-using-internal-contracts?)
-        using-internal-contracts?.c))
+        #,(make-own-contract-policy-id #'antecedent-land
+            '#%own-contract-policy-activating-internal-contracts?)
+        activating-internal-contracts?.c))
   
   result)
 
-(begin-for-syntax /define-syntax-class own-contracted-id
+(begin-for-syntax /define-syntax-class
+  (own-contracted-id antecedent-land)
   #:attributes (val/c)
   (pattern
-    {~and var:id /~not /~or {~literal struct} {~literal rename}}
+    {~and var:id /~not /~or* {~literal struct} {~literal rename}}
     
     #:with val/c-unguarded
-    (mangle-for-own-contract (syntax-local-introduce this-syntax)
-      #'var)
+    (make-signature-contract-id
+      (syntax-local-introduce antecedent-land)
+      #'var
+      (lambda ()
+        (raise-syntax-error #f
+          "expected a define-own-contract-policies definition before using the policies"
+          this-syntax)))
     
     #:declare val/c-unguarded
     (expr/c #'contract?
@@ -376,53 +401,91 @@
     #:attr val/c #'val/c-unguarded.c))
 
 (define-provide-pre-transformer-syntax-parse-rule
-  (own-contract-ignored-out var:own-contracted-id ...)
+  (own-contract-ignored-out
+    {~optional {~seq #:antecedent-land antecedent-land}
+      #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
+    var ...)
+  #:declare var (own-contracted-id #'antecedent-land)
   (contract-ignored-out [var var.val/c] ...))
 
 (define-provide-pre-transformer-syntax-parse-rule
-  (own-contract-out var:own-contracted-id ...)
+  (own-contract-out
+    {~optional {~seq #:antecedent-land antecedent-land}
+      #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
+    var ...)
+  #:declare var (own-contracted-id #'antecedent-land)
   
   #:with result
-  #`(contract-whenc-out
-      (syntax-local-value
-        #'#,(make-own-contract-policy-id this-syntax
-              '#%own-contract-policy-using-external-contracts?)
-        (lambda () #t))
-      [var var.val/c]
-      ...)
+  #`(
+    #,(if
+        (syntax-local-value
+          (make-own-contract-policy-id
+            (syntax-local-introduce #'antecedent-land)
+            '#%own-contract-policy-suppressing-external-contracts?)
+          (lambda ()
+            (raise-syntax-error #f
+              "expected a define-own-contract-policies definition before using the policies"
+              this-syntax)))
+        #'contract-ignored-out
+        #'contract-out)
+    [var var.val/c]
+    ...)
   
   result)
 
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-whenc-out next-phase-condition:expr
-    var:own-contracted-id ...)
+    {~optional {~seq #:antecedent-land antecedent-land}
+      #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
+    var ...)
+  #:declare var (own-contracted-id #'antecedent-land)
   
   #:with result
-  #`(contract-whenc-out
-      (and next-phase-condition
-        (syntax-local-value
-          #'#,(make-own-contract-policy-id this-syntax
-                '#%own-contract-policy-using-external-contracts?)
-          (lambda () #t)))
-      [var var.val/c]
-      ...)
+  #`(
+    #,(let
+        (
+          [condition-holds (syntax-local-eval #'next-condition)]
+          [ suppressing
+            (syntax-local-value
+              (make-own-contract-policy-id
+                (syntax-local-introduce #'antecedent-land)
+                '#%own-contract-policy-suppressing-external-contracts?)
+              (lambda ()
+                (raise-syntax-error #f
+                  "expected a define-own-contract-policies definition before using the policies"
+                  this-syntax)))])
+        (if (and condition-holds (not suppressing))
+          #'contract-ignored-out
+          #'contract-out))
+    [var var.val/c]
+    ...)
   
   result)
 
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-unlessc-out next-phase-condition:expr
-    var:own-contracted-id ...)
+    {~optional {~seq #:antecedent-land antecedent-land}
+      #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
+    var ...)
+  #:declare var (own-contracted-id #'antecedent-land)
   (contract-whenc-out (not next-phase-condition)
     [var var.val/c]
     ...))
 
-(define-syntax-parse-rule (ascribe-own-contract var:id val/c)
+(define-syntax-parse-rule
+  (ascribe-own-contract var:id val/c
+    {~optional {~seq #:antecedent-land antecedent-land}
+      #:defaults ([antecedent-land (datum->syntax this-syntax '())])})
   
   #:declare val/c
   (expr/c #'contract?
     #:name "the variable's ascribed contract")
   
-  #:with own-contract-var (mangle-for-own-contract this-syntax #'var)
+  #:with own-contract-var
+  (make-signature-contract-id #'antecedent-land #'var /lambda ()
+    (raise-syntax-error #f
+      "expected a define-own-contract-policies definition before using the policies"
+      this-syntax))
   
   #:do
   [
@@ -436,12 +499,14 @@
 (begin-for-syntax /define-splicing-syntax-class lambda-param
   #:attributes (kw var default)
   (pattern
-    {~seq {~optional kw:keyword} {~or var:id [var:id default:expr]}}))
+    {~seq
+      {~or* {~seq} kw:keyword}
+      {~or* var:id [var:id default:expr]}}))
 
 (begin-for-syntax /define-syntax-class lambda-params
   #:attributes ()
   (pattern
-    (param:lambda-param ... . {~or rest:id ()})
+    (param:lambda-param ... . {~or* rest:id ()})
     
     #:fail-when
     (check-duplicates #:key syntax-e
@@ -453,59 +518,73 @@
       #'(param.var ... {~? rest}))
     "duplicate argument identifier"))
 
-(define-syntax-parser define/own-contract
-  [
-    (_ var:id val/c body:expr)
-    
-    #:declare val/c
-    (expr/c #'contract?
-      #:name "the variable's ascribed contract")
-    
-    #:with own-contract-var (mangle-for-own-contract this-syntax #'var)
-    
-    #`(begin
-        #,(datum->syntax this-syntax /syntax->list
-            #'(ascribe-own-contract var val/c.c))
-        #,(if
-            (syntax-local-value
-              (make-own-contract-policy-id
-                (syntax-local-introduce this-syntax)
-                '#%own-contract-policy-using-internal-contracts?)
-              (lambda () #f))
-            #'(define var (invariant-assertion own-contract-var body))
-            #'(define var body)))]
-  [
-    (_ (head . args:lambda-params) val/c:expr body:expr ...+)
-    (datum->syntax this-syntax /syntax->list
-      #'(define/own-contract head val/c (lambda args body ...)))])
+(define-syntax (define/own-contract stx)
+  (let loop ([intermediate-stx stx])
+    (syntax-parse intermediate-stx
+      [
+        (_ var:id val/c
+          {~optional {~seq #:antecedent-land antecedent-land}
+            #:defaults ([antecedent-land (datum->syntax stx '())])}
+          body:expr)
+        
+        #:declare val/c
+        (expr/c #'contract?
+          #:name "the variable's ascribed contract")
+        
+        #:with own-contract-var
+        (make-signature-contract-id #'antecedent-land #'var /lambda ()
+          (raise-syntax-error #f
+            "expected a define-own-contract-policies definition before using the policies"
+            stx))
+        
+        #`(begin
+            (ascribe-own-contract var val/c.c
+              #:antecedent-land antecedent-land)
+            #,(if
+                (syntax-local-value
+                  (make-own-contract-policy-id
+                    (syntax-local-introduce #'antecedent-land)
+                    '#%own-contract-policy-activating-internal-contracts?)
+                  (lambda ()
+                    (raise-syntax-error #f
+                      "expected a define-own-contract-policies definition before using the policies"
+                      stx)))
+                #'(define var (invariant-assertion own-contract-var body))
+                #'(define var body)))]
+      [
+        (_ (head . args:lambda-params) val/c:expr
+          {~optional {~seq #:antecedent-land antecedent-land}
+            #:defaults ([antecedent-land (datum->syntax stx '())])}
+          body:expr ...+)
+        (loop
+          #'(define/own-contract head val/c
+              #:antecedent-land antecedent-land
+              (lambda args body ...)))])))
 
 
 
-; Should be `#t` unless we're debugging to determine if contracts are
+; Should be `#f` unless we're debugging to determine if contracts are
 ; a performance bottleneck.
 ;
-(define-for-syntax using-external-contracts? #t)
+(define-for-syntax suppressing-external-contracts? #f)
 
 ; Should be `#f` unless we're debugging this library's internal call
 ; graph.
 ;
-(define-for-syntax using-internal-contracts? #f)
+(define-for-syntax activating-internal-contracts? #f)
 
-(define-syntax-parse-rule (init-shim)
+(define-syntax-parse-rule
+  (init-shim
+    {~optional {~seq #:antecedent-land antecedent-land}
+      #:defaults ([antecedent-land (datum->syntax this-syntax '())])})
   
   #:with result
-  (datum->syntax this-syntax
-    `(,#'define-own-contract-policies
-       
-       #:mangle
-       ,#`(lambda (orig)
-            (own-contract-scope orig) #;
-            (format-id orig "~a/sig-c" orig #:subs? #t))
-       
-       #:using-external-contracts?
-       ,(datum->syntax #'() using-external-contracts?)
-       
-       #:using-internal-contracts?
-       ,(datum->syntax #'() using-internal-contracts?)))
+  #`(define-own-contract-policies #:antecedent-land antecedent-land
+      
+      #:suppressing-external-contracts?
+      #,(datum->syntax #'() suppressing-external-contracts?)
+      
+      #:activating-internal-contracts?
+      #,(datum->syntax #'() activating-internal-contracts?))
   
   result)

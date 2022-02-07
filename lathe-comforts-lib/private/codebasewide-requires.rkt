@@ -21,7 +21,7 @@
 
 (for-syntax /combine-in/fallback
   (combine-in
-    (only-in racket/contract/base ->)
+    (only-in racket/contract/base -> or/c)
     (only-in racket/format ~a)
     (only-in racket/list append* check-duplicates last range)
     (only-in racket/provide-transform
@@ -31,7 +31,7 @@
     (only-in racket/unit rename)
     (only-in syntax/contract wrap-expr/c)
     (only-in syntax/parse
-      ...+ ~! ~and ~bind ~fail ~literal ~not ~optional ~or ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse this-syntax))
+      ...+ ~! ~alt ~and ~bind ~fail ~literal ~not ~optional ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse this-syntax))
   racket/base)
 
 (only-in racket/contract/base
