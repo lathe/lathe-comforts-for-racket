@@ -4,7 +4,7 @@
 @;
 @; Evergreen utilities.
 
-@;   Copyright 2017-2020 The Lathe Authors
+@;   Copyright 2017-2022 The Lathe Authors
 @;
 @;   Licensed under the Apache License, Version 2.0 (the "License");
 @;   you may not use this file except in compliance with the License.
@@ -19,40 +19,8 @@
 @;   language governing permissions and limitations under the License.
 
 
-@(require #/for-label racket/base)
-@(require #/for-label #/only-in racket/contract/base
-  -> </c and/c any any/c cons/c chaperone-contract? contract?
-  contract-name flat-contract? listof or/c recursive-contract
-  struct/c)
-@(require #/for-label #/only-in racket/contract/combinator
-  coerce-chaperone-contract coerce-contract coerce-flat-contract
-  make-chaperone-contract make-contract make-flat-contract)
-@(require #/for-label #/only-in racket/generic define-generics)
-@(require #/for-label #/only-in racket/list append-map)
-@(require #/for-label #/only-in racket/match
-  exn:misc:match? match match-lambda)
-@(require #/for-label #/only-in racket/math natural?)
-@(require #/for-label #/only-in racket/struct
-  make-constructor-style-printer)
-@(require #/for-label #/only-in racket/struct-info
-  extract-struct-info)
-@(require #/for-label #/only-in syntax/parse expr id)
-@(require #/for-label #/only-in syntax/parse/define
-  define-simple-macro)
-
-@(require #/for-label #/only-in parendown pd)
-
-@(require #/for-label lathe-comforts)
-@(require #/for-label lathe-comforts/contract)
-@(require #/for-label lathe-comforts/hash)
-@(require #/for-label lathe-comforts/list)
-@(require #/for-label lathe-comforts/match)
-@(require #/for-label lathe-comforts/maybe)
-@(require #/for-label lathe-comforts/string)
-@(require #/for-label lathe-comforts/struct)
-@(require #/for-label lathe-comforts/trivial)
-
-@(require #/only-in scribble/example examples make-eval-factory)
+@(require lathe-comforts/scribblings/private/shim)
+@(init-shim)
 
 @(define example-eval
   (make-eval-factory #/list
@@ -68,7 +36,7 @@
 
 Lathe Comforts for Racket is a collection of utilities that are handy for writing Racket code. This is a non-intrusive toolkit; in most cases it should only make certain Racket code easier to write, without substantially changing the architecture of the project it's used in.
 
-Some of these utilities are designed with Parendown in mind. In some cases, Parendown's weak opening brackets make it easier to get by with higher-order functions instead of custom syntax. (Note that due to limitations of Scribble's Racket code formatter, we use Parendown's `pd` macro to achieve these weak parens, rather than using its custom reader syntax.)
+Some of these utilities are designed with Parendown in mind. In some cases, Parendown's weak opening brackets make it easier to get by with higher-order functions instead of custom syntax. (Note that due to limitations of Scribble's Racket code formatter, we use Parendown's @racket[pd] macro to achieve these weak parens, rather than using its custom reader syntax.)
 
 
 
@@ -1135,3 +1103,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   Unlike @racket[struct/c] (but like @racket[istruct/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[arg/c-expr] contracts contain one or more impersonator contracts.
 }
+
+
+
+@include-section["lathe-comforts/own-contract.scrbl"]

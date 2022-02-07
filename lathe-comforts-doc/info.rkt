@@ -9,6 +9,7 @@
     "parendown-doc"
     "parendown-lib"
     "racket-doc"
+    "reprovide-lang-lib"
     "scribble-lib"))
 
 (define scribblings
