@@ -572,7 +572,7 @@
             (tupler-from-pred-and-projs-and-make
               inst?
               (list inst-field ...)
-              inst)))
+              (procedure-rename inst reflection-name-result))))
         tupler)))
 
 (define-syntax (tupler-for-simple-struct stx)
