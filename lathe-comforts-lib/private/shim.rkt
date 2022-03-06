@@ -556,10 +556,11 @@
           {~optional {~seq #:antecedent-land antecedent-land}
             #:defaults ([antecedent-land (datum->syntax stx '())])}
           body:expr ...+)
+        #:with function (quasisyntax/loc stx (lambda args body ...))
         (loop
           #'(define/own-contract head val/c
               #:antecedent-land antecedent-land
-              (lambda args body ...)))])))
+              function))])))
 
 
 
