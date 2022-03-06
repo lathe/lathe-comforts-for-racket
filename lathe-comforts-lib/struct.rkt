@@ -33,6 +33,10 @@
 
 ; TODO: Export and document the commented-out ones if and when we have
 ; a use for them.
+(provide #/own-contract-out
+;  known-to-be-immutable-struct-type?
+  prefab-struct?
+  immutable-prefab-struct?)
 (provide
 ;  struct-descriptor
 ;  struct-constructor
@@ -78,6 +82,47 @@
   define-imitation-simple-generics
   )
 
+
+
+; NOTE: There's an implementation of this in `lathe-comforts/list` as
+; well, but we implement it here too to avoid a dependency cycle
+; between modules.
+(define/own-contract (list-length=nat? lst n)
+  (-> list? natural? boolean?)
+  (expect lst (cons _ lst) (= 0 n)
+  #/and (not #/= 0 n)
+  #/list-length=nat? lst (sub1 n)))
+
+
+(define/own-contract (known-to-be-immutable-struct-type? v)
+  (-> any/c boolean?)
+  (and (struct-type? v)
+  #/let next ()
+    (define-values
+      (
+        name
+        init-field-cnt
+        auto-field-cnt
+        accessor-proc
+        mutator-proc
+        immutable-k-list
+        super-type
+        skipped?)
+      (struct-type-info v))
+    (and
+      (not skipped?)
+      (list-length=nat? immutable-k-list init-field-cnt)
+      (or (not super-type) (next super-type)))))
+
+(define/own-contract (prefab-struct? v)
+  (-> any/c boolean?)
+  (not #/not #/prefab-struct-key v))
+
+(define/own-contract (immutable-prefab-struct? v)
+  (-> any/c boolean?)
+  (and (prefab-struct? v)
+  #/w- type (struct-info v)
+  #/and type (known-to-be-immutable-struct-type? type)))
 
 
 (define (guard-easy guard)

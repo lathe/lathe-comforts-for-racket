@@ -797,6 +797,14 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 
 @defmodule[lathe-comforts/struct]
 
+@defproc[(prefab-struct? [v any/c]) boolean?]{
+  Returns whether the given value is an instance of a prefab struct type.
+}
+
+@defproc[(immutable-prefab-struct? [v any/c]) boolean?]{
+  Returns whether the given value is an instance of a prefab struct type and has no mutable fields.
+}
+
 @defform[(struct-easy (name-id slot-id ...) rest ...)]{
   This is a convenience layer over @racket[struct], which has some features to automate the implementation of the struct's print behavior and @racket[equal?] behavior.
   
