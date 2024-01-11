@@ -4,7 +4,7 @@
 ;
 ; Utilities for lists and natural numbers.
 
-;   Copyright 2017-2018, 2022 The Lathe Authors
+;   Copyright 2017-2018, 2022, 2024 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 (init-shim)
 
 (require #/only-in lathe-comforts expect fn w-loop)
-(require #/only-in lathe-comforts/maybe just maybe/c nothing)
+(require #/only-in lathe-comforts/maybe just maybe? maybe/c nothing)
 
 (provide #/own-contract-out
   
@@ -64,6 +64,8 @@
   
   list-length<nat?
   nat<list-length?
+  
+  list-ref-maybe
   
   
   )
@@ -189,3 +191,10 @@
 (define/own-contract (nat<list-length? n lst)
   (-> natural? list? boolean?)
   (not #/list-length<=nat? lst n))
+
+
+(define/own-contract (list-ref-maybe lst i)
+  (-> list? natural? maybe?)
+  (expect lst (cons v lst) (nothing)
+  #/expect (nat->maybe i) (just i) (just v)
+  #/list-ref-maybe lst i))

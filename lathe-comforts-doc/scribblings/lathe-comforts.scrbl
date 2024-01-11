@@ -4,7 +4,7 @@
 @;
 @; Evergreen utilities.
 
-@;   Copyright 2017-2022 The Lathe Authors
+@;   Copyright 2017-2022, 2024 The Lathe Authors
 @;
 @;   Licensed under the Apache License, Version 2.0 (the "License");
 @;   you may not use this file except in compliance with the License.
@@ -622,6 +622,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   [(nat<list-length? [n natural?] [lst list?]) boolean?]
 )]{
   These procedures compare a given natural number with the length of a given list. This can be more efficient than comparing the number to @racket[(length lst)] when that length is larger than the number.
+}
+
+@defproc[(list-ref-maybe [lst list?] [i natural?]) maybe?]{
+  Looks up the given index in the given list, where an @racket[i] of @racket[0] represents the index of the first element. If the list is long enough to have an element at that index, this returns a @racket[just?] of that element. Otherwise, it returns a @racket[nothing?].
 }
 
 
