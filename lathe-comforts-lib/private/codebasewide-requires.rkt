@@ -4,7 +4,7 @@
 ;
 ; An import list that's useful primarily for this codebase.
 
-;   Copyright 2022 The Lathe Authors
+;   Copyright 2022, 2024 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -35,14 +35,16 @@
   racket/base)
 
 (only-in racket/contract/base
-  -> ->i </c and/c any any/c chaperone-contract? cons/c contract? contract-name contract-out flat-contract? get/build-late-neg-projection listof none/c or/c procedure-arity-includes/c recontract-out recursive-contract rename-contract unconstrained-domain->)
+  -> ->i </c and/c any any/c chaperone-contract? cons/c contract? contract-name contract-out flat-contract? get/build-late-neg-projection list/c listof none/c or/c procedure-arity-includes/c recontract-out recursive-contract rename-contract struct-type-property/c unconstrained-domain-> unsupplied-arg?)
 (only-in racket/contract/combinator
   blame-add-context coerce-chaperone-contract coerce-contract coerce-flat-contract contract-first-order-passes? make-chaperone-contract make-contract make-flat-contract raise-blame-error)
 (only-in racket/contract/region invariant-assertion)
-(only-in racket/list append-map range)
+(only-in racket/hash-code hash-code-combine)
+(only-in racket/list append-map first last range)
 (only-in racket/match
   define-match-expander match match/derived match-lambda)
 (only-in racket/math natural?)
+(only-in racket/promise delay delay/strict force)
 (only-in racket/struct make-constructor-style-printer)
 (only-in syntax/parse/define
   define-syntax-parser define-syntax-parse-rule)
