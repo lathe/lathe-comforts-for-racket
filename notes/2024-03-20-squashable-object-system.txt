@@ -1,0 +1,244 @@
+Notes about the design of an alternative to Racket's generic interface system which allows objects to be merged, compared, and used as keys
+
+(These notes start off with certain ideas and then restart and finally coalesce into something pretty solid. The point at which they start to coalesce is "Ah, no, we're just thinking about the extension wrong." We considered that this might be the subject of a whole new module system and a whole new way of defining types in conflict with Racket's traditions (in which case Rocketnia may have put these notes in her "Cronut" project), and we considered that this might be the subject of a whole new language not specifically tied to Racket, but it seems our ideas are meaningfully expressible as utility library functionality if we manage to find good nonoverlapping nomenclature for them.)
+
+
+
+; monoids with a less intimidating name
+best-effort-chainable-sys?
+  chainable-sys-chain-list-maybe : (-> best-effort-chainable-sys? list? maybe?)
+
+glossary? (imposes limits on how to implement best-effort-partially-comparable?, info-comparable?, capriciously-totally-comparable?, gen:equal-mode+hash, gen:dict)
+  glossary-ref-maybe : (-> glossary? any/c maybe?)
+  glossary-set-maybe : (-> glossary? maybe? glossary?)
+
+capriciously-poppable-glossary? (extends glossary?)
+  glossary-pop-capriciously-maybe : (-> capriciously-poppable-glossary? (maybe/c (list/c any/c capriciously-poppable-glossary?)))
+
+best-effort-partial-order?
+  partial-order-<=?-maybe : (-> best-effort-partial-order? any/c any/c (maybe/c boolean?))
+  lub-chainable-sys : (-> best-effort-partial-order? best-effort-chainable-sys?)
+  glb-chainable-sys : (-> best-effort-partial-order? best-effort-chainable-sys?)
+
+best-effort-total-order? (extends best-effort-partial-order?)
+
+best-effort-partially-comparable?
+  get-intended-best-effort-partial-order : (-> best-effort-partially-comparable? best-effort-partial-order?)
+
+info-comparable?
+  get-info-best-effort-partial-order : (-> info-comparable? best-effort-partial-order?)
+
+capriciously-totally-comparable?
+  get-best-effort-total-order-capriciously : (-> capriciously-totally-comparable? best-effort-total-order?)
+
+capriciously-poppable-glossary-sys?
+  capriciously-poppable-glossary-sys-make-empty (-> capriciously-poppable-glossary-sys? capriciously-poppable-glossary?)
+
+capriciously-poppable-keyish?
+  capriciously-poppable-keyish-get-glossary-sys : (-> capriciously-poppable-keyish? capriciously-poppable-keyish-glossary-sys?)
+
+capriciously-poppable-keyish-glossary-sys? (extends capriciously-poppable-glossary-sys? and capriciously-poppable-keyish?)
+
+one-size-fits-all-glossary-sys : (-> capriciously-poppable-keyish-glossary-sys?)
+
+total-order-glossary-sys : (-> best-effort-total-order? capriciously-poppable-keyish-glossary-sys?)
+
+; A glossary system for things which prefer to be compared using `equal-always-hash/recur` and `equal-always?/recur`.
+hash-glossary-sys : (-> capriciously-poppable-keyish-glossary-sys?)
+
+trie-glossary-sys : (-> capriciously-poppable-keyish-glossary-sys?)
+
+; TODO: Consider having a `...-comparable?` or `...-keyish?` interface where some keys superclass/subclass others and hence some keys can can designate partial components of the things other keys designate. (For any superclass/subclass relation that's an information ordering, we won't want this. If a key x is known to be less than two other distinct keys, then even though x == x, that fact isn't preserved by adding information to each of the x's. Hence, this kind of table would be only for non-information orderings.)
+
+; TODO: Figure out the interface needed for things to be keys of a `trie-glossary-sys` glossary.
+
+
+maybe we want
+
+- given a value and an incomplete "any" type, maybe get its type (or rather, a partial implementation of the "any" type that only necessarily works on this value and makes at least a certain amount of progress on it)
+- given a value, get a value representing its information lattice element
+- given a value, maybe get a value representing its capriciously totally comparable element
+
+Figuring out parametricity for <=:
+
+The equality == relation for a type that has free type variable occurrences extends any corresponding set of relations that respect their own notions of equality. It's almost hard to imagine a relation that doesn't respect *some* notion of equality (but Prolog-style side effects might be just that kind of disrespect).
+
+The subobject <= relation for a type that has free type variable occurrences extends any corresponding set of (what?) for those variables that respect their own notions of subobject relation?
+
+Indeed, almost any relation respects *some* notion of one-way substitutability of its operands. We might have to account for the fact that certain relations, like <= itself, permit deep inference using >= derivations on their left-hand side and <= derivations on their right-hand side; relations have variances. Furthermore, some operands may evolve according not to <= or to >= but to (<= AND >=, i.e., ==) or to (<= OR >=, i.e., path-connectedness) or to (FALSE, i.e., Prolog-style side effects) or to (TRUE, i.e., the operand is ignored).
+
+Huh. How do we actually use a <= definition to extend some relation decided later? Comparing by <= except at certain leaf nodes that compare according to the given relation actually does kinda the opposite of what we want there. There must be some kind of distributivity that makes that a sufficient implementation strategy for the == case but not the <= case.
+
+Ah, no, we're just thinking about the extension wrong. Checking the relation on the leaf nodes *is* the whole point; what we accomplish with parametricity like this is to be able to say that the type we substitute in for a variable might itself be a dependent type, and the values this type depends on could have been in the same places in the data as the values of this type are.
+
+
+Let the relation (Related : (T : Type -> Type) -> Functor T -> (A : Type) -> (B : Type) -> (C : A -> B -> Type) -> T A -> T B -> Type) be defined to be equivalent to (\T f A B C ta tb -> (tc : T ((a : A) * (b : B) * C a b)) * (ta === fmap @f (\(a * b * c) -> a) tc) * (tb === fmap @f (\(a * b * c) -> b) tc)), where === is information equality.
+
+Generalized to relations with more or fewer than two operands (which we'll call "columns" here, or "cols" for short):
+
+Let the relation (Related : (T : Type -> Type) -> Functor T -> (I : Type) -> (Cols : I -> Type) -> (RelatedCols : ((i : I) -> Cols i) -> Type) -> ((i : I) -> T (Cols i)) -> Type) be defined to be equivalent to (\T f I Cols RelatedCols tc -> (tr : T ((cols : (i : I) -> Cols i) * RelatedCols cols)) * ((i : I) => tc i === fmap @f (\(cols * r) -> cols i) tr)).
+
+
+Our "any" type will be a lattice generated by all the possible interface types a value can implement. (Constructor definitions are just another kind of interface definition for this purpose.)
+
+A makeshift value will consist of:
+
+- Implementations of interfaces.
+
+- Implementation opt-outs. This helps determine when makeshift values can merge together without creating overlaps.
+
+- Attestations of equality on the overlaps the makeshift interface implementations (and opt-outs) may have with each other. (A constructor's interface usually overlaps with every other interface except the ones it opts out of overlapping with. Non-constructor interfaces usually overlap with nothing but constructor interfaces like those and any interfaces they opt into overlapping with (e.g., by defining their own implementation for values of a certain constructor, even if that constructor has opted out of overlapping).) In the best-behaved cases, overlapping can be statically ruled out, creating no need for equal overlap attestations. In the worst-behaved cases, the requirements for an equal overlap attestation are a simple "trust me on faith" even when they're wrong, creating no need for attestations in that case either. Attestations serve a purpose for cases somewhere in between those extremes.
+
+- Attestations of equality on the overlaps the makeshift interface implementations may have with orphan instances in use.
+
+- Conceptually, the full set of keys to these other collections so pass-through APIs can create modified imitations of the value (such as wrappers that blame a different module for errors). In a statically typed language, this will usually be static knowledge that can be enumerated in a type signature, but in some cases, a type signature may use record polymorphism to delegate part of this enumeration responsibility to the caller module. The presence of this information at run time helps us to imitate record polymorphism even without involving a static type system (or without the cooperation of a static type system that didn't anticipate our needs). In cases where even the whole program can't fully enumerate this information at compile time because it's truly dynamic, then the information arguably wasn't *meant* to leak through between modules at all, but we may nevertheless treat this run-time information as a way to explain the mechanism of debug inspectors and certain kinds of difficult-to-plug leaks that would otherwise be blamed on limitations of the implementation medium.
+
+The elements of a distributive lattice that's free on certain generators can be represented as finite joins of irredundant finite meets of the generators. In this case, a makeshift value's contents correspond roughly to the collection of interface types participating in one of those finite meets, and a whole-program analysis can decompose the "any" type into a finite join of types like these, so there's a good chance we have something like a distributive lattice going on.
+
+Joining the information of two values, to create a value of the type that's the meet of their individual types, may involve some extra work to attest the equality of their overlaps.
+
+Taking the meet of the information of two values seems like it could make sense sometimes, but again this would involve some extra work to attest the equality of their overlaps, and that's a lot of work to do when either of the two values would already be an acceptable result by itself. The only reason I can think of that we would need something like this is because an attestation that A and B have equal overlap probably behaves something like the meet of A and B in its own right. Another possiblility is that the symmetry we're tempted to seek here is already entirely taken care of by the act of joining the information of two values; not only does joining values create a value of the meet of the interface types they implement, that value is also a value of the complement of the join of the interface types they opt out of.
+
+
+To represent entities that span compile time and run time, we may want a compile-time interface that lets us extract the run-time delegate's expression and lets us insert another expression in its place. That way we can shuttle run-time values out of the lexical scope and back in again, allowing us to represent makeshift values as immediately-invoked constructor definitions that have a field for each free variable, and more generally allowing us to do this with other local struct definitions to implement their free variables too.
+
+
+dynamic-typed?
+  ; Gets a representative of the dynamic type of the given value. The given dict is used as an environment for information that is only known to the whole program. In particular, it's consulted where this dynamic type's behavior can depend on how the "any" dynamic type behaves (e.g., if this type has a field of "any" type), which in turn depends on how all the other user-defined types in the program behave, so we have a `dynamic-type-var-for-any-dynamic-type` dict key that many dynamic types depend on this way.
+  get-dynamic-type : (-> dict? dynamic-typed? any/c)
+
+dynamic-type-var-for-any-dynamic-type : (-> any/c)
+
+knowable-predicate?
+  knowable-predicate-get-call-knowable :
+    (-> knowable-predicate?
+      (->unconstrained-domain (knowable/c boolean?)))
+
+info-regress?
+  info-regress-first : (-> info-regress? any/c)
+  info-regress-rest : (-> info-regress? info-regress?)
+
+info-regress/c : (-> contract? contract?)
+
+smoosh-report?
+  ; This says their join, i.e. how they smoosh as (lhs <= result) and (rhs <= result).
+  smoosh-report-join-knowable-promise-maybe-knowable-promise : (-> smoosh-report? (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c))))))
+  ; This says their meet, i.e. how they smoosh as (lhs >= result) and (rhs >= result).
+  smoosh-report-meet-knowable-promise-maybe-knowable-promise : (-> smoosh-report? (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c))))))
+  ; This says how they smoosh along ==, i.e. (<= and >=).
+  smoosh-report-==-knowable-promise-maybe-knowable-promise : (-> smoosh-report? (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c))))))
+  ; This says whether they're related as (lhs <= rhs).
+  smoosh-report-<=?-knowable-promise : (-> smoosh-report? (promise/c (knowable/c boolean?)))
+  ; This says whether they're related as (lhs >= rhs).
+  smoosh-report->=?-knowable-promise : (-> smoosh-report? (promise/c (knowable/c boolean?)))
+  ; This says how they smoosh along the transitive closure of (<= or >=). If <= were an information ordering and lhs and rhs were the information lattice elements corresponding to two values a and b and the smooshing were to succeed (with a `just`), these two values would be known to be related by the tightest possible equivalence relation that was still loose enough to have its truth value preserved when the values a and b were replaced with other values for which additional information was known (i.e., (a <= a' and b <= b')). Conceptually, the bottom element in an information ordering (if it exists) is related to *every* element, so what we're going to do is not have a bottom element in ours -- at least not one that lets us *know* it's a bottom element. More generally, we're not going to let any two values have a value that's known to have less information than the both of them unless we want those two values to index the same entry in an information-equality-keyed table.
+  smoosh-report-path-related-knowable-promise-maybe-knowable-promise : (-> smoosh-report? (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c))))))
+
+smoosh-and-comparison-of-two-report?
+  ; This says whether they're related as (lhs <= rhs).
+  smoosh-and-comparison-of-two-report-<=?-knowable-promise : (-> smoosh-and-comparison-of-two-report? (promise/c (knowable/c boolean?)))
+  ; This says whether they're related as (lhs >= rhs).
+  smoosh-and-comparison-of-two-report->=?-knowable-promise : (-> smoosh-and-comparison-of-two-report? (promise/c (knowable/c boolean?)))
+  smoosh-and-comparison-of-two-report-get-smoosh-report : (-> smoosh-and-comparison-of-two-report? smoosh-report?)
+
+smooshable-sys?
+  ; This obtains a predicate. However, the predicate can also be a flat-contract? to give better error messages when used as a contract, and it can also be a knowable-predicate? to allow a distinction between false-as-in-definitely-not and false-as-in-unknown.
+  smooshable-predicate : (-> smooshable-sys? (-> any/c boolean?))
+  smooshable-sys-get-smoosh-of-zero-report :
+    (->
+      smooshable-sys?
+      ; Each report in the regress gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
+      (info-regress/c smoosh-report?))
+  smooshable-sys-get-smoosh-of-one-report :
+    (->
+      smooshable-sys?
+      (smooshable/c _)
+      ; Each report in the regress gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
+      (info-regress/c smoosh-report?))
+  smooshable-sys-get-smoosh-and-comparison-of-two-report :
+    (->
+      ; lhs type
+      smooshable-sys?
+      ; rhs type (usually dispatched to next, if this one can't fully determine the results)
+      smooshable-sys?
+      ; lhs
+      (smooshable/c _)
+      ; rhs
+      (smooshable/c _)
+      ; For each report in the regress, the next report says not only whether they smoosh along that one's == but also, only if they do, how their information ordering representatives smoosh along their information ordering.
+      (info-regress/c smoosh-and-comparison-of-two-report?))
+
+; This gets another smooshable-sys? that applies to the information ordering representatives of the given one's elements.
+smooshable-sys-get-info-smooshable-sys : (-> smooshable-sys? smooshable-sys?)
+
+; A label is a symbol-like value that authors of libraries can coin. These are used as dynamic type tags. Someday we might allow authors to express that a label they coin isn't *necessarily* distinct from some other set of labels. This kind of hidden information would make it difficult to implement an efficient label-keyed dict though, so we don't support the full possibility space yet. Instead, we just allow `make-equal-always-label` labels for now, which are all either known to be equal or known to be nonoverlapping, but in the future, we might support more label constructors.
+label?
+  ; No methods.
+
+; Makes a label that's known to be equal to any other make-equal-always-label label whose value is equal-always? to this one and known to be nonoverlapping with any other make-equal-always-label label whose value isn't equal-always? to this one.
+make-equal-always-label : (-> any/c label?)
+
+; Makes a dict that has label? values as keys.
+make-label-dict : (-> dict?)
+
+any-variant-labeled?
+  ; Returns a label which could, for instance, be used to look up this dynamic type's specific dict in the internals of an any-dynamic-type dict. (TODO: Improve this description.)
+  any-variant-labeled-get-variant-label-knowable : (-> any-variant-label? (knowable/c label?))
+
+key-report?
+  ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing them along the transitive closure of (<= or >=).
+  key-report-make-empty-dict-path-related-knowable : (-> key-report? (knowable/c dict?))
+  ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing them along ==, i.e. (<= and >=).
+  key-report-make-empty-dict-==-knowable : (-> key-report? (knowable/c dict?))
+
+key-of-immutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
+  ; For each report in the regress, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
+  key-of-immutable-dict-sys-get-key-report :
+    (-> key-of-immutable-dict-sys? (info-regress/c key-report?))
+  ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing their information ordering representatives along the transitive closure of (<= or >=).
+  key-of-immutable-dict-sys-make-empty-dict-i==-knowable : (-> key-of-immutable-dict-sys? (knowable/c dict?))
+
+key-of-mutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
+  ; For each report in the regress, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
+  key-of-mutable-dict-sys-get-key-report :
+    (-> key-of-mutable-dict-sys? (info-regress/c key-report?))
+  ; Returns an empty mutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing their information ordering representatives along the transitive closure of (<= or >=).
+  key-of-mutable-dict-sys-make-empty-dict-i==-knowable : (-> key-of-mutable-dict-sys? (knowable/c dict?))
+
+any-dynamic-type : (-> any/c)
+  ; Besides just being an `any/c` value, the "any" dynamic type also implements:
+  ;   - smooshable-sys?
+  ;   - any-variant-labeled?
+  ;   - key-of-immutable-dict-sys?
+  ;   - key-of-mutable-dict-sys?
+
+; This allows other generic interfaces meant for dynamic types to declare default implementations for the "any" dynamic type that invoke their custom one.
+any-dynamic-type? : (-> any/c boolean?)
+
+make-empty-immutable-total-order-<=-based-dict : (-> (-> any/c any/c boolean?) dict?)
+
+make-empty-mutable-total-order-<=-based-dict : (-> (-> any/c any/c boolean?) dict?)
+
+; Returns an empty immutable dict where keys are looked up based on a sequence of key-part lookups. (They're looked up in the order the key-part dict constructors and key-part accessors are provided. Rearranging the order these are provided in may change the order of side effects during lookup and may change the iteration order of the resulting dict.)
+make-empty-immutable-trie-dict : (-> (listof (list/c (-> dict?) (-> any/c any/c))) dict?)
+
+make-empty-mutable-trie-dict : (-> (listof (list/c (-> dict?) (-> any/c any/c))) dict?)
+
+; In most cases, new struct types that need to implement `key-of-...-dict-sys?` will use `make-empty-...-trie-dict` to account for all their fields separately (often using `any-dynamic-type` as the key-part dict constructor for each of the fields of type `any/c`). Many of the remaining atomic types will just use `make...-hashalw` or `make...-custom-hash`. Atomic types where it makes more sense to implement ordered indexing can use `make-empty-...-total-order-<=-based-dict`.
+
+; Parametricity free theorems can be snuck into this (in a way that we bless by design) by observing that we can treat any two arbitrary Racket values as being "related" by some type's custom notion of == or <= just by considering them to be two representations for the same logical value of that type. Where we pass in a binding for `dynamic-type-var-for-any-dynamic-type` to `get-dynamic-type`, the dynamic type we pass in there can be one that understands "any" values as being equal according to this arbitrary relation, rather than the usual way that these representation values would be treated by the usual `any-dynamic-type`. Certain concepts like "the transitive closure of (<= or >=)" may not make sense if the relation we're sneaking in in such a way is heterogeneous, but nothing stops a sneaky user from just implementing those methods' results as being unknown.
+
+
+How should we be able to merge contracted things? There seem to be a few states:
+
+  - When the interface implementation is one of the clauses of a makeshift object expression, it definitely needs to be able to coexist with the other nonoverlapping clauses (and overlapping clauses with a specification of how the overlap works), and this could be thought of as a kind of immediate merging, if that frame of mind helps at all.
+
+  - When the value is not given a contract yet and it was constructed in a way that lets some method calls dispatch to its merged peers, then it can be merged with other values according to their dispatching. For instance, a makeshift object expression where the set of implementations is a closed-world set does this kind of dispatching for method calls outside the set. A constructor result where the set of the constructor's implementations is a closed-world set does the same thing.
+
+  - (When the value is exported from a module, the export's API signature masks the value and causes errors outside the mask, with the masked value considered to have the same or more information as than the unmasked one. The export's API signature expresses a lower bound on the API signature it can have in future versions of the module. Thus, passing the value or any of its outputs an input that defies this contract leads to behavior that must remain an error (not even a dispatch to orphan instances) until a future version of the module where it is given behavior.)
+
+  - (When the value is imported by a module, the import's API signature masks the value and allows merging outside the mask, with the masked value considered to have potentially neither the same, less than, nor more information as the unmasked one.)
+
+  - When the value is imported from another module and is thus given a contract by the export and another contract by the import, it can be merged with other values if the merging is performed within the importing module. This merging can only extend each value with each other in places where either the import contract is defied or (neither contract is defied and the original value definition allowed merging).
+
+All right, so we are going to have yet another place to dispatch to: The merge peers. Dispatch for a method call might start by consulting the method invocation object, then dispatch from there to the method definition, then dispatch from there to the value, then dispatch from there to the constructor definition (or *each* constructor definition, for a merged value, expecting all but zero or one of them to eventually dispatch to its merge peers), then dispatch from there to the orphan instance in use for that constructor-method combination, then dispatch from that orphan instance to the value's other constructors (the "merge peers").
