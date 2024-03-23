@@ -103,22 +103,16 @@ Taking the meet of the information of two values seems like it could make sense 
 To represent entities that span compile time and run time, we may want a compile-time interface that lets us extract the run-time delegate's expression and lets us insert another expression in its place. That way we can shuttle run-time values out of the lexical scope and back in again, allowing us to represent makeshift values as immediately-invoked constructor definitions that have a field for each free variable, and more generally allowing us to do this with other local struct definitions to implement their free variables too.
 
 
-dynamic-typed?
+has-dynamic-type?
   ; Gets a representative of the dynamic type of the given value. The given dict is used as an environment for information that is only known to the whole program. In particular, it's consulted where this dynamic type's behavior can depend on how the "any" dynamic type behaves (e.g., if this type has a field of "any" type), which in turn depends on how all the other user-defined types in the program behave, so we have a `dynamic-type-var-for-any-dynamic-type` dict key that many dynamic types depend on this way.
-  get-dynamic-type : (-> dict? dynamic-typed? any/c)
+  get-dynamic-type : (-> dict? has-dynamic-type? any/c)
 
 dynamic-type-var-for-any-dynamic-type : (-> any/c)
 
 knowable-predicate?
-  knowable-predicate-get-call-knowable :
+  knowable-predicate-get-accepts?-knowable :
     (-> knowable-predicate?
-      (->unconstrained-domain (knowable/c boolean?)))
-
-info-regress?
-  info-regress-first : (-> info-regress? any/c)
-  info-regress-rest : (-> info-regress? info-regress?)
-
-info-regress/c : (-> contract? contract?)
+      (unconstrained-domain-> (knowable/c boolean?)))
 
 smoosh-report?
   ; This says their join, i.e. how they smoosh as (lhs <= result) and (rhs <= result).
@@ -127,10 +121,6 @@ smoosh-report?
   smoosh-report-meet-knowable-promise-maybe-knowable-promise : (-> smoosh-report? (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c))))))
   ; This says how they smoosh along ==, i.e. (<= and >=).
   smoosh-report-==-knowable-promise-maybe-knowable-promise : (-> smoosh-report? (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c))))))
-  ; This says whether they're related as (lhs <= rhs).
-  smoosh-report-<=?-knowable-promise : (-> smoosh-report? (promise/c (knowable/c boolean?)))
-  ; This says whether they're related as (lhs >= rhs).
-  smoosh-report->=?-knowable-promise : (-> smoosh-report? (promise/c (knowable/c boolean?)))
   ; This says how they smoosh along the transitive closure of (<= or >=). If <= were an information ordering and lhs and rhs were the information lattice elements corresponding to two values a and b and the smooshing were to succeed (with a `just`), these two values would be known to be related by the tightest possible equivalence relation that was still loose enough to have its truth value preserved when the values a and b were replaced with other values for which additional information was known (i.e., (a <= a' and b <= b')). Conceptually, the bottom element in an information ordering (if it exists) is related to *every* element, so what we're going to do is not have a bottom element in ours -- at least not one that lets us *know* it's a bottom element. More generally, we're not going to let any two values have a value that's known to have less information than the both of them unless we want those two values to index the same entry in an information-equality-keyed table.
   smoosh-report-path-related-knowable-promise-maybe-knowable-promise : (-> smoosh-report? (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c))))))
 
@@ -147,14 +137,14 @@ smooshable-sys?
   smooshable-sys-get-smoosh-of-zero-report :
     (->
       smooshable-sys?
-      ; Each report in the regress gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
-      (info-regress/c smoosh-report?))
+      ; Each report in the stream gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
+      (stream/c smoosh-report?))
   smooshable-sys-get-smoosh-of-one-report :
     (->
       smooshable-sys?
       (smooshable/c _)
-      ; Each report in the regress gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
-      (info-regress/c smoosh-report?))
+      ; Each report in the stream gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
+      (stream/c smoosh-report?))
   smooshable-sys-get-smoosh-and-comparison-of-two-report :
     (->
       ; lhs type
@@ -165,8 +155,8 @@ smooshable-sys?
       (smooshable/c _)
       ; rhs
       (smooshable/c _)
-      ; For each report in the regress, the next report says not only whether they smoosh along that one's == but also, only if they do, how their information ordering representatives smoosh along their information ordering.
-      (info-regress/c smoosh-and-comparison-of-two-report?))
+      ; For each report in the stream, the next report says not only whether they smoosh along that one's == but also, only if they do, how their information ordering representatives smoosh along their information ordering.
+      (stream/c smoosh-and-comparison-of-two-report?))
 
 ; This gets another smooshable-sys? that applies to the information ordering representatives of the given one's elements.
 smooshable-sys-get-info-smooshable-sys : (-> smooshable-sys? smooshable-sys?)
@@ -192,16 +182,16 @@ key-report?
   key-report-make-empty-dict-==-knowable : (-> key-report? (knowable/c dict?))
 
 key-of-immutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
-  ; For each report in the regress, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
+  ; For each report in the stream, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
   key-of-immutable-dict-sys-get-key-report :
-    (-> key-of-immutable-dict-sys? (info-regress/c key-report?))
+    (-> key-of-immutable-dict-sys? (stream/c key-report?))
   ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing their information ordering representatives along the transitive closure of (<= or >=).
   key-of-immutable-dict-sys-make-empty-dict-i==-knowable : (-> key-of-immutable-dict-sys? (knowable/c dict?))
 
 key-of-mutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
-  ; For each report in the regress, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
+  ; For each report in the stream, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
   key-of-mutable-dict-sys-get-key-report :
-    (-> key-of-mutable-dict-sys? (info-regress/c key-report?))
+    (-> key-of-mutable-dict-sys? (stream/c key-report?))
   ; Returns an empty mutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing their information ordering representatives along the transitive closure of (<= or >=).
   key-of-mutable-dict-sys-make-empty-dict-i==-knowable : (-> key-of-mutable-dict-sys? (knowable/c dict?))
 

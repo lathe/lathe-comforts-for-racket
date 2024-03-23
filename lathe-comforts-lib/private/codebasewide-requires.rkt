@@ -35,7 +35,7 @@
   racket/base)
 
 (only-in racket/contract/base
-  -> ->i </c and/c any any/c chaperone-contract? cons/c contract? contract-name contract-out flat-contract? get/build-late-neg-projection listof none/c or/c procedure-arity-includes/c recontract-out recursive-contract rename-contract unconstrained-domain->)
+  -> ->i </c and/c any any/c chaperone-contract? cons/c contract? contract-name contract-out flat-contract? get/build-late-neg-projection listof none/c or/c promise/c procedure-arity-includes/c recontract-out recursive-contract rename-contract struct-type-property/c unconstrained-domain->)
 (only-in racket/contract/combinator
   blame-add-context coerce-chaperone-contract coerce-contract coerce-flat-contract contract-first-order-passes? make-chaperone-contract make-contract make-flat-contract raise-blame-error)
 (only-in racket/contract/region invariant-assertion)
