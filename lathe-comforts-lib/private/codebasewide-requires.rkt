@@ -39,10 +39,12 @@
 (only-in racket/contract/combinator
   blame-add-context coerce-chaperone-contract coerce-contract coerce-flat-contract contract-first-order-passes? make-chaperone-contract make-contract make-flat-contract raise-blame-error)
 (only-in racket/contract/region invariant-assertion)
+(only-in racket/hash hash-union)
 (only-in racket/list append-map range)
 (only-in racket/match
   define-match-expander match match/derived match-lambda)
 (only-in racket/math natural?)
+(only-in racket/sequence sequence/c)
 (only-in racket/struct make-constructor-style-printer)
 (only-in syntax/parse/define
   define-syntax-parser define-syntax-parse-rule)

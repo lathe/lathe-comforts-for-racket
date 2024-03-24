@@ -22,12 +22,14 @@
 (require lathe-comforts/private/shim)
 (init-shim)
 
-(require /only-in lathe-comforts expect fn mat w-)
+(require /only-in lathe-comforts dissect expect fn mat w-)
+(require /only-in lathe-comforts/hash
+  hash-kv-map hash-ref-maybe hash-set-maybe)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
   define-imitation-simple-struct)
 (require /only-in lathe-comforts/match match/c)
-(require /only-in lathe-comforts/maybe maybe/c)
+(require /only-in lathe-comforts/maybe just maybe? maybe/c nothing)
 
 
 (provide /own-contract-out
@@ -46,10 +48,42 @@
   knowable-bind
   knowable-map
   knowable->falsable
+  falsable->uninformative-knowable
   knowable-predicate-impl?
   prop:knowable-predicate
   make-knowable-predicate-impl
+  call-knowable
   make-knowable-predicate-procedure-impl
+  glossesque-sys?
+  glossesque-sys-impl?
+  glossesque-sys-glossesque-union-of-zero
+  glossesque-sys-glossesque-km-union-of-two
+  glossesque-sys-glossesque-ref-maybe-knowable
+  glossesque-sys-glossesque-set-maybe-knowable
+  glossesque-sys-glossesque-count
+  glossesque-sys-glossesque-iteration-sequence
+  prop:glossesque-sys
+  ; TODO: When we document this, make sure we document its keyword
+  ; arguments.
+  make-glossesque-sys-impl
+  equalw-gloss-key?
+  equalw-gloss-key-impl?
+  prop:equalw-gloss-key
+  make-equalw-gloss-key-impl
+  custom-gloss-key?
+  custom-gloss-key-impl?
+  custom-gloss-key-variant
+  custom-gloss-key-glossesque-sys
+  prop:custom-gloss-key
+  make-custom-gloss-key-impl
+  gloss?
+  gloss-union-of-zero
+  gloss-km-union-of-two
+  gloss-ref-maybe-knowable
+  gloss-set-maybe-knowable
+  gloss-count
+  gloss-iteration-sequence
+  make-gloss-glossesque-sys
   expressly-has-dynamic-type-impl?
   prop:expressly-has-dynamic-type
   make-expressly-has-dynamic-type-impl
@@ -126,7 +160,15 @@
 
 (define/own-contract (knowable->falsable kble)
   (-> knowable? any/c)
-  (mat kble (known value) value #f))
+  (mat kble (known value)
+    value
+    #f))
+
+(define/own-contract (falsable->uninformative-knowable fble)
+  (-> any/c knowable?)
+  (if fble
+    (known fble)
+    (unknown)))
 
 
 (define-imitation-simple-generics
@@ -138,10 +180,35 @@
 (ascribe-own-contract prop:knowable-predicate
   (struct-type-property/c knowable-predicate-impl?))
 (ascribe-own-contract make-knowable-predicate-impl
-  (->
-    (-> knowable-predicate?
-      (unconstrained-domain-> (knowable/c boolean?)))
+  (-> (-> knowable-predicate? (unconstrained-domain-> knowable?))
     knowable-predicate-impl?))
+
+(define/own-contract call-knowable
+  (unconstrained-domain-> knowable?)
+  (procedure-reduce-arity
+    (make-keyword-procedure
+      (lambda (ks vs f . positional-args)
+        (if (knowable-predicate? f)
+          (w- accepts?-knowable
+            (knowable-predicate-get-accepts?-knowable f)
+          /keyword-apply accepts?-knowable ks vs positional-args)
+        /if (procedure? f)
+          (falsable->uninformative-knowable
+            (keyword-apply f ks vs positional-args))
+          (raise-arguments-error 'call-knowable
+            "expected the called value to be prop:knowable-predicate instance or a procedure"
+            "f" f)))
+      (lambda (f . positional-args)
+        (if (knowable-predicate? f)
+          (w- accepts?-knowable
+            (knowable-predicate-get-accepts?-knowable f)
+          /apply accepts?-knowable positional-args)
+        /if (procedure? f)
+          (falsable->uninformative-knowable /apply f positional-args)
+          (raise-arguments-error 'call-knowable
+            "expected the called value to be prop:knowable-predicate instance or a procedure"
+            "f" f))))
+    (arity-at-least 1)))
 
 ; Returns a value that makes an appropriate `prop:procedure`
 ; implementation for a structure type that implements
@@ -149,21 +216,279 @@
 ; result through `procedure-reduce-arity`.
 ;
 (define/own-contract (make-knowable-predicate-procedure-impl)
-  (-> (unconstrained-domain-> boolean?))
-  (make-keyword-procedure
-    (lambda (ks vs self . positional-args)
-      (w- accepts?-knowable
-        (knowable-predicate-get-accepts?-knowable self)
-      /knowable->falsable
-        (keyword-apply accepts?-knowable ks vs positional-args)))
-    (lambda (self . positional-args)
-      (w- accepts?-knowable
-        (knowable-predicate-get-accepts?-knowable self)
-      /knowable->falsable /apply accepts?-knowable positional-args))))
+  (-> (unconstrained-domain-> any/c))
+  (compose knowable->falsable call-knowable))
 
 ; TODO SMOOSH: Define at least a couple of examples of
 ; `knowable-predicate?` values, so that we know if we need another
 ; utility.
+
+
+(define-imitation-simple-generics
+  glossesque-sys? glossesque-sys-impl?
+  (#:method glossesque-sys-glossesque-union-of-zero (#:this))
+  (#:method
+    glossesque-sys-glossesque-km-union-of-two (#:this) () () ())
+  (#:method
+    glossesque-sys-glossesque-ref-maybe-knowable (#:this) () ())
+  (#:method
+    glossesque-sys-glossesque-set-maybe-knowable (#:this) () () ())
+  (#:method glossesque-sys-glossesque-count (#:this) ())
+  (#:method glossesque-sys-glossesque-iteration-sequence (#:this) ())
+  prop:glossesque-sys
+  make-glossesque-sys-impl-from-various-unkeyworded
+  'glossesque-sys 'glossesque-sys-impl (list))
+(ascribe-own-contract glossesque-sys? (-> any/c boolean?))
+(ascribe-own-contract glossesque-sys-impl? (-> any/c boolean?))
+(ascribe-own-contract glossesque-sys-glossesque-union-of-zero
+  (-> glossesque-sys? any/c))
+(ascribe-own-contract glossesque-sys-glossesque-km-union-of-two
+  (-> glossesque-sys? any/c any/c (-> any/c maybe? maybe? maybe?)
+    any/c))
+(ascribe-own-contract glossesque-sys-glossesque-ref-maybe-knowable
+  (-> glossesque-sys? any/c any/c (knowable/c maybe?)))
+(ascribe-own-contract glossesque-sys-glossesque-set-maybe-knowable
+  (-> glossesque-sys? any/c any/c maybe? (knowable/c any/c)))
+(ascribe-own-contract glossesque-sys-glossesque-count
+  (-> glossesque-sys? any/c natural?))
+(ascribe-own-contract glossesque-sys-glossesque-iteration-sequence
+  (-> glossesque-sys? any/c (sequence/c any/c any/c)))
+(ascribe-own-contract prop:glossesque-sys
+  (struct-type-property/c glossesque-sys-impl?))
+
+(define/own-contract
+  (make-glossesque-sys-impl
+    #:glossesque-union-of-zero glossesque-union-of-zero
+    #:glossesque-km-union-of-two glossesque-km-union-of-two
+    #:glossesque-ref-maybe-knowable glossesque-ref-maybe-knowable
+    #:glossesque-set-maybe-knowable glossesque-set-maybe-knowable
+    #:glossesque-count glossesque-count
+    #:glossesque-iteration-sequence glossesque-iteration-sequence)
+  (->
+    #:glossesque-union-of-zero (-> glossesque-sys? any/c)
+    
+    #:glossesque-km-union-of-two
+    (-> glossesque-sys? any/c any/c (-> any/c maybe? maybe? maybe?))
+    
+    #:glossesque-ref-maybe-knowable
+    (-> glossesque-sys? any/c any/c (knowable/c maybe?))
+    
+    #:glossesque-set-maybe-knowable
+    (-> glossesque-sys? any/c any/c maybe? (knowable/c any/c))
+    
+    #:glossesque-count (-> glossesque-sys? any/c natural?)
+    
+    #:glossesque-iteration-sequence
+    (-> glossesque-sys? any/c (sequence/c any/c any/c))
+    
+    glossesque-sys-impl?)
+  (make-glossesque-sys-impl-from-various-unkeyworded
+    glossesque-union-of-zero
+    glossesque-km-union-of-two
+    glossesque-ref-maybe-knowable
+    glossesque-set-maybe-knowable
+    glossesque-count
+    glossesque-iteration-sequence))
+
+
+(define-imitation-simple-generics
+  equalw-gloss-key? equalw-gloss-key-impl?
+  prop:equalw-gloss-key make-equalw-gloss-key-impl
+  'equalw-gloss-key 'equalw-gloss-key-impl (list))
+(ascribe-own-contract equalw-gloss-key? (-> any/c boolean?))
+(ascribe-own-contract equalw-gloss-key-impl? (-> any/c boolean?))
+(ascribe-own-contract prop:equalw-gloss-key
+  (struct-type-property/c equalw-gloss-key-impl?))
+(ascribe-own-contract make-equalw-gloss-key-impl
+  (-> equalw-gloss-key-impl?))
+
+(define-imitation-simple-generics
+  custom-gloss-key? custom-gloss-key-impl?
+  (#:method custom-gloss-key-variant (#:this))
+  (#:method custom-gloss-key-glossesque-sys (#:this))
+  prop:custom-gloss-key
+  make-custom-gloss-key-impl-from-various-unkeyworded
+  'custom-gloss-key 'custom-gloss-key-impl (list))
+(ascribe-own-contract custom-gloss-key? (-> any/c boolean?))
+(ascribe-own-contract custom-gloss-key-impl? (-> any/c boolean?))
+(ascribe-own-contract custom-gloss-key-variant
+  (-> custom-gloss-key? any/c))
+(ascribe-own-contract custom-gloss-key-glossesque-sys
+  (-> custom-gloss-key? glossesque-sys?))
+(ascribe-own-contract prop:custom-gloss-key
+  (struct-type-property/c custom-gloss-key-impl?))
+
+(define/own-contract
+  (make-custom-gloss-key-impl
+    #:variant variant
+    #:glossesque-sys glossesque-sys)
+  (->
+    #:variant (-> custom-gloss-key? any/c)
+    #:glossesque-sys (-> custom-gloss-key? glossesque-sys?)
+    glossesque-sys-impl?)
+  (make-custom-gloss-key-impl-from-various-unkeyworded
+    variant
+    glossesque-sys))
+
+
+; TODO: Give this better smooshing behavior once we have an interface
+; for smooshable things.
+(define-imitation-simple-struct
+  (gloss? gloss-count-field gloss-atomic-entries gloss-custom-entries)
+  gloss
+  'gloss (current-inspector)
+  ; TODO SMOOSH: Stop using `auto-write` and `auto-equal` for this.
+  (auto-write) (auto-equal))
+(ascribe-own-contract gloss? (-> any/c boolean?))
+
+(define (hash-km-union-of-two a b km-union)
+  (hash-kv-map (hash-union a b #:combine /fn a b a) /fn k v
+    (km-union k (hash-ref-maybe a k) (hash-ref-maybe b k))))
+
+(define (maybe-m-union-of-two a b m-union)
+  (mat a (just _) (m-union a b)
+  /mat b (just _) (m-union a b)
+  /nothing))
+
+(define/own-contract (gloss-union-of-zero)
+  (-> gloss?)
+  (gloss 0 (hashalw) (nothing)))
+
+(define/own-contract (gloss-km-union-of-two a b km-union)
+  (-> gloss? gloss? (-> any/c maybe? maybe? maybe?) gloss?)
+  (dissect a (gloss a-count a-atomic a-custom)
+  /dissect b (gloss b-count b-atomic b-custom)
+  /w- atomic (hash-km-union-of-two a-atomic b-atomic km-union)
+  /w- custom
+    (maybe-m-union-of-two a-custom b-custom /fn a b
+      (gloss-km-union-of-two
+        (mat a (just a) a (gloss-union-of-zero))
+        (mat b (just b) b (gloss-union-of-zero))
+        (fn a b
+          (w- gs
+            (mat a (just /list gs _) gs
+            /dissect b (just /list gs _) gs)
+          /w- a
+            (mat a (just /list _ a) a
+            /glossesque-sys-glossesque-union-of-zero gs)
+          /w- b
+            (mat b (just /list _ b) b
+            /glossesque-sys-glossesque-union-of-zero gs)
+          /just /list gs
+            (glossesque-sys-glossesque-km-union-of-two gs a b
+              km-union)))))
+  /gloss
+    (+ (hash-count atomic)
+      (expect custom (just custom) 0
+        (for/sum
+          (
+            [ (variant custom-entry)
+              (in-sequences /gloss-iteration-sequence custom)])
+          (dissect custom-entry (list gs g)
+          /glossesque-sys-glossesque-count gs g))))
+    atomic
+    custom))
+
+(define/own-contract (gloss-ref-maybe-knowable g k)
+  (-> gloss? any/c (knowable/c maybe?))
+  (dissect g (gloss _ atomic custom)
+  /if (equalw-gloss-key? k) (known /hash-ref-maybe atomic k)
+  /expect (custom-gloss-key? k) #t (unknown)
+  /expect custom (just custom) (known /nothing)
+  /knowable-bind
+    (gloss-ref-maybe-knowable custom (custom-gloss-key-variant k))
+  /fn custom-entry
+  /expect custom-entry (just custom-entry) (known /nothing)
+  /dissect custom-entry (list custom-gs custom-g)
+  /glossesque-sys-glossesque-ref-maybe-knowable custom-gs custom-g k))
+
+(define/own-contract (gloss-set-maybe-knowable g k m)
+  (-> gloss? any/c maybe? (knowable/c gloss?))
+  (dissect g (gloss count atomic custom)
+  /if (equalw-gloss-key? k)
+    (known /gloss count (hash-set-maybe atomic k m) custom)
+  /expect (custom-gloss-key? k) #t (unknown)
+  /expect custom (just custom)
+    (gloss-set-maybe-knowable
+      (gloss count atomic (just /gloss-union-of-zero))
+      k
+      m)
+  /w- variant (custom-gloss-key-variant k)
+  /knowable-bind (gloss-ref-maybe-knowable custom variant)
+  /fn custom-entry
+  /expect custom-entry (just custom-entry)
+    (w- custom-gs (custom-gloss-key-glossesque-sys k)
+    /knowable-bind
+      (gloss-set-maybe-knowable custom variant
+        (just /list custom-gs
+          (glossesque-sys-glossesque-union-of-zero custom-gs)))
+    /fn custom
+    /gloss-set-maybe-knowable (gloss count atomic (just custom)) k m)
+  /dissect custom-entry (list custom-gs custom-g)
+  /w- old-custom-g-count
+    (glossesque-sys-glossesque-count custom-gs custom-g)
+  /knowable-bind
+    (glossesque-sys-glossesque-set-maybe-knowable
+      custom-gs custom-g k m)
+  /fn custom-g
+  /w- new-custom-g-count
+    (glossesque-sys-glossesque-count custom-gs custom-g)
+  /knowable-bind
+    (gloss-set-maybe-knowable custom k
+      (just /list custom-gs custom-g))
+  /fn custom
+  /known /gloss
+    (+ count (- new-custom-g-count old-custom-g-count))
+    atomic
+    (just custom)))
+
+(define/own-contract (gloss-count g)
+  (-> gloss? natural?)
+  (dissect g (gloss count _ _)
+    count))
+
+(define/own-contract (gloss-iteration-sequence g)
+  (-> gloss? (sequence/c any/c any/c))
+  (dissect g (gloss _ atomic custom)
+  /apply in-sequences (in-hash atomic)
+    (expect custom (just custom) (list)
+    /for/list
+      (
+        [ (variant custom-entry)
+          (in-sequences /gloss-iteration-sequence custom)])
+      (dissect custom-entry (list gs g)
+      /glossesque-sys-glossesque-iteration-sequence gs g))))
+
+(define-imitation-simple-struct
+  (gloss-glossesque-sys?)
+  gloss-glossesque-sys
+  'gloss-glossesque-sys (current-inspector) (auto-write) (auto-equal)
+  
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero (fn gs /gloss-union-of-zero)
+    
+    #:glossesque-km-union-of-two
+    (fn gs a b km-union /gloss-km-union-of-two a b km-union)
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k /gloss-ref-maybe-knowable g k)
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m /gloss-set-maybe-knowable g k m)
+    
+    #:glossesque-count (fn gs g /gloss-count g)
+    
+    #:glossesque-iteration-sequence
+    (fn gs g /gloss-iteration-sequence g)
+    
+    )
+  
+  )
+
+(define/own-contract (make-gloss-glossesque-sys)
+  (-> glossesque-sys?)
+  (gloss-glossesque-sys))
 
 
 (define-imitation-simple-generics
@@ -175,10 +500,8 @@
   (-> any/c boolean?))
 (ascribe-own-contract prop:expressly-has-dynamic-type
   (struct-type-property/c expressly-has-dynamic-type-impl?))
-; TODO SMOOSH: The first argument should be `gloss?` rather than
-; `any/c`.
 (ascribe-own-contract make-expressly-has-dynamic-type-impl
-  (-> (-> any/c any/c any/c) expressly-has-dynamic-type-impl?))
+  (-> (-> gloss? any/c any/c) expressly-has-dynamic-type-impl?))
 
 (define-imitation-simple-struct (uninformative-dynamic-type?)
   uninformative-dynamic-type
@@ -189,9 +512,7 @@
   (uninformative-dynamic-type))
 
 (define/own-contract (get-dynamic-type bindings v)
-  ; TODO SMOOSH: The first argument should be `gloss?` rather than
-  ; `any/c`.
-  (-> any/c any/c any/c)
+  (-> gloss? any/c any/c)
   (if (expressly-has-dynamic-type? v)
     (expressly-has-dynamic-type-get-dynamic-type bindings v)
     (make-uninformative-dynamic-type)))
