@@ -137,14 +137,14 @@ smooshable-sys?
   smooshable-sys-get-smoosh-of-zero-report :
     (->
       smooshable-sys?
-      ; Each report in the stream gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
-      (stream/c smoosh-report?))
+      ; Each report in the infinite sequence gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
+      (sequence/c smoosh-report?))
   smooshable-sys-get-smoosh-of-one-report :
     (->
       smooshable-sys?
       (smooshable/c _)
-      ; Each report in the stream gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
-      (stream/c smoosh-report?))
+      ; Each report in the infinite sequence gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
+      (sequence/c smoosh-report?))
   smooshable-sys-get-smoosh-and-comparison-of-two-report :
     (->
       ; lhs type
@@ -155,8 +155,8 @@ smooshable-sys?
       (smooshable/c _)
       ; rhs
       (smooshable/c _)
-      ; For each report in the stream, the next report says not only whether they smoosh along that one's == but also, only if they do, how their information ordering representatives smoosh along their information ordering.
-      (stream/c smoosh-and-comparison-of-two-report?))
+      ; For each report in the infinite sequence, the next report says not only whether they smoosh along that one's == but also, only if they do, how their information ordering representatives smoosh along their information ordering.
+      (sequence/c smoosh-and-comparison-of-two-report?))
 
 ; This gets another smooshable-sys? that applies to the information ordering representatives of the given one's elements.
 smooshable-sys-get-info-smooshable-sys : (-> smooshable-sys? smooshable-sys?)
@@ -173,7 +173,7 @@ make-label-dict : (-> dict?)
 
 any-variant-labeled?
   ; Returns a label which could, for instance, be used to look up this dynamic type's specific dict in the internals of an any-dynamic-type dict. (TODO: Improve this description.)
-  any-variant-labeled-get-variant-label-knowable : (-> any-variant-label? (knowable/c label?))
+  any-variant-labeled-get-variant-label-knowable : (-> any-variant-labeled? (knowable/c label?))
 
 key-report?
   ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing them along the transitive closure of (<= or >=).
@@ -182,18 +182,14 @@ key-report?
   key-report-make-empty-dict-==-knowable : (-> key-report? (knowable/c dict?))
 
 key-of-immutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
-  ; For each report in the stream, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
+  ; For each report in the infinite sequence, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
   key-of-immutable-dict-sys-get-key-report :
-    (-> key-of-immutable-dict-sys? (stream/c key-report?))
-  ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing their information ordering representatives along the transitive closure of (<= or >=).
-  key-of-immutable-dict-sys-make-empty-dict-i==-knowable : (-> key-of-immutable-dict-sys? (knowable/c dict?))
+    (-> key-of-immutable-dict-sys? (sequence/c key-report?))
 
 key-of-mutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
-  ; For each report in the stream, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
+  ; For each report in the infinite sequence, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
   key-of-mutable-dict-sys-get-key-report :
-    (-> key-of-mutable-dict-sys? (stream/c key-report?))
-  ; Returns an empty mutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing their information ordering representatives along the transitive closure of (<= or >=).
-  key-of-mutable-dict-sys-make-empty-dict-i==-knowable : (-> key-of-mutable-dict-sys? (knowable/c dict?))
+    (-> key-of-mutable-dict-sys? (sequence/c key-report?))
 
 any-dynamic-type : (-> any/c)
   ; Besides just being an `any/c` value, the "any" dynamic type also implements:

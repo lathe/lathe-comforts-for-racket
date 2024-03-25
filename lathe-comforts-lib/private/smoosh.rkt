@@ -662,15 +662,6 @@
   (-> smoosh-and-comparison-of-two-report? smoosh-report?))
 (ascribe-own-contract prop:smoosh-and-comparison-of-two-report
   (struct-type-property/c smoosh-and-comparison-of-two-report-impl?))
-(ascribe-own-contract
-  make-smoosh-and-comparison-of-two-report-impl-from-<=?->=?-report
-  (->
-    (-> smoosh-and-comparison-of-two-report?
-      (promise/c (knowable/c boolean?)))
-    (-> smoosh-and-comparison-of-two-report?
-      (promise/c (knowable/c boolean?)))
-    (-> smoosh-and-comparison-of-two-report? smoosh-report?)
-    smoosh-report-impl?))
 
 (define/own-contract
   (make-smoosh-and-comparison-of-two-report-impl
@@ -695,7 +686,104 @@
     >=?-knowable-promise
     get-smoosh-report))
 
+(define-imitation-simple-generics smooshable-sys? smooshable-sys-impl?
+  (#:method smooshable-sys-get-smoosh-of-zero-report (#:this))
+  (#:method smooshable-sys-get-smoosh-of-one-report (#:this) ())
+  (#:method smooshable-sys-get-smoosh-and-comparison-of-two-report
+    (#:this)
+    ()
+    ()
+    ())
+  prop:smooshable-sys make-smooshable-sys-from-various-unkeyworded
+  'smooshable-sys 'smooshable-sys-impl (list))
+(ascribe-own-contract smooshable-sys? (-> any/c boolean?))
+(ascribe-own-contract smooshable-sys-impl? (-> any/c boolean?))
+(ascribe-own-contract smooshable-sys-get-smoosh-of-zero-report
+  (-> smooshable-sys?
+    ; Each report in the infinite sequence gives the smoosh identity
+    ; elements, first for the type's bespoke notion of ordering, then
+    ; for the information ordering, then for the information ordering
+    ; of the information ordering representatives, and so on.
+    (sequence/c smoosh-report?)))
+(ascribe-own-contract smooshable-sys-get-smoosh-of-one-report
+  (-> smooshable-sys? any/c
+    ; Each report in the infinite sequence gives the smoosh identity
+    ; elements, first for the type's bespoke notion of ordering, then
+    ; for the information ordering, then for the information ordering
+    ; of the information ordering representatives, and so on.
+    (sequence/c smoosh-report?)))
+(ascribe-own-contract
+  smooshable-sys-get-smoosh-and-comparison-of-two-report
+  (->
+    ; lhs type
+    smooshable-sys?
+    ; rhs type (usually dispatched to next, if this one can't fully
+    ; determine the results)
+    smooshable-sys?
+    ; lhs
+    any/c
+    ; rhs
+    any/c
+    ; For each report in the infinite sequence, the next report says
+    ; not only whether they smoosh along that one's == but also, only
+    ; if they do, how their information ordering representatives
+    ; smoosh along their information ordering.
+    (sequence/c smoosh-and-comparison-of-two-report?)))
+(ascribe-own-contract prop:smooshable-sys
+  (struct-type-property/c smooshable-sys-impl?))
 
-; TODO SMOOSH: Implement other parts of the API outlined in the last
-; part of notes/2024-03-20-squashable-object-system.txt. We're working
-; from top to bottom.
+(define/own-contract
+  (make-smooshable-sys-impl
+    #:get-smoosh-of-zero-report get-smoosh-of-zero-report
+    #:get-smoosh-of-one-report get-smoosh-of-one-report
+    
+    #:get-smoosh-and-comparison-of-two-report
+    get-smoosh-and-comparison-of-two-report)
+  (->
+    #:get-smoosh-of-zero-report
+    (-> smooshable-sys? (sequence/c smoosh-report?))
+    
+    #:get-smoosh-of-one-report
+    (-> smooshable-sys? any/c (sequence/c smoosh-report?))
+    
+    #:get-smoosh-and-comparison-of-two-report
+    (-> smooshable-sys? smooshable-sys? any/c any/c
+      (sequence/c smoosh-and-comparison-of-two-report?))
+    
+    smooshable-sys-impl?)
+  (make-smooshable-sys-from-various-unkeyworded
+    get-smoosh-of-zero-report
+    get-smoosh-of-one-report
+    get-smoosh-and-comparison-of-two-report))
+
+
+; TODO SMOOSH: Implement the following parts of the API outlined in
+; the last part of notes/2024-03-20-squashable-object-system.txt:
+;
+; dynamic-type-var-for-any-dynamic-type
+; smooshable-sys-get-info-smooshable-sys
+; key-report?
+; key-of-immutable-dict-sys?
+; any-dynamic-type
+; any-dynamic-type?
+; make-empty-immutable-total-order-<=-based-dict
+; make-empty-immutable-trie-dict
+;
+; We're not implementing the mutable dicts. (If we need them, we're
+; just going to model them as mutable boxes containing immutable
+; dicts, or tack on the mutable dict stuff as an afterthought.)
+;
+; We need to figure out what we're doing with
+; information-ordering-indexed data structures. Since we've ended up
+; having only one concrete `gloss?` type, it seems we need wrapper
+; types for our key values to indicate when they should be compared
+; according to path-relatedness or according to their information
+; ordering. The `key-of-immutable-dict-sys-get-key-report` approach
+; outlined in the notes gives each of those different forms of
+; comparison its own empty dictionary constructor, which in our case
+; would now be expressed as a distinct `glossesque-sys?`. Let's update
+; `prop:custom-gloss-key` to return a `key-report?`. Maybe we should
+; update the notes to call `key-of-immutable-dict-sys?`
+; `custom-gloss-key?` and to call `label?` `equalw-gloss-key?`.
+; However, `key-of-immutable-dict-sys?` is a quality of a dynamic
+; type, while `custom-gloss-key?` is a quality of the value itself.
