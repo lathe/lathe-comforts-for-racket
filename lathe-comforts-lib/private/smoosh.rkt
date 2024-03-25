@@ -66,6 +66,12 @@
   ; TODO: When we document this, make sure we document its keyword
   ; arguments.
   make-glossesque-sys-impl
+  custom-gloss-key-report?
+  custom-gloss-key-report-impl?
+  custom-gloss-key-report-get-==-glossesque-sys
+  custom-gloss-key-report-get-path-related-glossesque-sys
+  prop:custom-gloss-key-report
+  make-custom-gloss-key-report-impl
   equalw-gloss-key?
   equalw-gloss-key-impl?
   prop:equalw-gloss-key
@@ -73,7 +79,7 @@
   custom-gloss-key?
   custom-gloss-key-impl?
   custom-gloss-key-variant
-  custom-gloss-key-glossesque-sys
+  custom-gloss-key-get-reports
   prop:custom-gloss-key
   make-custom-gloss-key-impl
   gloss?
@@ -103,7 +109,14 @@
   smoosh-and-comparison-of-two-report->=?-knowable-promise
   smoosh-and-comparison-of-two-report-get-smoosh-report
   prop:smoosh-and-comparison-of-two-report
-  make-smoosh-and-comparison-of-two-report-impl)
+  make-smoosh-and-comparison-of-two-report-impl
+  smooshable-sys?
+  smooshable-sys-impl?
+  smooshable-sys-get-smoosh-of-zero-report
+  smooshable-sys-get-smoosh-of-one-report
+  smooshable-sys-get-smoosh-and-comparison-of-two-report
+  prop:smooshable-sys
+  make-smooshable-sys-impl)
 
 
 (define-imitation-simple-generics
@@ -292,6 +305,46 @@
 
 
 (define-imitation-simple-generics
+  custom-gloss-key-report? custom-gloss-key-report-impl?
+  ; Returns a `glossesque-sys?` which compares keys by smooshing them
+  ; along ==, i.e. (<= and >=).
+  (#:method custom-gloss-key-report-get-==-glossesque-sys (#:this))
+  ; Returns a `glossesque-sys?` which compares keys by smooshing them
+  ; along the transitive closure of (<= or >=).
+  (#:method custom-gloss-key-report-get-path-related-glossesque-sys
+    (#:this))
+  prop:custom-gloss-key-report
+  make-custom-gloss-key-report-from-various-unkeyworded
+  'custom-gloss-key-report 'custom-gloss-key-report-impl (list))
+(ascribe-own-contract custom-gloss-key-report? (-> any/c boolean?))
+(ascribe-own-contract custom-gloss-key-report-impl? (-> any/c boolean?))
+(ascribe-own-contract custom-gloss-key-report-get-==-glossesque-sys
+  (-> custom-gloss-key-report? glossesque-sys?))
+(ascribe-own-contract
+  custom-gloss-key-report-get-path-related-glossesque-sys
+  (-> custom-gloss-key-report? glossesque-sys?))
+(ascribe-own-contract prop:custom-gloss-key-report
+  (struct-type-property/c custom-gloss-key-report-impl?))
+
+(define/own-contract
+  (make-custom-gloss-key-report-impl
+    #:get-==-glossesque-sys get-==-glossesque-sys
+    
+    #:get-path-related-glossesque-sys
+    get-path-related-glossesque-sys)
+  (->
+    #:get-==-glossesque-sys
+    (-> custom-gloss-key-report? glossesque-sys?)
+    
+    #:get-path-related-glossesque-sys
+    (-> custom-gloss-key-report? glossesque-sys?)
+    
+    custom-gloss-key-report-impl?)
+  (make-custom-gloss-key-report-from-various-unkeyworded
+    get-==-glossesque-sys
+    get-path-related-glossesque-sys))
+
+(define-imitation-simple-generics
   equalw-gloss-key? equalw-gloss-key-impl?
   prop:equalw-gloss-key make-equalw-gloss-key-impl
   'equalw-gloss-key 'equalw-gloss-key-impl (list))
@@ -305,7 +358,7 @@
 (define-imitation-simple-generics
   custom-gloss-key? custom-gloss-key-impl?
   (#:method custom-gloss-key-variant (#:this))
-  (#:method custom-gloss-key-glossesque-sys (#:this))
+  (#:method custom-gloss-key-get-reports (#:this))
   prop:custom-gloss-key
   make-custom-gloss-key-impl-from-various-unkeyworded
   'custom-gloss-key 'custom-gloss-key-impl (list))
@@ -313,22 +366,30 @@
 (ascribe-own-contract custom-gloss-key-impl? (-> any/c boolean?))
 (ascribe-own-contract custom-gloss-key-variant
   (-> custom-gloss-key? any/c))
-(ascribe-own-contract custom-gloss-key-glossesque-sys
-  (-> custom-gloss-key? glossesque-sys?))
+(ascribe-own-contract custom-gloss-key-get-reports
+  ; For each report in the infinite sequence, the next report creates
+  ; glossesques that not only compare keys by whether they smoosh
+  ; along that one's `==` but also, only if they do, smooshes their
+  ; information ordering representatives along their information
+  ; ordering.
+  (-> custom-gloss-key? (sequence/c custom-gloss-key-report?)))
 (ascribe-own-contract prop:custom-gloss-key
   (struct-type-property/c custom-gloss-key-impl?))
 
 (define/own-contract
   (make-custom-gloss-key-impl
     #:variant variant
-    #:glossesque-sys glossesque-sys)
+    #:get-reports get-reports)
   (->
     #:variant (-> custom-gloss-key? any/c)
-    #:glossesque-sys (-> custom-gloss-key? glossesque-sys?)
+    
+    #:get-reports
+    (-> custom-gloss-key? (sequence/c custom-gloss-key-report?))
+    
     glossesque-sys-impl?)
   (make-custom-gloss-key-impl-from-various-unkeyworded
     variant
-    glossesque-sys))
+    get-reports))
 
 
 ; TODO: Give this better smooshing behavior once we have an interface
@@ -417,7 +478,12 @@
   /knowable-bind (gloss-ref-maybe-knowable custom variant)
   /fn custom-entry
   /expect custom-entry (just custom-entry)
-    (w- custom-gs (custom-gloss-key-glossesque-sys k)
+    (w- custom-gs
+      ; TODO SMOOSH: Change the representation of `gloss?`
+      ; values to allow for comparing by each one of `glossesque-sys?`
+      ; values contained in `(custom-gloss-key-get-reports k)`.
+      (custom-gloss-key-report-get-==-glossesque-sys
+        (sequence-ref (custom-gloss-key-get-reports k) 0))
     /knowable-bind
       (gloss-set-maybe-knowable custom variant
         (just /list custom-gs
@@ -762,7 +828,6 @@
 ;
 ; dynamic-type-var-for-any-dynamic-type
 ; smooshable-sys-get-info-smooshable-sys
-; key-report?
 ; key-of-immutable-dict-sys?
 ; any-dynamic-type
 ; any-dynamic-type?
