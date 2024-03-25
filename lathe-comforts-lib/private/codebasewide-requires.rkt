@@ -44,7 +44,8 @@
 (only-in racket/match
   define-match-expander match match-define match/derived match-lambda)
 (only-in racket/math natural?)
-(only-in racket/sequence sequence/c sequence-ref)
+(only-in racket/promise delay delay/strict force)
+(only-in racket/sequence sequence/c sequence-map sequence-ref)
 (only-in racket/struct make-constructor-style-printer)
 (only-in syntax/parse/define
   define-syntax-parser define-syntax-parse-rule)
