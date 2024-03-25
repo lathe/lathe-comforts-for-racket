@@ -22,9 +22,9 @@
 (require lathe-comforts/private/shim)
 (init-shim)
 
-(require /only-in lathe-comforts dissect expect fn mat w-)
+(require /only-in lathe-comforts dissect expect fn mat w- w-loop)
 (require /only-in lathe-comforts/hash
-  hash-kv-map hash-ref-maybe hash-set-maybe)
+  hash-kv-map-maybe hash-ref-maybe hash-set-maybe)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
   define-imitation-simple-struct)
@@ -72,6 +72,8 @@
   custom-gloss-key-report-get-path-related-glossesque-sys
   prop:custom-gloss-key-report
   make-custom-gloss-key-report-impl
+  path-related-wrapper
+  info-wrapper
   equalw-gloss-key?
   equalw-gloss-key-impl?
   prop:equalw-gloss-key
@@ -142,8 +144,8 @@
   (-> unknown?)
   (example-unknown))
 
-; TODO: Give this better smooshing behavior once we have an interface
-; for smooshable things.
+; TODO SMOOSH: Give this better smooshing behavior using
+; `prop:smooshable-sys`.
 (define-imitation-simple-struct (known? known-value) known
   'known (current-inspector) (auto-write) (auto-equal))
 (ascribe-own-contract known? (-> any/c boolean?))
@@ -344,6 +346,32 @@
     get-==-glossesque-sys
     get-path-related-glossesque-sys))
 
+; TODO SMOOSH: Give this better smooshing behavior using
+; `prop:smooshable-sys`.
+(define-imitation-simple-struct
+  (path-related-wrapper? path-related-wrapper-value)
+  path-related-wrapper-unguarded
+  'path-related-wrapper (current-inspector)
+  ; TODO SMOOSH: Stop using `auto-write` and `auto-equal` for this.
+  (auto-write) (auto-equal))
+
+(define/own-contract (path-related-wrapper v)
+  (-> any/c any/c)
+  (path-related-wrapper-unguarded v))
+
+; TODO SMOOSH: Give this better smooshing behavior using
+; `prop:smooshable-sys`.
+(define-imitation-simple-struct
+  (info-wrapper? info-wrapper-value)
+  info-wrapper-unguarded
+  'info-wrapper (current-inspector)
+  ; TODO SMOOSH: Stop using `auto-write` and `auto-equal` for this.
+  (auto-write) (auto-equal))
+
+(define/own-contract (info-wrapper v)
+  (-> any/c any/c)
+  (info-wrapper-unguarded v))
+
 (define-imitation-simple-generics
   equalw-gloss-key? equalw-gloss-key-impl?
   prop:equalw-gloss-key make-equalw-gloss-key-impl
@@ -392,10 +420,48 @@
     get-reports))
 
 
-; TODO: Give this better smooshing behavior once we have an interface
-; for smooshable things.
+; TODO SMOOSH: Give this better smooshing behavior using
+; `prop:smooshable-sys`.
 (define-imitation-simple-struct
-  (gloss? gloss-count-field gloss-atomic-entries gloss-custom-entries)
+  (gloss?
+    
+    ; A natural number representing the number of key-value entries in
+    ; the gloss.
+    ;
+    gloss-count-field
+    
+    ; An `equal-always?`-based `hash?` containing all the key-value
+    ; entries in the gloss for which the key is an
+    ; `equalw-gloss-key?`.
+    ;
+    gloss-atomic-entries
+    
+    ; A `maybe?` possibly containing another `gloss?` that maps a
+    ; `custom-gloss-key-variant` to an `equal-always?`-based `hash?`
+    ; that maps a two-element list containing a `'path-related` or
+    ; `'==` symbol and a natural number (representing the number of
+    ; iterations by which a key is compared by the information
+    ; ordering of its information ordering, etc.) to a two-element
+    ; list containing a `glossesque-sys?` and an `equal-always?`-based
+    ; `hash?` that maps a list of `path-related-wrapper` and
+    ; `'info-wrapper` symbols in the order they were unwrapped from a
+    ; key to a glossesque of the indicated `glossesque-sys?` that maps
+    ; an unwrapped key to a value. In code, that's rougly:
+    ;
+    ; (maybe/c
+    ;   (gloss/c any/c
+    ;     (hash/c (list/c (or/c 'path-related '==) natural?)
+    ;       (and/c (list/c glossesque-sys? any/c)
+    ;       /by-own-method/c (list gs _)
+    ;       /list/c any/c
+    ;         (hash/c
+    ;           (listof (or/c 'path-related-wrapper 'info-wrapper))
+    ;           (glossesque/c gs any/c any/c))))))
+    ;
+    ; Here, `gloss/c` and `glossesque/c` are hypothetical contracts
+    ; that are analogous to `hash/c`.
+    ;
+    gloss-custom-entries)
   gloss
   'gloss (current-inspector)
   ; TODO SMOOSH: Stop using `auto-write` and `auto-equal` for this.
@@ -403,13 +469,23 @@
 (ascribe-own-contract gloss? (-> any/c boolean?))
 
 (define (hash-km-union-of-two a b km-union)
-  (hash-kv-map (hash-union a b #:combine /fn a b a) /fn k v
+  (hash-kv-map-maybe (hash-union a b #:combine /fn a b a) /fn k v
     (km-union k (hash-ref-maybe a k) (hash-ref-maybe b k))))
 
 (define (maybe-m-union-of-two a b m-union)
   (mat a (just _) (m-union a b)
   /mat b (just _) (m-union a b)
   /nothing))
+
+(define (unwrap-gloss-key v)
+  (w-loop next v v path-mode '== depth 0 unwrapped-wrappers (list)
+    (mat v (path-related-wrapper-unguarded v)
+      (next v 'path-related depth
+        (cons 'path-related-wrapper unwrapped-wrappers))
+    /mat v (info-wrapper-unguarded v)
+      (next v '== (add1 depth)
+        (cons 'info-wrapper unwrapped-wrappers))
+    /list v path-mode depth unwrapped-wrappers)))
 
 (define/own-contract (gloss-union-of-zero)
   (-> gloss?)
@@ -422,31 +498,41 @@
   /w- atomic (hash-km-union-of-two a-atomic b-atomic km-union)
   /w- custom
     (maybe-m-union-of-two a-custom b-custom /fn a b
-      (gloss-km-union-of-two
+      (just /gloss-km-union-of-two
         (mat a (just a) a (gloss-union-of-zero))
         (mat b (just b) b (gloss-union-of-zero))
         (fn a b
-          (w- gs
-            (mat a (just /list gs _) gs
-            /dissect b (just /list gs _) gs)
-          /w- a
-            (mat a (just /list _ a) a
-            /glossesque-sys-glossesque-union-of-zero gs)
-          /w- b
-            (mat b (just /list _ b) b
-            /glossesque-sys-glossesque-union-of-zero gs)
-          /just /list gs
-            (glossesque-sys-glossesque-km-union-of-two gs a b
-              km-union)))))
+          (just /hash-km-union-of-two
+            (mat a (just a) a (hashalw))
+            (mat b (just b) b (hashalw))
+            (fn a b
+              (w- gs
+                (mat a (just /list gs _) gs
+                /dissect b (just /list gs _) gs)
+              /just /list gs /hash-km-union-of-two
+                (mat a (just /list _ a) a (hashalw))
+                (mat b (just /list _ b) b (hashalw))
+                (fn a b
+                  (just /glossesque-sys-glossesque-km-union-of-two gs
+                    (mat a (just /list _ a) a
+                      (glossesque-sys-glossesque-union-of-zero gs))
+                    (mat b (just /list _ b) b
+                      (glossesque-sys-glossesque-union-of-zero gs))
+                    km-union))))))))
   /gloss
     (+ (hash-count atomic)
       (expect custom (just custom) 0
-        (for/sum
+        (for*/sum
           (
-            [ (variant custom-entry)
-              (in-sequences /gloss-iteration-sequence custom)])
-          (dissect custom-entry (list gs g)
-          /glossesque-sys-glossesque-count gs g))))
+            [ (variant custom-regress)
+              (in-sequences /gloss-iteration-sequence custom)]
+            [(mode custom-entry) (in-hash custom-regress)]
+            
+            #:do
+            [(match-define (list gs custom-unwrappings) custom-entry)]
+            
+            [(unwrapped-wrappers g) custom-unwrappings])
+          (glossesque-sys-glossesque-count gs g))))
     atomic
     custom))
 
@@ -454,54 +540,85 @@
   (-> gloss? any/c (knowable/c maybe?))
   (dissect g (gloss _ atomic custom)
   /if (equalw-gloss-key? k) (known /hash-ref-maybe atomic k)
-  /expect (custom-gloss-key? k) #t (unknown)
+  /dissect (unwrap-gloss-key k)
+    (list unwrapped-k path-mode depth unwrapped-wrappers)
+  /expect (custom-gloss-key? unwrapped-k) #t (unknown)
   /expect custom (just custom) (known /nothing)
-  /knowable-bind
-    (gloss-ref-maybe-knowable custom (custom-gloss-key-variant k))
-  /fn custom-entry
-  /expect custom-entry (just custom-entry) (known /nothing)
-  /dissect custom-entry (list custom-gs custom-g)
-  /glossesque-sys-glossesque-ref-maybe-knowable custom-gs custom-g k))
+  /w- variant (custom-gloss-key-variant unwrapped-k)
+  /knowable-bind (gloss-ref-maybe-knowable custom variant)
+  /fn custom-regress
+  /expect custom-regress (just custom-regress) (known /nothing)
+  /w- mode (list path-mode depth)
+  /expect (hash-ref-maybe custom-regress mode) (just custom-entry)
+    (known /nothing)
+  /dissect custom-entry (list custom-gs custom-unwrappings)
+  /expect (hash-ref-maybe custom-unwrappings unwrapped-wrappers)
+    (just custom-g)
+    (known /nothing)
+  /glossesque-sys-glossesque-ref-maybe-knowable
+    custom-gs custom-g unwrapped-k))
 
 (define/own-contract (gloss-set-maybe-knowable g k m)
   (-> gloss? any/c maybe? (knowable/c gloss?))
   (dissect g (gloss count atomic custom)
   /if (equalw-gloss-key? k)
     (known /gloss count (hash-set-maybe atomic k m) custom)
-  /expect (custom-gloss-key? k) #t (unknown)
+  /dissect (unwrap-gloss-key k)
+    (list unwrapped-k path-mode depth unwrapped-wrappers)
+  /expect (custom-gloss-key? unwrapped-k) #t (unknown)
   /expect custom (just custom)
     (gloss-set-maybe-knowable
       (gloss count atomic (just /gloss-union-of-zero))
       k
       m)
-  /w- variant (custom-gloss-key-variant k)
+  /w- variant (custom-gloss-key-variant unwrapped-k)
   /knowable-bind (gloss-ref-maybe-knowable custom variant)
-  /fn custom-entry
-  /expect custom-entry (just custom-entry)
-    (w- custom-gs
-      ; TODO SMOOSH: Change the representation of `gloss?`
-      ; values to allow for comparing by each one of `glossesque-sys?`
-      ; values contained in `(custom-gloss-key-get-reports k)`.
-      (custom-gloss-key-report-get-==-glossesque-sys
-        (sequence-ref (custom-gloss-key-get-reports k) 0))
-    /knowable-bind
-      (gloss-set-maybe-knowable custom variant
-        (just /list custom-gs
-          (glossesque-sys-glossesque-union-of-zero custom-gs)))
+  /fn custom-regress
+  /expect custom-regress (just custom-regress)
+    (knowable-bind
+      (gloss-set-maybe-knowable custom variant (just /hashalw))
     /fn custom
     /gloss-set-maybe-knowable (gloss count atomic (just custom)) k m)
-  /dissect custom-entry (list custom-gs custom-g)
+  /w- mode (list path-mode depth)
+  /expect (hash-ref-maybe custom-regress mode) (just custom-entry)
+    (w- report
+      (sequence-ref (custom-gloss-key-get-reports unwrapped-k) depth)
+    /w- custom-gs
+      (mat path-mode '==
+        (custom-gloss-key-report-get-==-glossesque-sys report)
+      /dissect path-mode 'path-related
+        (custom-gloss-key-report-get-path-related-glossesque-sys report))
+    /w- custom-regress
+      (hash-set custom-regress mode (list custom-gs (hashalw)))
+    /knowable-bind
+      (gloss-set-maybe-knowable custom variant
+        (just /hash-set custom-regress mode (list custom-gs (hashalw))))
+    /fn custom
+    /gloss-set-maybe-knowable (gloss count atomic (just custom)) k m)
+  /dissect custom-entry (list custom-gs custom-unwrappings)
+  /expect (hash-ref-maybe custom-unwrappings unwrapped-wrappers)
+    (just custom-g)
+    (knowable-bind
+      (gloss-set-maybe-knowable custom variant
+        (just /hash-set custom-regress mode
+          (list custom-gs
+            (hash-set custom-unwrappings unwrapped-wrappers
+              (glossesque-sys-glossesque-union-of-zero custom-gs)))))
+    /fn custom
+    /gloss-set-maybe-knowable (gloss count atomic (just custom)) k m)
   /w- old-custom-g-count
     (glossesque-sys-glossesque-count custom-gs custom-g)
   /knowable-bind
     (glossesque-sys-glossesque-set-maybe-knowable
-      custom-gs custom-g k m)
+      custom-gs custom-g unwrapped-k m)
   /fn custom-g
   /w- new-custom-g-count
     (glossesque-sys-glossesque-count custom-gs custom-g)
   /knowable-bind
-    (gloss-set-maybe-knowable custom k
-      (just /list custom-gs custom-g))
+    (gloss-set-maybe-knowable custom variant
+      (just /hash-set custom-regress mode
+        (list custom-gs
+          (hash-set custom-unwrappings unwrapped-wrappers custom-g))))
   /fn custom
   /known /gloss
     (+ count (- new-custom-g-count old-custom-g-count))
@@ -518,12 +635,17 @@
   (dissect g (gloss _ atomic custom)
   /apply in-sequences (in-hash atomic)
     (expect custom (just custom) (list)
-    /for/list
+    /for*/list
       (
-        [ (variant custom-entry)
-          (in-sequences /gloss-iteration-sequence custom)])
-      (dissect custom-entry (list gs g)
-      /glossesque-sys-glossesque-iteration-sequence gs g))))
+        [ (variant custom-regress)
+          (in-sequences /gloss-iteration-sequence custom)]
+        [(mode custom-entry) (in-hash custom-regress)]
+        
+        #:do
+        [(match-define (list gs custom-unwrappings) custom-entry)]
+        
+        [(unwrapped-wrappers g) custom-unwrappings])
+      (glossesque-sys-glossesque-iteration-sequence gs g))))
 
 (define-imitation-simple-struct
   (gloss-glossesque-sys?)
@@ -838,17 +960,12 @@
 ; just going to model them as mutable boxes containing immutable
 ; dicts, or tack on the mutable dict stuff as an afterthought.)
 ;
-; We need to figure out what we're doing with
-; information-ordering-indexed data structures. Since we've ended up
-; having only one concrete `gloss?` type, it seems we need wrapper
-; types for our key values to indicate when they should be compared
-; according to path-relatedness or according to their information
-; ordering. The `key-of-immutable-dict-sys-get-key-report` approach
-; outlined in the notes gives each of those different forms of
-; comparison its own empty dictionary constructor, which in our case
-; would now be expressed as a distinct `glossesque-sys?`. Let's update
-; `prop:custom-gloss-key` to return a `key-report?`. Maybe we should
-; update the notes to call `key-of-immutable-dict-sys?`
-; `custom-gloss-key?` and to call `label?` `equalw-gloss-key?`.
-; However, `key-of-immutable-dict-sys?` is a quality of a dynamic
-; type, while `custom-gloss-key?` is a quality of the value itself.
+; For information-ordering-indexed data structures, since we've ended
+; up having only one concrete `gloss?` type, we have
+; `path-related-wrapper` and `info-wrapper` wrapper types for our key
+; values to indicate when they should be compared according to
+; path-relatedness or according to their information ordering.
+;
+; Note that `key-of-immutable-dict-sys?` is a quality of a dynamic
+; type, while `custom-gloss-key?` is a quality of the value itself. We
+; should align with the notes here (TODO SMOOSH).
