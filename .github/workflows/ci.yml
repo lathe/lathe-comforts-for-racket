@@ -88,7 +88,7 @@ jobs:
       # fetch a stale copy of the dependency from the Racket package
       # index.
       #
-      - name: Install `${{ matrix.package }}-lib` and its dependencies
+      - name: Install `${{ needs.vars.outputs.package }}-lib` and its dependencies
         run: raco pkg install --auto --no-docs --batch --link "./${{ needs.vars.outputs.package }}-lib/"
       - name: Install `${{ needs.vars.outputs.package }}-doc` and its dependencies
         run: raco pkg install --auto --no-docs --batch --link "./${{ needs.vars.outputs.package }}-doc/"
