@@ -78,12 +78,12 @@
   equalw-gloss-key-impl?
   prop:equalw-gloss-key
   make-equalw-gloss-key-impl
-  custom-gloss-key?
-  custom-gloss-key-impl?
-  custom-gloss-key-variant
-  custom-gloss-key-get-reports
-  prop:custom-gloss-key
-  make-custom-gloss-key-impl
+  custom-gloss-key-dynamic-type?
+  custom-gloss-key-dynamic-type-impl?
+  custom-gloss-key-dynamic-type-variant
+  custom-gloss-key-dynamic-type-get-reports
+  prop:custom-gloss-key-dynamic-type
+  make-custom-gloss-key-dynamic-type-impl
   gloss?
   gloss-union-of-zero
   gloss-km-union-of-two
@@ -95,8 +95,17 @@
   expressly-has-dynamic-type-impl?
   prop:expressly-has-dynamic-type
   make-expressly-has-dynamic-type-impl
-  make-uninformative-dynamic-type
+  uninformative-dynamic-type
+  any-dynamic-type?)
+(provide
+  any-dynamic-type)
+(provide /own-contract-out
+  dynamic-type-var-for-any-dynamic-type?)
+(provide
+  dynamic-type-var-for-any-dynamic-type)
+(provide /own-contract-out
   get-dynamic-type
+  get-dynamic-type-with-default-bindings
   smoosh-report?
   smoosh-report-impl?
   smoosh-report-join-knowable-promise-maybe-knowable-promise
@@ -384,38 +393,46 @@
   (-> equalw-gloss-key-impl?))
 
 (define-imitation-simple-generics
-  custom-gloss-key? custom-gloss-key-impl?
-  (#:method custom-gloss-key-variant (#:this))
-  (#:method custom-gloss-key-get-reports (#:this))
-  prop:custom-gloss-key
-  make-custom-gloss-key-impl-from-various-unkeyworded
-  'custom-gloss-key 'custom-gloss-key-impl (list))
-(ascribe-own-contract custom-gloss-key? (-> any/c boolean?))
-(ascribe-own-contract custom-gloss-key-impl? (-> any/c boolean?))
-(ascribe-own-contract custom-gloss-key-variant
-  (-> custom-gloss-key? any/c))
-(ascribe-own-contract custom-gloss-key-get-reports
+  custom-gloss-key-dynamic-type? custom-gloss-key-dynamic-type-impl?
+  ; TODO SMOOSH: Rework these methods' design so that they return
+  ; `knowable?` values so that `any-dynamic-type?` values can
+  ; implement this interface.
+  (#:method custom-gloss-key-dynamic-type-variant (#:this))
+  (#:method custom-gloss-key-dynamic-type-get-reports (#:this))
+  prop:custom-gloss-key-dynamic-type
+  make-custom-gloss-key-dynamic-type-impl-from-various-unkeyworded
+  'custom-gloss-key-dynamic-type 'custom-gloss-key-dynamic-type-impl
+  (list))
+(ascribe-own-contract custom-gloss-key-dynamic-type?
+  (-> any/c boolean?))
+(ascribe-own-contract custom-gloss-key-dynamic-type-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract custom-gloss-key-dynamic-type-variant
+  (-> custom-gloss-key-dynamic-type? any/c))
+(ascribe-own-contract custom-gloss-key-dynamic-type-get-reports
   ; For each report in the infinite sequence, the next report creates
   ; glossesques that not only compare keys by whether they smoosh
   ; along that one's `==` but also, only if they do, smooshes their
   ; information ordering representatives along their information
   ; ordering.
-  (-> custom-gloss-key? (sequence/c custom-gloss-key-report?)))
-(ascribe-own-contract prop:custom-gloss-key
-  (struct-type-property/c custom-gloss-key-impl?))
+  (-> custom-gloss-key-dynamic-type?
+    (sequence/c custom-gloss-key-report?)))
+(ascribe-own-contract prop:custom-gloss-key-dynamic-type
+  (struct-type-property/c custom-gloss-key-dynamic-type-impl?))
 
 (define/own-contract
-  (make-custom-gloss-key-impl
+  (make-custom-gloss-key-dynamic-type-impl
     #:variant variant
     #:get-reports get-reports)
   (->
-    #:variant (-> custom-gloss-key? any/c)
+    #:variant (-> custom-gloss-key-dynamic-type? any/c)
     
     #:get-reports
-    (-> custom-gloss-key? (sequence/c custom-gloss-key-report?))
+    (-> custom-gloss-key-dynamic-type?
+      (sequence/c custom-gloss-key-report?))
     
-    glossesque-sys-impl?)
-  (make-custom-gloss-key-impl-from-various-unkeyworded
+    custom-gloss-key-dynamic-type-impl?)
+  (make-custom-gloss-key-dynamic-type-impl-from-various-unkeyworded
     variant
     get-reports))
 
@@ -437,16 +454,17 @@
     gloss-atomic-entries
     
     ; A `maybe?` possibly containing another `gloss?` that maps a
-    ; `custom-gloss-key-variant` to an `equal-always?`-based `hash?`
-    ; that maps a two-element list containing a `'path-related` or
-    ; `'==` symbol and a natural number (representing the number of
-    ; iterations by which a key is compared by the information
-    ; ordering of its information ordering, etc.) to a two-element
-    ; list containing a `glossesque-sys?` and an `equal-always?`-based
-    ; `hash?` that maps a list of `path-related-wrapper` and
-    ; `'info-wrapper` symbols in the order they were unwrapped from a
-    ; key to a glossesque of the indicated `glossesque-sys?` that maps
-    ; an unwrapped key to a value. In code, that's rougly:
+    ; `custom-gloss-key-dynamic-type-variant` to an
+    ; `equal-always?`-based `hash?` that maps a two-element list
+    ; containing a `'path-related` or `'==` symbol and a natural
+    ; number (representing the number of iterations by which a key is
+    ; compared by the information ordering of its information
+    ; ordering, etc.) to a two-element list containing a
+    ; `glossesque-sys?` and an `equal-always?`-based `hash?` that maps
+    ; a list of `path-related-wrapper` and `'info-wrapper` symbols in
+    ; the order they were unwrapped from a key to a glossesque of the
+    ; indicated `glossesque-sys?` that maps an unwrapped key to a
+    ; value. In code, that's rougly:
     ;
     ; (maybe/c
     ;   (gloss/c any/c
@@ -542,9 +560,13 @@
   /if (equalw-gloss-key? k) (known /hash-ref-maybe atomic k)
   /dissect (unwrap-gloss-key k)
     (list unwrapped-k path-mode depth unwrapped-wrappers)
-  /expect (custom-gloss-key? unwrapped-k) #t (unknown)
+  ; TODO SMOOSH: This use of `get-dynamic-type-with-default-bindings`
+  ; is a forward reference. See if we can untangle it.
+  /w- unwrapped-k-dt
+    (get-dynamic-type-with-default-bindings unwrapped-k)
+  /expect (custom-gloss-key-dynamic-type? unwrapped-k-dt) #t (unknown)
   /expect custom (just custom) (known /nothing)
-  /w- variant (custom-gloss-key-variant unwrapped-k)
+  /w- variant (custom-gloss-key-dynamic-type-variant unwrapped-k-dt)
   /knowable-bind (gloss-ref-maybe-knowable custom variant)
   /fn custom-regress
   /expect custom-regress (just custom-regress) (known /nothing)
@@ -565,13 +587,17 @@
     (known /gloss count (hash-set-maybe atomic k m) custom)
   /dissect (unwrap-gloss-key k)
     (list unwrapped-k path-mode depth unwrapped-wrappers)
-  /expect (custom-gloss-key? unwrapped-k) #t (unknown)
+  ; TODO SMOOSH: This use of `get-dynamic-type-with-default-bindings`
+  ; is a forward reference. See if we can untangle it.
+  /w- unwrapped-k-dt
+    (get-dynamic-type-with-default-bindings unwrapped-k)
+  /expect (custom-gloss-key-dynamic-type? unwrapped-k-dt) #t (unknown)
   /expect custom (just custom)
     (gloss-set-maybe-knowable
       (gloss count atomic (just /gloss-union-of-zero))
       k
       m)
-  /w- variant (custom-gloss-key-variant unwrapped-k)
+  /w- variant (custom-gloss-key-dynamic-type-variant unwrapped-k-dt)
   /knowable-bind (gloss-ref-maybe-knowable custom variant)
   /fn custom-regress
   /expect custom-regress (just custom-regress)
@@ -582,7 +608,9 @@
   /w- mode (list path-mode depth)
   /expect (hash-ref-maybe custom-regress mode) (just custom-entry)
     (w- report
-      (sequence-ref (custom-gloss-key-get-reports unwrapped-k) depth)
+      (sequence-ref
+        (custom-gloss-key-dynamic-type-get-reports unwrapped-k-dt)
+        depth)
     /w- custom-gs
       (mat path-mode '==
         (custom-gloss-key-report-get-==-glossesque-sys report)
@@ -692,18 +720,51 @@
   (-> (-> gloss? any/c any/c) expressly-has-dynamic-type-impl?))
 
 (define-imitation-simple-struct (uninformative-dynamic-type?)
-  uninformative-dynamic-type
+  uninformative-dynamic-type-unguarded
   'uninformative-dynamic-type (current-inspector) (auto-write))
 
-(define/own-contract (make-uninformative-dynamic-type)
+(define/own-contract (uninformative-dynamic-type)
   (-> any/c)
   (uninformative-dynamic-type))
+
+; TODO SMOOSH: Give this better smooshing behavior using
+; `prop:smooshable-sys`.
+;
+; TODO SMOOSH: Give this implementations of `smooshable-sys?` and
+; `custom-gloss-key-dynamic-type?`. We'll need to rework the design of
+; the `custom-gloss-key-dynamic-type?` methods to return `knowable?`
+; values first. Rename `smooshable-sys?` to
+; `smooshable-dynamic-type?`.
+;
+(define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
+  'any-dynamic-type (current-inspector) (auto-write) (auto-equal))
+(ascribe-own-contract any-dynamic-type? (-> any/c boolean?))
+
+; TODO SMOOSH: Give this better smooshing behavior using
+; `prop:smooshable-sys`.
+(define-imitation-simple-struct
+  (dynamic-type-var-for-any-dynamic-type?)
+  dynamic-type-var-for-any-dynamic-type
+  'dynamic-type-var-for-any-dynamic-type (current-inspector)
+  (auto-write)
+  (auto-equal)
+  (#:prop prop:equalw-gloss-key /make-equalw-gloss-key-impl))
+(ascribe-own-contract dynamic-type-var-for-any-dynamic-type?
+  (-> any/c boolean?))
 
 (define/own-contract (get-dynamic-type bindings v)
   (-> gloss? any/c any/c)
   (if (expressly-has-dynamic-type? v)
     (expressly-has-dynamic-type-get-dynamic-type bindings v)
-    (make-uninformative-dynamic-type)))
+    (uninformative-dynamic-type)))
+
+(define/own-contract (get-dynamic-type-with-default-bindings v)
+  (-> any/c any/c)
+  (get-dynamic-type
+    (known-value /gloss-set-maybe-knowable (gloss-union-of-zero)
+      (dynamic-type-var-for-any-dynamic-type)
+      (any-dynamic-type))
+    v))
 
 
 (define-imitation-simple-generics
@@ -948,11 +1009,7 @@
 ; TODO SMOOSH: Implement the following parts of the API outlined in
 ; the last part of notes/2024-03-20-squashable-object-system.txt:
 ;
-; dynamic-type-var-for-any-dynamic-type
 ; smooshable-sys-get-info-smooshable-sys
-; key-of-immutable-dict-sys?
-; any-dynamic-type
-; any-dynamic-type?
 ; make-empty-immutable-total-order-<=-based-dict
 ; make-empty-immutable-trie-dict
 ;
@@ -965,7 +1022,3 @@
 ; `path-related-wrapper` and `info-wrapper` wrapper types for our key
 ; values to indicate when they should be compared according to
 ; path-relatedness or according to their information ordering.
-;
-; Note that `key-of-immutable-dict-sys?` is a quality of a dynamic
-; type, while `custom-gloss-key?` is a quality of the value itself. We
-; should align with the notes here (TODO SMOOSH).
