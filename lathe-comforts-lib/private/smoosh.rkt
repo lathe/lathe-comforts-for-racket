@@ -96,14 +96,14 @@
   smoosh-report-==-knowable-promise-maybe-knowable-promise
   smoosh-report-path-related-knowable-promise-maybe-knowable-promise
   prop:smoosh-report
-  make-smoosh-report-impl-from-join-meet-==-path
+  make-smoosh-report-impl
   smoosh-and-comparison-of-two-report?
   smoosh-and-comparison-of-two-report-impl?
   smoosh-and-comparison-of-two-report-<=?-knowable-promise
   smoosh-and-comparison-of-two-report->=?-knowable-promise
   smoosh-and-comparison-of-two-report-get-smoosh-report
   prop:smoosh-and-comparison-of-two-report
-  make-smoosh-and-comparison-of-two-report-impl-from-<=?->=?-report)
+  make-smoosh-and-comparison-of-two-report-impl)
 
 
 (define-imitation-simple-generics
@@ -572,7 +572,7 @@
     smoosh-report-path-related-knowable-promise-maybe-knowable-promise
     (#:this))
   
-  prop:smoosh-report make-smoosh-report-impl-from-join-meet-==-path
+  prop:smoosh-report make-smoosh-report-impl-from-various-unkeyworded
   'smoosh-report 'smoosh-report-impl (list))
 (define smoosh-report-component/c
   (-> smoosh-report?
@@ -594,13 +594,40 @@
   smoosh-report-component/c)
 (ascribe-own-contract prop:smoosh-report
   (struct-type-property/c smoosh-report-impl?))
-(ascribe-own-contract make-smoosh-report-impl-from-join-meet-==-path
+
+(define/own-contract
+  (make-smoosh-report-impl
+    
+    #:join-knowable-promise-maybe-knowable-promise
+    join-knowable-promise-maybe-knowable-promise
+    
+    #:meet-knowable-promise-maybe-knowable-promise
+    meet-knowable-promise-maybe-knowable-promise
+    
+    #:==-knowable-promise-maybe-knowable-promise
+    ==-knowable-promise-maybe-knowable-promise
+    
+    #:path-related-knowable-promise-maybe-knowable-promise
+    path-related-knowable-promise-maybe-knowable-promise)
   (->
+    #:join-knowable-promise-maybe-knowable-promise
     smoosh-report-component/c
+    
+    #:meet-knowable-promise-maybe-knowable-promise
     smoosh-report-component/c
+    
+    #:==-knowable-promise-maybe-knowable-promise
     smoosh-report-component/c
+    
+    #:path-related-knowable-promise-maybe-knowable-promise
     smoosh-report-component/c
-    smoosh-report-impl?))
+    
+    smoosh-report-impl?)
+  (make-smoosh-report-impl-from-various-unkeyworded
+    join-knowable-promise-maybe-knowable-promise
+    meet-knowable-promise-maybe-knowable-promise
+    ==-knowable-promise-maybe-knowable-promise
+    path-related-knowable-promise-maybe-knowable-promise))
 
 (define-imitation-simple-generics
   smoosh-and-comparison-of-two-report?
@@ -614,7 +641,7 @@
   (#:method smoosh-and-comparison-of-two-report-get-smoosh-report
     (#:this))
   prop:smoosh-and-comparison-of-two-report
-  make-smoosh-and-comparison-of-two-report-impl-from-<=?->=?-report
+  make-smoosh-and-comparison-of-two-report-impl-from-various-unkeyworded
   'smoosh-and-comparison-of-two-report
   'smoosh-and-comparison-of-two-report-impl
   (list))
@@ -644,6 +671,29 @@
       (promise/c (knowable/c boolean?)))
     (-> smoosh-and-comparison-of-two-report? smoosh-report?)
     smoosh-report-impl?))
+
+(define/own-contract
+  (make-smoosh-and-comparison-of-two-report-impl
+    #:<=?-knowable-promise <=?-knowable-promise
+    #:>=?-knowable-promise >=?-knowable-promise
+    #:get-smoosh-report get-smoosh-report)
+  (->
+    #:<=?-knowable-promise
+    (-> smoosh-and-comparison-of-two-report?
+      (promise/c (knowable/c boolean?)))
+    
+    #:>=?-knowable-promise
+    (-> smoosh-and-comparison-of-two-report?
+      (promise/c (knowable/c boolean?)))
+    
+    #:get-smoosh-report
+    (-> smoosh-and-comparison-of-two-report? smoosh-report?)
+    
+    smoosh-report-impl?)
+  (make-smoosh-and-comparison-of-two-report-impl-from-various-unkeyworded
+    <=?-knowable-promise
+    >=?-knowable-promise
+    get-smoosh-report))
 
 
 ; TODO SMOOSH: Implement other parts of the API outlined in the last
