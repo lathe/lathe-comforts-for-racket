@@ -37,11 +37,11 @@
   hash-kv-map-sorted
   hash-kv-bind
   hash-kv-map-maybe
-  hash-kv-map 
-  hash-kv-any 
-  hash-kv-all 
+  hash-kv-map
+  hash-kv-any
+  hash-kv-all
   hash-kv-each
-  hash-v-map-maybe 
+  hash-v-map-maybe
   hash-v-map
   hash-v-any
   hash-v-all
