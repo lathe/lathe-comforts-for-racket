@@ -131,26 +131,27 @@ smoosh-and-comparison-of-two-report?
   smoosh-and-comparison-of-two-report->=?-knowable-promise : (-> smoosh-and-comparison-of-two-report? (promise/c (knowable/c boolean?)))
   smoosh-and-comparison-of-two-report-get-smoosh-report : (-> smoosh-and-comparison-of-two-report? smoosh-report?)
 
-smooshable-sys?
+smooshable-dynamic-type?
   ; This obtains a predicate. However, the predicate can also be a flat-contract? to give better error messages when used as a contract, and it can also be a knowable-predicate? to allow a distinction between false-as-in-definitely-not and false-as-in-unknown.
-  smooshable-predicate : (-> smooshable-sys? (-> any/c boolean?))
-  smooshable-sys-get-smoosh-of-zero-report :
+  smooshable-predicate :
+    (-> smooshable-dynamic-type? (-> any/c boolean?))
+  smooshable-dynamic-type-get-smoosh-of-zero-report :
     (->
-      smooshable-sys?
+      smooshable-dynamic-type?
       ; Each report in the infinite sequence gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
       (sequence/c smoosh-report?))
-  smooshable-sys-get-smoosh-of-one-report :
+  smooshable-dynamic-type-get-smoosh-of-one-report :
     (->
-      smooshable-sys?
+      smooshable-dynamic-type?
       (smooshable/c _)
       ; Each report in the infinite sequence gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
       (sequence/c smoosh-report?))
-  smooshable-sys-get-smoosh-and-comparison-of-two-report :
+  smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report :
     (->
       ; lhs type
-      smooshable-sys?
+      smooshable-dynamic-type?
       ; rhs type (usually dispatched to next, if this one can't fully determine the results)
-      smooshable-sys?
+      smooshable-dynamic-type?
       ; lhs
       (smooshable/c _)
       ; rhs
@@ -158,8 +159,9 @@ smooshable-sys?
       ; For each report in the infinite sequence, the next report says not only whether they smoosh along that one's == but also, only if they do, how their information ordering representatives smoosh along their information ordering.
       (sequence/c smoosh-and-comparison-of-two-report?))
 
-; This gets another smooshable-sys? that applies to the information ordering representatives of the given one's elements.
-smooshable-sys-get-info-smooshable-sys : (-> smooshable-sys? smooshable-sys?)
+; This gets another smooshable-dynamic-type? that applies to the information ordering representatives of the given one's elements.
+smooshable-dynamic-type-get-info-smooshable-dynamic-type :
+  (-> smooshable-dynamic-type? smooshable-dynamic-type?)
 
 ; A label is a symbol-like value that authors of libraries can coin. These are used as dynamic type tags. Someday we might allow authors to express that a label they coin isn't *necessarily* distinct from some other set of labels. This kind of hidden information would make it difficult to implement an efficient label-keyed dict though, so we don't support the full possibility space yet. Instead, we just allow `make-equal-always-label` labels for now, which are all either known to be equal or known to be nonoverlapping, but in the future, we might support more label constructors.
 label?
@@ -171,9 +173,10 @@ make-equal-always-label : (-> any/c label?)
 ; Makes a dict that has label? values as keys.
 make-label-dict : (-> dict?)
 
-any-variant-labeled?
+any-variant-labeled-dynamic-type?
   ; Returns a label which could, for instance, be used to look up this dynamic type's specific dict in the internals of an any-dynamic-type dict. (TODO: Improve this description.)
-  any-variant-labeled-get-variant-label-knowable : (-> any-variant-labeled? (knowable/c label?))
+  any-variant-labeled-dynamic-type-get-variant-label-knowable :
+    (-> any-variant-labeled-dynamic-type? (knowable/c label?))
 
 key-report?
   ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing them along the transitive closure of (<= or >=).
@@ -181,22 +184,22 @@ key-report?
   ; Returns an empty immutable dictionary which allows any key satisfying the predicate (smooshable-predicate _) and compares keys by smooshing them along ==, i.e. (<= and >=).
   key-report-make-empty-dict-==-knowable : (-> key-report? (knowable/c dict?))
 
-key-of-immutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
+key-of-immutable-dict-dynamic-type? (must also implement smooshable-dynamic-type? and any-variant-labeled-dynamic-type?)
   ; For each report in the infinite sequence, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
-  key-of-immutable-dict-sys-get-key-report :
-    (-> key-of-immutable-dict-sys? (sequence/c key-report?))
+  key-of-immutable-dict-dynamic-type-get-key-report :
+    (-> key-of-immutable-dict-dynamic-type? (sequence/c key-report?))
 
-key-of-mutable-dict-sys? (must also implement smooshable-sys? and any-variant-labeled?)
+key-of-mutable-dict-dynamic-type? (must also implement smooshable-dynamic-type? and any-variant-labeled-dynamic-type?)
   ; For each report in the infinite sequence, the next report creates dicts that not only compare keys by whether they smoosh along that one's == but also, only if they do, smooshes their information ordering representatives along their information ordering.
-  key-of-mutable-dict-sys-get-key-report :
-    (-> key-of-mutable-dict-sys? (sequence/c key-report?))
+  key-of-mutable-dict-dynamic-type-get-key-report :
+    (-> key-of-mutable-dict-dynamic-type? (sequence/c key-report?))
 
 any-dynamic-type : (-> any/c)
   ; Besides just being an `any/c` value, the "any" dynamic type also implements:
-  ;   - smooshable-sys?
-  ;   - any-variant-labeled?
-  ;   - key-of-immutable-dict-sys?
-  ;   - key-of-mutable-dict-sys?
+  ;   - smooshable-dynamic-type?
+  ;   - any-variant-labeled-dynamic-type?
+  ;   - key-of-immutable-dict-dynamic-type?
+  ;   - key-of-mutable-dict-dynamic-type?
 
 ; This allows other generic interfaces meant for dynamic types to declare default implementations for the "any" dynamic type that invoke their custom one.
 any-dynamic-type? : (-> any/c boolean?)

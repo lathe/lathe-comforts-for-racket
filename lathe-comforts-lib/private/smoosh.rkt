@@ -121,13 +121,13 @@
   smoosh-and-comparison-of-two-report-get-smoosh-report
   prop:smoosh-and-comparison-of-two-report
   make-smoosh-and-comparison-of-two-report-impl
-  smooshable-sys?
-  smooshable-sys-impl?
-  smooshable-sys-get-smoosh-of-zero-report
-  smooshable-sys-get-smoosh-of-one-report
-  smooshable-sys-get-smoosh-and-comparison-of-two-report
-  prop:smooshable-sys
-  make-smooshable-sys-impl)
+  smooshable-dynamic-type?
+  smooshable-dynamic-type-impl?
+  smooshable-dynamic-type-get-smoosh-of-zero-report
+  smooshable-dynamic-type-get-smoosh-of-one-report
+  smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report
+  prop:smooshable-dynamic-type
+  make-smooshable-dynamic-type-impl)
 
 
 (define-imitation-simple-generics
@@ -154,7 +154,7 @@
   (example-unknown))
 
 ; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:smooshable-sys`.
+; `prop:smooshable-dynamic-type`.
 (define-imitation-simple-struct (known? known-value) known
   'known (current-inspector) (auto-write) (auto-equal))
 (ascribe-own-contract known? (-> any/c boolean?))
@@ -356,7 +356,7 @@
     get-path-related-glossesque-sys))
 
 ; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:smooshable-sys`.
+; `prop:smooshable-dynamic-type`.
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper-unguarded
@@ -369,7 +369,7 @@
   (path-related-wrapper-unguarded v))
 
 ; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:smooshable-sys`.
+; `prop:smooshable-dynamic-type`.
 (define-imitation-simple-struct
   (info-wrapper? info-wrapper-value)
   info-wrapper-unguarded
@@ -438,7 +438,7 @@
 
 
 ; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:smooshable-sys`.
+; `prop:smooshable-dynamic-type`.
 (define-imitation-simple-struct
   (gloss?
     
@@ -728,20 +728,19 @@
   (uninformative-dynamic-type))
 
 ; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:smooshable-sys`.
+; `prop:smooshable-dynamic-type`.
 ;
-; TODO SMOOSH: Give this implementations of `smooshable-sys?` and
-; `custom-gloss-key-dynamic-type?`. We'll need to rework the design of
-; the `custom-gloss-key-dynamic-type?` methods to return `knowable?`
-; values first. Rename `smooshable-sys?` to
-; `smooshable-dynamic-type?`.
+; TODO SMOOSH: Give this implementations of `smooshable-dynamic-type?`
+; and `custom-gloss-key-dynamic-type?`. We'll need to rework the
+; design of the `custom-gloss-key-dynamic-type?` methods to return
+; `knowable?` values first.
 ;
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write) (auto-equal))
 (ascribe-own-contract any-dynamic-type? (-> any/c boolean?))
 
 ; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:smooshable-sys`.
+; `prop:smooshable-dynamic-type`.
 (define-imitation-simple-struct
   (dynamic-type-var-for-any-dynamic-type?)
   dynamic-type-var-for-any-dynamic-type
@@ -935,40 +934,48 @@
     >=?-knowable-promise
     get-smoosh-report))
 
-(define-imitation-simple-generics smooshable-sys? smooshable-sys-impl?
-  (#:method smooshable-sys-get-smoosh-of-zero-report (#:this))
-  (#:method smooshable-sys-get-smoosh-of-one-report (#:this) ())
-  (#:method smooshable-sys-get-smoosh-and-comparison-of-two-report
+(define-imitation-simple-generics
+  smooshable-dynamic-type? smooshable-dynamic-type-impl?
+  (#:method smooshable-dynamic-type-get-smoosh-of-zero-report
+    (#:this))
+  (#:method smooshable-dynamic-type-get-smoosh-of-one-report
+    (#:this)
+    ())
+  (#:method
+    smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report
     (#:this)
     ()
     ()
     ())
-  prop:smooshable-sys make-smooshable-sys-from-various-unkeyworded
-  'smooshable-sys 'smooshable-sys-impl (list))
-(ascribe-own-contract smooshable-sys? (-> any/c boolean?))
-(ascribe-own-contract smooshable-sys-impl? (-> any/c boolean?))
-(ascribe-own-contract smooshable-sys-get-smoosh-of-zero-report
-  (-> smooshable-sys?
+  prop:smooshable-dynamic-type
+  make-smooshable-dynamic-type-from-various-unkeyworded
+  'smooshable-dynamic-type 'smooshable-dynamic-type-impl (list))
+(ascribe-own-contract smooshable-dynamic-type? (-> any/c boolean?))
+(ascribe-own-contract smooshable-dynamic-type-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract
+  smooshable-dynamic-type-get-smoosh-of-zero-report
+  (-> smooshable-dynamic-type?
     ; Each report in the infinite sequence gives the smoosh identity
     ; elements, first for the type's bespoke notion of ordering, then
     ; for the information ordering, then for the information ordering
     ; of the information ordering representatives, and so on.
     (sequence/c smoosh-report?)))
-(ascribe-own-contract smooshable-sys-get-smoosh-of-one-report
-  (-> smooshable-sys? any/c
+(ascribe-own-contract smooshable-dynamic-type-get-smoosh-of-one-report
+  (-> smooshable-dynamic-type? any/c
     ; Each report in the infinite sequence gives the smoosh identity
     ; elements, first for the type's bespoke notion of ordering, then
     ; for the information ordering, then for the information ordering
     ; of the information ordering representatives, and so on.
     (sequence/c smoosh-report?)))
 (ascribe-own-contract
-  smooshable-sys-get-smoosh-and-comparison-of-two-report
+  smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report
   (->
     ; lhs type
-    smooshable-sys?
+    smooshable-dynamic-type?
     ; rhs type (usually dispatched to next, if this one can't fully
     ; determine the results)
-    smooshable-sys?
+    smooshable-dynamic-type?
     ; lhs
     any/c
     ; rhs
@@ -978,11 +985,11 @@
     ; if they do, how their information ordering representatives
     ; smoosh along their information ordering.
     (sequence/c smoosh-and-comparison-of-two-report?)))
-(ascribe-own-contract prop:smooshable-sys
-  (struct-type-property/c smooshable-sys-impl?))
+(ascribe-own-contract prop:smooshable-dynamic-type
+  (struct-type-property/c smooshable-dynamic-type-impl?))
 
 (define/own-contract
-  (make-smooshable-sys-impl
+  (make-smooshable-dynamic-type-impl
     #:get-smoosh-of-zero-report get-smoosh-of-zero-report
     #:get-smoosh-of-one-report get-smoosh-of-one-report
     
@@ -990,17 +997,17 @@
     get-smoosh-and-comparison-of-two-report)
   (->
     #:get-smoosh-of-zero-report
-    (-> smooshable-sys? (sequence/c smoosh-report?))
+    (-> smooshable-dynamic-type? (sequence/c smoosh-report?))
     
     #:get-smoosh-of-one-report
-    (-> smooshable-sys? any/c (sequence/c smoosh-report?))
+    (-> smooshable-dynamic-type? any/c (sequence/c smoosh-report?))
     
     #:get-smoosh-and-comparison-of-two-report
-    (-> smooshable-sys? smooshable-sys? any/c any/c
+    (-> smooshable-dynamic-type? smooshable-dynamic-type? any/c any/c
       (sequence/c smoosh-and-comparison-of-two-report?))
     
-    smooshable-sys-impl?)
-  (make-smooshable-sys-from-various-unkeyworded
+    smooshable-dynamic-type-impl?)
+  (make-smooshable-dynamic-type-from-various-unkeyworded
     get-smoosh-of-zero-report
     get-smoosh-of-one-report
     get-smoosh-and-comparison-of-two-report))
@@ -1009,7 +1016,7 @@
 ; TODO SMOOSH: Implement the following parts of the API outlined in
 ; the last part of notes/2024-03-20-squashable-object-system.txt:
 ;
-; smooshable-sys-get-info-smooshable-sys
+; smooshable-dynamic-type-get-info-smooshable-dynamic-type
 ; make-empty-immutable-total-order-<=-based-dict
 ; make-empty-immutable-trie-dict
 ;
