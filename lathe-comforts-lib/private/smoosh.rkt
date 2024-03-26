@@ -1333,6 +1333,96 @@
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write) (auto-equal)
+  
+  ; TODO SMOOSH: Remove this pseudocode once we've implemented
+  ; something analogous for a real type (though I suppose we might
+  ; need to really implement this for cons cells).
+  ;
+  ; TODO SMOOSH: Before we remove this, make another example similar
+  ; to this but for immutable vectors or for immutable boxes instead
+  ; of for cons cells. This way, we can determine how `chaperone-of?`
+  ; fits into things. It might be a little disappointing; a smooshable
+  ; compound type which wants to treat `chaperone-of?` as part of its
+  ; information ordering won't necessarily be able to perform most
+  ; information ordering comparisons, since Racket doesn't provide a
+  ; `chaperone-of?/recur` function or an
+  ; `equivalent-according-to-chaperone-of?/recur` function. It does
+  ; provide `equal-always?/recur`, so at least we'll be able to check
+  ; path-relatedness. When the type doesn't have an "any"-typed
+  ; element, `chaperone-of?` without the `/recur` is fine, and we can
+  ; imitate `equivalent-according-to-chaperone-of?` without the
+  ; `/recur` by calling `chaperone-of?` in both directions.
+  ;
+  ; NOTE: If this were the type of cons cells, the dynamic type would
+  ; be something like this:
+  #;
+  (#:prop prop:expressly-has-dynamic-type
+    (make-expressly-has-dynamic-type-impl /fn bindings self
+      (expect
+        (known-value /gloss-ref-maybe-knowable bindings
+          (dynamic-type-var-for-any-dynamic-type))
+        (just any-dt)
+        (raise-arguments-error 'get-dynamic-type
+          "tried to get the dynamic type of a cons cell without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+          "bindings" bindings
+          "inhabitant" self)
+      /makeshift-struct-instance
+        (#:prop prop:smooshable-dynamic-type
+          (make-smooshable-dynamic-type-impl
+            
+            #:get-smoosh-of-zero-report
+            (fn self
+              (smoosh-reports-map
+                (dynamic-type-get-smoosh-of-zero-report any-dt)
+                (fn result
+                  (cons result result))))
+            
+            #:get-smoosh-of-one-report
+            (fn self a
+              (expect a (cons a-car a-cdr)
+                (uninformative-smoosh-report)
+              /smoosh-reports-zip-map
+                (list
+                  (dynamic-type-get-smoosh-of-one-report any-dt a-car)
+                  (dynamic-type-get-smoosh-of-one-report any-dt a-cdr)
+                  )
+                #:on-result-knowable-promise-maybe
+                (fn result-knowable-promise-maybe-list
+                  (maybe-zip-map result-knowable-promise-maybe-list
+                    (fn result-knowable-promise-list
+                      (promise-zip-map result-knowable-promise-list
+                        (fn result-knowable-list
+                          (knowable-zip-map result-knowable-list
+                            (dissectfn (list result-car result-cdr)
+                              (cons result-car result-cdr))))))))))
+            
+            #:get-smoosh-and-comparison-of-two-report
+            (fn self b-dt a b
+              (expect a (cons a-car a-cdr)
+                (uninformative-smoosh-report)
+              /expect b (cons b-car b-cdr)
+                (uninformative-smoosh-report)
+              /smoosh-and-comparison-of-two-reports-zip-map
+                (list
+                  (dynamic-type-get-smoosh-and-comparison-of-two-report
+                    any-dt a-car b-car)
+                  (dynamic-type-get-smoosh-and-comparison-of-two-report
+                    any-dt a-cdr b-cdr))
+                #:on-check-result
+                (dissectfn (list check-result-car check-result-cdr)
+                  (and check-result-car check-result-cdr))
+                #:on-smoosh-result-knowable-promise-maybe
+                (fn result-knowable-promise-maybe-list
+                  (maybe-zip-map result-knowable-promise-maybe-list
+                    (fn result-knowable-promise-list
+                      (promise-zip-map result-knowable-promise-list
+                        (fn result-knowable-list
+                          (knowable-zip-map result-knowable-list
+                            (dissectfn (list result-car result-cdr)
+                              (cons result-car result-cdr))))))))))
+            
+            )))))
+  
   (#:prop prop:expressly-has-dynamic-type
     (make-expressly-has-dynamic-type-impl /fn bindings self
       (compare-by-predicates-dynamic-type
@@ -1349,6 +1439,10 @@
       #:get-smoosh-of-one-report
       (fn self a
         (w- a-dt (get-dynamic-type-with-default-bindings a)
+        ; TODO SMOOSH: Factor out these calls to
+        ; `smooshable-dynamic-type?` and
+        ; `smooshable-dynamic-type-get-smoosh-of-one-report` into a
+        ; utility `dynamic-type-get-smoosh-of-one-report`.
         /if (smooshable-dynamic-type? a-dt)
           (smooshable-dynamic-type-get-smoosh-of-one-report a-dt a)
           (uninformative-smoosh-reports)))
@@ -1356,6 +1450,14 @@
       #:get-smoosh-and-comparison-of-two-report
       (fn self b-dt a b
         (w- a-dt (get-dynamic-type-with-default-bindings a)
+        ; TODO SMOOSH: Factor out these calls to
+        ; `smooshable-dynamic-type?` and
+        ; `smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report`
+        ; into a utility
+        ; `dynamic-type-get-smoosh-and-comparison-of-two-report`. I
+        ; think we'll ultimately want to zip together the `a b` result
+        ; and the flipped `b a` result, leaving the latter's promises
+        ; undisturbed unless the former returns `unknown?` values.
         /if (smooshable-dynamic-type? a-dt)
           (smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report
             a-dt b-dt a b)
