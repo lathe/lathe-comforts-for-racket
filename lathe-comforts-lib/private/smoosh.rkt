@@ -132,6 +132,7 @@
   uninformative-smoosh-and-comparison-of-two-reports
   smoosh-and-comparison-of-two-report-flip
   smoosh-and-comparison-of-two-reports-flip
+  dead-end-dynamic-type
   constant-smoosh-report
   constant-smoosh-reports
   constant-smoosh-and-comparison-of-two-report
@@ -1134,7 +1135,7 @@
 
 (define-imitation-simple-struct
   (dead-end-dynamic-type?)
-  dead-end-dynamic-type
+  dead-end-dynamic-type-unguarded
   'dead-end-dynamic-type (current-inspector) (auto-write)
   (#:prop prop:smooshable-dynamic-type
     (make-smooshable-dynamic-type-impl
@@ -1152,6 +1153,10 @@
         (uninformative-smoosh-and-comparison-of-two-reports))
       
       )))
+
+(define/own-contract (dead-end-dynamic-type)
+  (-> any/c)
+  (dead-end-dynamic-type-unguarded))
 
 (define-imitation-simple-struct
   (constant-smoosh-report?
