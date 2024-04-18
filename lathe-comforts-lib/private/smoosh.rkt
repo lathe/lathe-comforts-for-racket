@@ -1563,22 +1563,9 @@
   (dead-end-dynamic-type?)
   dead-end-dynamic-type-unguarded
   'dead-end-dynamic-type (current-inspector) (auto-write)
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-report
-      (fn self
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-of-one-report
-      (fn self a
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (uninformative-smoosh-and-comparison-of-two-reports))
-      
-      )))
+  ; NOTE: This specifically should never implement
+  ; `prop:expressly-smooshable-dynamic-type`.
+  )
 
 (define/own-contract (dead-end-dynamic-type)
   (-> any/c)
