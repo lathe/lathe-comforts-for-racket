@@ -144,7 +144,6 @@ smooshable-dynamic-type?
     (->
       smooshable-dynamic-type?
       (smooshable/c _)
-      ; Each report in the infinite sequence gives the smoosh identity elements, first for the type's bespoke notion of ordering, then for the information ordering, then for the information ordering of the information ordering representatives, and so on.
       (sequence/c smoosh-report?))
   smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report :
     (->

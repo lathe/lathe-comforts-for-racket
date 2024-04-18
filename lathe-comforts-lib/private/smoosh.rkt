@@ -120,11 +120,7 @@
   smoosh-and-comparison-of-two-report-get-smoosh-report
   prop:smoosh-and-comparison-of-two-report
   make-smoosh-and-comparison-of-two-report-impl
-  expressly-smooshable-dynamic-type?
   expressly-smooshable-dynamic-type-impl?
-  expressly-smooshable-dynamic-type-get-smoosh-of-zero-report
-  expressly-smooshable-dynamic-type-get-smoosh-of-one-report
-  expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report
   prop:expressly-smooshable-dynamic-type
   make-expressly-smooshable-dynamic-type-impl
   uninformative-smoosh-report
@@ -147,6 +143,7 @@
   knowable-promise-zip-map
   boolean-and-knowable-promise-zip-map
   maybe-min-knowable-promise-zip-map
+  dynamic-type-get-smoosh-of-zero-report
   dynamic-type-get-smoosh-of-one-report
   dynamic-type-get-smoosh-and-comparison-of-two-report
   sequence-zip-map
@@ -978,43 +975,8 @@
   'expressly-smooshable-dynamic-type
   'expressly-smooshable-dynamic-type-impl
   (list))
-(ascribe-own-contract expressly-smooshable-dynamic-type?
-  (-> any/c boolean?))
 (ascribe-own-contract expressly-smooshable-dynamic-type-impl?
   (-> any/c boolean?))
-(ascribe-own-contract
-  expressly-smooshable-dynamic-type-get-smoosh-of-zero-report
-  (-> expressly-smooshable-dynamic-type?
-    ; Each report in the infinite sequence gives the smoosh identity
-    ; elements, first for the type's bespoke notion of ordering, then
-    ; for the information ordering, then for the information ordering
-    ; of the information ordering representatives, and so on.
-    (sequence/c smoosh-report?)))
-(ascribe-own-contract
-  expressly-smooshable-dynamic-type-get-smoosh-of-one-report
-  (-> expressly-smooshable-dynamic-type? any/c
-    ; Each report in the infinite sequence gives the smoosh identity
-    ; elements, first for the type's bespoke notion of ordering, then
-    ; for the information ordering, then for the information ordering
-    ; of the information ordering representatives, and so on.
-    (sequence/c smoosh-report?)))
-(ascribe-own-contract
-  expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-report
-  (->
-    ; lhs type
-    expressly-smooshable-dynamic-type?
-    ; rhs type (usually dispatched to next, if this one can't fully
-    ; determine the results)
-    any/c
-    ; lhs
-    any/c
-    ; rhs
-    any/c
-    ; For each report in the infinite sequence, the next report says
-    ; not only whether they smoosh along that one's == but also, only
-    ; if they do, how their information ordering representatives
-    ; smoosh along their information ordering.
-    (sequence/c smoosh-and-comparison-of-two-report?)))
 (ascribe-own-contract prop:expressly-smooshable-dynamic-type
   (struct-type-property/c expressly-smooshable-dynamic-type-impl?))
 
@@ -1026,16 +988,13 @@
     #:get-smoosh-and-comparison-of-two-report
     get-smoosh-and-comparison-of-two-report)
   (->
-    #:get-smoosh-of-zero-report
-    (-> expressly-smooshable-dynamic-type?
-      (sequence/c smoosh-report?))
+    #:get-smoosh-of-zero-report (-> any/c (sequence/c smoosh-report?))
     
     #:get-smoosh-of-one-report
-    (-> expressly-smooshable-dynamic-type? any/c
-      (sequence/c smoosh-report?))
+    (-> any/c any/c (sequence/c smoosh-report?))
     
     #:get-smoosh-and-comparison-of-two-report
-    (-> expressly-smooshable-dynamic-type? any/c any/c any/c
+    (-> any/c any/c any/c any/c
       (sequence/c smoosh-and-comparison-of-two-report?))
     
     expressly-smooshable-dynamic-type-impl?)
@@ -1781,13 +1740,19 @@
     /force /knowable-promise-zip-map mkp-list /fn m-list
       (just /on-value /list-map m-list /fn m /just-value m))))
 
-(define/own-contract (dynamic-type-get-smoosh-of-one-report a-dt a)
-  (-> any/c any/c
+(define/own-contract (dynamic-type-get-smoosh-of-zero-report dt)
+  (-> any/c
     ; Each report in the infinite sequence gives the smoosh identity
     ; elements, first for the type's bespoke notion of ordering, then
     ; for the information ordering, then for the information ordering
     ; of the information ordering representatives, and so on.
     (sequence/c smoosh-report?))
+  (if (expressly-smooshable-dynamic-type? dt)
+    (expressly-smooshable-dynamic-type-get-smoosh-of-zero-report dt)
+    (uninformative-smoosh-reports)))
+
+(define/own-contract (dynamic-type-get-smoosh-of-one-report a-dt a)
+  (-> any/c any/c (sequence/c smoosh-report?))
   (if (expressly-smooshable-dynamic-type? a-dt)
     (expressly-smooshable-dynamic-type-get-smoosh-of-one-report
       a-dt a)
@@ -1795,7 +1760,16 @@
 
 (define/own-contract
   (dynamic-type-get-smoosh-and-comparison-of-two-report a-dt b-dt a b)
-  (-> any/c any/c any/c any/c
+  (->
+    ; lhs type
+    any/c
+    ; rhs type (usually dispatched to next, if this one can't fully
+    ; determine the results)
+    any/c
+    ; lhs
+    any/c
+    ; rhs
+    any/c
     ; For each report in the infinite sequence, the next report says
     ; not only whether they smoosh along that one's == but also, only
     ; if they do, how their information ordering representatives
