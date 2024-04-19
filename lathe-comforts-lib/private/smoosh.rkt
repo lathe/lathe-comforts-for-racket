@@ -139,6 +139,7 @@
   dead-end-dynamic-type
   constant-smoosh-report
   constant-smoosh-reports
+  promise-map
   constant-smoosh-and-comparison-of-two-report
   constant-smoosh-and-comparison-of-two-reports
   compare-by-predicates-dynamic-type
@@ -148,7 +149,6 @@
   maybe-min-knowable-promise-zip-map
   sequence-zip-map
   knowable-promise-or
-  promise-map
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
   any-dynamic-type?)
@@ -1657,6 +1657,10 @@
   (in-cycle /list /constant-smoosh-report
     result-knowable-promise-maybe-knowable-promise))
 
+(define/own-contract (promise-map promise on-value)
+  (-> promise? (-> any/c any/c) promise?)
+  (delay /on-value /force promise))
+
 (define-imitation-simple-struct
   (constant-smoosh-and-comparison-of-two-report?
     constant-smoosh-and-comparison-of-two-report-result-knowable-promise-maybe-knowable-promise)
@@ -1669,21 +1673,19 @@
       (dissectfn
         (constant-smoosh-and-comparison-of-two-report-unguarded
           result-knowable-promise-maybe-knowable-promise)
-        (delay
-          (knowable-map
-            (force result-knowable-promise-maybe-knowable-promise)
-          /fn result-knowable-promise-maybe
-            (just? result-knowable-promise-maybe))))
+        (promise-map result-knowable-promise-maybe-knowable-promise
+          (fn kpmk
+            (knowable-map kpmk /fn kpm
+              (just? kpm)))))
       
       #:>=?-knowable-promise
       (dissectfn
         (constant-smoosh-and-comparison-of-two-report-unguarded
           result-knowable-promise-maybe-knowable-promise)
-        (delay
-          (knowable-map
-            (force result-knowable-promise-maybe-knowable-promise)
-          /fn result-knowable-promise-maybe
-            (just? result-knowable-promise-maybe))))
+        (promise-map result-knowable-promise-maybe-knowable-promise
+          (fn kpmk
+            (knowable-map kpmk /fn kpm
+              (just? kpm)))))
       
       #:get-smoosh-report
       (dissectfn
@@ -1833,10 +1835,6 @@
       /w- k (force kp)
       /if (known? k) k
       /next kp-list))))
-
-(define/own-contract (promise-map promise on-value)
-  (-> promise? (-> any/c any/c) promise?)
-  (delay /on-value /force promise))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-report-join reports-list)
