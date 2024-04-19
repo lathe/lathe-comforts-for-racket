@@ -1345,7 +1345,8 @@
 
 (define-imitation-simple-struct
   (mapped-smoosh-and-comparison-of-two-report?
-    mapped-smoosh-and-comparison-of-two-report-on-check-result-knowable-promise
+    mapped-smoosh-and-comparison-of-two-report-on-<=?-knowable-promise
+    mapped-smoosh-and-comparison-of-two-report-on->=?-knowable-promise
     mapped-smoosh-and-comparison-of-two-report-on-join-knowable-promise-maybe-knowable-promise
     mapped-smoosh-and-comparison-of-two-report-on-meet-knowable-promise-maybe-knowable-promise
     mapped-smoosh-and-comparison-of-two-report-on-==-knowable-promise-maybe-knowable-promise
@@ -1360,33 +1361,36 @@
       #:<=?-knowable-promise
       (dissectfn
         (mapped-smoosh-and-comparison-of-two-report
-          on-check-result-knowable-promise
+          on-<=?-knowable-promise
+          on->=?-knowable-promise
           on-join-knowable-promise-maybe-knowable-promise
           on-meet-knowable-promise-maybe-knowable-promise
           on-==-knowable-promise-maybe-knowable-promise
           on-path-related-knowable-promise-maybe-knowable-promise
           original)
-        (on-check-result-knowable-promise
+        (on-<=?-knowable-promise
           (smoosh-and-comparison-of-two-report-<=?-knowable-promise
             original)))
       
       #:>=?-knowable-promise
       (dissectfn
         (mapped-smoosh-and-comparison-of-two-report
-          on-check-result-knowable-promise
+          on-<=?-knowable-promise
+          on->=?-knowable-promise
           on-join-knowable-promise-maybe-knowable-promise
           on-meet-knowable-promise-maybe-knowable-promise
           on-==-knowable-promise-maybe-knowable-promise
           on-path-related-knowable-promise-maybe-knowable-promise
           original)
-        (on-check-result-knowable-promise
+        (on->=?-knowable-promise
           (smoosh-and-comparison-of-two-report->=?-knowable-promise
             original)))
       
       #:get-smoosh-report
       (dissectfn
         (mapped-smoosh-and-comparison-of-two-report
-          on-check-result-knowable-promise
+          on-<=?-knowable-promise
+          on->=?-knowable-promise
           on-join-knowable-promise-maybe-knowable-promise
           on-meet-knowable-promise-maybe-knowable-promise
           on-==-knowable-promise-maybe-knowable-promise
@@ -1420,6 +1424,14 @@
       (fn kp
         kp)]
     
+    #:on-<=?-knowable-promise
+    [ on-<=?-knowable-promise
+      on-check-result-knowable-promise]
+    
+    #:on->=?-knowable-promise
+    [ on->=?-knowable-promise
+      on-check-result-knowable-promise]
+    
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
       (fn kpmkp
@@ -1449,6 +1461,14 @@
     (-> (promise/c (knowable/c boolean?))
       (promise/c (knowable/c boolean?)))
     
+    #:on-<=?-knowable-promise
+    (-> (promise/c (knowable/c boolean?))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on->=?-knowable-promise
+    (-> (promise/c (knowable/c boolean?))
+      (promise/c (knowable/c boolean?)))
+    
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
       (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
@@ -1471,7 +1491,8 @@
     
     smoosh-and-comparison-of-two-report?)
   (mapped-smoosh-and-comparison-of-two-report
-    on-check-result-knowable-promise
+    on-<=?-knowable-promise
+    on->=?-knowable-promise
     on-join-knowable-promise-maybe-knowable-promise
     on-meet-knowable-promise-maybe-knowable-promise
     on-==-knowable-promise-maybe-knowable-promise
@@ -1485,6 +1506,14 @@
     [ on-check-result-knowable-promise
       (fn kp
         kp)]
+    
+    #:on-<=?-knowable-promise
+    [ on-<=?-knowable-promise
+      on-check-result-knowable-promise]
+    
+    #:on->=?-knowable-promise
+    [ on->=?-knowable-promise
+      on-check-result-knowable-promise]
     
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -1515,6 +1544,14 @@
     (-> (promise/c (knowable/c boolean?))
       (promise/c (knowable/c boolean?)))
     
+    #:on-<=?-knowable-promise
+    (-> (promise/c (knowable/c boolean?))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on->=?-knowable-promise
+    (-> (promise/c (knowable/c boolean?))
+      (promise/c (knowable/c boolean?)))
+    
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
       (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
@@ -1539,9 +1576,8 @@
   (sequence-map
     (fn report
       (smoosh-and-comparison-of-two-report-map report
-        
-        #:on-check-result-knowable-promise
-        on-check-result-knowable-promise
+        #:on-<=?-knowable-promise on-<=?-knowable-promise
+        #:on->=?-knowable-promise on->=?-knowable-promise
         
         #:on-join-knowable-promise-maybe-knowable-promise
         on-join-knowable-promise-maybe-knowable-promise
@@ -2252,9 +2288,9 @@
                   (on-smoosh-result-knowable-promise-maybe-knowable-promise
                     path-related-acceptable-result?))
                 (smoosh-and-comparison-of-two-report-map report-1
-                  #:on-<=-check-result-knowable-promise
+                  #:on-<=?-knowable-promise
                   (on-check-result-knowable-promise #t #f)
-                  #:on->=-check-result-knowable-promise
+                  #:on->=?-knowable-promise
                   (on-check-result-knowable-promise #f #t)
                   #:on-join-smoosh-result-knowable-promise-maybe-knowable-promise
                   (on-smoosh-result-knowable-promise-maybe-knowable-promise
