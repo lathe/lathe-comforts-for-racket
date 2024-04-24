@@ -46,7 +46,9 @@
 (only-in racket/math natural?)
 (only-in racket/promise delay delay/strict force promise?)
 (only-in racket/sequence sequence/c sequence-map sequence-ref)
+(only-in racket/stream stream*)
 (only-in racket/struct make-constructor-style-printer)
+(only-in racket/vector vector-copy vector-count)
 (only-in syntax/parse/define
   define-syntax-parser define-syntax-parse-rule)
 
