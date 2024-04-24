@@ -134,8 +134,12 @@
   smoosh-and-comparison-of-two-reports-flip
   smoosh-report-map
   smoosh-reports-map
+  smoosh-report-zip-map
+  smoosh-reports-zip-map
   smoosh-and-comparison-of-two-report-map
   smoosh-and-comparison-of-two-reports-map
+  smoosh-and-comparison-of-two-report-zip-map
+  smoosh-and-comparison-of-two-reports-zip-map
   dead-end-dynamic-type
   constant-smoosh-report
   constant-smoosh-reports
@@ -1344,6 +1348,227 @@
     reports))
 
 (define-imitation-simple-struct
+  (zip-mapped-smoosh-report?
+    zip-mapped-smoosh-report-on-join-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-report-on-meet-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-report-on-==-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-report-on-path-related-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-report-original-list)
+  zip-mapped-smoosh-report
+  'zip-mapped-smoosh-report (current-inspector)
+  (auto-write)
+  (#:prop prop:smoosh-report /make-smoosh-report-impl
+    
+    #:join-knowable-promise-maybe-knowable-promise
+    (dissectfn
+      (zip-mapped-smoosh-report
+        on-join-knowable-promise-maybe-knowable-promise
+        on-meet-knowable-promise-maybe-knowable-promise
+        on-==-knowable-promise-maybe-knowable-promise
+        on-path-related-knowable-promise-maybe-knowable-promise
+        original-list)
+      (on-join-knowable-promise-maybe-knowable-promise
+        (list-map original-list /fn original
+          (smoosh-report-join-knowable-promise-maybe-knowable-promise
+            original))))
+    
+    #:meet-knowable-promise-maybe-knowable-promise
+    (dissectfn
+      (zip-mapped-smoosh-report
+        on-join-knowable-promise-maybe-knowable-promise
+        on-meet-knowable-promise-maybe-knowable-promise
+        on-==-knowable-promise-maybe-knowable-promise
+        on-path-related-knowable-promise-maybe-knowable-promise
+        original-list)
+      (on-meet-knowable-promise-maybe-knowable-promise
+        (list-map original-list /fn original
+          (smoosh-report-meet-knowable-promise-maybe-knowable-promise
+            original))))
+    
+    #:==-knowable-promise-maybe-knowable-promise
+    (dissectfn
+      (zip-mapped-smoosh-report
+        on-join-knowable-promise-maybe-knowable-promise
+        on-meet-knowable-promise-maybe-knowable-promise
+        on-==-knowable-promise-maybe-knowable-promise
+        on-path-related-knowable-promise-maybe-knowable-promise
+        original-list)
+      (on-==-knowable-promise-maybe-knowable-promise
+        (list-map original-list /fn original
+          (smoosh-report-==-knowable-promise-maybe-knowable-promise
+            original))))
+    
+    #:path-related-knowable-promise-maybe-knowable-promise
+    (dissectfn
+      (zip-mapped-smoosh-report
+        on-join-knowable-promise-maybe-knowable-promise
+        on-meet-knowable-promise-maybe-knowable-promise
+        on-==-knowable-promise-maybe-knowable-promise
+        on-path-related-knowable-promise-maybe-knowable-promise
+        original-list)
+      (on-path-related-knowable-promise-maybe-knowable-promise
+        (list-map original-list /fn original
+          (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+            original))))
+    
+    ))
+
+(define/own-contract
+  (smoosh-report-zip-map report-list
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (fn kpmkp-list
+        (raise-arguments-error 'smoosh-report-zip-map
+          "tried to retrieve a smoosh result when its mapping behavior was undefined"
+          
+          "smoosh-result-knowable-promise-maybe-knowable-promise-list"
+          kpmkp-list
+          
+          ))]
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    [ on-join-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    [ on-meet-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    [ on-==-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    [ on-path-related-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    )
+  (->
+    (listof smoosh-report?)
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    smoosh-report?)
+  (zip-mapped-smoosh-report
+    on-join-knowable-promise-maybe-knowable-promise
+    on-meet-knowable-promise-maybe-knowable-promise
+    on-==-knowable-promise-maybe-knowable-promise
+    on-path-related-knowable-promise-maybe-knowable-promise
+    report-list))
+
+(define/own-contract
+  (smoosh-reports-zip-map reports-list
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (fn kpmkp-list
+        (raise-arguments-error 'smoosh-reports-zip-map
+          "tried to retrieve a smoosh result when its mapping behavior was undefined"
+          
+          "smoosh-result-knowable-promise-maybe-knowable-promise-list"
+          kpmkp-list
+          
+          ))]
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    [ on-join-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    [ on-meet-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    [ on-==-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    [ on-path-related-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    )
+  (->
+    (listof (sequence/c smoosh-report?))
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    (sequence/c smoosh-report?))
+  (sequence-zip-map reports-list /fn report-list
+    (smoosh-report-zip-map report-list
+      
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      on-join-knowable-promise-maybe-knowable-promise
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      on-meet-knowable-promise-maybe-knowable-promise
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      on-==-knowable-promise-maybe-knowable-promise
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      on-path-related-knowable-promise-maybe-knowable-promise)))
+
+(define-imitation-simple-struct
   (mapped-smoosh-and-comparison-of-two-report?
     mapped-smoosh-and-comparison-of-two-report-on-<=?-knowable-promise
     mapped-smoosh-and-comparison-of-two-report-on->=?-knowable-promise
@@ -1593,6 +1818,292 @@
         
         ))
     reports))
+
+(define-imitation-simple-struct
+  (zip-mapped-smoosh-and-comparison-of-two-report?
+    zip-mapped-smoosh-and-comparison-of-two-report-on-<=?-knowable-promise
+    zip-mapped-smoosh-and-comparison-of-two-report-on->=?-knowable-promise
+    zip-mapped-smoosh-and-comparison-of-two-report-on-join-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-and-comparison-of-two-report-on-meet-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-and-comparison-of-two-report-on-==-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-and-comparison-of-two-report-on-path-related-knowable-promise-maybe-knowable-promise
+    zip-mapped-smoosh-and-comparison-of-two-report-original-list)
+  zip-mapped-smoosh-and-comparison-of-two-report
+  'zip-mapped-smoosh-and-comparison-of-two-report (current-inspector)
+  (auto-write)
+  (#:prop prop:smoosh-and-comparison-of-two-report
+    (make-smoosh-and-comparison-of-two-report-impl
+      
+      #:<=?-knowable-promise
+      (dissectfn
+        (zip-mapped-smoosh-and-comparison-of-two-report
+          on-<=?-knowable-promise
+          on->=?-knowable-promise
+          on-join-knowable-promise-maybe-knowable-promise
+          on-meet-knowable-promise-maybe-knowable-promise
+          on-==-knowable-promise-maybe-knowable-promise
+          on-path-related-knowable-promise-maybe-knowable-promise
+          original-list)
+        (on-<=?-knowable-promise
+          (list-map original-list /fn original
+            (smoosh-and-comparison-of-two-report-<=?-knowable-promise
+              original))))
+      
+      #:>=?-knowable-promise
+      (dissectfn
+        (zip-mapped-smoosh-and-comparison-of-two-report
+          on-<=?-knowable-promise
+          on->=?-knowable-promise
+          on-join-knowable-promise-maybe-knowable-promise
+          on-meet-knowable-promise-maybe-knowable-promise
+          on-==-knowable-promise-maybe-knowable-promise
+          on-path-related-knowable-promise-maybe-knowable-promise
+          original-list)
+        (on->=?-knowable-promise
+          (list-map original-list /fn original
+            (smoosh-and-comparison-of-two-report->=?-knowable-promise
+              original))))
+      
+      #:get-smoosh-report
+      (dissectfn
+        (zip-mapped-smoosh-and-comparison-of-two-report
+          on-<=?-knowable-promise
+          on->=?-knowable-promise
+          on-join-knowable-promise-maybe-knowable-promise
+          on-meet-knowable-promise-maybe-knowable-promise
+          on-==-knowable-promise-maybe-knowable-promise
+          on-path-related-knowable-promise-maybe-knowable-promise
+          original-list)
+        (smoosh-report-zip-map
+          (list-map original-list /fn original
+            (smoosh-and-comparison-of-two-report-get-smoosh-report
+              original))
+          
+          #:on-join-knowable-promise-maybe-knowable-promise
+          on-join-knowable-promise-maybe-knowable-promise
+          
+          #:on-meet-knowable-promise-maybe-knowable-promise
+          on-meet-knowable-promise-maybe-knowable-promise
+          
+          #:on-==-knowable-promise-maybe-knowable-promise
+          on-==-knowable-promise-maybe-knowable-promise
+          
+          #:on-path-related-knowable-promise-maybe-knowable-promise
+          on-path-related-knowable-promise-maybe-knowable-promise
+          
+          ))
+      
+      )))
+
+(define/own-contract
+  (smoosh-and-comparison-of-two-report-zip-map report-list
+    
+    #:on-check-result-knowable-promise
+    [ on-check-result-knowable-promise
+      (fn kp-list
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+          "tried to retrieve a check result when its mapping behavior was undefined"
+          "check-result-knowable-promise-list" kp-list))]
+    
+    #:on-<=?-knowable-promise
+    [ on-<=?-knowable-promise
+      on-check-result-knowable-promise]
+    
+    #:on->=?-knowable-promise
+    [ on->=?-knowable-promise
+      on-check-result-knowable-promise]
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (fn kpmkp-list
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+          "tried to retrieve a smoosh result when its mapping behavior was undefined"
+          
+          "smoosh-result-knowable-promise-maybe-knowable-promise-list"
+          kpmkp-list
+          
+          ))]
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    [ on-join-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    [ on-meet-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    [ on-==-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    [ on-path-related-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    )
+  (->
+    (listof smoosh-and-comparison-of-two-report?)
+    
+    #:on-check-result-knowable-promise
+    (-> (listof (promise/c (knowable/c boolean?)))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on-<=?-knowable-promise
+    (-> (listof (promise/c (knowable/c boolean?)))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on->=?-knowable-promise
+    (-> (listof (promise/c (knowable/c boolean?)))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    smoosh-and-comparison-of-two-report?)
+  (zip-mapped-smoosh-and-comparison-of-two-report
+    on-<=?-knowable-promise
+    on->=?-knowable-promise
+    on-join-knowable-promise-maybe-knowable-promise
+    on-meet-knowable-promise-maybe-knowable-promise
+    on-==-knowable-promise-maybe-knowable-promise
+    on-path-related-knowable-promise-maybe-knowable-promise
+    report-list))
+
+(define/own-contract
+  (smoosh-and-comparison-of-two-reports-zip-map reports-list
+    
+    #:on-check-result-knowable-promise
+    [ on-check-result-knowable-promise
+      (fn kp-list
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+          "tried to retrieve a check result when its mapping behavior was undefined"
+          "check-result-knowable-promise-list" kp-list))]
+    
+    #:on-<=?-knowable-promise
+    [ on-<=?-knowable-promise
+      on-check-result-knowable-promise]
+    
+    #:on->=?-knowable-promise
+    [ on->=?-knowable-promise
+      on-check-result-knowable-promise]
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (fn kpmkp-list
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+          "tried to retrieve a smoosh result when its mapping behavior was undefined"
+          
+          "smoosh-result-knowable-promise-maybe-knowable-promise-list"
+          kpmkp-list
+          
+          ))]
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    [ on-join-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    [ on-meet-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    [ on-==-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    [ on-path-related-knowable-promise-maybe-knowable-promise
+      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    
+    )
+  (->
+    (listof (sequence/c smoosh-and-comparison-of-two-report?))
+    
+    #:on-check-result-knowable-promise
+    (-> (listof (promise/c (knowable/c boolean?)))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on-<=?-knowable-promise
+    (-> (listof (promise/c (knowable/c boolean?)))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on->=?-knowable-promise
+    (-> (listof (promise/c (knowable/c boolean?)))
+      (promise/c (knowable/c boolean?)))
+    
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-join-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-meet-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-==-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    #:on-path-related-knowable-promise-maybe-knowable-promise
+    (->
+      (listof
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+    
+    (sequence/c smoosh-and-comparison-of-two-report?))
+  (sequence-zip-map reports-list /fn report-list
+    (smoosh-and-comparison-of-two-report-zip-map report-list
+      #:on-<=?-knowable-promise on-<=?-knowable-promise
+      #:on->=?-knowable-promise on->=?-knowable-promise
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      on-join-knowable-promise-maybe-knowable-promise
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      on-meet-knowable-promise-maybe-knowable-promise
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      on-==-knowable-promise-maybe-knowable-promise
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      on-path-related-knowable-promise-maybe-knowable-promise)))
 
 (define-imitation-simple-struct
   (dead-end-dynamic-type?)
@@ -1872,80 +2383,94 @@
   (sequence-zip-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
-; TODO SMOOSH: Actually use this and/or export it.
-(define/own-contract (cons-dynamic-type any-dt)
-  (-> any/c any/c)
+(define/own-contract
+  (on-cons-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp-list)
+  (->
+    (list/c
+      (promise/c
+        (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+      (promise/c
+        (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
+    (knowable-promise-zip-map kp-list /dissectfn
+      (list result-car result-cdr)
+      (cons result-car result-cdr))))
+
+; TODO SMOOSH: Actually use this and/or export it. If we export it,
+; consider whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; NOTE: This would be used like so:
+;
+#;
+(#:prop prop:expressly-has-dynamic-type
+  (make-expressly-has-dynamic-type-impl /fn bindings self
+    (expect
+      (known-value /gloss-ref-maybe-knowable bindings
+        (dynamic-type-var-for-any-dynamic-type))
+      (just any-dt)
+      (raise-arguments-error 'get-dynamic-type
+        "tried to get the dynamic type of a cons cell without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+        "bindings" bindings
+        "inhabitant" self)
+    /cons-dynamic-type any-dt)))
+;
+(define-imitation-simple-struct
+  (cons-dynamic-type? cons-dynamic-type-get-any-dynamic-type)
+  cons-dynamic-type
+  'cons-dynamic-type (current-inspector) (auto-write)
   
-  ; NOTE: This would be used like so:
-  ;
-  #;
-  (#:prop prop:expressly-has-dynamic-type
-    (make-expressly-has-dynamic-type-impl /fn bindings self
-      (expect
-        (known-value /gloss-ref-maybe-knowable bindings
-          (dynamic-type-var-for-any-dynamic-type))
-        (just any-dt)
-        (raise-arguments-error 'get-dynamic-type
-          "tried to get the dynamic type of a cons cell without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-          "bindings" bindings
-          "inhabitant" self)
-      /cons-dynamic-type any-dt)))
-  
-  ; TODO NOW: Uncomment this.
-  'TODO
-  #;
-  (w- on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (fn kpmkp-list
-      (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-        (knowable-promise-zip-map kp-list /dissectfn
-          (list result-car result-cdr)
-          (cons result-car result-cdr))))
-  /makeshift-struct-instance
-    (#:prop prop:expressly-smooshable-dynamic-type
-      (make-expressly-smooshable-dynamic-type-impl
-        
-        #:get-smoosh-of-zero-report
-        (fn self
-          (smoosh-reports-map
-            (dynamic-type-get-smoosh-of-zero-report any-dt)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn kpmkp
-              (promise-map kpmkp /fn kpmk
-                (knowable-map kpmk /fn kpm
-                  (maybe-map kpm /fn kp
-                    (promise-map kp /fn k
-                      (knowable-map k /fn result
-                        (cons result result)))))))))
-        
-        #:get-smoosh-of-one-report
-        (fn self a
-          (expect a (cons a-car a-cdr) (uninformative-smoosh-report)
-          /smoosh-reports-zip-map
-            (list
-              (dynamic-type-get-smoosh-of-one-report any-dt a-car)
-              (dynamic-type-get-smoosh-of-one-report any-dt a-cdr))
-            #:on-result-knowable-promise-maybe-knowable-promise
-            on-smoosh-result-knowable-promise-maybe-knowable-promise))
-        
-        #:get-smoosh-and-comparison-of-two-report
-        (fn self b-dt a b
-          (expect a (cons a-car a-cdr) (uninformative-smoosh-report)
-          /expect b (cons b-car b-cdr) (uninformative-smoosh-report)
-          /smoosh-and-comparison-of-two-reports-zip-map
-            (list
-              (dynamic-type-get-smoosh-and-comparison-of-two-report
-                any-dt a-car b-car)
-              (dynamic-type-get-smoosh-and-comparison-of-two-report
-                any-dt a-cdr b-cdr))
-            #:on-check-result-knowable-promise
-            (fn kp-list
-              (knowable-promise-zip-map kp-list /dissectfn
-                (list check-result-car check-result-cdr)
-                (and check-result-car check-result-cdr)))
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            on-smoosh-result-knowable-promise-maybe-knowable-promise))
-        
-        ))))
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (dissect self (cons-dynamic-type any-dt)
+        /smoosh-reports-map
+          (dynamic-type-get-smoosh-of-zero-report any-dt)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (fn kpmkp
+            (promise-map kpmkp /fn kpmk
+              (knowable-map kpmk /fn kpm
+                (maybe-map kpm /fn kp
+                  (promise-map kp /fn k
+                    (knowable-map k /fn result
+                      (cons result result)))))))))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (cons-dynamic-type any-dt)
+        /expect a (cons a-car a-cdr) (uninformative-smoosh-report)
+        /smoosh-reports-zip-map
+          (list
+            (dynamic-type-get-smoosh-of-one-report any-dt a-car)
+            (dynamic-type-get-smoosh-of-one-report any-dt a-cdr))
+          #:on-result-knowable-promise-maybe-knowable-promise
+          on-cons-smoosh-result-knowable-promise-maybe-knowable-promise))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (cons-dynamic-type any-dt)
+        /expect a (cons a-car a-cdr) (uninformative-smoosh-report)
+        /expect b (cons b-car b-cdr) (uninformative-smoosh-report)
+        /smoosh-and-comparison-of-two-reports-zip-map
+          (list
+            (dynamic-type-get-smoosh-and-comparison-of-two-report
+              any-dt a-car b-car)
+            (dynamic-type-get-smoosh-and-comparison-of-two-report
+              any-dt a-cdr b-cdr))
+          #:on-check-result-knowable-promise
+          (fn kp-list
+            (knowable-promise-zip-map kp-list /dissectfn
+              (list check-result-car check-result-cdr)
+              (and check-result-car check-result-cdr)))
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          on-cons-smoosh-result-knowable-promise-maybe-knowable-promise))
+      
+      )))
 
 ; TODO SMOOSH: Actually use this and/or export it.
 (define/own-contract (immutable-vector-dynamic-type any-dt)
@@ -2079,7 +2604,7 @@
           "inhabitant" self)
       /immutable-vector-dynamic-type any-dt)))
   
-  ; TODO NOW: Uncomment this.
+  ; TODO SMOOSH: Uncomment this.
   'TODO
   #;
   (w- iv-shallowly-unchaperoned?
