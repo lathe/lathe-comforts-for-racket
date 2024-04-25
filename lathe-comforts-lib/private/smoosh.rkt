@@ -2463,10 +2463,11 @@
 ;     Otherwise, the first operand (or, for a check, `#t`).
 ;
 (define-imitation-simple-struct
-  (base-readable-discrete-atom-type?
-    base-readable-discrete-atom-type-get-any-dynamic-type)
-  base-readable-discrete-atom-type
-  'base-readable-discrete-atom-type (current-inspector) (auto-write)
+  (base-readable-discrete-atom-dynamic-type?
+    base-readable-discrete-atom-dynamic-type-get-any-dynamic-type)
+  base-readable-discrete-atom-dynamic-type
+  'base-readable-discrete-atom-dynamic-type (current-inspector)
+  (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl
@@ -2477,7 +2478,8 @@
       
       #:get-smoosh-of-one-report
       (fn self a
-        (dissect self (base-readable-discrete-atom-type any-dt)
+        (dissect self
+          (base-readable-discrete-atom-dynamic-type any-dt)
         /expect (base-readable-discrete-atom? a) #t
           (uninformative-smoosh-reports)
         /constant-smoosh-reports
@@ -2485,7 +2487,8 @@
       
       #:get-smoosh-and-comparison-of-two-report
       (fn self b-dt a b
-        (dissect self (base-readable-discrete-atom-type any-dt)
+        (dissect self
+          (base-readable-discrete-atom-dynamic-type any-dt)
         /expect (base-readable-discrete-atom? a) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
         /expect (base-readable-discrete-atom? b) #t
@@ -3294,7 +3297,7 @@
   (list
     (list
       base-readable-discrete-atom?
-      (fn any-dt /base-readable-discrete-atom-type any-dt))
+      (fn any-dt /base-readable-discrete-atom-dynamic-type any-dt))
     (list
       non-nan-number?
       (fn any-dt /non-nan-number-type any-dt))
