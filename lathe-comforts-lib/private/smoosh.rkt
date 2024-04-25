@@ -3206,3 +3206,104 @@
 ; `path-related-wrapper` and `info-wrapper` wrapper types for our key
 ; values to indicate when they should be compared according to
 ; path-relatedness or according to their information ordering.
+
+; TODO SMOOSH: Here we summarize some of our "implement smooshing"
+; tasks. Implement smooshing and better `prop:equal+hash` equality for
+; these types:
+;
+;   - Various types that can result from the default Racket reader, as
+;     well as their corresponding mutable types where these exist.
+;     We're referring to these as `base-readable?` values, but so far
+;     we only handle a few of the cases.
+;
+;      - Numbers.
+;
+;      - Extflonums.
+;
+;      - Characters.
+;
+;      - Symbols.
+;
+;      - Keywords.
+;
+;      - Regular expressions.
+;
+;      - Perhaps compiled code objects.
+;
+;      - Mutable and immutable strings.
+;
+;      - Flvectors.
+;
+;      - Fxvectors.
+;
+;      - Empty lists.
+;
+;      - (Done) Cons cells.
+;
+;      - Mutable and immutable boxes.
+;
+;      - (Done) Mutable and immutable vectors.
+;
+;      - Prefab structs.
+;
+;      - Hash tables of various kinds.
+;
+;      - Potentially others in future versions of Racket. The above
+;        list is up-to-date as of Racket 8.12.
+;
+;   - Types defined here in smoosh.rkt.
+;
+;     - `known?`
+;
+;     - `path-related-wrapper?`
+;
+;     - `info-wrapper?`
+;
+;     - `gloss?`
+;
+;     - `dynamic-type-var-for-any-dynamic-type?`
+;
+;     - `equalw-gloss-key-wrapper?` (which may not need smooshing if
+;       we treat it kind of like an implementation detail, but does
+;       definitely need better `prop:equal+hash` equality).
+;
+;     - Perhaps the types of types, ideally allowing an expressive
+;       subset of types of types to be related by subtyping, namely
+;       when they don't have identities with meaningful details
+;       independent of the set of inhabitants they have. This
+;       smooshability would be relevant mainly when types appear as
+;       elements of data structures that would be otherwise
+;       smooshable.
+;
+;       - `uninformative-dynamic-type?`
+;
+;       - `dead-end-dynamic-type?`
+;
+;       - `cons-dynamic-type?`
+;
+;       - `immutable-vector-dynamic-type?`
+;
+;       - `mutable-vector-dynamic-type?`
+;
+;       - `base-readable-dynamic-type?`
+;
+;       - `any-dynamic-type?`
+;
+;   - Types defined by Lathe Comforts that this smooshing framework
+;     uses.
+;
+;     - `maybe?`
+;
+;   - Types defined by Lathe Comforts even if this smooshing framework
+;     doesn't use them.
+;
+;     - `obstinacy?`, for instance. Potentially others; we haven't
+;       made a comprehensive list here yet.
+
+; TODO SMOOSH: Implement usability as a `gloss?` key for all our
+; smooshable values. Curiously, we have been implementing
+; smooshability as though values return unknown results when smooshed
+; with values they don't recognize, but `gloss?` keys rely on values
+; knowing how to identify themselves by a dynamic type tag that can be
+; distinguished from other tags. We may have some contradictory
+; thoughts to iron out here.
