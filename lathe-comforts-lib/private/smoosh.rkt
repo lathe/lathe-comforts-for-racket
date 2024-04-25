@@ -2424,6 +2424,7 @@
 (define/own-contract (base-readable-discrete-atom? v)
   (-> any/c boolean?)
   (or
+    (boolean? v)
     (char? v)
     (symbol? v)
     (keyword? v)
@@ -3435,6 +3436,10 @@
 ;     well as their corresponding mutable types where these exist.
 ;     We're referring to these as `base-readable?` values, but so far
 ;     we only handle a few of the cases.
+;
+;      - (Done) Booleans. (There is some precedent for considering
+;        booleans to be ordered, but we won't consider any order to be
+;        specified by default, at least for now.)
 ;
 ;      - (Done) Numbers with no NaN parts, ordered in a way consistent
 ;        with `<=` and `=`, and treating checks as having unknown
