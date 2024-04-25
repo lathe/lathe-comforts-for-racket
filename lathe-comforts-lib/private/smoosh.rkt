@@ -3510,6 +3510,10 @@
 ;
 ;       - `dead-end-dynamic-type?`
 ;
+;       - `base-readable-discrete-atom-dynamic-type?`
+;
+;       - `non-nan-number-dynamic-type?`
+;
 ;       - `cons-dynamic-type?`
 ;
 ;       - `immutable-vector-dynamic-type?`
