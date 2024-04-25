@@ -32,7 +32,7 @@
   define-imitation-simple-struct)
 (require /only-in lathe-comforts/match match/c)
 (require /only-in lathe-comforts/maybe
-  just just? just-value maybe? maybe/c maybe-map nothing)
+  just just? just-value maybe? maybe/c maybe-if maybe-map nothing)
 
 
 (provide /own-contract-out
@@ -2497,6 +2497,151 @@
       
       )))
 
+; TODO SMOOSH: Export this.
+(define/own-contract (non-nan-number? v)
+  (-> any/c boolean?)
+  (and
+    (number? v)
+    (not /nan? /real-part v)
+    (not /nan? /imag-part v)))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; Level 0:
+;   path-related:
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=` or both have `imag-part`s `=`
+;     to `0`, the first operand.
+;     
+;     Otherwise, unknown.
+;   join (resp. meet):
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=`, the first operand.
+;     
+;     Otherwise, if the operands both have `imag-part`s `=` to `0`,
+;     the one with the greater (resp. lesser) `real-part` according to
+;     `<=`.
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=`, the first operand.
+;     
+;     Otherwise, a known nothing.
+;   <= (resp. >=):
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=`, `#t`.
+;     
+;     Otherwise, if the operands both have `imag-part`s `=` to `0`,
+;     the `<=` (resp. `>=`) result on their `real-part`s.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, a known nothing (or, for a check, `#f`).
+;
+(define-imitation-simple-struct
+  (non-nan-number-dynamic-type?
+    non-nan-number-type-get-any-dynamic-type)
+  non-nan-number-type
+  'non-nan-number-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (uninformative-smoosh-reports))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (non-nan-number-type any-dt)
+        /expect (non-nan-number? a) #t (uninformative-smoosh-reports)
+        /constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (non-nan-number-type any-dt)
+        /expect (non-nan-number? a) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (non-nan-number? b) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /w- report-1+
+          (constant-smoosh-and-comparison-of-two-reports
+            (delay /known
+              (maybe-if (equal-always? a b)
+                (fn /delay/strict /known a))))
+        /if (= a b)
+          (stream*
+            (constant-smoosh-and-comparison-of-two-report
+              (delay/strict /known /just /delay/strict /known a))
+            report-1+)
+        /w- real?-promise
+          (delay /and (zero? /imag-part a) (zero? /imag-part b))
+        /w- <=?-promise (delay /<= (real-part a) (real-part b))
+        /w- >=?-promise (delay />= (real-part a) (real-part b))
+        /w- <=?-knowable-promise
+          (delay /and (force real?-promise) (force <=?-promise))
+        /w- >=?-knowable-promise
+          (delay /and (force real?-promise) (force >=?-promise))
+        /w- join-knowable-promise-maybe-knowable-promise
+          (delay
+            (if (force real?-promise)
+              (known /just /delay /known
+                (if (force <=?-promise)
+                  b
+                  a))
+              (unknown)))
+        /w- meet-knowable-promise-maybe-knowable-promise
+          (delay
+            (if (force real?-promise)
+              (known /just /delay /known
+                (if (force <=?-promise)
+                  a
+                  b))
+              (unknown)))
+        /stream*
+          (smoosh-and-comparison-of-two-reports-zip-map (list)
+            #:on-<=?-knowable-promise
+            (dissectfn (list)
+              <=?-knowable-promise)
+            #:on->=?-knowable-promise
+            (dissectfn (list)
+              >=?-knowable-promise)
+            #:on-join-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              join-knowable-promise-maybe-knowable-promise)
+            #:on-meet-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              meet-knowable-promise-maybe-knowable-promise)
+            #:on-==-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /nothing))
+            #:on-path-related-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /just /delay/strict /known a)))
+          report-1+))
+      
+      )))
+
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
@@ -3150,6 +3295,9 @@
     (list
       base-readable-discrete-atom?
       (fn any-dt /base-readable-discrete-atom-type any-dt))
+    (list
+      non-nan-number?
+      (fn any-dt /non-nan-number-type any-dt))
     (list pair? (fn any-dt /cons-dynamic-type any-dt))
     (list
       (fn v /and (vector? v) (immutable? v))
@@ -3284,9 +3432,15 @@
 ;     We're referring to these as `base-readable?` values, but so far
 ;     we only handle a few of the cases.
 ;
-;      - Numbers other than NaN, ordered by `<=`.
+;      - (Done) Numbers with no NaN parts, ordered in a way consistent
+;        with `<=` and `=`, and treating checks as having unknown
+;        results when they involve nontrivial complex numbers and not
+;        all the arguments are `=`.
 ;
-;      - Extflonums.other than NaN, ordered by `extfl<=`.
+;      - Extflonums with no NaN parts, ordered in a way consistent
+;        with `extfl<=` and `extfl=`, and treating checks as having
+;        unknown results when they involve nontrivial complex numbers
+;        and not all the arguments are `extfl=`.
 ;
 ;      - (Done) Characters.
 ;
