@@ -2434,6 +2434,68 @@
       (list result-car result-cdr)
       (cons result-car result-cdr))))
 
+; TODO SMOOSH: Consider exporting this.
+(define/own-contract (base-readable-discrete-atom? v)
+  (-> any/c boolean?)
+  (or
+    (char? v)
+    (symbol? v)
+    (keyword? v)
+    (regexp? v)
+    (compiled-expression? v)
+    (string? v)
+    (null? v)))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `base-readable-discrete-atom?`
+;     values, then unknown.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then a known
+;     nothing (or, for a check, `#f`).
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct
+  (base-readable-discrete-atom-type?
+    base-readable-discrete-atom-type-get-any-dynamic-type)
+  base-readable-discrete-atom-type
+  'base-readable-discrete-atom-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (uninformative-smoosh-reports))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (base-readable-discrete-atom-type any-dt)
+        /expect (base-readable-discrete-atom? a) #t
+          (uninformative-smoosh-reports)
+        /constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (base-readable-discrete-atom-type any-dt)
+        /expect (base-readable-discrete-atom? a) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (base-readable-discrete-atom? b) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (equal-always? a b) #t
+          (false-smoosh-and-comparison-of-two-reports)
+        /constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      )))
+
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
@@ -2479,7 +2541,7 @@
       #:get-smoosh-of-one-report
       (fn self a
         (dissect self (cons-dynamic-type any-dt)
-        /expect a (cons a-car a-cdr) (uninformative-smoosh-report)
+        /expect a (cons a-car a-cdr) (uninformative-smoosh-reports)
         /smoosh-reports-zip-map
           (list
             (dynamic-type-get-smoosh-of-one-report any-dt a-car)
@@ -2490,8 +2552,10 @@
       #:get-smoosh-and-comparison-of-two-report
       (fn self b-dt a b
         (dissect self (cons-dynamic-type any-dt)
-        /expect a (cons a-car a-cdr) (uninformative-smoosh-report)
-        /expect b (cons b-car b-cdr) (uninformative-smoosh-report)
+        /expect a (cons a-car a-cdr)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (cons b-car b-cdr)
+          (uninformative-smoosh-and-comparison-of-two-reports)
         /smoosh-and-comparison-of-two-reports-zip-map
           (list
             (dynamic-type-get-smoosh-and-comparison-of-two-report
@@ -3082,6 +3146,9 @@
 (define/own-contract base-readable-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
   (list
+    (list
+      base-readable-discrete-atom?
+      (fn any-dt /base-readable-discrete-atom-type any-dt))
     (list pair? (fn any-dt /cons-dynamic-type any-dt))
     (list
       (fn v /and (vector? v) (immutable? v))
@@ -3132,7 +3199,7 @@
         /w-loop next base-readable-cases base-readable-cases
           (expect base-readable-cases
             (cons base-readable-case base-readable-cases)
-            (uninformative-smoosh-reports)
+            (uninformative-smoosh-and-comparison-of-two-reports)
           /dissect base-readable-case (list check? dt)
           /match (list (check? a) (check? b))
             [ (list #t #t)
@@ -3216,27 +3283,31 @@
 ;     We're referring to these as `base-readable?` values, but so far
 ;     we only handle a few of the cases.
 ;
-;      - Numbers.
+;      - Numbers other than NaN, ordered by `<=`.
 ;
-;      - Extflonums.
+;      - Extflonums.other than NaN, ordered by `extfl<=`.
 ;
-;      - Characters.
+;      - (Done) Characters.
 ;
-;      - Symbols.
+;      - (Done) Symbols.
 ;
-;      - Keywords.
+;      - (Done) Keywords.
 ;
-;      - Regular expressions.
+;      - (Done) Regular expressions.
 ;
-;      - Perhaps compiled code objects.
+;      - (Done) Compiled code expressions (`compiled-expression?`).
 ;
-;      - Mutable and immutable strings.
+;      - (Done) Mutable and immutable strings.
 ;
-;      - Flvectors.
+;      - Flvectors. (NOTE: As of Racket 8.12 [cs], the implementation
+;        of `equal-always?` for this type seems to be incorrect, so
+;        we're not supporting this yet.)
 ;
-;      - Fxvectors.
+;      - Fxvectors. (NOTE: As of Racket 8.12 [cs], the implementation
+;        of `equal-always?` for this type seems to be incorrect, so
+;        we're not supporting this yet.)
 ;
-;      - Empty lists.
+;      - (Done) Empty lists.
 ;
 ;      - (Done) Cons cells.
 ;
