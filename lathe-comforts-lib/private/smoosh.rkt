@@ -2419,21 +2419,6 @@
   (sequence-zip-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
-(define/own-contract
-  (on-cons-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp-list)
-  (->
-    (list/c
-      (promise/c
-        (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-      (promise/c
-        (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-    (knowable-promise-zip-map kp-list /dissectfn
-      (list result-car result-cdr)
-      (cons result-car result-cdr))))
-
 ; TODO SMOOSH: Consider exporting this.
 (define/own-contract (base-readable-discrete-atom? v)
   (-> any/c boolean?)
@@ -2644,6 +2629,21 @@
           report-1+))
       
       )))
+
+(define/own-contract
+  (on-cons-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp-list)
+  (->
+    (list/c
+      (promise/c
+        (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+      (promise/c
+        (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
+    (knowable-promise-zip-map kp-list /dissectfn
+      (list result-car result-cdr)
+      (cons result-car result-cdr))))
 
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
