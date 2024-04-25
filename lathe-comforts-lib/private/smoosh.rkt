@@ -2785,9 +2785,10 @@
             (or
               (force a-shallowly-unchaperoned?-promise)
               (chaperone-of? b a)))
-        ; Given two immutable vectors of the same length, this checks
-        ; whether they could pass `chaperone-of?` if every recursive
-        ; element comparison immediately returned `#t`. Like
+        ; Given two immutable vectors of the same length whose
+        ; elements are known to pass the kind of smoosh we're doing,
+        ; this checks whether they would pass `chaperone-of?` if every
+        ; recursive element comparison immediately returned `#t`. Like
         ; `chaperone-of?`, this takes constant time if the vectors are
         ; `eq?` themselves.
         /w- iv-shallowly-chaperone-of?
