@@ -2444,6 +2444,7 @@
     (regexp? v)
     (compiled-expression? v)
     (string? v)
+    (bytes? v)
     (null? v)))
 
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
@@ -3298,6 +3299,8 @@
 ;      - (Done) Compiled code expressions (`compiled-expression?`).
 ;
 ;      - (Done) Mutable and immutable strings.
+;
+;      - (Done) Mutable and immutable byte strings.
 ;
 ;      - Flvectors. (NOTE: As of Racket 8.12 [cs], the implementation
 ;        of `equal-always?` for this type seems to be incorrect, so
