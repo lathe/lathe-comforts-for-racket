@@ -2241,6 +2241,7 @@
   (in-cycle /list /constant-smoosh-and-comparison-of-two-report
     result-knowable-promise-maybe-knowable-promise))
 
+; TODO SMOOSH: See if we still need this.
 (define-imitation-simple-struct
   (compare-by-predicates-dynamic-type?
     compare-by-predicates-dynamic-type-getter-for-variant
@@ -3509,6 +3510,8 @@
 ;       - `uninformative-dynamic-type?`
 ;
 ;       - `dead-end-dynamic-type?`
+;
+;       - `compare-by-predicates-dynamic-type?`
 ;
 ;       - `base-readable-discrete-atom-dynamic-type?`
 ;
