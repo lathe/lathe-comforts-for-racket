@@ -358,7 +358,7 @@
   (#:method custom-gloss-key-report-get-path-related-glossesque-sys
     (#:this))
   prop:custom-gloss-key-report
-  make-custom-gloss-key-report-from-various-unkeyworded
+  make-custom-gloss-key-report-impl-from-various-unkeyworded
   'custom-gloss-key-report 'custom-gloss-key-report-impl (list))
 (ascribe-own-contract custom-gloss-key-report? (-> any/c boolean?))
 (ascribe-own-contract custom-gloss-key-report-impl? (-> any/c boolean?))
@@ -384,7 +384,7 @@
     (-> custom-gloss-key-report? glossesque-sys?)
     
     custom-gloss-key-report-impl?)
-  (make-custom-gloss-key-report-from-various-unkeyworded
+  (make-custom-gloss-key-report-impl-from-various-unkeyworded
     get-==-glossesque-sys
     get-path-related-glossesque-sys))
 
@@ -1047,7 +1047,7 @@
     ()
     ())
   prop:expressly-smooshable-dynamic-type
-  make-expressly-smooshable-dynamic-type-from-various-unkeyworded
+  make-expressly-smooshable-dynamic-type-impl-from-various-unkeyworded
   'expressly-smooshable-dynamic-type
   'expressly-smooshable-dynamic-type-impl
   (list))
@@ -1074,7 +1074,7 @@
       (sequence/c smoosh-and-comparison-of-two-report?))
     
     expressly-smooshable-dynamic-type-impl?)
-  (make-expressly-smooshable-dynamic-type-from-various-unkeyworded
+  (make-expressly-smooshable-dynamic-type-impl-from-various-unkeyworded
     get-smoosh-of-zero-report
     get-smoosh-of-one-report
     get-smoosh-and-comparison-of-two-report))
@@ -2723,33 +2723,50 @@
       
       )))
 
-(define/own-contract (iv-shallowly-unchaperoned? v)
-  (-> (and/c vector? immutable?) boolean?)
-  (chaperone-of? (vector->immutable-vector /vector-copy v) v))
-
-; Given two immutable vectors, this checks whether they have `eq?`
-; elements. Like `chaperone-of?`, this doesn't traverse the elements
-; if the vectors are `eq?` themselves.
-(define/own-contract (iv-elements-eq? a b)
-  (-> (and/c vector? immutable?) (and/c vector? immutable?) boolean?)
-  (or
-    (eq? a b)
-    (and
-      (= (vector-count a) (vector-count b))
-      (for/and ([a (in-vector a)] [b (in-vector b)])
-        (eq? a b)))))
-
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; Given two values, this checks whether they have `eq?` elements (and
+; whether they're structurally similar enough according to
+; `equal-always?/recur` to get as far as the element comparison). Like
+; `chaperone-of?`, this doesn't traverse the elements if the given
+; values are `eq?` themselves.
 ;
-; This is an appropriate dynamic type of immutable vectors and their
+; TODO: Consider exporting this.
+;
+(define/own-contract (elements-eq? a b)
+  (-> any/c any/c any/c)
+  (equal-always?/recur a b /fn a-elem b-elem /eq? a-elem b-elem))
+
+; This is an appropriate `prop:expressly-smooshable-dynamic-type`
+; implementation for immutable tuple data structures and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?` as long as the elements' information orderings are.
-; (NOTE: This involves vector-specific logic for creating copies of
-; vectors so that we can call `chaperone-of?` without redundant
-; (quadratic-time) work comparing the elements recursively.)
+;
+; In order to be able to check `(chaperone-of? a b)` in a "shallow"
+; way without redundant (quadratic-time) work checking all the
+; elements, this uses a multi-step process: First it checks
+; `(chaperone-of? (copy b) b)` to see if `b` has only non-interposing
+; chaperone wrappers. (This step doesn't need to traverse the elements
+; because they'll be `eq?`.) If `b` does have only non-interposing
+; chaperone wrappers, then we know the chaperone and impersonator
+; wrappers on `a` are at least as extant, making `a` shallowly
+; chaperone-of `b`. Otherwise, we know that `b` has some impersonator
+; wrapper or interposing chaperone wrapper, in which case we know we
+; can run `(chaperone-of? a b)` without it having to traverse all the
+; way into the elements; once it hits that wrapper on `b`, it'll check
+; `a`'s unwrappings for a wrapper that's `eq?` and stop if it's not
+; there.
+;
+; The given `->list` function should return the same list of elements
+; that would be passed to the callback of `equal-always?/recur`.
+;
+; The given `->list` and `list->` functions should specify an
+; isomorphism between inhabitants (those values which pass the given
+; `inhabitant?` predicate) and some set of lists. This isn't possible
+; for every type, so this is only a suitable abstraction when it is
+; possible to satisfy this condition.
+;
+; The given `copy` function should return an inhabitant that's
+; `equal-always?` to its input inhabitant, but that doesn't have any
+; impersonator wrappers or interposing chaperone wrappers.
 ;
 ; Level 0:
 ;   path-related, join, meet, ==:
@@ -2760,7 +2777,8 @@
 ;     with "the same smoosh" referring to this level-0 check.
 ; Level 1:
 ;   path-related, join, meet, ==:
-;     If the operands are not both immutable vectors, then unknown.
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
 ;     
 ;     Otherwise, if the operands are different lengths or the results
 ;     of smooshing corresponding elements under the same smoosh
@@ -2773,8 +2791,9 @@
 ;     of an operand that counts as an acceptable result, then the
 ;     first such operand.
 ;     
-;     Otherwise, if a new immutable vector whose elements are those
-;     recursive results is an acceptable result, then that vector.
+;     Otherwise, if a new inhabitant (created by the given `list->`
+;     function) whose elements are those recursive results is an
+;     acceptable result, then that inhabitant.
 ;     
 ;     Otherwise, unknown.
 ;     
@@ -2795,7 +2814,7 @@
 ;         shallowly chaperone-of it.
 ;         
 ;         (Note that even though the operands will all be shallowly
-;         chaperone-of the new vector, sometimes there's a value
+;         chaperone-of the new inhabitant, sometimes there's a value
 ;         properly shallowly chaperone-of it that the operands would
 ;         all be shallowly chaperone-of too, so unless an acceptable
 ;         result is found among the operands, the result will be
@@ -2813,7 +2832,8 @@
 ;         all be shallowly chaperone-of each other but our result will
 ;         still have to be unknown.)
 ;   <=, >=:
-;     If the operands are not both immutable vectors, then unknown.
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
 ;     
 ;     Otherwise, if the operands are different lengths or the results
 ;     of smooshing corresponding elements under the same smoosh
@@ -2836,20 +2856,20 @@
 ;     some reliable way. As such, we'll treat some results as unknown
 ;     even though a more Racket-version-pinned design might treat them
 ;     as known nothings.)
-;   Where for immutable vectors X and Y of equal length, "X is
-;   shallowly chaperone-of Y" means:
+;   Where for inhabitants X and Y with equal non-element,
+;   non-chaperone-or-impersonator-wrapper details, "X is shallowly
+;   chaperone-of Y" means:
 ;     If Y is shallowly unchaperoned:
 ;       It's true.
 ;     Otherwise:
 ;       It's true iff `(chaperone-of? X Y)` (which in this case will
 ;       be guaranteed not to perform recursive comparisons).
-;   Where for an immutable vector Y, "Y is shallowly unchaperoned"
-;   means:
-;     It's true iff
-;     `(chaperone-of? (vector->immutable-vector (vector-copy Y)) Y)`.
+;   Where for an inhabitant Y, "Y is shallowly unchaperoned" means:
+;     It's true iff `(chaperone-of? (copy Y) Y)` using the given
+;     `copy` function.
 ;     
 ;     (In other words, there are no impersonator wrappers or
-;     interposing chaperone wrappers around the vector Y.)
+;     interposing chaperone wrappers around the inhabitant Y.)
 ;     
 ;     (Note that some chaperone wrappers are non-interposing, and
 ;     there may be wrappers like those around Y; these don't affect
@@ -2864,6 +2884,260 @@
 ;     recursive smoosh result always to be the first operand upon
 ;     success so that finding an acceptable result for the overall
 ;     smoosh is possible.
+;
+(define/own-contract
+  (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+    #:self-get-any-dynamic-type self-get-any-dynamic-type
+    #:inhabitant? inhabitant?
+    #:->list ->list
+    #:list-> list->
+    #:copy [copy (fn v /list-> /->list v)]
+    
+    #:smoosh-of-zero-reports
+    [smoosh-of-zero-reports (uninformative-smoosh-reports)])
+  (->*
+    (
+      #:self-get-any-dynamic-type (-> any/c any/c)
+      #:inhabitant? (-> any/c boolean?)
+      #:->list (-> any/c list?)
+      #:list-> (-> list? any/c))
+    (
+      #:copy (-> any/c any/c)
+      #:smoosh-of-zero-reports (sequence/c smoosh-report?))
+    expressly-smooshable-dynamic-type-impl?)
+  (w- inhabitant-shallowly-unchaperoned?
+    (fn v
+      (chaperone-of? (copy v) v))
+  /make-expressly-smooshable-dynamic-type-impl
+    
+    #:get-smoosh-of-zero-report
+    (fn self
+      smoosh-of-zero-reports)
+    
+    #:get-smoosh-of-one-report
+    (fn self a
+      (w- any-dt (self-get-any-dynamic-type self)
+      /expect (inhabitant? a) #t (uninformative-smoosh-reports)
+      /dissect
+        (smoosh-reports-zip-map
+          (list-map (->list a) /fn a-elem
+            (dynamic-type-get-smoosh-of-one-report any-dt a-elem))
+          #:on-result-knowable-promise-maybe-knowable-promise
+          (fn kpmkp-list
+            (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
+              (knowable-promise-zip-map kp-list /fn result-list
+                result-list))))
+        (stream* report-0 report-1 report-2+)
+      /w- a-shallowly-unchaperoned?-promise
+        (delay /inhabitant-shallowly-unchaperoned? a)
+      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
+        (fn result-needs-to-be-chaperone-of?
+          (fn result-list-kpmkp
+            (promise-map result-list-kpmkp /fn list-kpmk
+              (knowable-map list-kpmk /fn list-kpm
+                (maybe-map list-kpm /fn list-kp
+                  (promise-map list-kp /fn list-k
+                    (knowable-bind list-k /fn result-list
+                      (w- candidate-result (list-> result-list)
+                      /if (elements-eq? candidate-result a) (known a)
+                      ; If we're doing a particularly strict check and
+                      ; the operand `a` is wrapped with impersonators
+                      ; or interposing chaperones, we have no `known?`
+                      ; result.
+                      /if
+                        (or
+                          (not result-needs-to-be-chaperone-of?)
+                          (force a-shallowly-unchaperoned?-promise))
+                        (known candidate-result)
+                      /unknown))))))))
+      /stream*
+        (smoosh-report-map report-0
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            #f))
+        (smoosh-report-map report-1
+          #:on-join-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            #t)
+          #:on-meet-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            #t)
+          #:on-==-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            #t)
+          #:on-path-related-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            #f))
+        (smoosh-reports-map report-2+
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            #t))))
+    
+    #:get-smoosh-and-comparison-of-two-report
+    (fn self b-dt a b
+      (w- any-dt (self-get-any-dynamic-type self)
+      /expect (inhabitant? a) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (inhabitant? b) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      ; If the operands differ even without comparing their chaperone
+      ; wrappers or their elements, we return a known nothing (when
+      ; doing a smoosh, or `#f` when doing a check).
+      /if (not /equal-always?/recur a b /fn a-elem b-elem #t)
+        (false-smoosh-and-comparison-of-two-reports)
+      /dissect
+        (smoosh-and-comparison-of-two-reports-zip-map
+          ; TODO SMOOSH: It's embarrassing that we're calling the rest
+          ; of these things `...-zip-map` when they take lists and
+          ; list-receiving functions, while `list-zip-map` here takes
+          ; two values and a two-value-receiving function.
+          (list-zip-map (->list a) (->list b) /fn a-elem b-elem
+            (dynamic-type-get-smoosh-and-comparison-of-two-report
+              any-dt a-elem b-elem))
+          #:on-check-result-knowable-promise
+          (fn kp-list
+            (boolean-and-knowable-promise-zip-map kp-list /fn #t))
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (fn kpmkp-list
+            (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
+              (knowable-promise-zip-map kp-list /fn result-list
+                result-list))))
+        (stream* report-0 report-1 report-2+)
+      /w- a-shallowly-unchaperoned?-promise
+        (delay /inhabitant-shallowly-unchaperoned? a)
+      /w- b-shallowly-unchaperoned?-promise
+        (delay /inhabitant-shallowly-unchaperoned? b)
+      /w- a-shallowly-chaperone-of-b?-promise
+        (delay
+          (or
+            (force b-shallowly-unchaperoned?-promise)
+            (chaperone-of? a b)))
+      /w- b-shallowly-chaperone-of-a?-promise
+        (delay
+          (or
+            (force a-shallowly-unchaperoned?-promise)
+            (chaperone-of? b a)))
+      ; Given two inhabitants whose non-element,
+      ; non-chaperone-or-impersonator-wrapper details are
+      ; `equal-always?/recur` and whose whose elements are known to
+      ; pass the kind of smoosh we're doing, this checks whether they
+      ; would pass `chaperone-of?` if every recursive element
+      ; comparison immediately returned `#t`. Like `chaperone-of?`,
+      ; this takes constant time if the inhabitants are `eq?`
+      ; themselves.
+      /w- inhabitant-shallowly-chaperone-of?
+        (fn s t
+          (or (eq? s t)
+          /if (and (eq? s b) (eq? t a))
+            (force b-shallowly-chaperone-of-a?-promise)
+          /if (and (eq? s a) (eq? t b))
+            (force a-shallowly-chaperone-of-b?-promise)
+          /or
+            (cond
+              [(eq? t a) (force a-shallowly-unchaperoned?-promise)]
+              [(eq? t b) (force b-shallowly-unchaperoned?-promise)]
+              [else (inhabitant-shallowly-unchaperoned? t)])
+            (chaperone-of? s t)))
+      /w- on-check-result-knowable-promise
+        (fn should-a-be-small? should-b-be-small?
+          (fn kp
+            (promise-map kp /fn k
+              (knowable-bind k /fn result
+                (boolean-and-knowable-thunk-zip /list
+                  (fn /known result)
+                  (fn /boolean-or-knowable-thunk-zip /list
+                    (fn /known /not should-a-be-small?)
+                    (fn /falsable->uninformative-knowable
+                      (inhabitant-shallowly-chaperone-of? b a)))
+                  (fn /boolean-or-knowable-thunk-zip /list
+                    (fn /known /not should-b-be-small?)
+                    (fn /falsable->uninformative-knowable
+                      (inhabitant-shallowly-chaperone-of? a b))))))))
+      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
+        (fn acceptable-result?
+          (fn result-list-kpmkp
+            (promise-map result-list-kpmkp /fn list-kpmk
+              (knowable-map list-kpmk /fn list-kpm
+                (maybe-map list-kpm /fn list-kp
+                  (promise-map list-kp /fn list-k
+                    (knowable-bind list-k /fn result-list
+                      (w- noncanonical-result (list-> result-list)
+                      /if
+                        (and
+                          (elements-eq? noncanonical-result a)
+                          (acceptable-result? a))
+                        (known a)
+                      /if
+                        (and
+                          (elements-eq? noncanonical-result b)
+                          (acceptable-result? b))
+                        (known b)
+                      /if (acceptable-result? noncanonical-result)
+                        (known noncanonical-result)
+                      /unknown))))))))
+      /w- equivalent?-promise
+        (delay
+          (and
+            (inhabitant-shallowly-chaperone-of? b a)
+            (inhabitant-shallowly-chaperone-of? a b)))
+      /w- ==-acceptable-result?
+        (fn v
+          (and
+            (force equivalent?-promise)
+            (inhabitant-shallowly-chaperone-of? v a)))
+      /w- path-related-acceptable-result?
+        (fn v
+          #t)
+      /stream*
+        (smoosh-and-comparison-of-two-report-map report-0
+          #:on-check-result-knowable-promise
+          (on-check-result-knowable-promise #f #f)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            path-related-acceptable-result?))
+        (smoosh-and-comparison-of-two-report-map report-1
+          #:on-<=?-knowable-promise
+          (on-check-result-knowable-promise #t #f)
+          #:on->=?-knowable-promise
+          (on-check-result-knowable-promise #f #t)
+          #:on-join-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn v
+              (and
+                (inhabitant-shallowly-chaperone-of? v a)
+                (inhabitant-shallowly-chaperone-of? v b))))
+          #:on-meet-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn v
+              (and
+                (or (eq? v a) (eq? v b))
+                (inhabitant-shallowly-chaperone-of? a v)
+                (inhabitant-shallowly-chaperone-of? b v))))
+          #:on-==-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            ==-acceptable-result?)
+          #:on-path-related-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            path-related-acceptable-result?))
+        (smoosh-and-comparison-of-two-reports-map report-2+
+          #:on-check-result-knowable-promise
+          (on-check-result-knowable-promise #t #t)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            ==-acceptable-result?))))
+    
+    ))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of immutable vectors and their
+; chaperones, information-ordered in a way that's consistent with
+; `chaperone-of?` as long as the elements' information orderings are.
+; This is an instance of
+; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
 ;
 ; NOTE: This would be used like so:
 ;
@@ -2887,229 +3161,16 @@
   'immutable-vector-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
+    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
       
-      #:get-smoosh-of-zero-report
-      (fn self
-        (uninformative-smoosh-reports))
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-vector-dynamic-type any-dt)
+        any-dt)
       
-      #:get-smoosh-of-one-report
-      (fn self a
-        (dissect self (immutable-vector-dynamic-type any-dt)
-        /expect (and (vector? a) (immutable? a)) #t
-          (uninformative-smoosh-reports)
-        /dissect
-          (smoosh-reports-zip-map
-            (list-map (vector->list a) /fn a-elem
-              (dynamic-type-get-smoosh-of-one-report any-dt a-elem))
-            #:on-result-knowable-promise-maybe-knowable-promise
-            (fn kpmkp-list
-              (maybe-min-knowable-promise-zip-map kpmkp-list
-                (fn kp-list
-                  (knowable-promise-zip-map kp-list /fn result-list
-                    result-list)))))
-          (stream* report-0 report-1 report-2+)
-        /w- a-shallowly-unchaperoned?-promise
-          (delay /iv-shallowly-unchaperoned? a)
-        /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn result-needs-to-be-chaperone-of?
-            (fn result-list-kpmkp
-              (promise-map result-list-kpmkp /fn list-kpmk
-                (knowable-map list-kpmk /fn list-kpm
-                  (maybe-map list-kpm /fn list-kp
-                    (promise-map list-kp /fn list-k
-                      (knowable-bind list-k /fn result-list
-                        (w- candidate-result
-                          (vector->immutable-vector /list->vector
-                            result-list)
-                        /if (iv-elements-eq? candidate-result a)
-                          (known a)
-                        ; If we're doing a particularly strict check
-                        ; and the operand `a` is wrapped with
-                        ; impersonators or interposing chaperones, we
-                        ; have no `known?` result.
-                        /if
-                          (or
-                            (not result-needs-to-be-chaperone-of?)
-                            (force a-shallowly-unchaperoned?-promise))
-                          (known candidate-result)
-                        /unknown))))))))
-        /stream*
-          (smoosh-report-map report-0
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              #f))
-          (smoosh-report-map report-1
-            #:on-join-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              #t)
-            #:on-meet-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              #t)
-            #:on-==-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              #t)
-            #:on-path-related-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              #f))
-          (smoosh-reports-map report-2+
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              #t))))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (dissect self (immutable-vector-dynamic-type any-dt)
-        /expect (and (vector? a) (immutable? a)) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (and (vector? b) (immutable? b)) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /if (not /= (vector-count a) (vector-count b))
-          (false-smoosh-and-comparison-of-two-reports)
-        /dissect
-          (smoosh-and-comparison-of-two-reports-zip-map
-            ; TODO SMOOSH: It's embarrassing that we're calling the
-            ; rest of these things `...-zip-map` when they take lists
-            ; and list-receiving functions, while `list-zip-map` here
-            ; takes two values and a two-value-receiving function.
-            (list-zip-map (vector->list a) (vector->list b)
-              (fn a-elem b-elem
-                (dynamic-type-get-smoosh-and-comparison-of-two-report
-                  any-dt a-elem b-elem)))
-            #:on-check-result-knowable-promise
-            (fn kp-list
-              (boolean-and-knowable-promise-zip-map kp-list /fn #t))
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn kpmkp-list
-              (maybe-min-knowable-promise-zip-map kpmkp-list
-                (fn kp-list
-                  (knowable-promise-zip-map kp-list /fn result-list
-                    result-list)))))
-          (stream* report-0 report-1 report-2+)
-        /w- a-shallowly-unchaperoned?-promise
-          (delay /iv-shallowly-unchaperoned? a)
-        /w- b-shallowly-unchaperoned?-promise
-          (delay /iv-shallowly-unchaperoned? b)
-        /w- a-shallowly-chaperone-of-b?-promise
-          (delay
-            (or
-              (force b-shallowly-unchaperoned?-promise)
-              (chaperone-of? a b)))
-        /w- b-shallowly-chaperone-of-a?-promise
-          (delay
-            (or
-              (force a-shallowly-unchaperoned?-promise)
-              (chaperone-of? b a)))
-        ; Given two immutable vectors of the same length whose
-        ; elements are known to pass the kind of smoosh we're doing,
-        ; this checks whether they would pass `chaperone-of?` if every
-        ; recursive element comparison immediately returned `#t`. Like
-        ; `chaperone-of?`, this takes constant time if the vectors are
-        ; `eq?` themselves.
-        /w- iv-shallowly-chaperone-of?
-          (fn s t
-            (or (eq? s t)
-            /if (and (eq? s b) (eq? t a))
-              (force b-shallowly-chaperone-of-a?-promise)
-            /if (and (eq? s a) (eq? t b))
-              (force a-shallowly-chaperone-of-b?-promise)
-            /or
-              (cond
-                [(eq? t a) (force a-shallowly-unchaperoned?-promise)]
-                [(eq? t b) (force b-shallowly-unchaperoned?-promise)]
-                [else (iv-shallowly-unchaperoned? t)])
-              (chaperone-of? s t)))
-        /w- on-check-result-knowable-promise
-          (fn should-a-be-small? should-b-be-small?
-            (fn kp
-              (promise-map kp /fn k
-                (knowable-bind k /fn result
-                  (boolean-and-knowable-thunk-zip /list
-                    (fn /known result)
-                    (fn /boolean-or-knowable-thunk-zip /list
-                      (fn /known /not should-a-be-small?)
-                      (fn /falsable->uninformative-knowable
-                        (iv-shallowly-chaperone-of? b a)))
-                    (fn /boolean-or-knowable-thunk-zip /list
-                      (fn /known /not should-b-be-small?)
-                      (fn /falsable->uninformative-knowable
-                        (iv-shallowly-chaperone-of? a b))))))))
-        /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn acceptable-result?
-            (fn result-list-kpmkp
-              (promise-map result-list-kpmkp /fn list-kpmk
-                (knowable-map list-kpmk /fn list-kpm
-                  (maybe-map list-kpm /fn list-kp
-                    (promise-map list-kp /fn list-k
-                      (knowable-bind list-k /fn result-list
-                        (w- noncanonical-result
-                          (vector->immutable-vector /list->vector
-                            result-list)
-                        /if
-                          (and
-                            (iv-elements-eq? noncanonical-result a)
-                            (acceptable-result? a))
-                          (known a)
-                        /if
-                          (and
-                            (iv-elements-eq? noncanonical-result b)
-                            (acceptable-result? b))
-                          (known b)
-                        /if (acceptable-result? noncanonical-result)
-                          (known noncanonical-result)
-                        /unknown))))))))
-        /w- equivalent?-promise
-          (delay
-            (and
-              (iv-shallowly-chaperone-of? b a)
-              (iv-shallowly-chaperone-of? a b)))
-        /w- ==-acceptable-result?
-          (fn v
-            (and
-              (force equivalent?-promise)
-              (iv-shallowly-chaperone-of? v a)))
-        /w- path-related-acceptable-result?
-          (fn v
-            #t)
-        /stream*
-          (smoosh-and-comparison-of-two-report-map report-0
-            #:on-check-result-knowable-promise
-            (on-check-result-knowable-promise #f #f)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              path-related-acceptable-result?))
-          (smoosh-and-comparison-of-two-report-map report-1
-            #:on-<=?-knowable-promise
-            (on-check-result-knowable-promise #t #f)
-            #:on->=?-knowable-promise
-            (on-check-result-knowable-promise #f #t)
-            #:on-join-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              (fn v
-                (and
-                  (iv-shallowly-chaperone-of? v a)
-                  (iv-shallowly-chaperone-of? v b))))
-            #:on-meet-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              (fn v
-                (and
-                  (or (eq? v a) (eq? v b))
-                  (iv-shallowly-chaperone-of? a v)
-                  (iv-shallowly-chaperone-of? b v))))
-            #:on-==-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              ==-acceptable-result?)
-            #:on-path-related-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              path-related-acceptable-result?))
-          (smoosh-and-comparison-of-two-reports-map report-2+
-            #:on-check-result-knowable-promise
-            (on-check-result-knowable-promise #t #t)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              ==-acceptable-result?))))
-      
-      )))
+      #:inhabitant? (fn v /and (vector? v) (immutable? v))
+      #:->list (fn v /vector->list v)
+      #:list-> (fn v /vector->immutable-vector /list->vector v)
+      #:copy (fn v /vector->immutable-vector /vector-copy v))))
 
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
