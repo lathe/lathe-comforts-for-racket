@@ -2895,8 +2895,10 @@
     #:list-> list->
     #:copy [copy (fn v /list-> /->list v)]
     
-    #:smoosh-of-zero-reports
-    [smoosh-of-zero-reports (uninformative-smoosh-reports)])
+    #:get-smoosh-of-zero-report
+    [ get-smoosh-of-zero-report
+      (fn self
+        (uninformative-smoosh-reports))])
   (->*
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
@@ -2905,16 +2907,17 @@
       #:list-> (-> list? any/c))
     (
       #:copy (-> any/c any/c)
-      #:smoosh-of-zero-reports (sequence/c smoosh-report?))
+      
+      #:get-smoosh-of-zero-report
+      (-> any/c (sequence/c smoosh-report?))
+      
+      )
     expressly-smooshable-dynamic-type-impl?)
   (w- inhabitant-shallowly-unchaperoned?
     (fn v
       (chaperone-of? (copy v) v))
   /make-expressly-smooshable-dynamic-type-impl
-    
-    #:get-smoosh-of-zero-report
-    (fn self
-      smoosh-of-zero-reports)
+    #:get-smoosh-of-zero-report get-smoosh-of-zero-report
     
     #:get-smoosh-of-one-report
     (fn self a
@@ -3369,14 +3372,76 @@
 ; `chaperone-of?`. This is an instance of
 ; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
 ;
-(define-imitation-simple-struct
-  (mutable-vector-dynamic-type?)
+(define-imitation-simple-struct (mutable-vector-dynamic-type?)
   mutable-vector-dynamic-type
   'mutable-vector-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-mutable
       #:inhabitant? (fn v /and (vector? v) (not /immutable? v)))))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of immutable boxes and their
+; chaperones, information-ordered in a way that's consistent with
+; `chaperone-of?` as long as the elements' information orderings are.
+; This is an instance of
+; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+;
+(define-imitation-simple-struct
+  (immutable-box-dynamic-type?
+    immutable-box-dynamic-type-get-any-dynamic-type)
+  immutable-box-dynamic-type
+  'immutable-box-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-box-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? (fn v /and (box? v) (immutable? v))
+      #:->list (fn v /list /unbox v)
+      #:list-> (dissectfn (list e) /box-immutable e)
+      #:copy (fn v /box-immutable /unbox v)
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (dissect self (cons-dynamic-type any-dt)
+        /smoosh-reports-map
+          (dynamic-type-get-smoosh-of-zero-report any-dt)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (fn kpmkp
+            (promise-map kpmkp /fn kpmk
+              (knowable-map kpmk /fn kpm
+                (maybe-map kpm /fn kp
+                  (promise-map kp /fn k
+                    (knowable-map k /fn result
+                      (box-immutable result)))))))))
+      
+      )))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of mutable boxes and their
+; chaperones, information-ordered in a way that's consistent with
+; `chaperone-of?`. This is an instance of
+; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
+;
+(define-imitation-simple-struct (mutable-box-dynamic-type?)
+  mutable-box-dynamic-type
+  'mutable-box-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-mutable
+      #:inhabitant? (fn v /and (box? v) (not /immutable? v)))))
 
 (define/own-contract base-readable-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
@@ -3394,6 +3459,12 @@
     (list
       (fn v /and (vector? v) (not /immutable? v))
       (fn any-dt /mutable-vector-dynamic-type))
+    (list
+      (fn v /and (box? v) (immutable? v))
+      (fn any-dt /immutable-box-dynamic-type any-dt))
+    (list
+      (fn v /and (box? v) (not /immutable? v))
+      (fn any-dt /mutable-box-dynamic-type))
     ; TODO SMOOSH: Add more cases here.
     ))
 
@@ -3561,7 +3632,7 @@
 ;
 ;      - (Done) Cons cells.
 ;
-;      - Mutable and immutable boxes.
+;      - (Done) Mutable and immutable boxes.
 ;
 ;      - (Done) Mutable and immutable vectors.
 ;
