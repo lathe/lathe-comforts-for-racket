@@ -4,7 +4,7 @@
 ;
 ; Utilities for structs.
 
-;   Copyright 2017-2020, 2022 The Lathe Authors
+;   Copyright 2017-2020, 2022, 2024 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@
 (require #/for-syntax #/only-in lathe-comforts
   dissect expect fn mat w- w-loop)
 
-(require #/only-in lathe-comforts dissect dissectfn expect fn mat w-)
+(require #/only-in lathe-comforts
+  dissect dissectfn expect fn mat w- w-loop)
 
 ; TODO: Deprecate `struct-easy` in favor of using
 ; `define-imitation-simple-struct` with `auto-write` and `auto-equal`.
@@ -36,7 +37,8 @@
 (provide #/own-contract-out
 ;  known-to-be-immutable-struct-type?
   prefab-struct?
-  immutable-prefab-struct?)
+  immutable-prefab-struct?
+  mutable-prefab-struct?)
 (provide
 ;  struct-descriptor
 ;  struct-constructor
@@ -97,7 +99,7 @@
 (define/own-contract (known-to-be-immutable-struct-type? v)
   (-> any/c boolean?)
   (and (struct-type? v)
-  #/let next ()
+  #/w-loop next v v
     (define-values
       (
         name
@@ -114,6 +116,25 @@
       (list-length=nat? immutable-k-list init-field-cnt)
       (or (not super-type) (next super-type)))))
 
+(define/own-contract (known-to-be-mutable-struct-type? v)
+  (-> any/c boolean?)
+  (and (struct-type? v)
+  #/w-loop next v v
+    (define-values
+      (
+        name
+        init-field-cnt
+        auto-field-cnt
+        accessor-proc
+        mutator-proc
+        immutable-k-list
+        super-type
+        skipped?)
+      (struct-type-info v))
+    (or
+      (not #/list-length=nat? immutable-k-list init-field-cnt)
+      (and super-type (next super-type)))))
+
 (define/own-contract (prefab-struct? v)
   (-> any/c boolean?)
   (not #/not #/prefab-struct-key v))
@@ -123,6 +144,12 @@
   (and (prefab-struct? v)
   #/w- type (struct-info v)
   #/and type (known-to-be-immutable-struct-type? type)))
+
+(define/own-contract (mutable-prefab-struct? v)
+  (-> any/c boolean?)
+  (and (prefab-struct? v)
+  #/w- type (struct-info v)
+  #/and type (known-to-be-mutable-struct-type? type)))
 
 
 (define (guard-easy guard)

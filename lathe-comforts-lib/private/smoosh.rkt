@@ -29,7 +29,8 @@
 (require /only-in lathe-comforts/list list-any list-map list-zip-map)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
-  define-imitation-simple-struct)
+  define-imitation-simple-struct immutable-prefab-struct?
+  mutable-prefab-struct?)
 (require /only-in lathe-comforts/match match/c)
 (require /only-in lathe-comforts/maybe
   just just? just-value maybe? maybe/c maybe-if maybe-map nothing)
@@ -2758,11 +2759,11 @@
 ; The given `->list` function should return the same list of elements
 ; that would be passed to the callback of `equal-always?/recur`.
 ;
-; The given `->list` and `list->` functions should specify an
-; isomorphism between inhabitants (those values which pass the given
-; `inhabitant?` predicate) and some set of lists. This isn't possible
-; for every type, so this is only a suitable abstraction when it is
-; possible to satisfy this condition.
+; The given `->list` and `example-and-list->` functions should specify
+; an isomorphism between inhabitants (those values which pass the
+; given `inhabitant?` predicate) and some set of lists. This isn't
+; possible for every type, so this is only a suitable abstraction when
+; it is possible to satisfy this condition.
 ;
 ; The given `copy` function should return an inhabitant that's
 ; `equal-always?` to its input inhabitant, but that doesn't have any
@@ -2791,8 +2792,9 @@
 ;     of an operand that counts as an acceptable result, then the
 ;     first such operand.
 ;     
-;     Otherwise, if a new inhabitant (created by the given `list->`
-;     function) whose elements are those recursive results is an
+;     Otherwise, if a new inhabitant (created by the given
+;     `example-and-list->` function using the first operand as the
+;     example) whose elements are those recursive results is an
 ;     acceptable result, then that inhabitant.
 ;     
 ;     Otherwise, unknown.
@@ -2892,8 +2894,8 @@
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
     #:->list ->list
-    #:list-> list->
-    #:copy [copy (fn v /list-> /->list v)]
+    #:example-and-list-> example-and-list->
+    #:copy [copy (fn v /example-and-list-> v /->list v)]
     
     #:get-smoosh-of-zero-report
     [ get-smoosh-of-zero-report
@@ -2904,7 +2906,7 @@
       #:self-get-any-dynamic-type (-> any/c any/c)
       #:inhabitant? (-> any/c boolean?)
       #:->list (-> any/c list?)
-      #:list-> (-> list? any/c))
+      #:example-and-list-> (-> any/c list? any/c))
     (
       #:copy (-> any/c any/c)
       
@@ -2943,7 +2945,8 @@
                 (maybe-map list-kpm /fn list-kp
                   (promise-map list-kp /fn list-k
                     (knowable-bind list-k /fn result-list
-                      (w- candidate-result (list-> result-list)
+                      (w- candidate-result
+                        (example-and-list-> a result-list)
                       /if (elements-eq? candidate-result a) (known a)
                       ; If we're doing a particularly strict check and
                       ; the operand `a` is wrapped with impersonators
@@ -3066,7 +3069,8 @@
                 (maybe-map list-kpm /fn list-kp
                   (promise-map list-kp /fn list-k
                     (knowable-bind list-k /fn result-list
-                      (w- noncanonical-result (list-> result-list)
+                      (w- noncanonical-result
+                        (example-and-list-> a result-list)
                       /if
                         (and
                           (elements-eq? noncanonical-result a)
@@ -3359,7 +3363,11 @@
       
       #:inhabitant? (fn v /and (vector? v) (immutable? v))
       #:->list (fn v /vector->list v)
-      #:list-> (fn v /vector->immutable-vector /list->vector v)
+      
+      #:example-and-list->
+      (fn example lst
+        (vector->immutable-vector /list->vector lst))
+      
       #:copy (fn v /vector->immutable-vector /vector-copy v))))
 
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
@@ -3406,7 +3414,12 @@
       
       #:inhabitant? (fn v /and (box? v) (immutable? v))
       #:->list (fn v /list /unbox v)
-      #:list-> (dissectfn (list e) /box-immutable e)
+      
+      #:example-and-list->
+      (fn example lst
+        (dissect lst (list e)
+        /box-immutable e))
+      
       #:copy (fn v /box-immutable /unbox v)
       
       #:get-smoosh-of-zero-report
@@ -3443,6 +3456,55 @@
     (make-expressly-smooshable-dynamic-type-impl-for-mutable
       #:inhabitant? (fn v /and (box? v) (not /immutable? v)))))
 
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of immutable prefab structs and
+; their chaperones, information-ordered in a way that's consistent
+; with `chaperone-of?` as long as the elements' information orderings
+; are. This is an instance of
+; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+;
+(define-imitation-simple-struct
+  (immutable-prefab-struct-dynamic-type?
+    immutable-prefab-struct-dynamic-type-get-any-dynamic-type)
+  immutable-prefab-struct-dynamic-type
+  'immutable-prefab-struct-dynamic-type (current-inspector)
+  (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? immutable-prefab-struct?
+      #:->list (fn v /cdr /vector->list /struct->vector v)
+      #:example-and-list->
+      (fn example lst
+        (apply make-prefab-struct (prefab-struct-key example) lst)))))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of mutable prefab structs and
+; their chaperones, information-ordered in a way that's consistent
+; with `chaperone-of?`. This is an instance of
+; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
+;
+(define-imitation-simple-struct (mutable-prefab-struct-dynamic-type?)
+  mutable-prefab-struct-dynamic-type
+  'mutable-prefab-struct-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-mutable
+      #:inhabitant? mutable-prefab-struct?)))
+
 (define/own-contract base-readable-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
   (list
@@ -3465,6 +3527,12 @@
     (list
       (fn v /and (box? v) (not /immutable? v))
       (fn any-dt /mutable-box-dynamic-type))
+    (list
+      immutable-prefab-struct?
+      (fn any-dt /immutable-prefab-struct-dynamic-type any-dt))
+    (list
+      mutable-prefab-struct?
+      (fn any-dt /mutable-prefab-struct-dynamic-type))
     ; TODO SMOOSH: Add more cases here.
     ))
 
@@ -3636,7 +3704,8 @@
 ;
 ;      - (Done) Mutable and immutable vectors.
 ;
-;      - Prefab structs.
+;      - (Done) Prefab structs, at least of the kinds supported by
+;        Racket so far.
 ;
 ;      - Hash tables of various kinds.
 ;
