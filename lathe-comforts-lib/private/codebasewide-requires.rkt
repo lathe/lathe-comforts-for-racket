@@ -39,6 +39,7 @@
 (only-in racket/contract/combinator
   blame-add-context coerce-chaperone-contract coerce-contract coerce-flat-contract contract-first-order-passes? make-chaperone-contract make-contract make-flat-contract raise-blame-error)
 (only-in racket/contract/region invariant-assertion)
+(only-in racket/extflonum extflonum? extfl<= extfl= extfl>=)
 (only-in racket/hash hash-union)
 (only-in racket/list append-map range)
 (only-in racket/match

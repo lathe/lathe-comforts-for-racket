@@ -1913,12 +1913,10 @@
           "check-result-knowable-promise-list" kp-list))]
     
     #:on-<=?-knowable-promise
-    [ on-<=?-knowable-promise
-      on-check-result-knowable-promise]
+    [on-<=?-knowable-promise on-check-result-knowable-promise]
     
     #:on->=?-knowable-promise
-    [ on->=?-knowable-promise
-      on-check-result-knowable-promise]
+    [on->=?-knowable-promise on-check-result-knowable-promise]
     
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -2587,28 +2585,143 @@
             report-1+)
         /w- real?-promise
           (delay /and (zero? /imag-part a) (zero? /imag-part b))
-        /w- <=?-promise (delay /<= (real-part a) (real-part b))
-        /w- >=?-promise (delay />= (real-part a) (real-part b))
         /w- <=?-knowable-promise
-          (delay /and (force real?-promise) (force <=?-promise))
+          (promise-map real?-promise /fn real?
+            (if real?
+              (known /<= (real-part a) (real-part b))
+              (unknown)))
         /w- >=?-knowable-promise
-          (delay /and (force real?-promise) (force >=?-promise))
+          (promise-map real?-promise /fn real?
+            (if real?
+              (known />= (real-part a) (real-part b))
+              (unknown)))
         /w- join-knowable-promise-maybe-knowable-promise
-          (delay
-            (if (force real?-promise)
-              (known /just /delay /known
-                (if (force <=?-promise)
-                  b
-                  a))
-              (unknown)))
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn result
+              (just /delay/strict /known /if result b a)))
         /w- meet-knowable-promise-maybe-knowable-promise
-          (delay
-            (if (force real?-promise)
-              (known /just /delay /known
-                (if (force <=?-promise)
-                  a
-                  b))
-              (unknown)))
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn result
+              (just /delay/strict /known /if result a b)))
+        /stream*
+          (smoosh-and-comparison-of-two-reports-zip-map (list)
+            #:on-<=?-knowable-promise
+            (dissectfn (list)
+              <=?-knowable-promise)
+            #:on->=?-knowable-promise
+            (dissectfn (list)
+              >=?-knowable-promise)
+            #:on-join-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              join-knowable-promise-maybe-knowable-promise)
+            #:on-meet-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              meet-knowable-promise-maybe-knowable-promise)
+            #:on-==-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /nothing))
+            #:on-path-related-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /just /delay/strict /known a)))
+          report-1+))
+      
+      )))
+
+; TODO SMOOSH: Export this.
+(define/own-contract (non-nan-extflonum? v)
+  (-> any/c boolean?)
+  (and (extflonum? v) (not /extfl= v v)))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; Level 0:
+;   path-related:
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, the first operand.
+;   join (resp. meet):
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, if the operands are `extfl=`, the first operand.
+;     
+;     Otherwise, the greater (resp. lesser) operand according to
+;     `extfl<=`.
+;   ==:
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, if the operands are `extfl=`, the first operand.
+;     
+;     Otherwise, a known nothing.
+;   <= (resp. >=):
+;     If the operands are not both `extflonum?` values without NaN
+;     parts, then unknown.
+;     
+;     Otherwise, the `extfl<=` (resp. `extfl>=`) result on the
+;     operands.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, a known nothing (or, for a check, `#f`).
+;
+(define-imitation-simple-struct
+  (non-nan-extflonum-dynamic-type?
+    non-nan-extflonum-type-get-any-dynamic-type)
+  non-nan-extflonum-type
+  'non-nan-extflonum-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (uninformative-smoosh-reports))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (non-nan-extflonum-type any-dt)
+        /expect (non-nan-extflonum? a) #t
+          (uninformative-smoosh-reports)
+        /constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (non-nan-extflonum-type any-dt)
+        /expect (non-nan-extflonum? a) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (non-nan-extflonum? b) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /w- report-1+
+          (constant-smoosh-and-comparison-of-two-reports
+            (delay /known
+              (maybe-if (equal-always? a b)
+                (fn /delay/strict /known a))))
+        /if (extfl= a b)
+          (stream*
+            (constant-smoosh-and-comparison-of-two-report
+              (delay/strict /known /just /delay/strict /known a))
+            report-1+)
+        /w- <=?-knowable-promise (delay /known /extfl<= a b)
+        /w- >=?-knowable-promise (delay /known /extfl>= a b)
+        /w- join-knowable-promise-maybe-knowable-promise
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn <=?
+              (just /delay/strict /known /if <=? b a)))
+        /w- meet-knowable-promise-maybe-knowable-promise
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn <=?
+              (just /delay/strict /known /if <=? a b)))
         /stream*
           (smoosh-and-comparison-of-two-reports-zip-map (list)
             #:on-<=?-knowable-promise
@@ -3514,6 +3627,9 @@
     (list
       non-nan-number?
       (fn any-dt /non-nan-number-type any-dt))
+    (list
+      non-nan-extflonum?
+      (fn any-dt /non-nan-extflonum-type any-dt))
     (list pair? (fn any-dt /cons-dynamic-type any-dt))
     (list
       (fn v /and (vector? v) (immutable? v))
@@ -3669,10 +3785,8 @@
 ;        results when they involve nontrivial complex numbers and not
 ;        all the arguments are `=`.
 ;
-;      - Extflonums with no NaN parts, ordered in a way consistent
-;        with `extfl<=` and `extfl=`, and treating checks as having
-;        unknown results when they involve nontrivial complex numbers
-;        and not all the arguments are `extfl=`.
+;      - (Done) Non-NaN extflonums, ordered in a way consistent with
+;        `extfl<=` and `extfl=`.
 ;
 ;      - (Done) Characters.
 ;
@@ -3746,11 +3860,21 @@
 ;
 ;       - `non-nan-number-dynamic-type?`
 ;
+;       - `non-nan-extflonum-dynamic-type?`
+;
 ;       - `cons-dynamic-type?`
 ;
 ;       - `immutable-vector-dynamic-type?`
 ;
 ;       - `mutable-vector-dynamic-type?`
+;
+;       - `immutable-box-dynamic-type?`
+;
+;       - `mutable-box-dynamic-type?`
+;
+;       - `immutable-prefab-struct-dynamic-type?`
+;
+;       - `mutable-prefab-struct-dynamic-type?`
 ;
 ;       - `base-readable-dynamic-type?`
 ;
