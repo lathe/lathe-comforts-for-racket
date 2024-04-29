@@ -475,13 +475,13 @@
 ; partly on what orphan instances are in scope?
 (define/own-contract (get-dynamic-type-with-default-bindings v)
   (-> any/c any/c)
-  ; TODO SMOOSH: These uses of `base-readable?`,
-  ; `base-readable-dynamic-type`, `any-dynamic-type`,
+  ; TODO SMOOSH: These uses of `known-to-lathe-comforts-data?`,
+  ; `known-to-lathe-comforts-data-dynamic-type`, `any-dynamic-type`,
   ; `get-dynamic-type`, `gloss-set-maybe-knowable`,
   ; `gloss-union-of-zero`, and `dynamic-type-var-for-any-dynamic-type`
   ; are forward references. See if we can untangle them.
-  (if (base-readable? v)
-    (base-readable-dynamic-type /any-dynamic-type)
+  (if (known-to-lathe-comforts-data? v)
+    (known-to-lathe-comforts-data-dynamic-type /any-dynamic-type)
   /get-dynamic-type
     (known-value /gloss-set-maybe-knowable (gloss-union-of-zero)
       (dynamic-type-var-for-any-dynamic-type)
@@ -2546,11 +2546,9 @@
 ;     
 ;     Otherwise, a known nothing (or, for a check, `#f`).
 ;
-(define-imitation-simple-struct
-  (non-nan-number-dynamic-type?
-    non-nan-number-type-get-any-dynamic-type)
-  non-nan-number-type
-  'non-nan-number-type (current-inspector) (auto-write)
+(define-imitation-simple-struct (non-nan-number-dynamic-type?)
+  non-nan-number-dynamic-type
+  'non-nan-number-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl
@@ -2561,15 +2559,13 @@
       
       #:get-smoosh-of-one-report
       (fn self a
-        (dissect self (non-nan-number-type any-dt)
-        /expect (non-nan-number? a) #t (uninformative-smoosh-reports)
+        (expect (non-nan-number? a) #t (uninformative-smoosh-reports)
         /constant-smoosh-reports
           (delay/strict /known /just /delay/strict /known a)))
       
       #:get-smoosh-and-comparison-of-two-report
       (fn self b-dt a b
-        (dissect self (non-nan-number-type any-dt)
-        /expect (non-nan-number? a) #t
+        (expect (non-nan-number? a) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
         /expect (non-nan-number? b) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
@@ -2674,11 +2670,9 @@
 ;     
 ;     Otherwise, a known nothing (or, for a check, `#f`).
 ;
-(define-imitation-simple-struct
-  (non-nan-extflonum-dynamic-type?
-    non-nan-extflonum-type-get-any-dynamic-type)
-  non-nan-extflonum-type
-  'non-nan-extflonum-type (current-inspector) (auto-write)
+(define-imitation-simple-struct (non-nan-extflonum-dynamic-type?)
+  non-nan-extflonum-dynamic-type
+  'non-nan-extflonum-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl
@@ -2689,16 +2683,14 @@
       
       #:get-smoosh-of-one-report
       (fn self a
-        (dissect self (non-nan-extflonum-type any-dt)
-        /expect (non-nan-extflonum? a) #t
+        (expect (non-nan-extflonum? a) #t
           (uninformative-smoosh-reports)
         /constant-smoosh-reports
           (delay/strict /known /just /delay/strict /known a)))
       
       #:get-smoosh-and-comparison-of-two-report
       (fn self b-dt a b
-        (dissect self (non-nan-extflonum-type any-dt)
-        /expect (non-nan-extflonum? a) #t
+        (expect (non-nan-extflonum? a) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
         /expect (non-nan-extflonum? b) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
@@ -3624,12 +3616,10 @@
     (list
       base-readable-discrete-atom?
       (fn any-dt /base-readable-discrete-atom-dynamic-type any-dt))
-    (list
-      non-nan-number?
-      (fn any-dt /non-nan-number-type any-dt))
+    (list non-nan-number? (fn any-dt /non-nan-number-dynamic-type))
     (list
       non-nan-extflonum?
-      (fn any-dt /non-nan-extflonum-type any-dt))
+      (fn any-dt /non-nan-extflonum-dynamic-type))
     (list pair? (fn any-dt /cons-dynamic-type any-dt))
     (list
       (fn v /and (vector? v) (immutable? v))
@@ -3714,6 +3704,255 @@
                 (false-smoosh-and-comparison-of-two-reports)
                 (uninformative-smoosh-and-comparison-of-two-reports))]
             [(list #f #f) (next base-readable-cases)])))
+      
+      )))
+
+(define/own-contract
+  (on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp)
+  (->
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (promise-map kpmkp /fn kpmk
+    (knowable-map kpmk /fn kpm
+      (maybe-map kpm /fn kp
+        (promise-map kp /fn k
+          (knowable-map k /fn result-value
+            (known result-value)))))))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of `knowable?` values,
+; information-ordered so that values that aren't `known?` are
+; considered to represent less information than values that are.
+;
+; Level 1:
+;   
+;
+; Level 0:
+;   path-related, join, meet, ==:
+;     If the operands are not both `known?` values, then unknown.
+;     
+;     Otherwise, the result of performing the same smoosh on their
+;     values, then wrapping the result in a `known?` if it's
+;     successful.
+;  <=, >=:
+;     If the operands are not both `known?` values, then unknown.
+;     
+;     Otherwise, the result of performing the same check on their
+;     values.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     If there are zero operands, then unknown.
+;     
+;     If the operands are not both `knowable?` values, then unknown.
+;     
+;     Otherwise, if the operands are both `known?` values, then the
+;     result of performing the same smoosh on their values, then
+;     wrapping the result in a `known?` if it's successful.
+;     
+;     Otherwise, if the operands are both `unknown?` values, then the
+;     first operand.
+;     
+;     Otherwise, for:
+;       path-related:
+;         The first operand.
+;       join:
+;         The `known?` operand.
+;       meet:
+;         The `unknown?` operand.
+;       ==:
+;         A known nothing.
+;  <=, >=:
+;     If the operands are not both `knowable?` values, then unknown.
+;     
+;     Otherwise, if the operands are both `known?` values, then the
+;     result of performing the same check on their values.
+;     
+;     Otherwise, a boolean indicating whether the element we're
+;     proposing to be lesser is `unknown?`.
+;
+(define-imitation-simple-struct
+  (knowable-dynamic-type? knowable-dynamic-type-get-any-dynamic-type)
+  knowable-dynamic-type
+  'knowable-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (dissect self (knowable-dynamic-type any-dt)
+        /dissect
+          (smoosh-reports-map
+            (dynamic-type-get-smoosh-of-zero-report any-dt)
+            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+            on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
+          (stream* report-0 report-1+)
+        /stream* report-0 /uninformative-smoosh-reports))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (knowable-dynamic-type any-dt)
+        /expect (knowable? a) #t (uninformative-smoosh-reports)
+        /mat a (known a-value)
+          (smoosh-reports-map
+            (dynamic-type-get-smoosh-of-one-report any-dt a-value)
+            #:on-result-knowable-promise-maybe-knowable-promise
+            on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
+        /stream* (uninformative-smoosh-report)
+          (constant-smoosh-reports
+            (delay/strict /known /just /delay/strict /known a))))
+      
+      ; TODO NOW: From here.
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (knowable-dynamic-type any-dt)
+        /expect (knowable? a) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (knowable? b) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /mat (list a b) (list (known a-value) (known b-value))
+          (smoosh-reports-map
+            (dynamic-type-get-smoosh-and-comparison-of-two-report
+              any-dt a-value b-value)
+            #:on-result-knowable-promise-maybe-knowable-promise
+            on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
+        /stream* (uninformative-smoosh-and-comparison-of-two-report)
+          (if (or (known? a) (known? b))
+            (smoosh-reports-zip-map (list)
+              
+              #:on-<=?-knowable-promise
+              (w- result (unknown? a)
+                (dissectfn (list)
+                  (delay/strict /known result)))
+              
+              #:on->=?-knowable-promise
+              (w- result (unknown? b)
+                (dissectfn (list)
+                  (delay/strict /known result)))
+              
+              #:on-join-knowable-promise-maybe-knowable-promise
+              (w- result (if (known? a) a b)
+                (dissectfn (list)
+                  (delay/strict /known /just /delay/strict /known result)))
+              
+              #:on-meet-knowable-promise-maybe-knowable-promise
+              (w- result (if (known? a) b a)
+                (dissectfn (list)
+                  (delay/strict /known /just /delay/strict /known b)))
+              
+              #:on-==-knowable-promise-maybe-knowable-promise
+              (dissectfn (list)
+                (delay/strict /known /nothing))
+              
+              #:on-path-related-knowable-promise-maybe-knowable-promise
+              (dissectfn (list)
+                (delay/strict /known /just /delay/strict /known a))
+              
+              )
+            (smoosh-reports-zip-map (list)
+              
+              #:on-check-result-knowable-promise
+              (dissectfn (list)
+                (delay/strict /known #t))
+              
+              #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+              (dissectfn (list)
+                (delay/strict /known /just /delay/strict /known a))
+              
+              ))))
+      
+      )))
+
+(define/own-contract known-to-lathe-comforts-data-cases
+  (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+  (list
+    (list
+      base-readable?
+      (fn any-dt /base-readable-dynamic-type any-dt))
+    (list
+      knowable?
+      (fn any-dt /knowable-dynamic-type any-dt))
+    ; TODO SMOOSH: Add more cases here.
+    ))
+
+(define/own-contract (known-to-lathe-comforts-data? v)
+  (-> any/c boolean?)
+  (list-any known-to-lathe-comforts-data-cases /dissectfn
+    (list check? dt)
+    (check? v)))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+(define-imitation-simple-struct
+  (known-to-lathe-comforts-data-dynamic-type?
+    known-to-lathe-comforts-data-dynamic-type-get-any-dynamic-type)
+  known-to-lathe-comforts-data-dynamic-type
+  'known-to-lathe-comforts-data-dynamic-type (current-inspector)
+  (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (uninformative-smoosh-reports))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self
+          (known-to-lathe-comforts-data-dynamic-type any-dt)
+        /w-loop next
+          known-to-lathe-comforts-data-cases
+          known-to-lathe-comforts-data-cases
+          (expect known-to-lathe-comforts-data-cases
+            (cons known-to-lathe-comforts-data-case
+              known-to-lathe-comforts-data-cases)
+            (uninformative-smoosh-reports)
+          /dissect known-to-lathe-comforts-data-case (list check? dt)
+          /if (check? a)
+            (dynamic-type-get-smoosh-of-one-report (dt any-dt) a)
+          /next known-to-lathe-comforts-data-cases)))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self
+          (known-to-lathe-comforts-data-dynamic-type any-dt)
+        /w-loop next
+          known-to-lathe-comforts-data-cases
+          known-to-lathe-comforts-data-cases
+          (expect known-to-lathe-comforts-data-cases
+            (cons known-to-lathe-comforts-data-case
+              known-to-lathe-comforts-data-cases)
+            (uninformative-smoosh-and-comparison-of-two-reports)
+          /dissect known-to-lathe-comforts-data-case (list check? dt)
+          /match (list (check? a) (check? b))
+            [ (list #t #t)
+              (w- a-dt (dt any-dt)
+              /dynamic-type-get-smoosh-and-comparison-of-two-report
+                a-dt a b)]
+            [ (list #t #f)
+              (if
+                (list-any known-to-lathe-comforts-data-cases
+                  (dissectfn (list check? dt)
+                    (check? b)))
+                (false-smoosh-and-comparison-of-two-reports)
+                (uninformative-smoosh-and-comparison-of-two-reports))]
+            [ (list #f #t)
+              (if
+                (list-any known-to-lathe-comforts-data-cases
+                  (dissectfn (list check? dt)
+                    (check? a)))
+                (false-smoosh-and-comparison-of-two-reports)
+                (uninformative-smoosh-and-comparison-of-two-reports))]
+            [ (list #f #f)
+              (next known-to-lathe-comforts-data-cases)])))
       
       )))
 
@@ -3877,6 +4116,10 @@
 ;       - `mutable-prefab-struct-dynamic-type?`
 ;
 ;       - `base-readable-dynamic-type?`
+;
+;       - `knowable-dynamic-type?`
+;
+;       - `known-to-lathe-comforts-data-dynamic-type?`
 ;
 ;       - `any-dynamic-type?`
 ;
