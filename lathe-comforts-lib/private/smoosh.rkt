@@ -187,8 +187,6 @@
   (-> unknown?)
   (example-unknown))
 
-; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type`.
 (define-imitation-simple-struct (known? known-value) known
   'known (current-inspector) (auto-write) (auto-equal))
 (ascribe-own-contract known? (-> any/c boolean?))
@@ -4067,7 +4065,7 @@
 ;
 ;   - Types defined here in smoosh.rkt.
 ;
-;     - `known?`
+;     - (Done) `knowable?`
 ;
 ;     - `path-related-wrapper?`
 ;
