@@ -387,8 +387,6 @@
     get-==-glossesque-sys
     get-path-related-glossesque-sys))
 
-; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type`.
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper-unguarded
@@ -3727,9 +3725,6 @@
 ; information-ordered so that values that aren't `known?` are
 ; considered to represent less information than values that are.
 ;
-; Level 1:
-;   
-;
 ; Level 0:
 ;   path-related, join, meet, ==:
 ;     If the operands are not both `known?` values, then unknown.
@@ -3805,7 +3800,6 @@
           (constant-smoosh-reports
             (delay/strict /known /just /delay/strict /known a))))
       
-      ; TODO NOW: From here.
       #:get-smoosh-and-comparison-of-two-report
       (fn self b-dt a b
         (dissect self (knowable-dynamic-type any-dt)
@@ -3866,6 +3860,124 @@
       
       )))
 
+(define/own-contract
+  (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp)
+  (->
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (promise-map kpmkp /fn kpmk
+    (knowable-map kpmk /fn kpm
+      (maybe-map kpm /fn kp
+        (promise-map kp /fn k
+          (knowable-map k /fn result-value
+            (path-related-wrapper result-value)))))))
+
+(define/own-contract
+  (path-related-wrapper-smoosh-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c smoosh-report?) (sequence/c smoosh-report?))
+  (dissect
+    (smoosh-reports-map value-reports
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+    (stream* report-0 report-1+)
+  /stream*
+    (constant-smoosh-report
+      (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+        report-0))
+    report-1+))
+
+(define/own-contract
+  (path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c smoosh-and-comparison-of-two-report?)
+    (sequence/c smoosh-and-comparison-of-two-report?))
+  (dissect
+    (smoosh-and-comparison-of-two-reports-map value-reports
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+    (stream* report-0 report-1+)
+  /stream*
+    (constant-smoosh-report
+      (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+        (smoosh-and-comparison-of-two-report-get-smoosh-report
+          report-0)))
+    report-1+))
+
+; TODO SMOOSH: Definitely export this, since it uses the private
+; `path-related-wrapper-unguarded` match pattern that we don't intend
+; to export; users could build on themselves. Consider whether we want
+; to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of `path-related-wrapper`
+; values, ordered so that one value is less than or equal to another
+; if the wrapped values are path-related (related by some sequence of
+; two or more values, beginning with one of them and ending with the
+; other, such that each pair of successive elements is related either
+; by <= or by >=).
+;
+; Level 0:
+;   path-related, join, meet, ==:
+;     If the operands are not both `path-related-wrapper?` values,
+;     then unknown.
+;     
+;     Otherwise, the result of performing a level-0 path-related
+;     smoosh on their values, then wrapping the result in a
+;     `path-related-wrapper?` if it's successful.
+;  <=, >=:
+;     If the operands are not both `path-related-wrapper?` values,
+;     then unknown.
+;     
+;     Otherwise, the boolean result of whether or not performing a
+;     level-0 path-related smoosh on their values succeeds.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `path-related-wrapper?` values,
+;     then unknown.
+;     
+;     Otherwise, the result of performing the same smoosh or check on
+;     their values, then wrapping any successful smoosh result in a
+;     `path-related-wrapper?`.
+;
+(define-imitation-simple-struct
+  (path-related-wrapper-dynamic-type?
+    path-related-wrapper-dynamic-type-get-any-dynamic-type)
+  path-related-wrapper-dynamic-type
+  'path-related-wrapper-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (dissect self (path-related-wrapper-dynamic-type any-dt)
+        /path-related-wrapper-smoosh-reports-from-value-reports
+          (dynamic-type-get-smoosh-of-zero-report any-dt)))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (path-related-wrapper-dynamic-type any-dt)
+        /expect a (path-related-wrapper-unguarded a-value)
+          (uninformative-smoosh-reports)
+        /path-related-wrapper-smoosh-reports-from-value-reports
+          (dynamic-type-get-smoosh-of-one-report any-dt a-value)))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (path-related-wrapper-dynamic-type any-dt)
+        /expect a (path-related-wrapper-unguarded a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (path-related-wrapper-unguarded b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-report
+            any-dt a-value b-value)))
+      
+      )))
+
 (define/own-contract known-to-lathe-comforts-data-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
   (list
@@ -3875,6 +3987,9 @@
     (list
       knowable?
       (fn any-dt /knowable-dynamic-type any-dt))
+    (list
+      path-related-wrapper?
+      (fn any-dt /path-related-wrapper-dynamic-type any-dt))
     ; TODO SMOOSH: Add more cases here.
     ))
 
@@ -4065,9 +4180,20 @@
 ;
 ;   - Types defined here in smoosh.rkt.
 ;
-;     - (Done) `knowable?`
+;     - (Done) `knowable?` (TODO SMOOSH: Whoops, we probably shouldn't
+;       have actually implemented smooshing for `unknown?` values,
+;       since `unknown?` is a generic interface. Users could
+;       hypothetically define new concrete `unknown?` types with
+;       various smooshing behaviors. Perhaps what we should do is
+;       implement smooshing for `unknown?` values only when they're
+;       being smooshed with `known?` or `example-unknown?` values,
+;       since those are concrete types defined here. Before we get too
+;       far here, we should probably have an idea of how people will
+;       define new concrete `unknown?` types that are seamlessly
+;       smooshable with our existing `knowable?` types, including the
+;       ways we expect `known?` and `unknown?` values to interact.)
 ;
-;     - `path-related-wrapper?`
+;     - (Done) `path-related-wrapper?`
 ;
 ;     - `info-wrapper?`
 ;
@@ -4116,6 +4242,8 @@
 ;       - `base-readable-dynamic-type?`
 ;
 ;       - `knowable-dynamic-type?`
+;
+;       - `path-related-wrapper-dynamic-type?`
 ;
 ;       - `known-to-lathe-comforts-data-dynamic-type?`
 ;
