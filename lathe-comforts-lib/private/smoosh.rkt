@@ -33,7 +33,8 @@
   mutable-prefab-struct?)
 (require /only-in lathe-comforts/match match/c)
 (require /only-in lathe-comforts/maybe
-  just just? just-value maybe? maybe/c maybe-if maybe-map nothing)
+  just just? just-value maybe? maybe/c maybe-if maybe-map nothing
+  nothing?)
 
 
 (provide /own-contract-out
@@ -4072,6 +4073,95 @@
       
       )))
 
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+(define-imitation-simple-struct (nothing-dynamic-type?)
+  nothing-dynamic-type
+  'nothing-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known /nothing)))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (expect a (nothing) (uninformative-smoosh-reports)
+        /constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (expect a (nothing)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (nothing)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /constant-smoosh-and-comparison-of-two-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      )))
+
+(define/own-contract
+  (on-just-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp)
+  (->
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (promise-map kpmkp /fn kpmk
+    (knowable-map kpmk /fn kpm
+      (maybe-map kpm /fn kp
+        (promise-map kp /fn k
+          (knowable-map k /fn result-value /just result-value))))))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+(define-imitation-simple-struct
+  (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
+  just-dynamic-type
+  'just-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (dissect self (just-dynamic-type any-dt)
+        /smoosh-reports-map
+          (dynamic-type-get-smoosh-of-zero-report any-dt)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          on-just-smoosh-result-knowable-promise-maybe-knowable-promise))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (just-dynamic-type any-dt)
+        /expect a (just a-value) (uninformative-smoosh-reports)
+        /smoosh-reports-map
+          (dynamic-type-get-smoosh-of-one-report any-dt a-value)
+          #:on-result-knowable-promise-maybe-knowable-promise
+          on-just-smoosh-result-knowable-promise-maybe-knowable-promise))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (just-dynamic-type any-dt)
+        /expect a (just a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (just b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /smoosh-and-comparison-of-two-reports-map
+          (dynamic-type-get-smoosh-and-comparison-of-two-report
+            any-dt a-value b-value)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          on-just-smoosh-result-knowable-promise-maybe-knowable-promise))
+      
+      )))
+
 (define/own-contract known-to-lathe-comforts-data-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
   (list
@@ -4087,6 +4177,8 @@
     (list
       info-wrapper?
       (fn any-dt /info-wrapper-dynamic-type any-dt))
+    (list nothing? (fn any-dt /nothing-dynamic-type))
+    (list just? (fn any-dt /just-dynamic-type any-dt))
     ; TODO SMOOSH: Add more cases here.
     ))
 
@@ -4344,6 +4436,10 @@
 ;
 ;       - `info-wrapper-dynamic-type?`
 ;
+;       - `nothing-dynamic-type?`
+;
+;       - `just-dynamic-type?`
+;
 ;       - `known-to-lathe-comforts-data-dynamic-type?`
 ;
 ;       - `any-dynamic-type?`
@@ -4351,7 +4447,7 @@
 ;   - Types defined by Lathe Comforts that this smooshing framework
 ;     uses.
 ;
-;     - `maybe?`
+;     - (Done) `maybe?`
 ;
 ;   - Types defined by Lathe Comforts even if this smooshing framework
 ;     doesn't use them.
