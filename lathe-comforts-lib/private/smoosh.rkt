@@ -3978,6 +3978,100 @@
       
       )))
 
+(define/own-contract
+  (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp)
+  (->
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (promise-map kpmkp /fn kpmk
+    (knowable-map kpmk /fn kpm
+      (maybe-map kpm /fn kp
+        (promise-map kp /fn k
+          (knowable-map k /fn result-value
+            (info-wrapper result-value)))))))
+
+(define/own-contract
+  (info-wrapper-smoosh-reports-from-value-reports value-reports)
+  (-> (sequence/c smoosh-report?) (sequence/c smoosh-report?))
+  (dissect
+    (smoosh-reports-map value-reports
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+    (stream* report-0 report-1+)
+    report-1+))
+
+(define/own-contract
+  (info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c smoosh-and-comparison-of-two-report?)
+    (sequence/c smoosh-and-comparison-of-two-report?))
+  (dissect
+    (smoosh-and-comparison-of-two-reports-map value-reports
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+    (stream* report-0 report-1+)
+    report-1+))
+
+; TODO SMOOSH: Definitely export this, since it uses the private
+; `info-wrapper-unguarded` match pattern that we don't intend to
+; export; users could build on themselves. Consider whether we want to
+; give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of `info-wrapper` values,
+; ordered so that one value is less than or equal to another if the
+; wrapped values are path-related (related by some sequence of two or
+; more values, beginning with one of them and ending with the other,
+; such that each pair of successive elements is related either by <=
+; or by >=).
+;
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `info-wrapper?` values, then
+;     unknown.
+;     
+;     Otherwise, the result of performing the same smoosh or check 1
+;     level up on their values, then wrapping any successful smoosh
+;     result in an `info-wrapper?`.
+;
+(define-imitation-simple-struct
+  (info-wrapper-dynamic-type?
+    info-wrapper-dynamic-type-get-any-dynamic-type)
+  info-wrapper-dynamic-type
+  'info-wrapper-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-report
+      (fn self
+        (dissect self (info-wrapper-dynamic-type any-dt)
+        /info-wrapper-smoosh-reports-from-value-reports
+          (dynamic-type-get-smoosh-of-zero-report any-dt)))
+      
+      #:get-smoosh-of-one-report
+      (fn self a
+        (dissect self (info-wrapper-dynamic-type any-dt)
+        /expect a (info-wrapper-unguarded a-value)
+          (uninformative-smoosh-reports)
+        /info-wrapper-smoosh-reports-from-value-reports
+          (dynamic-type-get-smoosh-of-one-report any-dt a-value)))
+      
+      #:get-smoosh-and-comparison-of-two-report
+      (fn self b-dt a b
+        (dissect self (info-wrapper-dynamic-type any-dt)
+        /expect a (info-wrapper-unguarded a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (info-wrapper-unguarded b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-report
+            any-dt a-value b-value)))
+      
+      )))
+
 (define/own-contract known-to-lathe-comforts-data-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
   (list
@@ -3990,6 +4084,9 @@
     (list
       path-related-wrapper?
       (fn any-dt /path-related-wrapper-dynamic-type any-dt))
+    (list
+      info-wrapper?
+      (fn any-dt /info-wrapper-dynamic-type any-dt))
     ; TODO SMOOSH: Add more cases here.
     ))
 
@@ -4195,7 +4292,7 @@
 ;
 ;     - (Done) `path-related-wrapper?`
 ;
-;     - `info-wrapper?`
+;     - (Done) `info-wrapper?`
 ;
 ;     - `gloss?`
 ;
@@ -4244,6 +4341,8 @@
 ;       - `knowable-dynamic-type?`
 ;
 ;       - `path-related-wrapper-dynamic-type?`
+;
+;       - `info-wrapper-dynamic-type?`
 ;
 ;       - `known-to-lathe-comforts-data-dynamic-type?`
 ;
