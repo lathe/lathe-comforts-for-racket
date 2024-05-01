@@ -4634,20 +4634,25 @@
 ;       smooshable with our existing `knowable?` types, including the
 ;       ways we expect `known?` and `unknown?` values to interact.)
 ;
-;     - (Done) `path-related-wrapper?`
+;     - `path-related-wrapper?` (TODO SMOOSH: We've done this partway.
+;       We've implemented the smoosh behavior, but we haven't
+;       implemented `prop:equal-mode+hash` in a way that's consistent
+;       with it.)
 ;
-;     - (Done) `info-wrapper?`
+;     - `info-wrapper?` (TODO SMOOSH: We've done this partway. We've
+;       implemented the smoosh behavior, but we haven't implemented
+;       `gen:equal-mode+hash` in a way that's consistent with it.)
 ;
 ;     - `gloss?` (TODO SMOOSH: We've done this partway. For the smoosh
 ;       behavior we've implemented to work, we need to resolve the
-;       TODOs in the `prop:equal-mode+hash` implementation for
-;       `gloss?` values.)
+;       TODOs in the `gen:equal-mode+hash` implementation for `gloss?`
+;       values.)
 ;
 ;     - `dynamic-type-var-for-any-dynamic-type?`
 ;
 ;     - `equalw-gloss-key-wrapper?` (which may not need smooshing if
 ;       we treat it kind of like an implementation detail, but does
-;       definitely need better `prop:equal+hash` equality).
+;       definitely need better `gen:equal-mode+hash` equality).
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
