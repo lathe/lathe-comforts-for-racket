@@ -392,9 +392,38 @@
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper-unguarded
-  'path-related-wrapper (current-inspector)
-  ; TODO SMOOSH: Stop using `auto-write` and `auto-equal` for this.
-  (auto-write) (auto-equal))
+  ; TODO SMOOSH: Stop using `auto-write` for this.
+  'path-related-wrapper (current-inspector) (auto-write)
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (dissect a (path-related-wrapper-unguarded a-value)
+      /dissect b (path-related-wrapper-unguarded b-value)
+      /knowable->falsable /knowable-map
+        (force
+          (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+            (smoosh-and-comparison-of-two-report-get-smoosh-report
+              (dynamic-type-get-smoosh-and-comparison-of-two-report
+                (any-dynamic-type)
+                (any-dynamic-type)
+                a-value
+                b-value))))
+        (fn kpm
+          (just? kpm))))
+    
+    (define (hash-mode-proc v recur now?)
+      (dissect v (path-related-wrapper-unguarded v-value)
+        0
+        ; TODO SMOOSH HASH CODE: Implement
+        ; `smoosh-report-path-related-hash-code` or something like it.
+        ; We'll need to implement a method like this on every smoosh
+        ; report, if we do this.
+      #;
+      /smoosh-report-path-related-hash-code
+        (dynamic-type-get-smoosh-of-one-report (any-dynamic-type)
+          v-value)))
+    
+    ))
 
 (define/own-contract (path-related-wrapper v)
   (-> any/c any/c)
@@ -405,9 +434,39 @@
 (define-imitation-simple-struct
   (info-wrapper? info-wrapper-value)
   info-wrapper-unguarded
-  'info-wrapper (current-inspector)
-  ; TODO SMOOSH: Stop using `auto-write` and `auto-equal` for this.
-  (auto-write) (auto-equal))
+  ; TODO SMOOSH: Stop using `auto-write` for this.
+  'info-wrapper (current-inspector) (auto-write)
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (dissect a (info-wrapper-unguarded a-value)
+      /dissect b (info-wrapper-unguarded b-value)
+      /knowable->falsable /knowable-map
+        (force
+          (smoosh-report-==-knowable-promise-maybe-knowable-promise
+            (stream-first /stream-rest
+              (smoosh-and-comparison-of-two-report-get-smoosh-report
+                (dynamic-type-get-smoosh-and-comparison-of-two-report
+                  (any-dynamic-type)
+                  (any-dynamic-type)
+                  a-value
+                  b-value)))))
+        (fn kpm
+          (just? kpm))))
+    
+    (define (hash-mode-proc v recur now?)
+      (dissect v (info-wrapper-unguarded v-value)
+        0
+        ; TODO SMOOSH HASH CODE: Implement
+        ; `smoosh-report-==-hash-code` or something like it. We'll
+        ; need to implement a method like this on every smoosh report,
+        ; if we do this.
+      #;
+      /smoosh-report-==-hash-code /stream-first /stream-rest
+        (dynamic-type-get-smoosh-of-one-report (any-dynamic-type)
+          v-value)))
+    
+    ))
 
 (define/own-contract (info-wrapper v)
   (-> any/c any/c)
@@ -699,12 +758,15 @@
     
     (define (hash-mode-proc v recur now?)
       (define (hash-code-smooshable v)
-        ; TODO SMOOSH: Instead of `equal-always-hash-code`, use some
-        ; new hash code function that's consistent with a level 0 ==
-        ; smoosh. We may want to add methods to every smooshable type
-        ; to determine what the result of this function is for each
-        ; type. Let's call this something like `smoosh==-hash-code`.
-        (equal-always-hash-code v))
+        0
+        ; TODO SMOOSH HASH CODE: Implement
+        ; `smoosh-report-==-hash-code` or something like it. We'll
+        ; need to implement a method like this on every smoosh report,
+        ; if we do this.
+        #;
+        (smoosh-report-==-hash-code /stream-first
+          (dynamic-type-get-smoosh-of-one-report (any-dynamic-type)
+            v)))
       (define (hash-code-glossesque gs v hash-code-value)
         (hash-code-combine-unordered* /for/list
           (
@@ -4399,6 +4461,20 @@
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
 ; `prop:equal+hash` for it.
+(define-imitation-simple-struct
+  (dynamic-type-for-dynamic-type-var-for-any-dynamic-type?)
+  dynamic-type-for-dynamic-type-var-for-any-dynamic-type
+  'dynamic-type-for-dynamic-type-var-for-any-dynamic-type
+  (current-inspector)
+  (auto-write)
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-atom
+      #:inhabitant? dynamic-type-var-for-any-dynamic-type?)))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
   'nothing-dynamic-type (current-inspector) (auto-write)
@@ -4475,6 +4551,9 @@
       info-wrapper?
       (fn any-dt /info-wrapper-dynamic-type any-dt))
     (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
+    (list dynamic-type-var-for-any-dynamic-type?
+      (fn any-dt
+        (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
     (list nothing? (fn any-dt /nothing-dynamic-type))
     (list just? (fn any-dt /just-dynamic-type any-dt))
     ; TODO SMOOSH: Add more cases here.
@@ -4680,21 +4759,19 @@
 ;       smooshable with our existing `knowable?` types, including the
 ;       ways we expect `known?` and `unknown?` values to interact.)
 ;
-;     - `path-related-wrapper?` (TODO SMOOSH: We've done this partway.
-;       We've implemented the smoosh behavior, but we haven't
-;       implemented `gen:equal-mode+hash` in a way that's consistent
-;       with it.)
+;     - (Done) `path-related-wrapper?` (though it relies on a pretty
+;       terrible hash code until we can get TODO SMOOSH HASH CODE
+;       implemented).
 ;
-;     - `info-wrapper?` (TODO SMOOSH: We've done this partway. We've
-;       implemented the smoosh behavior, but we haven't implemented
-;       `gen:equal-mode+hash` in a way that's consistent with it.)
+;     - (Done) `info-wrapper?` (though it relies on a pretty
+;       terrible hash code until we can get TODO SMOOSH HASH CODE
+;       implemented).
 ;
-;     - `gloss?` (TODO SMOOSH: We've done this partway. For the smoosh
-;       behavior we've implemented to be perfect, we need to resolve
-;       the `smoosh==-hash-code` TODO in the `gen:equal-mode+hash`
-;       implementation for `gloss?` values.)
+;     - (Done) `gloss?` (though part of it relies on a pretty
+;       terrible hash code until we can get TODO SMOOSH HASH CODE
+;       implemented).
 ;
-;     - `dynamic-type-var-for-any-dynamic-type?`
+;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
 ;     - (Done, sort of) `equalw-gloss-key-wrapper?` (which we're
 ;       currently considering not to need smooshing because we
@@ -4745,6 +4822,8 @@
 ;       - `info-wrapper-dynamic-type?`
 ;
 ;       - `gloss-dynamic-type?`
+;
+;       - `dynamic-type-for-dynamic-type-var-for-any-dynamic-type?`
 ;
 ;       - `nothing-dynamic-type?`
 ;

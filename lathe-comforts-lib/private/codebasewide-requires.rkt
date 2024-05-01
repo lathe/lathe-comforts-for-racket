@@ -50,7 +50,7 @@
 (only-in racket/promise delay delay/strict force promise?)
 (only-in racket/sequence
   in-slice sequence/c sequence->list sequence-map sequence-ref)
-(only-in racket/stream stream*)
+(only-in racket/stream stream* stream-first stream-rest)
 (only-in racket/struct make-constructor-style-printer)
 (only-in racket/vector vector-copy vector-count)
 (only-in syntax/parse/define
