@@ -4020,9 +4020,11 @@
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
 ; `prop:equal+hash` for it.
 ;
-; This is an appropriate dynamic type of `knowable?` values,
-; information-ordered so that values that aren't `known?` are
-; considered to represent less information than values that are.
+; This is an appropriate dynamic type of `known?` and
+; `example-unknown?` values, with handling of their interactions with
+; other `unknown?` values. These are information-ordered so that
+; `unknown?` values are considered to represent less information than
+; `known?` values.
 ;
 ; Level 0:
 ;   path-related, join, meet, ==:
@@ -4042,12 +4044,20 @@
 ;     
 ;     If the operands are not both `knowable?` values, then unknown.
 ;     
+;     Otherwise, if the operands are both `example-unknown?` values,
+;     then the first operand (a known unknown).
+;     
+;     Otherwise, if either operand is an `example-unknown?` value,
+;     then the other operand (a known unknown).
+;     
+;     Otherwise, if the operands are both `unknown?` values, then
+;     unknown. (This is an unknown unknown; any two `unknown?` values
+;     should smoosh into another `unknown?` value, but we don't know
+;     which unknown value these smoosh into.)
+;     
 ;     Otherwise, if the operands are both `known?` values, then the
 ;     result of performing the same smoosh on their values, then
 ;     wrapping the result in a `known?` if it's successful.
-;     
-;     Otherwise, if the operands are both `unknown?` values, then the
-;     first operand.
 ;     
 ;     Otherwise, for:
 ;       path-related:
@@ -4106,6 +4116,14 @@
           (uninformative-smoosh-and-comparison-of-two-reports)
         /expect (knowable? b) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
+        /if (and (unknown? a) (unknown? b))
+          (if (example-unknown? b)
+            (constant-smoosh-and-comparison-of-two-reports
+              (delay/strict /known /just /delay/strict /known a))
+          /if (example-unknown? a)
+            (constant-smoosh-and-comparison-of-two-reports
+              (delay/strict /known /just /delay/strict /known b))
+          /uninformative-smoosh-and-comparison-of-two-reports)
         /mat (list a b) (list (known a-value) (known b-value))
           (smoosh-reports-map
             (dynamic-type-get-smoosh-and-comparison-of-two-report
@@ -4113,49 +4131,38 @@
             #:on-result-knowable-promise-maybe-knowable-promise
             on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
         /stream* (uninformative-smoosh-and-comparison-of-two-report)
-          (if (or (known? a) (known? b))
-            (smoosh-reports-zip-map (list)
-              
-              #:on-<=?-knowable-promise
-              (w- result (unknown? a)
-                (dissectfn (list)
-                  (delay/strict /known result)))
-              
-              #:on->=?-knowable-promise
-              (w- result (unknown? b)
-                (dissectfn (list)
-                  (delay/strict /known result)))
-              
-              #:on-join-knowable-promise-maybe-knowable-promise
-              (w- result (if (known? a) a b)
-                (dissectfn (list)
-                  (delay/strict /known /just /delay/strict /known result)))
-              
-              #:on-meet-knowable-promise-maybe-knowable-promise
-              (w- result (if (known? a) b a)
-                (dissectfn (list)
-                  (delay/strict /known /just /delay/strict /known b)))
-              
-              #:on-==-knowable-promise-maybe-knowable-promise
+          (smoosh-reports-zip-map (list)
+            
+            #:on-<=?-knowable-promise
+            (w- result (unknown? a)
               (dissectfn (list)
-                (delay/strict /known /nothing))
-              
-              #:on-path-related-knowable-promise-maybe-knowable-promise
+                (delay/strict /known result)))
+            
+            #:on->=?-knowable-promise
+            (w- result (unknown? b)
               (dissectfn (list)
-                (delay/strict /known /just /delay/strict /known a))
-              
-              )
-            (smoosh-reports-zip-map (list)
-              
-              #:on-check-result-knowable-promise
+                (delay/strict /known result)))
+            
+            #:on-join-knowable-promise-maybe-knowable-promise
+            (w- result (if (known? a) a b)
               (dissectfn (list)
-                (delay/strict /known #t))
-              
-              #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+                (delay/strict /known /just /delay/strict /known
+                  result)))
+            
+            #:on-meet-knowable-promise-maybe-knowable-promise
+            (w- result (if (known? a) b a)
               (dissectfn (list)
-                (delay/strict /known /just /delay/strict /known a))
-              
-              ))))
+                (delay/strict /known /just /delay/strict /known b)))
+            
+            #:on-==-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /nothing))
+            
+            #:on-path-related-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /just /delay/strict /known a))
+            
+            )))
       
       )))
 
@@ -4475,6 +4482,20 @@
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
 ; `prop:equal+hash` for it.
+(define-imitation-simple-struct
+  (equalw-gloss-key-wrapper-dynamic-type?)
+  equalw-gloss-key-wrapper-dynamic-type
+  'equalw-gloss-key-wrapper-dynamic-type
+  (current-inspector)
+  (auto-write)
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-atom
+      #:inhabitant? equalw-gloss-key-wrapper?)))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
   'nothing-dynamic-type (current-inspector) (auto-write)
@@ -4554,6 +4575,8 @@
     (list dynamic-type-var-for-any-dynamic-type?
       (fn any-dt
         (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
+    (list equalw-gloss-key-wrapper?
+      (fn any-dt /equalw-gloss-key-wrapper-dynamic-type))
     (list nothing? (fn any-dt /nothing-dynamic-type))
     (list just? (fn any-dt /just-dynamic-type any-dt))
     ; TODO SMOOSH: Add more cases here.
@@ -4691,8 +4714,7 @@
 ;
 ;   - Various types that can result from the default Racket reader, as
 ;     well as their corresponding mutable types where these exist.
-;     We're referring to these as `base-readable?` values, but so far
-;     we only handle a few of the cases.
+;     We're referring to these as `base-readable?` values.
 ;
 ;      - (Done) Booleans. (There is some precedent for considering
 ;        booleans to be ordered, but we won't consider any order to be
@@ -4746,18 +4768,8 @@
 ;
 ;   - Types defined here in smoosh.rkt.
 ;
-;     - (Done) `knowable?` (TODO SMOOSH: Whoops, we probably shouldn't
-;       have actually implemented smooshing for `unknown?` values,
-;       since `unknown?` is a generic interface. Users could
-;       hypothetically define new concrete `unknown?` types with
-;       various smooshing behaviors. Perhaps what we should do is
-;       implement smooshing for `unknown?` values only when they're
-;       being smooshed with `known?` or `example-unknown?` values,
-;       since those are concrete types defined here. Before we get too
-;       far here, we should probably have an idea of how people will
-;       define new concrete `unknown?` types that are seamlessly
-;       smooshable with our existing `knowable?` types, including the
-;       ways we expect `known?` and `unknown?` values to interact.)
+;     - (Done) `known?` values, `example-unknown?` values, and their
+;       interactions with other `unknown?` values.
 ;
 ;     - (Done) `path-related-wrapper?` (though it relies on a pretty
 ;       terrible hash code until we can get TODO SMOOSH HASH CODE
@@ -4773,9 +4785,7 @@
 ;
 ;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
-;     - (Done, sort of) `equalw-gloss-key-wrapper?` (which we're
-;       currently considering not to need smooshing because we
-;       consider it an implementation detail).
+;     - (Done) `equalw-gloss-key-wrapper?`
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
@@ -4824,6 +4834,8 @@
 ;       - `gloss-dynamic-type?`
 ;
 ;       - `dynamic-type-for-dynamic-type-var-for-any-dynamic-type?`
+;
+;       - `equalw-gloss-key-wrapper-dynamic-type?`
 ;
 ;       - `nothing-dynamic-type?`
 ;
