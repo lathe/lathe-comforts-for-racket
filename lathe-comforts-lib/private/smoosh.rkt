@@ -4532,6 +4532,10 @@
 ;
 ;       - `mutable-prefab-struct-dynamic-type?`
 ;
+;       - `immutable-hash-dynamic-type?`
+;
+;       - `mutable-hash-dynamic-type?`
+;
 ;       - `base-readable-dynamic-type?`
 ;
 ;       - `knowable-dynamic-type?`
