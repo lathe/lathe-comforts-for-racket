@@ -2443,10 +2443,22 @@
   (equalw-gloss-key-wrapper? equalw-gloss-key-wrapper-value)
   equalw-gloss-key-wrapper-unguarded
   'equalw-gloss-key-wrapper (current-inspector) (auto-write)
-  ; TODO SMOOSH: Instead of using `auto-equal` for this, use a
-  ; comparison that consistently compares the value using
+  ; We use a comparison that consistently compares the value using
   ; `equal-always?`.
-  (auto-equal)
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (dissect a (equalw-gloss-key-wrapper-unguarded a-value)
+      /dissect b (equalw-gloss-key-wrapper-unguarded b-value)
+      /equal-always? a-value b-value))
+    
+    (define (hash-mode-proc v recur now?)
+      (dissect v (equalw-gloss-key-wrapper-unguarded v-value)
+      /hash-code-combine
+        (equal-always-hash-code equalw-gloss-key-wrapper?)
+        (equal-always-hash-code v-value)))
+    
+    )
   (#:prop prop:equalw-gloss-key /make-equalw-gloss-key-impl))
 
 ; TODO SMOOSH: Use this. It should generally come in handy to
@@ -4670,7 +4682,7 @@
 ;
 ;     - `path-related-wrapper?` (TODO SMOOSH: We've done this partway.
 ;       We've implemented the smoosh behavior, but we haven't
-;       implemented `prop:equal-mode+hash` in a way that's consistent
+;       implemented `gen:equal-mode+hash` in a way that's consistent
 ;       with it.)
 ;
 ;     - `info-wrapper?` (TODO SMOOSH: We've done this partway. We've
@@ -4684,9 +4696,9 @@
 ;
 ;     - `dynamic-type-var-for-any-dynamic-type?`
 ;
-;     - `equalw-gloss-key-wrapper?` (which may not need smooshing if
-;       we treat it kind of like an implementation detail, but does
-;       definitely need better `gen:equal-mode+hash` equality).
+;     - (Done, sort of) `equalw-gloss-key-wrapper?` (which we're
+;       currently considering not to need smooshing because we
+;       consider it an implementation detail).
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
