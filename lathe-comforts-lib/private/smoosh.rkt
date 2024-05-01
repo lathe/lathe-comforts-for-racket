@@ -669,7 +669,8 @@
             ; quite what we want here.
             (equal-always-hash-code k)
             (hash-code-value v))))
-      (hash-code-gloss v recur))
+      (hash-code-combine (equal-always-hash-code gloss?)
+        (hash-code-gloss v recur)))
     
     ))
 (ascribe-own-contract gloss? (-> any/c boolean?))
