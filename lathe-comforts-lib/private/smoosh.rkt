@@ -27,7 +27,8 @@
 (require /only-in lathe-comforts/hash
   hash-kv-map-maybe hash-ref-maybe hash-set-maybe hash-v-map
   make-similar-hash)
-(require /only-in lathe-comforts/list list-any list-map list-zip-map)
+(require /only-in lathe-comforts/list
+  list-any list-foldl list-map list-zip-map)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
   define-imitation-simple-struct immutable-prefab-struct?
@@ -480,9 +481,11 @@
   (if (known-to-lathe-comforts-data? v)
     (known-to-lathe-comforts-data-dynamic-type /any-dynamic-type)
   /get-dynamic-type
+    ; TODO SMOOSH: Consider changing this to
+    ; `(make-gloss /list /cons ...)`.
     (known-value /gloss-set-maybe-knowable (gloss-union-of-zero)
       (dynamic-type-var-for-any-dynamic-type)
-      (any-dynamic-type))
+      (just /any-dynamic-type))
     v))
 
 ; TODO SMOOSH: Give this better smooshing behavior using
@@ -3623,12 +3626,13 @@
         any-dt)
       
       #:inhabitant? (fn v /and (hash? v) (immutable? v))
+      
       #:->->list
       (fn a
         (w- keys (hash-keys a)
         /fn b
           (append* /for/list ([k (in-list keys)])
-            (list b (hash-ref b k)))))
+            (list k (hash-ref b k)))))
       
       #:example-and-list->
       (fn example lst
@@ -4129,6 +4133,85 @@
       
       )))
 
+; TODO SMOOSH: Export this.
+(define/own-contract (gloss-ref g k)
+  (-> gloss? any/c any/c)
+  (expect (gloss-ref-maybe-knowable g k) (known result)
+    (raise-arguments-error 'gloss-ref
+      "tried to get a key that couldn't be verified equivalent to or distinct from all the existing keys"
+      "gloss" g
+      "key" k)
+  /expect result (just result)
+    (raise-arguments-error 'gloss-ref
+      "no value found for key"
+      "gloss" g
+      "key" k)
+    result))
+
+; TODO SMOOSH: Export this.
+(define/own-contract (gloss-set g k v)
+  (-> gloss? any/c any/c gloss?)
+  (expect (gloss-set-maybe-knowable g k (just v)) (known result)
+    (raise-arguments-error 'gloss-set
+      "tried to set a key that couldn't be verified distinct from all the existing keys"
+      "gloss" g
+      "key" k
+      "value" v)
+    result))
+
+; TODO SMOOSH: Export this.
+(define/own-contract (make-gloss assocs)
+  (-> (listof pair?) gloss?)
+  (list-foldl (gloss-union-of-zero) assocs /fn g assoc
+    (dissect assoc (cons k v)
+    /gloss-set g k v)))
+
+; TODO SMOOSH: Export this.
+(define/own-contract (gloss-keys g)
+  (-> gloss? (sequence/c any/c))
+  (sequence-map (fn k v k) /gloss-iteration-sequence g))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of `gloss?` values,
+; information-ordered in a way that's consistent with `chaperone-of?`
+; as long as the keys' and values' information orderings are. This is
+; an instance of
+; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+;
+(define-imitation-simple-struct
+  (gloss-dynamic-type? gloss-dynamic-type-get-any-dynamic-type)
+  gloss-dynamic-type
+  'gloss-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (gloss-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? gloss?
+      
+      #:->->list
+      (fn a
+        (w- keys (sequence->list /gloss-keys a)
+        /fn b
+          (append* /for/list ([k (in-list keys)])
+            (list k (gloss-ref b k)))))
+      
+      #:example-and-list->
+      (fn example lst
+        (make-gloss
+          (for/list ([entry (in-slice 2 (in-list lst))])
+            (dissect entry (list k v)
+            /cons k v))))
+      
+      #:copy (fn v v))))
+
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
@@ -4208,6 +4291,7 @@
     (list
       info-wrapper?
       (fn any-dt /info-wrapper-dynamic-type any-dt))
+    (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
     (list nothing? (fn any-dt /nothing-dynamic-type))
     (list just? (fn any-dt /just-dynamic-type any-dt))
     ; TODO SMOOSH: Add more cases here.
@@ -4417,7 +4501,9 @@
 ;
 ;     - (Done) `info-wrapper?`
 ;
-;     - `gloss?`
+;     - `gloss?` (TODO SMOOSH: We've done this partway. For the smoosh
+;       behavior we've implemented to work, we need to implement
+;       `prop:equal+hash` for `gloss?` values.)
 ;
 ;     - `dynamic-type-var-for-any-dynamic-type?`
 ;
@@ -4468,6 +4554,8 @@
 ;       - `path-related-wrapper-dynamic-type?`
 ;
 ;       - `info-wrapper-dynamic-type?`
+;
+;       - `gloss-dynamic-type?`
 ;
 ;       - `nothing-dynamic-type?`
 ;
