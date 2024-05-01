@@ -92,6 +92,13 @@
   prop:custom-gloss-key-dynamic-type
   make-custom-gloss-key-dynamic-type-impl
   get-dynamic-type-with-default-bindings
+  knowable-promise-zip-map
+  boolean-and-knowable-promise-zip-map
+  boolean-and-knowable-thunk-zip
+  boolean-or-knowable-thunk-zip
+  maybe-min-knowable-promise-zip-map
+  sequence-zip-map
+  knowable-promise-or
   gloss?
   gloss-union-of-zero
   gloss-km-union-of-two
@@ -152,13 +159,6 @@
   constant-smoosh-and-comparison-of-two-report
   constant-smoosh-and-comparison-of-two-reports
   equalw-gloss-key-wrapper
-  knowable-promise-zip-map
-  boolean-and-knowable-promise-zip-map
-  boolean-and-knowable-thunk-zip
-  boolean-or-knowable-thunk-zip
-  maybe-min-knowable-promise-zip-map
-  sequence-zip-map
-  knowable-promise-or
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
   any-dynamic-type?)
@@ -504,6 +504,67 @@
   /maybe-map (maybe-min-zip maybe-list) /fn element-list
     (cons element element-list)))
 
+(define/own-contract (knowable-promise-zip-map kp-list on-value)
+  (-> (listof (promise/c knowable?)) (-> any/c any/c)
+    (promise/c knowable?))
+  (delay
+    (if (list-any kp-list /fn kp /unknown? /force kp) (unknown)
+    /known /on-value /list-map kp-list /fn kp
+      (known-value /force kp))))
+
+(define/own-contract
+  (boolean-and-knowable-promise-zip-map kp-list on-true)
+  (-> (listof (promise/c (knowable/c boolean?))) (-> boolean?)
+    (promise/c (knowable/c boolean?)))
+  (delay
+    (if
+      (list-any kp-list /fn kp
+        (mat (force kp) (known #f) #t #f))
+      (known #f)
+    /if (list-any kp-list /fn kp /unknown? /force kp) (unknown)
+    /known /on-true)))
+
+(define/own-contract (boolean-and-knowable-thunk-zip kble-thunk-list)
+  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
+  (boolean-and-knowable-promise-zip-map
+    (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)
+    (fn #t)))
+
+(define/own-contract (boolean-or-knowable-thunk-zip kble-thunk-list)
+  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
+  (not /boolean-and-knowable-thunk-zip
+    (list-map kble-thunk-list /fn kble-thunk /fn /not /kble-thunk)))
+
+(define/own-contract
+  (maybe-min-knowable-promise-zip-map mkp-list on-value)
+  (-> (listof (promise/c (knowable/c maybe?))) (-> list? any/c)
+    (promise/c (knowable/c maybe?)))
+  (delay
+    (if
+      (list-any mkp-list /fn mkp
+        (mat (force mkp) (known /nothing) #t #f))
+      (known /nothing)
+    /force /knowable-promise-zip-map mkp-list /fn m-list
+      (just /on-value /list-map m-list /fn m /just-value m))))
+
+(define/own-contract (sequence-zip-map sequences on-element)
+  (->
+    (non-empty-listof (sequence/c any/c))
+    (-> (non-empty-listof any/c) any/c)
+    (sequence/c any/c))
+  (sequence-map
+    (fn elements /on-element elements)
+    (apply in-parallel sequences)))
+
+(define/own-contract (knowable-promise-or kp-list)
+  (-> (listof (knowable/c promise?)) (knowable/c promise?))
+  (delay
+    (w-loop next kp-list kp-list
+      (expect kp-list (cons kp kp-list) (unknown)
+      /w- k (force kp)
+      /if (known? k) k
+      /next kp-list))))
+
 ; TODO SMOOSH: Give this better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type`.
 (define-imitation-simple-struct
@@ -556,8 +617,6 @@
     
     (define (equal-mode-proc a b recur now?)
       (define (glossesque=?-knowable gs a b value=?-knowable)
-        ; TODO SMOOSH: Forward references we might untangle here: Just
-        ; `boolean-and-knowable-thunk-zip`.
         (boolean-and-knowable-thunk-zip /list
           (fn /known /equal-always?
             (glossesque-sys-glossesque-count gs a)
@@ -2394,67 +2453,6 @@
 (define/own-contract (equalw-gloss-key-wrapper v)
   (-> any/c any/c)
   (equalw-gloss-key-wrapper-unguarded v))
-
-(define/own-contract (knowable-promise-zip-map kp-list on-value)
-  (-> (listof (promise/c knowable?)) (-> any/c any/c)
-    (promise/c knowable?))
-  (delay
-    (if (list-any kp-list /fn kp /unknown? /force kp) (unknown)
-    /known /on-value /list-map kp-list /fn kp
-      (known-value /force kp))))
-
-(define/own-contract
-  (boolean-and-knowable-promise-zip-map kp-list on-true)
-  (-> (listof (promise/c (knowable/c boolean?))) (-> boolean?)
-    (promise/c (knowable/c boolean?)))
-  (delay
-    (if
-      (list-any kp-list /fn kp
-        (mat (force kp) (known #f) #t #f))
-      (known #f)
-    /if (list-any kp-list /fn kp /unknown? /force kp) (unknown)
-    /known /on-true)))
-
-(define/own-contract (boolean-and-knowable-thunk-zip kble-thunk-list)
-  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (boolean-and-knowable-promise-zip-map
-    (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)
-    (fn #t)))
-
-(define/own-contract (boolean-or-knowable-thunk-zip kble-thunk-list)
-  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (not /boolean-and-knowable-thunk-zip
-    (list-map kble-thunk-list /fn kble-thunk /fn /not /kble-thunk)))
-
-(define/own-contract
-  (maybe-min-knowable-promise-zip-map mkp-list on-value)
-  (-> (listof (promise/c (knowable/c maybe?))) (-> list? any/c)
-    (promise/c (knowable/c maybe?)))
-  (delay
-    (if
-      (list-any mkp-list /fn mkp
-        (mat (force mkp) (known /nothing) #t #f))
-      (known /nothing)
-    /force /knowable-promise-zip-map mkp-list /fn m-list
-      (just /on-value /list-map m-list /fn m /just-value m))))
-
-(define/own-contract (sequence-zip-map sequences on-element)
-  (->
-    (non-empty-listof (sequence/c any/c))
-    (-> (non-empty-listof any/c) any/c)
-    (sequence/c any/c))
-  (sequence-map
-    (fn elements /on-element elements)
-    (apply in-parallel sequences)))
-
-(define/own-contract (knowable-promise-or kp-list)
-  (-> (listof (knowable/c promise?)) (knowable/c promise?))
-  (delay
-    (w-loop next kp-list kp-list
-      (expect kp-list (cons kp kp-list) (unknown)
-      /w- k (force kp)
-      /if (known? k) k
-      /next kp-list))))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-report-join reports-list)
