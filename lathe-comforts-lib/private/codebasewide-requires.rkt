@@ -41,12 +41,13 @@
 (only-in racket/contract/region invariant-assertion)
 (only-in racket/extflonum extflonum? extfl<= extfl= extfl>=)
 (only-in racket/hash hash-union)
-(only-in racket/list append-map range)
+(only-in racket/list append* append-map range)
 (only-in racket/match
   define-match-expander match match-define match/derived match-lambda)
 (only-in racket/math nan? natural?)
 (only-in racket/promise delay delay/strict force promise?)
-(only-in racket/sequence sequence/c sequence-map sequence-ref)
+(only-in racket/sequence
+  in-slice sequence/c sequence-map sequence-ref)
 (only-in racket/stream stream*)
 (only-in racket/struct make-constructor-style-printer)
 (only-in racket/vector vector-copy vector-count)

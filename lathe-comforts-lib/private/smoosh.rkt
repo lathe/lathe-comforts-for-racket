@@ -25,7 +25,8 @@
 (require /only-in lathe-comforts
   dissect dissectfn expect fn mat w- w-loop)
 (require /only-in lathe-comforts/hash
-  hash-kv-map-maybe hash-ref-maybe hash-set-maybe)
+  hash-kv-map-maybe hash-ref-maybe hash-set-maybe hash-v-map
+  make-similar-hash)
 (require /only-in lathe-comforts/list list-any list-map list-zip-map)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
@@ -2826,17 +2827,16 @@
       
       )))
 
-; Given two values, this checks whether they have `eq?` elements (and
-; whether they're structurally similar enough according to
-; `equal-always?/recur` to get as far as the element comparison). Like
-; `chaperone-of?`, this doesn't traverse the elements if the given
-; values are `eq?` themselves.
+; Given two lists, this checks whether they have the same length and
+; `eq?` elements.
 ;
 ; TODO: Consider exporting this.
 ;
-(define/own-contract (elements-eq? a b)
-  (-> any/c any/c any/c)
-  (equal-always?/recur a b /fn a-elem b-elem /eq? a-elem b-elem))
+(define/own-contract (list-elements-eq? a b)
+  (-> list? list? boolean?)
+  (and (= (length a) (length b))
+    (for/and ([a-elem (in-list a)] [b-elem (in-list b)])
+      (eq? a-elem b-elem))))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for immutable tuple data structures and their
@@ -2858,14 +2858,22 @@
 ; `a`'s unwrappings for a wrapper that's `eq?` and stop if it's not
 ; there.
 ;
-; The given `->list` function should return the same list of elements
-; that would be passed to the callback of `equal-always?/recur`.
+; The given `->->list` function should take an inhabitant (a value
+; which passes the given `inhabitant?` predicate) and return a
+; function that takes an inhabitant of similar structure and returns
+; the same list of elements that would be passed to the callback of
+; `equal-always?/recur`. By "similar structure," we mean that the
+; second inhabitant is `equal-always?/recur` to the first if the
+; recursive equality check callback always returns `#t`. The two-stage
+; approach here lets us establish an iteration order and then use that
+; iteration order consistently for every operand, even if our
+; inhabitants are hash tables and don't have an entirely deterministic
+; iteration order.
 ;
-; The given `->list` and `example-and-list->` functions should specify
-; an isomorphism between inhabitants (those values which pass the
-; given `inhabitant?` predicate) and some set of lists. This isn't
-; possible for every type, so this is only a suitable abstraction when
-; it is possible to satisfy this condition.
+; The given `->->list` and `example-and-list->` functions should
+; specify an isomorphism between inhabitants and some set of lists.
+; This isn't possible for every type, so this is only a suitable
+; abstraction when it is possible to satisfy this condition.
 ;
 ; The given `copy` function should return an inhabitant that's
 ; `equal-always?` to its input inhabitant, but that doesn't have any
@@ -2883,9 +2891,11 @@
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if the operands are different lengths or the results
-;     of smooshing corresponding elements under the same smoosh
-;     include a known nothing, then a known nothing.
+;     Otherwise, if comparing the operands with `equal-always?/recur`
+;     without regard for their elements or their chaperone wrappers
+;     shows they differ, or if the results of smooshing corresponding
+;     elements under the same smoosh include a known nothing, then a
+;     known nothing.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -2894,12 +2904,15 @@
 ;     of an operand that counts as an acceptable result, then the
 ;     first such operand.
 ;     
-;     Otherwise, if a new inhabitant (created by the given
+;     Otherwise, build a new inhabitant (created by the given
 ;     `example-and-list->` function using the first operand as the
-;     example) whose elements are those recursive results is an
-;     acceptable result, then that inhabitant.
+;     example) whose elements are those recursive results. If
+;     comparing that new inhabitant with an operand using
+;     `equal-always?/recur` without regard for their elements or
+;     their chaperone wrappers shows they differ, then unknown, or if
+;     the new inhabitant is not an acceptable result, unknown.
 ;     
-;     Otherwise, unknown.
+;     Otherwise, that inhabitant.
 ;     
 ;     Where "acceptable result" means:
 ;       If we're doing path-related:
@@ -2939,9 +2952,11 @@
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if the operands are different lengths or the results
-;     of smooshing corresponding elements under the same smoosh
-;     include a known `#f`, then a known `#f`.
+;     Otherwise, if comparing the operands with `equal-always?/recur`
+;     without regard for their elements or their chaperone wrappers
+;     shows they differ, or if the results of smooshing corresponding
+;     elements under the same smoosh include a known `#f`, then a
+;     known `#f`.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -2995,9 +3010,9 @@
   (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
-    #:->list ->list
+    #:->->list ->->list
     #:example-and-list-> example-and-list->
-    #:copy [copy (fn v /example-and-list-> v /->list v)]
+    #:copy [copy (fn v /example-and-list-> v /(->->list v) v)]
     
     #:get-smoosh-of-zero-report
     [ get-smoosh-of-zero-report
@@ -3007,7 +3022,7 @@
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
       #:inhabitant? (-> any/c boolean?)
-      #:->list (-> any/c list?)
+      #:->->list (-> any/c (-> any/c list?))
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:copy (-> any/c any/c)
@@ -3027,9 +3042,11 @@
     (fn self a
       (w- any-dt (self-get-any-dynamic-type self)
       /expect (inhabitant? a) #t (uninformative-smoosh-reports)
+      /w- ->list (->->list a)
+      /w- a-list (->list a)
       /dissect
         (smoosh-reports-zip-map
-          (list-map (->list a) /fn a-elem
+          (list-map a-list /fn a-elem
             (dynamic-type-get-smoosh-of-one-report any-dt a-elem))
           #:on-result-knowable-promise-maybe-knowable-promise
           (fn kpmkp-list
@@ -3047,18 +3064,28 @@
                 (maybe-map list-kpm /fn list-kp
                   (promise-map list-kp /fn list-k
                     (knowable-bind list-k /fn result-list
-                      (w- candidate-result
+                      (if (list-elements-eq? result-list a-list)
+                        (known a)
+                      /w- noncanonical-result
                         (example-and-list-> a result-list)
-                      /if (elements-eq? candidate-result a) (known a)
-                      ; If we're doing a particularly strict check and
-                      ; the operand `a` is wrapped with impersonators
-                      ; or interposing chaperones, we have no `known?`
-                      ; result.
                       /if
-                        (or
-                          (not result-needs-to-be-chaperone-of?)
-                          (force a-shallowly-unchaperoned?-promise))
-                        (known candidate-result)
+                        (and
+                          ; If reconstructing an inhabitant from the
+                          ; smoosh results results in an inhabitant
+                          ; with a different structure even when not
+                          ; comparing chaperone wrappers or elements,
+                          ; we have no `known?` result.
+                          (equal-always?/recur a noncanonical-result
+                            (fn a-elem noncanonical-elem #t))
+                          ; If we're doing a particularly strict check
+                          ; and the operand `a` is wrapped with
+                          ; impersonators or interposing chaperones,
+                          ; we have no `known?` result.
+                          (or
+                            (not result-needs-to-be-chaperone-of?)
+                            (force
+                              a-shallowly-unchaperoned?-promise)))
+                        (known noncanonical-result)
                       /unknown))))))))
       /stream*
         (smoosh-report-map report-0
@@ -3095,13 +3122,16 @@
       ; doing a smoosh, or `#f` when doing a check).
       /if (not /equal-always?/recur a b /fn a-elem b-elem #t)
         (false-smoosh-and-comparison-of-two-reports)
+      /w- ->list (->->list a)
+      /w- a-list (->list a)
+      /w- b-list (->list b)
       /dissect
         (smoosh-and-comparison-of-two-reports-zip-map
           ; TODO SMOOSH: It's embarrassing that we're calling the rest
           ; of these things `...-zip-map` when they take lists and
           ; list-receiving functions, while `list-zip-map` here takes
           ; two values and a two-value-receiving function.
-          (list-zip-map (->list a) (->list b) /fn a-elem b-elem
+          (list-zip-map a-list b-list /fn a-elem b-elem
             (dynamic-type-get-smoosh-and-comparison-of-two-report
               any-dt a-elem b-elem))
           #:on-check-result-knowable-promise
@@ -3171,19 +3201,28 @@
                 (maybe-map list-kpm /fn list-kp
                   (promise-map list-kp /fn list-k
                     (knowable-bind list-k /fn result-list
-                      (w- noncanonical-result
-                        (example-and-list-> a result-list)
-                      /if
+                      (if
                         (and
-                          (elements-eq? noncanonical-result a)
+                          (list-elements-eq? result-list a-list)
                           (acceptable-result? a))
                         (known a)
                       /if
                         (and
-                          (elements-eq? noncanonical-result b)
+                          (list-elements-eq? result-list b-list)
                           (acceptable-result? b))
                         (known b)
-                      /if (acceptable-result? noncanonical-result)
+                      /w- noncanonical-result
+                        (example-and-list-> a result-list)
+                      /if
+                        (and
+                          ; If reconstructing an inhabitant from the
+                          ; smoosh results results in an inhabitant
+                          ; with a different structure even when not
+                          ; comparing chaperone wrappers or elements,
+                          ; we have no `known?` result.
+                          (equal-always?/recur a noncanonical-result
+                            (fn a-elem noncanonical-elem #t))
+                          (acceptable-result? noncanonical-result))
                         (known noncanonical-result)
                       /unknown))))))))
       /w- equivalent?-promise
@@ -3464,7 +3503,7 @@
         any-dt)
       
       #:inhabitant? (fn v /and (vector? v) (immutable? v))
-      #:->list (fn v /vector->list v)
+      #:->->list (fn a /fn b /vector->list b)
       
       #:example-and-list->
       (fn example lst
@@ -3515,7 +3554,7 @@
         any-dt)
       
       #:inhabitant? (fn v /and (box? v) (immutable? v))
-      #:->list (fn v /list /unbox v)
+      #:->->list (fn a /fn b /list /unbox b)
       
       #:example-and-list->
       (fn example lst
@@ -3584,7 +3623,7 @@
         any-dt)
       
       #:inhabitant? immutable-prefab-struct?
-      #:->list (fn v /cdr /vector->list /struct->vector v)
+      #:->->list (fn a /fn b /cdr /vector->list /struct->vector b)
       #:example-and-list->
       (fn example lst
         (apply make-prefab-struct (prefab-struct-key example) lst)))))
@@ -3606,6 +3645,65 @@
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-mutable
       #:inhabitant? mutable-prefab-struct?)))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of immutable hash tables and
+; their chaperones, information-ordered in a way that's consistent
+; with `chaperone-of?` as long as the keys' and values' information
+; orderings are. This is an instance of
+; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+;
+(define-imitation-simple-struct
+  (immutable-hash-dynamic-type?
+    immutable-hash-dynamic-type-get-any-dynamic-type)
+  immutable-hash-dynamic-type
+  'immutable-hash-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-hash-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? (fn v /and (hash? v) (immutable? v))
+      #:->->list
+      (fn a
+        (w- keys (hash-keys a)
+        /fn b
+          (append* /for/list ([k (in-list keys)])
+            (list b (hash-ref b k)))))
+      
+      #:example-and-list->
+      (fn example lst
+        (make-similar-hash example
+          (for/list ([entry (in-slice 2 (in-list lst))])
+            (dissect entry (list k v)
+            /cons k v))))
+      
+      #:copy (fn v /hash-v-map v /fn v v))))
+
+; TODO SMOOSH: Consider exporting this. If we export it, consider
+; whether we want to give it better smooshing behavior using
+; `prop:expressly-smooshable-dynamic-type` and/or implement
+; `prop:equal+hash` for it.
+;
+; This is an appropriate dynamic type of mutable hash tables and their
+; chaperones, information-ordered in a way that's consistent with
+; `chaperone-of?`. This is an instance of
+; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
+;
+(define-imitation-simple-struct (mutable-hash-dynamic-type?)
+  mutable-hash-dynamic-type
+  'mutable-hash-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-mutable
+      #:inhabitant? (fn v /and (hash? v) (not /immutable? v)))))
 
 (define/own-contract base-readable-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
@@ -3636,6 +3734,12 @@
     (list
       mutable-prefab-struct?
       (fn any-dt /mutable-prefab-struct-dynamic-type))
+    (list
+      (fn v /and (hash? v) (immutable? v))
+      (fn any-dt /immutable-hash-dynamic-type any-dt))
+    (list
+      (fn v /and (hash? v) (not /immutable? v))
+      (fn any-dt /mutable-hash-dynamic-type))
     ; TODO SMOOSH: Add more cases here.
     ))
 
@@ -4362,7 +4466,7 @@
 ;      - (Done) Prefab structs, at least of the kinds supported by
 ;        Racket so far.
 ;
-;      - Hash tables of various kinds.
+;      - (Done) Hash tables of various kinds.
 ;
 ;      - Potentially others in future versions of Racket. The above
 ;        list is up-to-date as of Racket 8.12.
