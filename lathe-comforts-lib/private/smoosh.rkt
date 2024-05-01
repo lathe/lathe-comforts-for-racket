@@ -28,15 +28,15 @@
   hash-kv-map-maybe hash-ref-maybe hash-set-maybe hash-v-map
   make-similar-hash)
 (require /only-in lathe-comforts/list
-  list-any list-foldl list-map list-zip-map)
+  list-any list-foldl list-length=nat? list-map list-zip-map)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
   define-imitation-simple-struct immutable-prefab-struct?
   mutable-prefab-struct?)
 (require /only-in lathe-comforts/match match/c)
 (require /only-in lathe-comforts/maybe
-  just just? just-value maybe? maybe/c maybe-if maybe-map nothing
-  nothing?)
+  just just? just-value maybe? maybe-bind maybe/c maybe-if maybe-map
+  nothing nothing?)
 
 
 (provide /own-contract-out
@@ -488,6 +488,22 @@
       (just /any-dynamic-type))
     v))
 
+; TODO SMOOSH: Export this.
+(define (knowable-zip knowable-list)
+  (-> (listof knowable?) (knowable/c list?))
+  (expect knowable-list (cons knowable knowable-list) (known /list)
+  /knowable-bind knowable /fn element
+  /knowable-map (knowable-zip knowable-list) /fn element-list
+    (cons element element-list)))
+
+; TODO SMOOSH: Export this.
+(define (maybe-min-zip maybe-list)
+  (-> (listof maybe?) (maybe/c list?))
+  (expect maybe-list (cons maybe maybe-list) (list)
+  /maybe-bind maybe /fn element
+  /maybe-map (maybe-min-zip maybe-list) /fn element-list
+    (cons element element-list)))
+
 ; TODO SMOOSH: Give this better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type`.
 (define-imitation-simple-struct
@@ -533,8 +549,129 @@
     gloss-custom-entries)
   gloss
   'gloss (current-inspector)
-  ; TODO SMOOSH: Stop using `auto-write` and `auto-equal` for this.
-  (auto-write) (auto-equal))
+  ; TODO SMOOSH: Stop using `auto-write` for this.
+  (auto-write)
+  
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (define (glossesque=?-knowable gs a b value=?-knowable)
+        ; TODO SMOOSH: Forward references we might untangle here: Just
+        ; `boolean-and-knowable-thunk-zip`.
+        (boolean-and-knowable-thunk-zip /list
+          (fn /known /equal-always?
+            (glossesque-sys-glossesque-count gs a)
+            (glossesque-sys-glossesque-count gs b))
+        /fn
+        /w- a-entries
+          (sequence->list /in-values-sequence
+            (glossesque-sys-glossesque-iteration-sequence gs a))
+        /w- b-value-maybe-knowable-list
+          (list-map a-entries /dissectfn (list k a)
+            (glossesque-sys-glossesque-ref-maybe-knowable gs b k))
+        /knowable-bind (knowable-zip b-value-maybe-knowable-list)
+        /fn b-value-maybe-list
+        /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
+          (known #f)
+        /w-loop next a-entries a-entries b-value-list b-value-list
+          (expect a-entries (cons a-entry a-entries) (known #t)
+          /dissect a-entry (list k a)
+          /dissect b-value-list (cons b b-value-list)
+          /boolean-and-knowable-thunk-zip /list
+            (fn /value=?-knowable a b)
+            (fn /next a-entries b-value-list))))
+      (define (immutable-hashalw=?-knowable a b value=?-knowable)
+        (boolean-and-knowable-thunk-zip /list
+          (fn /known /equal-always? (hash-count a) (hash-count b))
+        /fn
+        /w- a-entries (sequence->list /in-values-sequence /in-hash a)
+        /w- b-value-maybe-list
+          (list-map a-entries /dissectfn (list k a)
+            (hash-ref-maybe b k))
+        /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
+          (known #f)
+        /w-loop next a-entries a-entries b-value-list b-value-list
+          (expect a-entries (cons a-entry a-entries) (known #t)
+          /dissect a-entry (list k a)
+          /dissect b-value-list (cons b b-value-list)
+          /boolean-and-knowable-thunk-zip /list
+            (fn /value=?-knowable a b)
+            (fn /next a-entries b-value-list))))
+      (define (maybe=?-knowable a b value=?-knowable)
+        (expect a (just a-value) (known /nothing? b)
+        /expect b (just b-value) (known #f)
+        /value=?-knowable a-value b-value))
+      (define (list=?-knowable a b element=?-knowable-list)
+        (w- n (length element=?-knowable-list)
+        /boolean-and-knowable-thunk-zip /list
+          (fn /known /and
+            (list-length=nat? a n)
+            (list-length=nat? b n))
+        /fn
+        /w-loop next
+          a a
+          b b
+          element=?-knowable-list element=?-knowable-list
+          
+          (expect a (cons a-elem a) (known #t)
+          /dissect b (cons b-elem b)
+          /dissect element=?-knowable-list
+            (cons element=?-knowable element=?-knowable-list)
+          /boolean-and-knowable-thunk-zip /list
+            (fn /element=?-knowable a-elem b-elem)
+            (fn /next a b element=?-knowable-list))))
+      (define (gloss=?-knowable a b value=?-knowable)
+        (dissect a (gloss a-count a-atomic a-custom)
+        /dissect b (gloss b-count b-atomic b-custom)
+        /boolean-and-knowable-thunk-zip /list
+          (fn /known /equal-always? a-count b-count)
+          (fn /immutable-hashalw=?-knowable a-atomic b-atomic
+            value=?-knowable)
+          (fn /maybe=?-knowable a-custom b-custom /fn a b
+            (gloss=?-knowable a b /fn a b
+              (immutable-hashalw=?-knowable a b /fn a b
+                (dissect a (list gs _)
+                /list=?-knowable a b /list (fn a b #t) /fn a b
+                  (immutable-hashalw=?-knowable a b /fn a b
+                    (glossesque=?-knowable gs a b
+                      value=?-knowable))))))))
+      ; TODO SMOOSH: Instead of calling `equal-always?/recur` for the
+      ; purposes of smooshing, use the `...-knowable` behavior.
+      (knowable->falsable /gloss=?-knowable a b recur))
+    
+    (define (hash-mode-proc v recur now?)
+      (define (hash-code-glossesque gs v hash-code-value)
+        (hash-code-combine-unordered* /for/list
+          (
+            [ (k v)
+              (in-sequences
+                (glossesque-sys-glossesque-iteration-sequence gs v))])
+          (hash-code-combine
+            ; TODO SMOOSH: Figure out if `equal-always-hash-code` is
+            ; quite what we want here.
+            (equal-always-hash-code k)
+            (hash-code-value v))))
+      (define (hash-code-immutable-hashalw v hash-code-value)
+        (hash-code-combine-unordered* /for/list ([(k v) (in-hash v)])
+          (hash-code-combine
+            (equal-always-hash-code k)
+            (hash-code-value v))))
+      (define (hash-code-maybe v hash-code-value)
+        (expect v (just value) (hash-code-combine)
+        /hash-code-combine /hash-code-value value))
+      (define (hash-code-list v hash-code-element)
+        (hash-code-combine* /list-map v /fn elem /hash-code-element elem))
+      (define (hash-code-gloss v hash-code-value)
+        (hash-code-combine-unordered* /for/list
+          ([(k v) (in-sequences /gloss-iteration-sequence v)])
+          (hash-code-combine
+            ; TODO SMOOSH: Figure out if `equal-always-hash-code` is
+            ; quite what we want here.
+            (equal-always-hash-code k)
+            (hash-code-value v))))
+      (hash-code-gloss v recur))
+    
+    ))
 (ascribe-own-contract gloss? (-> any/c boolean?))
 
 (define (hash-km-union-of-two a b km-union)
@@ -4502,8 +4639,9 @@
 ;     - (Done) `info-wrapper?`
 ;
 ;     - `gloss?` (TODO SMOOSH: We've done this partway. For the smoosh
-;       behavior we've implemented to work, we need to implement
-;       `prop:equal+hash` for `gloss?` values.)
+;       behavior we've implemented to work, we need to resolve the
+;       TODOs in the `prop:equal-mode+hash` implementation for
+;       `gloss?` values.)
 ;
 ;     - `dynamic-type-var-for-any-dynamic-type?`
 ;

@@ -41,6 +41,8 @@
 (only-in racket/contract/region invariant-assertion)
 (only-in racket/extflonum extflonum? extfl<= extfl= extfl>=)
 (only-in racket/hash hash-union)
+(only-in racket/hash-code
+  hash-code-combine hash-code-combine* hash-code-combine-unordered*)
 (only-in racket/list append* append-map range)
 (only-in racket/match
   define-match-expander match match-define match/derived match-lambda)
