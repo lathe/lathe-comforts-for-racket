@@ -150,7 +150,6 @@
   promise-map
   constant-smoosh-and-comparison-of-two-report
   constant-smoosh-and-comparison-of-two-reports
-  compare-by-predicates-dynamic-type
   equalw-gloss-key-wrapper
   knowable-promise-zip-map
   boolean-and-knowable-promise-zip-map
@@ -2238,65 +2237,6 @@
   (in-cycle /list /constant-smoosh-and-comparison-of-two-report
     result-knowable-promise-maybe-knowable-promise))
 
-; TODO SMOOSH: See if we still need this.
-(define-imitation-simple-struct
-  (compare-by-predicates-dynamic-type?
-    compare-by-predicates-dynamic-type-getter-for-variant
-    compare-by-predicates-dynamic-type-getter-for-predicate
-    compare-by-predicates-dynamic-type-getter-for-compare)
-  compare-by-predicates-dynamic-type-unguarded
-  'compare-by-predicates-dynamic-type (current-inspector) (auto-write)
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-report
-      (fn self
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-of-one-report
-      (fn self a
-        (dissect self
-          (compare-by-predicates-dynamic-type-unguarded
-            get-variant
-            get-predicate
-            get-compare)
-        /w- included? (get-predicate)
-        /constant-smoosh-reports /delay
-          (if (not /included? a) (unknown)
-          /known /just /delay/strict /known a)))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (dissect self
-          (compare-by-predicates-dynamic-type-unguarded
-            get-variant
-            get-predicate
-            get-compare)
-        /w- included? (get-predicate)
-        /w- compares? (get-compare)
-        /constant-smoosh-and-comparison-of-two-reports /delay
-          (if (not /included? a) (unknown)
-          /if (not /included? b) (unknown)
-          /if (not /compares? a b) (known /nothing)
-          /known /just /delay/strict /known a)))
-      
-      )))
-
-(define/own-contract
-  (compare-by-predicates-dynamic-type
-    #:get-variant get-variant
-    #:get-predicate get-predicate
-    #:get-compare get-compare)
-  (->
-    #:get-variant (-> any/c)
-    #:get-predicate (-> (-> any/c boolean?))
-    #:get-compare (-> (-> any/c any/c boolean?))
-    any/c)
-  (compare-by-predicates-dynamic-type-unguarded
-    get-variant
-    get-predicate
-    get-compare))
-
 (define-imitation-simple-struct
   (equalw-gloss-key-wrapper? equalw-gloss-key-wrapper-value)
   equalw-gloss-key-wrapper-unguarded
@@ -2307,15 +2247,9 @@
   (auto-equal)
   (#:prop prop:equalw-gloss-key /make-equalw-gloss-key-impl))
 
-; TODO SMOOSH: Use this. One way to use it might be like so:
-#;
-(#:prop prop:expressly-has-dynamic-type
-  (make-expressly-has-dynamic-type-impl /fn bindings self
-    (compare-by-predicates-dynamic-type
-      #:get-variant (fn /equalw-gloss-key-wrapper any-dynamic-type?)
-      #:get-predicate (fn any-dynamic-type?)
-      #:get-compare (fn /fn a b #t))))
-;
+; TODO SMOOSH: Use this. It should generally come in handy to
+; construct the result in an implementation of
+; `custom-gloss-key-dynamic-type-variant-knowable`.
 (define/own-contract (equalw-gloss-key-wrapper v)
   (-> any/c any/c)
   (equalw-gloss-key-wrapper-unguarded v))
@@ -2431,6 +2365,55 @@
     (bytes? v)
     (null? v)))
 
+; TODO SMOOSH: Export this.
+; TODO SMOOSH: Use this elsewhere in this file where it makes sense.
+(define/own-contract (knowable-if condition then)
+  (-> boolean? (-> any/c) knowable?)
+  (if condition
+    (known /then)
+    (unknown)))
+
+; This is an appropriate `prop:expressly-smooshable-dynamic-type`
+; implementation for simple values that can be compared by
+; `equal-always?`.
+;
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then a known
+;     nothing (or, for a check, `#f`).
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+; TODO SMOOSH: Consider exporting this.
+;
+(define/own-contract
+  (make-expressly-smooshable-dynamic-type-impl-for-atom
+    #:inhabitant? inhabitant?)
+  (-> #:inhabitant? (-> any/c boolean?)
+    expressly-smooshable-dynamic-type-impl?)
+  (make-expressly-smooshable-dynamic-type-impl
+    
+    #:get-smoosh-of-zero-report
+    (fn self
+      (uninformative-smoosh-reports))
+    
+    #:get-smoosh-of-one-report
+    (fn self a
+      (constant-smoosh-reports /delay
+        (knowable-if (inhabitant? a) /fn
+          (just /delay/strict /known a))))
+    
+    #:get-smoosh-and-comparison-of-two-report
+    (fn self b-dt a b
+      (constant-smoosh-and-comparison-of-two-reports /delay
+        (knowable-if (and (inhabitant? a) (inhabitant? b)) /fn
+          (maybe-if (equal-always? a b) /fn /delay/strict /known a))))
+    
+    ))
+
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
@@ -2454,35 +2437,8 @@
   (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-report
-      (fn self
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-of-one-report
-      (fn self a
-        (dissect self
-          (base-readable-discrete-atom-dynamic-type any-dt)
-        /expect (base-readable-discrete-atom? a) #t
-          (uninformative-smoosh-reports)
-        /constant-smoosh-reports
-          (delay/strict /known /just /delay/strict /known a)))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (dissect self
-          (base-readable-discrete-atom-dynamic-type any-dt)
-        /expect (base-readable-discrete-atom? a) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (base-readable-discrete-atom? b) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (equal-always? a b) #t
-          (false-smoosh-and-comparison-of-two-reports)
-        /constant-smoosh-reports
-          (delay/strict /known /just /delay/strict /known a)))
-      
-      )))
+    (make-expressly-smooshable-dynamic-type-impl-for-atom
+      #:inhabitant? base-readable-discrete-atom?)))
 
 ; TODO SMOOSH: Export this.
 (define/own-contract (non-nan-number? v)
@@ -2568,10 +2524,8 @@
         /expect (non-nan-number? b) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
         /w- report-1+
-          (constant-smoosh-and-comparison-of-two-reports
-            (delay /known
-              (maybe-if (equal-always? a b)
-                (fn /delay/strict /known a))))
+          (constant-smoosh-and-comparison-of-two-reports /delay /known
+            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
         /if (= a b)
           (stream*
             (constant-smoosh-and-comparison-of-two-report
@@ -2693,10 +2647,8 @@
         /expect (non-nan-extflonum? b) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
         /w- report-1+
-          (constant-smoosh-and-comparison-of-two-reports
-            (delay /known
-              (maybe-if (equal-always? a b)
-                (fn /delay/strict /known a))))
+          (constant-smoosh-and-comparison-of-two-reports /delay /known
+            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
         /if (extfl= a b)
           (stream*
             (constant-smoosh-and-comparison-of-two-report
@@ -3366,9 +3318,9 @@
     
     #:get-smoosh-of-one-report
     (fn self a
-      (expect (inhabitant? a) #t (uninformative-smoosh-reports)
-      /constant-smoosh-reports
-        (delay/strict /known /just /delay/strict /known a)))
+      (constant-smoosh-reports /delay
+        (knowable-if (inhabitant? a) /fn
+          (just /delay/strict /known a))))
     
     #:get-smoosh-and-comparison-of-two-report
     (fn self b-dt a b
@@ -4184,31 +4136,9 @@
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
   'nothing-dynamic-type (current-inspector) (auto-write)
-  
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-report
-      (fn self
-        (constant-smoosh-reports
-          (delay/strict /known /just /delay/strict /known /nothing)))
-      
-      #:get-smoosh-of-one-report
-      (fn self a
-        (expect a (nothing) (uninformative-smoosh-reports)
-        /constant-smoosh-reports
-          (delay/strict /known /just /delay/strict /known a)))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (expect a (nothing)
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect b (nothing)
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /constant-smoosh-and-comparison-of-two-reports
-          (delay/strict /known /just /delay/strict /known a)))
-      
-      )))
+    (make-expressly-smooshable-dynamic-type-impl-for-atom
+      #:inhabitant? nothing?)))
 
 (define/own-contract
   (on-just-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -4232,37 +4162,34 @@
   'just-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
+    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (just-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? just?
+      #:->->list (fn a /dissectfn (just e) /list e)
+      
+      #:example-and-list->
+      (fn example lst
+        (dissect lst (list e)
+        /just e))
+      
+      #:copy (fn v v)
       
       #:get-smoosh-of-zero-report
-      (fn self
-        (dissect self (just-dynamic-type any-dt)
-        /smoosh-reports-map
+      (dissectfn (just-dynamic-type any-dt)
+        (smoosh-reports-map
           (dynamic-type-get-smoosh-of-zero-report any-dt)
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          on-just-smoosh-result-knowable-promise-maybe-knowable-promise))
-      
-      #:get-smoosh-of-one-report
-      (fn self a
-        (dissect self (just-dynamic-type any-dt)
-        /expect a (just a-value) (uninformative-smoosh-reports)
-        /smoosh-reports-map
-          (dynamic-type-get-smoosh-of-one-report any-dt a-value)
-          #:on-result-knowable-promise-maybe-knowable-promise
-          on-just-smoosh-result-knowable-promise-maybe-knowable-promise))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (dissect self (just-dynamic-type any-dt)
-        /expect a (just a-value)
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect b (just b-value)
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /smoosh-and-comparison-of-two-reports-map
-          (dynamic-type-get-smoosh-and-comparison-of-two-report
-            any-dt a-value b-value)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          on-just-smoosh-result-knowable-promise-maybe-knowable-promise))
+          (fn kpmkp
+            (promise-map kpmkp /fn kpmk
+              (knowable-map kpmk /fn kpm
+                (maybe-map kpm /fn kp
+                  (promise-map kp /fn k
+                    (knowable-map k /fn result-value
+                      (just result-value)))))))))
       
       )))
 
@@ -4509,8 +4436,6 @@
 ;       - `uninformative-dynamic-type?`
 ;
 ;       - `dead-end-dynamic-type?`
-;
-;       - `compare-by-predicates-dynamic-type?`
 ;
 ;       - `base-readable-discrete-atom-dynamic-type?`
 ;
