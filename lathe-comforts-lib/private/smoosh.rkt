@@ -565,8 +565,87 @@
       /if (known? k) k
       /next kp-list))))
 
-; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type`.
+(define/own-contract
+  (gloss-equal-always?-knowable a b value-equal-always?-knowable)
+  (-> any/c any/c (-> any/c any/c (knowable/c boolean?))
+    (knowable/c boolean?))
+  (define (glossesque=?-knowable gs a b value=?-knowable)
+    (boolean-and-knowable-thunk-zip /list
+      (fn /known /equal-always?
+        (glossesque-sys-glossesque-count gs a)
+        (glossesque-sys-glossesque-count gs b))
+    /fn
+    /w- a-entries
+      (sequence->list /in-values-sequence
+        (glossesque-sys-glossesque-iteration-sequence gs a))
+    /w- b-value-maybe-knowable-list
+      (list-map a-entries /dissectfn (list k a)
+        (glossesque-sys-glossesque-ref-maybe-knowable gs b k))
+    /knowable-bind (knowable-zip b-value-maybe-knowable-list)
+    /fn b-value-maybe-list
+    /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
+      (known #f)
+    /w-loop next a-entries a-entries b-value-list b-value-list
+      (expect a-entries (cons a-entry a-entries) (known #t)
+      /dissect a-entry (list k a)
+      /dissect b-value-list (cons b b-value-list)
+      /boolean-and-knowable-thunk-zip /list
+        (fn /value=?-knowable a b)
+        (fn /next a-entries b-value-list))))
+  (define (immutable-hashalw=?-knowable a b value=?-knowable)
+    (boolean-and-knowable-thunk-zip /list
+      (fn /known /equal-always? (hash-count a) (hash-count b))
+    /fn
+    /w- a-entries (sequence->list /in-values-sequence /in-hash a)
+    /w- b-value-maybe-list
+      (list-map a-entries /dissectfn (list k a)
+        (hash-ref-maybe b k))
+    /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
+      (known #f)
+    /w-loop next a-entries a-entries b-value-list b-value-list
+      (expect a-entries (cons a-entry a-entries) (known #t)
+      /dissect a-entry (list k a)
+      /dissect b-value-list (cons b b-value-list)
+      /boolean-and-knowable-thunk-zip /list
+        (fn /value=?-knowable a b)
+        (fn /next a-entries b-value-list))))
+  (define (maybe=?-knowable a b value=?-knowable)
+    (expect a (just a-value) (known /nothing? b)
+    /expect b (just b-value) (known #f)
+    /value=?-knowable a-value b-value))
+  (define (list=?-knowable a b element=?-knowable-list)
+    (w- n (length element=?-knowable-list)
+    /boolean-and-knowable-thunk-zip /list
+      (fn /known /and (list-length=nat? a n) (list-length=nat? b n))
+    /fn
+    /w-loop next
+      a a
+      b b
+      element=?-knowable-list element=?-knowable-list
+      
+      (expect a (cons a-elem a) (known #t)
+      /dissect b (cons b-elem b)
+      /dissect element=?-knowable-list
+        (cons element=?-knowable element=?-knowable-list)
+      /boolean-and-knowable-thunk-zip /list
+        (fn /element=?-knowable a-elem b-elem)
+        (fn /next a b element=?-knowable-list))))
+  (define (gloss=?-knowable a b value=?-knowable)
+    (dissect a (gloss a-count a-atomic a-custom)
+    /dissect b (gloss b-count b-atomic b-custom)
+    /boolean-and-knowable-thunk-zip /list
+      (fn /known /equal-always? a-count b-count)
+      (fn /immutable-hashalw=?-knowable a-atomic b-atomic
+        value=?-knowable)
+      (fn /maybe=?-knowable a-custom b-custom /fn a b
+        (gloss=?-knowable a b /fn a b
+          (immutable-hashalw=?-knowable a b /fn a b
+            (dissect a (list gs _)
+            /list=?-knowable a b /list (fn a b #t) /fn a b
+              (immutable-hashalw=?-knowable a b /fn a b
+                (glossesque=?-knowable gs a b value=?-knowable))))))))
+  (gloss=?-knowable a b value-equal-always?-knowable))
+
 (define-imitation-simple-struct
   (gloss?
     
@@ -616,89 +695,16 @@
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (define (glossesque=?-knowable gs a b value=?-knowable)
-        (boolean-and-knowable-thunk-zip /list
-          (fn /known /equal-always?
-            (glossesque-sys-glossesque-count gs a)
-            (glossesque-sys-glossesque-count gs b))
-        /fn
-        /w- a-entries
-          (sequence->list /in-values-sequence
-            (glossesque-sys-glossesque-iteration-sequence gs a))
-        /w- b-value-maybe-knowable-list
-          (list-map a-entries /dissectfn (list k a)
-            (glossesque-sys-glossesque-ref-maybe-knowable gs b k))
-        /knowable-bind (knowable-zip b-value-maybe-knowable-list)
-        /fn b-value-maybe-list
-        /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
-          (known #f)
-        /w-loop next a-entries a-entries b-value-list b-value-list
-          (expect a-entries (cons a-entry a-entries) (known #t)
-          /dissect a-entry (list k a)
-          /dissect b-value-list (cons b b-value-list)
-          /boolean-and-knowable-thunk-zip /list
-            (fn /value=?-knowable a b)
-            (fn /next a-entries b-value-list))))
-      (define (immutable-hashalw=?-knowable a b value=?-knowable)
-        (boolean-and-knowable-thunk-zip /list
-          (fn /known /equal-always? (hash-count a) (hash-count b))
-        /fn
-        /w- a-entries (sequence->list /in-values-sequence /in-hash a)
-        /w- b-value-maybe-list
-          (list-map a-entries /dissectfn (list k a)
-            (hash-ref-maybe b k))
-        /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
-          (known #f)
-        /w-loop next a-entries a-entries b-value-list b-value-list
-          (expect a-entries (cons a-entry a-entries) (known #t)
-          /dissect a-entry (list k a)
-          /dissect b-value-list (cons b b-value-list)
-          /boolean-and-knowable-thunk-zip /list
-            (fn /value=?-knowable a b)
-            (fn /next a-entries b-value-list))))
-      (define (maybe=?-knowable a b value=?-knowable)
-        (expect a (just a-value) (known /nothing? b)
-        /expect b (just b-value) (known #f)
-        /value=?-knowable a-value b-value))
-      (define (list=?-knowable a b element=?-knowable-list)
-        (w- n (length element=?-knowable-list)
-        /boolean-and-knowable-thunk-zip /list
-          (fn /known /and
-            (list-length=nat? a n)
-            (list-length=nat? b n))
-        /fn
-        /w-loop next
-          a a
-          b b
-          element=?-knowable-list element=?-knowable-list
-          
-          (expect a (cons a-elem a) (known #t)
-          /dissect b (cons b-elem b)
-          /dissect element=?-knowable-list
-            (cons element=?-knowable element=?-knowable-list)
-          /boolean-and-knowable-thunk-zip /list
-            (fn /element=?-knowable a-elem b-elem)
-            (fn /next a b element=?-knowable-list))))
-      (define (gloss=?-knowable a b value=?-knowable)
-        (dissect a (gloss a-count a-atomic a-custom)
-        /dissect b (gloss b-count b-atomic b-custom)
-        /boolean-and-knowable-thunk-zip /list
-          (fn /known /equal-always? a-count b-count)
-          (fn /immutable-hashalw=?-knowable a-atomic b-atomic
-            value=?-knowable)
-          (fn /maybe=?-knowable a-custom b-custom /fn a b
-            (gloss=?-knowable a b /fn a b
-              (immutable-hashalw=?-knowable a b /fn a b
-                (dissect a (list gs _)
-                /list=?-knowable a b /list (fn a b #t) /fn a b
-                  (immutable-hashalw=?-knowable a b /fn a b
-                    (glossesque=?-knowable gs a b
-                      value=?-knowable))))))))
-      ; TODO SMOOSH: Instead of calling `equal-always?/recur` for the
-      ; purposes of smooshing, use the `...-knowable` behavior.
-      (knowable->falsable /gloss=?-knowable a b recur))
+      (knowable->falsable /gloss-equal-always?-knowable a b recur))
     
     (define (hash-mode-proc v recur now?)
+      (define (hash-code-smooshable v)
+        ; TODO SMOOSH: Instead of `equal-always-hash-code`, use some
+        ; new hash code function that's consistent with a level 0 ==
+        ; smoosh. We may want to add methods to every smooshable type
+        ; to determine what the result of this function is for each
+        ; type. Let's call this something like `smoosh==-hash-code`.
+        (equal-always-hash-code v))
       (define (hash-code-glossesque gs v hash-code-value)
         (hash-code-combine-unordered* /for/list
           (
@@ -706,9 +712,7 @@
               (in-sequences
                 (glossesque-sys-glossesque-iteration-sequence gs v))])
           (hash-code-combine
-            ; TODO SMOOSH: Figure out if `equal-always-hash-code` is
-            ; quite what we want here.
-            (equal-always-hash-code k)
+            (hash-code-smooshable k)
             (hash-code-value v))))
       (define (hash-code-immutable-hashalw v hash-code-value)
         (hash-code-combine-unordered* /for/list ([(k v) (in-hash v)])
@@ -724,9 +728,7 @@
         (hash-code-combine-unordered* /for/list
           ([(k v) (in-sequences /gloss-iteration-sequence v)])
           (hash-code-combine
-            ; TODO SMOOSH: Figure out if `equal-always-hash-code` is
-            ; quite what we want here.
-            (equal-always-hash-code k)
+            (hash-code-smooshable k)
             (hash-code-value v))))
       (hash-code-combine (equal-always-hash-code gloss?)
         (hash-code-gloss v recur)))
@@ -2955,11 +2957,13 @@
 ; the same list of elements that would be passed to the callback of
 ; `equal-always?/recur`. By "similar structure," we mean that the
 ; second inhabitant is `equal-always?/recur` to the first if the
-; recursive equality check callback always returns `#t`. The two-stage
-; approach here lets us establish an iteration order and then use that
-; iteration order consistently for every operand, even if our
-; inhabitants are hash tables and don't have an entirely deterministic
-; iteration order.
+; recursive equality check callback always returns `#t` (or, if
+; `inhabitant-shallowly-equal-always?-knowable` is given, we use
+; that and assume that its true results are consistent with
+; `equal-always?/recur`). The two-stage approach here lets us
+; establish an iteration order and then use that iteration order
+; consistently for every operand, even if our inhabitants are hash
+; tables and don't have an entirely deterministic iteration order.
 ;
 ; The given `->->list` and `example-and-list->` functions should
 ; specify an isomorphism between inhabitants and some set of lists.
@@ -2982,11 +2986,14 @@
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if comparing the operands with `equal-always?/recur`
-;     without regard for their elements or their chaperone wrappers
-;     shows they differ, or if the results of smooshing corresponding
-;     elements under the same smoosh include a known nothing, then a
-;     known nothing.
+;     Otherwise, if comparing the operands without regard for their
+;     elements or their impersonator or chaperone wrappers using the
+;     given `inhabitant-shallowly-equal-always?` (usually
+;     `equal-always?/recur`) returns an unknown result, then unknown.
+;     
+;     Otherwise, if it shows they differ, or if the results of
+;     smooshing corresponding elements under the same smoosh include a
+;     known nothing, then a known nothing.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -2998,12 +3005,14 @@
 ;     Otherwise, build a new inhabitant (created by the given
 ;     `example-and-list->` function using the first operand as the
 ;     example) whose elements are those recursive results. If
-;     comparing that new inhabitant with an operand using
-;     `equal-always?/recur` without regard for their elements or
-;     their chaperone wrappers shows they differ, then unknown, or if
-;     the new inhabitant is not an acceptable result, unknown.
+;     comparing that new inhabitant with an operand without regard for
+;     their elements or their impersonator or chaperone wrappers using
+;     the given `inhabitant-shallowly-equal-always?-knowable` (usually
+;     `equal-always?/recur`) returns an unknown result or shows they
+;     differ, or if the new inhabitant is not an acceptable result,
+;     then unknown.
 ;     
-;     Otherwise, that inhabitant.
+;     Otherwise, that new inhabitant.
 ;     
 ;     Where "acceptable result" means:
 ;       If we're doing path-related:
@@ -3043,11 +3052,14 @@
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if comparing the operands with `equal-always?/recur`
-;     without regard for their elements or their chaperone wrappers
-;     shows they differ, or if the results of smooshing corresponding
-;     elements under the same smoosh include a known `#f`, then a
-;     known `#f`.
+;     Otherwise, if comparing the operands without regard for their
+;     elements or their impersonator or chaperone wrappers using the
+;     given `inhabitant-shallowly-equal-always?` (usually
+;     `equal-always?/recur`) returns an unknown result, then unknown.
+;     
+;     Otherwise, if it shows they differ, or if the results of
+;     smooshing corresponding elements under the same smoosh include a
+;     known `#f`, then a known `#f`.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -3103,6 +3115,11 @@
     #:inhabitant? inhabitant?
     #:->->list ->->list
     #:example-and-list-> example-and-list->
+    
+    #:inhabitant-shallowly-equal-always?-knowable
+    [ inhabitant-shallowly-equal-always?-knowable
+      (fn a b /known /equal-always?/recur a b /fn a-elem b-elem #t)]
+    
     #:copy [copy (fn v /example-and-list-> v /(->->list v) v)]
     
     #:get-smoosh-of-zero-report
@@ -3116,6 +3133,9 @@
       #:->->list (-> any/c (-> any/c list?))
       #:example-and-list-> (-> any/c list? any/c))
     (
+      #:inhabitant-shallowly-equal-always?-knowable
+      (-> any/c any/c (knowable/c boolean?))
+      
       #:copy (-> any/c any/c)
       
       #:get-smoosh-of-zero-report
@@ -3166,8 +3186,9 @@
                           ; with a different structure even when not
                           ; comparing chaperone wrappers or elements,
                           ; we have no `known?` result.
-                          (equal-always?/recur a noncanonical-result
-                            (fn a-elem noncanonical-elem #t))
+                          (knowable->falsable
+                            (inhabitant-shallowly-equal-always?-knowable
+                              a noncanonical-result))
                           ; If we're doing a particularly strict check
                           ; and the operand `a` is wrapped with
                           ; impersonators or interposing chaperones,
@@ -3208,10 +3229,15 @@
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (inhabitant? b) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
-      ; If the operands differ even without comparing their chaperone
-      ; wrappers or their elements, we return a known nothing (when
+      ; If the comparing the operands without comparing their
+      ; impersonator or chaperone wrappers or their elements has an
+      ; unknown result, we return an unknown result as well.
+      /expect (inhabitant-shallowly-equal-always?-knowable a b)
+        (known a-shallowly-equal-always-b?)
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      ; Otherwise, if it returns `#f`, we return a known nothing (when
       ; doing a smoosh, or `#f` when doing a check).
-      /if (not /equal-always?/recur a b /fn a-elem b-elem #t)
+      /if (not a-shallowly-equal-always-b?)
         (false-smoosh-and-comparison-of-two-reports)
       /w- ->list (->->list a)
       /w- a-list (->list a)
@@ -3249,13 +3275,14 @@
             (force a-shallowly-unchaperoned?-promise)
             (chaperone-of? b a)))
       ; Given two inhabitants whose non-element,
-      ; non-chaperone-or-impersonator-wrapper details are
-      ; `equal-always?/recur` and whose whose elements are known to
-      ; pass the kind of smoosh we're doing, this checks whether they
-      ; would pass `chaperone-of?` if every recursive element
-      ; comparison immediately returned `#t`. Like `chaperone-of?`,
-      ; this takes constant time if the inhabitants are `eq?`
-      ; themselves.
+      ; non-chaperone-or-impersonator-wrapper details are known to be
+      ; equal (usually `equal-always?/recur` unless
+      ; `inhabitant-shallowly-equal-always?-knowable` is given) and
+      ; whose whose elements are known to pass the kind of smoosh
+      ; we're doing, this checks whether they would pass
+      ; `chaperone-of?` if every recursive element comparison
+      ; immediately returned `#t`. Like `chaperone-of?`, this takes
+      ; constant time if the inhabitants are `eq?` themselves.
       /w- inhabitant-shallowly-chaperone-of?
         (fn s t
           (or (eq? s t)
@@ -3311,8 +3338,9 @@
                           ; with a different structure even when not
                           ; comparing chaperone wrappers or elements,
                           ; we have no `known?` result.
-                          (equal-always?/recur a noncanonical-result
-                            (fn a-elem noncanonical-elem #t))
+                          (knowable->falsable
+                            (inhabitant-shallowly-equal-always?-knowable
+                              a noncanonical-result))
                           (acceptable-result? noncanonical-result))
                         (known noncanonical-result)
                       /unknown))))))))
@@ -4317,6 +4345,9 @@
 ; as long as the keys' and values' information orderings are. This is
 ; an instance of
 ; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+; Note that this instance's
+; `inhabitant-shallowly-equal-always?-knowable` can result in a
+; non-`known?` value if any key comparison does.
 ;
 (define-imitation-simple-struct
   (gloss-dynamic-type? gloss-dynamic-type-get-any-dynamic-type)
@@ -4345,6 +4376,10 @@
           (for/list ([entry (in-slice 2 (in-list lst))])
             (dissect entry (list k v)
             /cons k v))))
+      
+      #:inhabitant-shallowly-equal-always?-knowable
+      (fn a b
+        (gloss-equal-always?-knowable a b /fn a b /known #t))
       
       #:copy (fn v v))))
 
@@ -4643,9 +4678,9 @@
 ;       `gen:equal-mode+hash` in a way that's consistent with it.)
 ;
 ;     - `gloss?` (TODO SMOOSH: We've done this partway. For the smoosh
-;       behavior we've implemented to work, we need to resolve the
-;       TODOs in the `gen:equal-mode+hash` implementation for `gloss?`
-;       values.)
+;       behavior we've implemented to be perfect, we need to resolve
+;       the `smoosh==-hash-code` TODO in the `gen:equal-mode+hash`
+;       implementation for `gloss?` values.)
 ;
 ;     - `dynamic-type-var-for-any-dynamic-type?`
 ;
