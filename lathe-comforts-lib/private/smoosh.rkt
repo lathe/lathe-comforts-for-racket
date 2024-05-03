@@ -2632,7 +2632,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -2666,7 +2666,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; Level 0:
 ;   path-related:
@@ -2798,7 +2798,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; Level 0:
 ;   path-related:
@@ -2921,7 +2921,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; NOTE: This would be used like so:
 ;
@@ -3659,7 +3659,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of immutable vectors and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -3707,7 +3707,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of mutable vectors and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -3725,7 +3725,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of immutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -3775,7 +3775,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of mutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -3793,7 +3793,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of immutable prefab structs and
 ; their chaperones, information-ordered in a way that's consistent
@@ -3824,7 +3824,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of mutable prefab structs and
 ; their chaperones, information-ordered in a way that's consistent
@@ -3842,7 +3842,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of immutable hash tables and
 ; their chaperones, information-ordered in a way that's consistent
@@ -3884,7 +3884,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of mutable hash tables and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -3945,7 +3945,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (base-readable-dynamic-type?
     base-readable-dynamic-type-get-any-dynamic-type)
@@ -4018,7 +4018,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of `known?` and
 ; `example-unknown?` values, with handling of their interactions with
@@ -4216,7 +4216,7 @@
 ; to export; users could build on themselves. Consider whether we want
 ; to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of `path-related-wrapper`
 ; values, ordered so that one value is less than or equal to another
@@ -4324,7 +4324,7 @@
 ; export; users could build on themselves. Consider whether we want to
 ; give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of `info-wrapper` values,
 ; ordered so that one value is less than or equal to another if the
@@ -4419,7 +4419,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 ;
 ; This is an appropriate dynamic type of `gloss?` values,
 ; information-ordered in a way that's consistent with `chaperone-of?`
@@ -4467,7 +4467,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (dynamic-type-for-dynamic-type-var-for-any-dynamic-type?)
   dynamic-type-for-dynamic-type-var-for-any-dynamic-type
@@ -4481,7 +4481,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (equalw-gloss-key-wrapper-dynamic-type?)
   equalw-gloss-key-wrapper-dynamic-type
@@ -4495,7 +4495,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
   'nothing-dynamic-type (current-inspector) (auto-write)
@@ -4518,7 +4518,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
   just-dynamic-type
@@ -4591,7 +4591,7 @@
 ; TODO SMOOSH: Consider exporting this. If we export it, consider
 ; whether we want to give it better smooshing behavior using
 ; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `prop:equal+hash` for it.
+; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (known-to-lathe-comforts-data-dynamic-type?
     known-to-lathe-comforts-data-dynamic-type-get-any-dynamic-type)
@@ -4660,7 +4660,7 @@
 
 ; TODO SMOOSH: Consider whether we want to give this better smooshing
 ; behavior using `prop:expressly-smooshable-dynamic-type` and/or
-; implement `prop:equal+hash` for it.
+; implement `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
   
@@ -4709,8 +4709,8 @@
 ; path-relatedness or according to their information ordering.
 
 ; TODO SMOOSH: Here we summarize some of our "implement smooshing"
-; tasks. Implement smooshing and better `prop:equal+hash` equality for
-; these types:
+; tasks. Implement smooshing and better `gen:equal-mode+hash` equality
+; for these types:
 ;
 ;   - Various types that can result from the default Racket reader, as
 ;     well as their corresponding mutable types where these exist.
