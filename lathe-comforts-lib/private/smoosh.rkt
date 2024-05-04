@@ -165,12 +165,15 @@
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
   make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  nan-number?
   non-nan-number?
   non-nan-extflonum?
+  nan-extflonum?
   make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-  dynamic-type-case-by-cases
+  dynamic-type-case-by-indistinct-cases
+  dynamic-type-case-by-discrete-cases
   gloss-ref
   gloss-set
   make-gloss
@@ -2593,35 +2596,55 @@
   (sequence-zip-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
-(define/own-contract (base-readable-discrete-atom? v)
-  (-> any/c boolean?)
-  (or
-    (boolean? v)
-    (char? v)
-    (symbol? v)
-    (keyword? v)
-    (string? v)
-    (bytes? v)
-    (null? v)))
-
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
-; implementation for simple values that can be compared by
-; `equal-always?`.
+; implementation for simple values that can be compared by a simple
+; equivalence comparison function. The given `known-distinct?`
+; indicates whether a false result of comparison means we positively
+; know the values are distinct (rather than just not knowing that
+; they're equal). The given `known-discrete?` indicates whether
+; knowing that two values are distinct means we positively know that
+; they aren't related by ordering either.
 ;
 ; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if the operands are not `equal-always?`, then a known
-;     nothing (or, for a check, `#f`).
+;     Otherwise, if the operands pass the given `==?` function
+;     (usually `equal-always?`), the first operand.
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, if `known-distinct?` is true, a known nothing.
+;     
+;     Otherwise, unknown.
+;   <=, >=:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands pass the given `==?` function
+;     (usually `equal-always?`), `#t`.
+;     
+;     Otherwise, if `known-distinct?` and `known-discrete?` are true,
+;     `#f`.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-    #:inhabitant? inhabitant?)
-  (-> #:inhabitant? (-> any/c boolean?)
+    #:inhabitant? inhabitant?
+    #:known-discrete? [known-discrete? #f]
+    #:known-distinct? [known-distinct? known-discrete?]
+    #:==? [==? (fn a b /equal-always? a b)])
+  (->*
+    (
+      #:inhabitant? (-> any/c boolean?)
+      #:known-discrete? boolean?
+      #:known-distinct? boolean?)
+    (#:==? (-> any/c any/c boolean?))
     expressly-smooshable-dynamic-type-impl?)
   (make-expressly-smooshable-dynamic-type-impl
     
@@ -2637,39 +2660,152 @@
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self b-dt a b
-      (constant-smoosh-and-comparison-of-two-reports /delay
-        (knowable-if (and (inhabitant? a) (inhabitant? b)) /fn
-          (maybe-if (equal-always? a b) /fn /delay/strict /known a))))
+      (w- ==?-kp
+        (knowable-if (not /and (inhabitant? a) (inhabitant? b)) /fn
+          (==? a b))
+      /w- ==-known-true?-kp
+        (promise-map ==?-kp /fn ==?-k
+          (knowable-bind ==?-k /fn ==? /knowable-if ==? /fn #t))
+      /w- ->mkp
+        (fn kp
+          (promise-map kp /fn k
+            (knowable-map k /fn result
+              (maybe-if result /fn /delay/strict /known a))))
+      /w- ->thunk
+        (fn result
+          (lambda (list) result))
+      /if (and known-distinct? known-discrete?)
+        (constant-smoosh-and-comparison-of-two-reports /->mkp ==?-kp)
+      /if known-distinct?
+        (w- ==?-mkp (->mkp ==?-kp)
+        /stream*
+          (smoosh-and-comparison-of-two-report-zip-map (list)
+            #:on-check-result-knowable-promise
+            (->thunk ==-known-true?-kp)
+            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (->thunk ==?-mkp))
+          (constant-smoosh-and-comparison-of-two-reports ==?-mkp))
+        (constant-smoosh-and-comparison-of-two-reports
+          (->mkp ==-known-true?-kp))))
     
     ))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both `base-readable-discrete-atom?`
-;     values, then unknown.
-;     
-;     Otherwise, if the operands are not `equal-always?`, then a known
-;     nothing (or, for a check, `#f`).
+;     If the operands are not `equal-always?`, then unknown.
 ;     
 ;     Otherwise, the first operand (or, for a check, `#t`).
 ;
-(define-imitation-simple-struct
-  (base-readable-discrete-atom-dynamic-type?
-    base-readable-discrete-atom-dynamic-type-get-any-dynamic-type)
-  base-readable-discrete-atom-dynamic-type
-  'base-readable-discrete-atom-dynamic-type (current-inspector)
+(define-imitation-simple-struct (equal-always-indistinct-dynamic-type?)
+  equal-always-indistinct-dynamic-type
+  'equal-always-indistinct-dynamic-type (current-inspector)
   (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? base-readable-discrete-atom?)))
+      #:inhabitant? (fn v #t))))
 
-(define/own-contract (non-nan-number? v)
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `flvector?` values, then unknown.
+;     
+;     If the operands are not `eq?`, then a known nothing (or, for a
+;     check, `#f`).
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (flvector-dynamic-type?)
+  flvector-dynamic-type
+  'flvector-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? flvector?
+      #:==? (fn a b /eq? a b)
+      #:known-discrete? #t)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `fxvector?` values, then unknown.
+;     
+;     If the operands are not `eq?`, then a known nothing (or, for a
+;     check, `#f`).
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (fxvector-dynamic-type?)
+  fxvector-dynamic-type
+  'fxvector-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? fxvector?
+      #:==? (fn a b /eq? a b)
+      #:known-discrete? #t)))
+
+(define/own-contract (base-syntactic-atom? v)
+  (-> any/c boolean?)
+  (or (symbol? v) (keyword? v) (null? v)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `base-syntactic-atom?` values, then
+;     unknown.
+;     
+;     If the operands are not `equal-always?`, then a known nothing
+;     (or, for a check, `#f`).
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (base-syntactic-atom-dynamic-type?)
+  base-syntactic-atom-dynamic-type
+  'base-syntactic-atom-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? base-syntactic-atom?
+      #:known-discrete? #t)))
+
+; Level 0+:
+;   path-related, join, meet, ==:
+;     If the operands are not both `boolean?` values, then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, the first
+;     operand.
+;     
+;     Otherwise, a known nothing.
+;   <=, >=:
+;     If the operands are not both `boolean?` values, then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, then `#t`.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define-imitation-simple-struct (boolean-dynamic-type?)
+  boolean-dynamic-type
+  'boolean-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? boolean?
+      #:known-distinct? #t)))
+
+(define/own-contract (nan-number? v)
   (-> any/c boolean?)
   (and
     (number? v)
-    (not /nan? /real-part v)
-    (not /nan? /imag-part v)))
+    (or
+      (nan? /real-part v)
+      (nan? /imag-part v))))
+
+(define/own-contract (non-nan-number? v)
+  (-> any/c boolean?)
+  (and (number? v) (not /nan-number? v)))
 
 ; Level 0:
 ;   path-related:
@@ -2791,7 +2927,11 @@
 
 (define/own-contract (non-nan-extflonum? v)
   (-> any/c boolean?)
-  (and (extflonum? v) (not /extfl= v v)))
+  (and (extflonum? v) (extfl= v v)))
+
+(define/own-contract (nan-extflonum? v)
+  (-> any/c boolean?)
+  (and (extflonum? v) (not /non-nan-extflonum? v)))
 
 ; Level 0:
 ;   path-related:
@@ -3809,18 +3949,30 @@
       
       #:copy (fn v /vector->immutable-vector /vector-copy v))))
 
-; This is an appropriate dynamic type of mutable vectors and their
-; chaperones, information-ordered in a way that's consistent with
-; `chaperone-of?`. This is an instance of
+(define/own-contract (base-mutable-readable? v)
+  (-> any/c boolean?)
+  (or
+    (and (string? v) (not /immutable? v))
+    (and (bytes? v) (not /immutable? v))
+    (and (box? v) (not /immutable? v))
+    (and (vector? v) (not /immutable? v))
+    mutable-prefab-struct?
+    (and (hash? v) (not /immutable? v))))
+
+; This is an appropriate dynamic type of mutable strings, mutable byte
+; strings, mutable boxes, mutable vectors, prefab structs with mutable
+; fields, mutable hash tables, and their chaperones,
+; information-ordered in a way that's consistent with `chaperone-of?`.
+; This is an instance of
 ; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
-(define-imitation-simple-struct (mutable-vector-dynamic-type?)
-  mutable-vector-dynamic-type
-  'mutable-vector-dynamic-type (current-inspector) (auto-write)
+(define-imitation-simple-struct (base-mutable-readable-dynamic-type?)
+  base-mutable-readable-dynamic-type
+  'base-mutable-readable-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-      #:inhabitant? (fn v /and (vector? v) (not /immutable? v)))))
+      #:inhabitant? base-mutable-readable?)))
 
 ; This is an appropriate dynamic type of immutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -3867,19 +4019,6 @@
       
       )))
 
-; This is an appropriate dynamic type of mutable boxes and their
-; chaperones, information-ordered in a way that's consistent with
-; `chaperone-of?`. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
-;
-(define-imitation-simple-struct (mutable-box-dynamic-type?)
-  mutable-box-dynamic-type
-  'mutable-box-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-      #:inhabitant? (fn v /and (box? v) (not /immutable? v)))))
-
 ; This is an appropriate dynamic type of immutable prefab structs and
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the elements' information orderings
@@ -3905,19 +4044,6 @@
       #:example-and-list->
       (fn example lst
         (apply make-prefab-struct (prefab-struct-key example) lst)))))
-
-; This is an appropriate dynamic type of mutable prefab structs and
-; their chaperones, information-ordered in a way that's consistent
-; with `chaperone-of?`. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
-;
-(define-imitation-simple-struct (mutable-prefab-struct-dynamic-type?)
-  mutable-prefab-struct-dynamic-type
-  'mutable-prefab-struct-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-      #:inhabitant? mutable-prefab-struct?)))
 
 ; This is an appropriate dynamic type of immutable hash tables and
 ; their chaperones, information-ordered in a way that's consistent
@@ -3956,21 +4082,15 @@
       
       #:copy (fn v /hash-v-map v /fn v v))))
 
-; This is an appropriate dynamic type of mutable hash tables and their
-; chaperones, information-ordered in a way that's consistent with
-; `chaperone-of?`. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
-;
-(define-imitation-simple-struct (mutable-hash-dynamic-type?)
-  mutable-hash-dynamic-type
-  'mutable-hash-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-      #:inhabitant? (fn v /and (hash? v) (not /immutable? v)))))
-
-(define/own-contract (dynamic-type-case-by-cases name cases)
-  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+(define/own-contract
+  (dynamic-type-case-by-cases
+    name
+    distinct-cases-smoosh-and-comparison-of-two-reports
+    cases)
+  (->
+    symbol?
+    (sequence/c smoosh-and-comparison-of-two-report?)
+    (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
     (list/c (-> any/c boolean?) (-> any/c any/c)))
   (define (inhabitant? v)
     (list-any cases /dissectfn (list check? dt)
@@ -4029,47 +4149,67 @@
         )))
   (list inhabitant? case-dynamic-type))
 
-(define base-readable-dynamic-type-case
-  (dynamic-type-case-by-cases 'base-readable-dynamic-type /list
-    (list
-      base-readable-discrete-atom?
-      (fn any-dt /base-readable-discrete-atom-dynamic-type any-dt))
-    (list non-nan-number? (fn any-dt /non-nan-number-dynamic-type))
-    (list
-      non-nan-extflonum?
-      (fn any-dt /non-nan-extflonum-dynamic-type))
-    (list pair? (fn any-dt /cons-dynamic-type any-dt))
-    (list
-      (fn v /and (vector? v) (immutable? v))
-      (fn any-dt /immutable-vector-dynamic-type any-dt))
-    (list
-      (fn v /and (vector? v) (not /immutable? v))
-      (fn any-dt /mutable-vector-dynamic-type))
-    (list
-      (fn v /and (box? v) (immutable? v))
-      (fn any-dt /immutable-box-dynamic-type any-dt))
-    (list
-      (fn v /and (box? v) (not /immutable? v))
-      (fn any-dt /mutable-box-dynamic-type))
-    (list
-      immutable-prefab-struct?
-      (fn any-dt /immutable-prefab-struct-dynamic-type any-dt))
-    (list
-      mutable-prefab-struct?
-      (fn any-dt /mutable-prefab-struct-dynamic-type))
-    (list
-      (fn v /and (hash? v) (immutable? v))
-      (fn any-dt /immutable-hash-dynamic-type any-dt))
-    (list
-      (fn v /and (hash? v) (not /immutable? v))
-      (fn any-dt /mutable-hash-dynamic-type))))
+(define/own-contract
+  (dynamic-type-case-by-indistinct-cases name cases)
+  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+    (list/c (-> any/c boolean?) (-> any/c any/c)))
+  (dynamic-type-case-by-cases
+    name (uninformative-smoosh-and-comparison-of-two-reports) cases))
 
-(define-imitation-simple-struct (nothing-dynamic-type?)
-  nothing-dynamic-type
-  'nothing-dynamic-type (current-inspector) (auto-write)
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? nothing?)))
+(define/own-contract (dynamic-type-case-by-discrete-cases name cases)
+  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+    (list/c (-> any/c boolean?) (-> any/c any/c)))
+  (dynamic-type-case-by-cases
+    name (false-smoosh-and-comparison-of-two-reports) cases))
+
+(define base-literal-dynamic-type-case
+  (dynamic-type-case-by-indistinct-cases 'base-literal-dynamic-type
+    (list
+      (list
+        (fn v
+          (or
+            (nan-number? v)
+            (nan-extflonum? v)
+            (regexp? v)
+            (compiled-expression? v)))
+        (fn any-dt /uninformative-dynamic-type))
+      (list boolean? (fn any-dt /boolean-dynamic-type))
+      (list
+        (fn v
+          (or
+            (char? v)
+            (and (string? v) (immutable? v))
+            (and (bytes? v) (immutable? v))))
+        (fn any-dt /equal-always-indistinct-dynamic-type))
+      (list non-nan-number? (fn any-dt /non-nan-number-dynamic-type))
+      (list
+        non-nan-extflonum?
+        (fn any-dt /non-nan-extflonum-dynamic-type))
+      (list
+        (fn v /and (vector? v) (immutable? v))
+        (fn any-dt /immutable-vector-dynamic-type any-dt))
+      (list
+        (fn v /and (box? v) (immutable? v))
+        (fn any-dt /immutable-box-dynamic-type any-dt))
+      (list
+        immutable-prefab-struct?
+        (fn any-dt /immutable-prefab-struct-dynamic-type any-dt))
+      (list
+        (fn v /and (hash? v) (immutable? v))
+        (fn any-dt /immutable-hash-dynamic-type any-dt)))))
+
+(define base-readable-dynamic-type-case
+  (dynamic-type-case-by-discrete-cases 'base-readable-dynamic-type /list
+    (list
+      base-mutable-readable?
+      (fn any-dt /base-mutable-readable-dynamic-type))
+    (list flvector? (fn any-dt /flvector-dynamic-type))
+    (list fxvector? (fn any-dt /fxvector-dynamic-type))
+    (list
+      base-syntactic-atom?
+      (fn any-dt /base-syntactic-atom-dynamic-type))
+    (list pair? (fn any-dt /cons-dynamic-type any-dt))
+    base-literal-dynamic-type-case))
 
 (define/own-contract
   (on-just-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -4550,39 +4690,20 @@
       (fn a b
         (gloss-equal-always?-knowable a b /fn a b /known #t)))))
 
-(define-imitation-simple-struct
-  (dynamic-type-for-dynamic-type-var-for-any-dynamic-type?)
-  dynamic-type-for-dynamic-type-var-for-any-dynamic-type
-  'dynamic-type-for-dynamic-type-var-for-any-dynamic-type
-  (current-inspector)
-  (auto-write)
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? dynamic-type-var-for-any-dynamic-type?)))
-
-(define-imitation-simple-struct
-  (equal-always-gloss-key-wrapper-dynamic-type?)
-  equal-always-gloss-key-wrapper-dynamic-type
-  'equal-always-gloss-key-wrapper-dynamic-type
-  (current-inspector)
-  (auto-write)
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? equal-always-gloss-key-wrapper?)))
-
 (match-define
   (list
     known-to-lathe-comforts-data?
     known-to-lathe-comforts-data-dynamic-type)
-  (dynamic-type-case-by-cases
+  (dynamic-type-case-by-indistinct-cases
     'known-to-lathe-comforts-data-dynamic-type
     (list
       base-readable-dynamic-type-case
-      (list nothing? (fn any-dt /nothing-dynamic-type))
-      (list just? (fn any-dt /just-dynamic-type any-dt))
-      (list
-        knowable?
-        (fn any-dt /knowable-dynamic-type any-dt))
+      (dynamic-type-case-by-discrete-cases 'maybe-dynamic-type /list
+        (list
+          nothing?
+          (fn any-dt /equal-always-indistinct-dynamic-type))
+        (list just? (fn any-dt /just-dynamic-type any-dt)))
+      (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
       (list
         path-related-wrapper?
         (fn any-dt /path-related-wrapper-dynamic-type any-dt))
@@ -4590,11 +4711,12 @@
         info-wrapper?
         (fn any-dt /info-wrapper-dynamic-type any-dt))
       (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
-      (list dynamic-type-var-for-any-dynamic-type?
-        (fn any-dt
-          (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
-      (list equal-always-gloss-key-wrapper?
-        (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type)))))
+      (list
+        dynamic-type-var-for-any-dynamic-type?
+        (fn any-dt /equal-always-indistinct-dynamic-type))
+      (list
+        equal-always-gloss-key-wrapper?
+        (fn any-dt /equal-always-indistinct-dynamic-type)))))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
@@ -4641,147 +4763,167 @@
 ;
 ;   - Various types that can result from the default Racket reader, as
 ;     well as their corresponding mutable types where these exist.
-;     We're referring to these as `base-readable?` values.
+;     We're referring to these as `base-readable?` values. The
+;     following are distinct from each other, a choice which aims to
+;     clarify which parts of an s-expression's data should be
+;     inspectable by a typical parser and which parts should be
+;     considered subject to more unsensational changes (such as
+;     replacing strings with normalized strings):
 ;
-;      - (Done) Booleans. (TODO SMOOSH: Let's leave the equality or
-;        ordering of different booleans unknown rather than defining
-;        this as a discretely ordered type. There is some precedent in
-;        abstract algebra for considering booleans to be ordered such
-;        that `#f` < `#t`, but it's unclear if programmers would
-;        usually intend this. It might be more common in programming to
-;        use booleans as a convenient stand-in for a two-valued enum
-;        type which has no defined ordering.)
+;     - (Done) Mutable strings, mutable byte strings, mutable boxes,
+;       mutable vectors, prefab structs with mutable fields, and
+;       mutable hash tables, all equatable and distinguishable in a
+;       way consistent with `equal-always?` and information-ordered in
+;       a way consistent with `chaperone-of?`. (TODO SMOOSH: Is there
+;       a way we can define these to be non-overlapping even with
+;       user-defined types?)
 ;
-;      - (Done) Numbers with no NaN parts, ordered in a way consistent
-;        with `<=` and `=`, and treating checks as having unknown
-;        results when they involve nontrivial complex numbers and not
-;        all the arguments are `=`.
+;     - (Done) Flvectors and fxvectors, all equatable and
+;       distinguishable in a way consistent with `eq?`. (TODO: As of
+;       Racket 8.12 [cs], the implementation of `equal-always?` for
+;       flvectors and fxvectors is incorrect. Once we're on 8.13 or
+;       so, simplify the design by grouping these with the other
+;       mutable data structures.)
 ;
-;      - (Done) Non-NaN extflonums, ordered in a way consistent with
-;        `extfl<=` and `extfl=`.
+;     - (Done) Symbols and keywords, which are all known to be
+;       distinct from each other. They're not known to be ordered, not
+;       even by `symbol<?` or `keyword<?`; symbols and keywords are
+;       usually used as though they're entirely separate formal
+;       concepts given meaning by potentially separate programmers who
+;       haven't coordinated to know whether their respective
+;       vocabularies have concepts in common with different spellings.
+;       However, symbols and keywords are used specifically for
+;       syntax, so their spellings are a primary aspect of their
+;       meaning, and the comparison of those spellings is well-defined
+;       (a comparison of Unicode scalar sequences).
 ;
-;      - (Done) Characters. (TODO SMOOSH: Let's leave the equality or
-;        ordering of different characters unknown rather than defining
-;        this as a discretely ordered type. There are many possible
-;        ways to normalize and collate Unicode strings, and the only
-;        thing that's necessarily obvious across all of those is that
-;        identical Unicode scalar sequences are equal.)
+;     - (Done) Empty lists.
 ;
-;      - (Done) Symbols. (TODO SMOOSH: Let's leave the ordering of
-;        symbols undefined rather than defining this as a discretely
-;        ordered type. Symbols are usually used as though they're
-;        entirely separate formal concepts given meaning by
-;        potentially separate programmers who haven't coordinated to
-;        know whether their respective vocabularies have concepts in
-;        common with different spellings. While we could consider
-;        symbols to be ordered by `symbol<?`, that won't always be the
-;        intention.)
+;     - (Done) Cons cells, ordered according to the elements'
+;       orderings and in a way that's consistent with a
+;       `chaperone-of?` information ordering if the elements'
+;       orderings are.
 ;
-;      - (Done) Keywords. (TODO SMOOSH: Let's leave the ordering of
-;        different keywords undefined rather than defining this as a
-;        discretely ordered type. Keywords are usually used as though
-;        they're entirely separate formal concepts given meaning by
-;        potentially separate programmers who haven't coordinated to
-;        know whether their respective vocabularies have concepts in
-;        common with different spellings. While we could consider
-;        keywords to be ordered by `keyword<?`, that won't always be
-;        the intention.)
+;     - Other literal datums. The following cases are not necessarily
+;       nonoverlapping, and smooshing one with another will have
+;       unknown results:
 ;
-;      - (Done) For regular expressions, we're choosing not to define
-;        smooshing. Comparing them by their exact source code isn't
-;        necessarily consistent with the intent of the programmer who
-;        wrote that code, and comparing them by their behavior isn't
-;        necessarily feasible.
+;       - (Done) Booleans, which are known to be distinct from each
+;         other. They're not known to be ordered, not even by the
+;         convention from abstract algebra that `#f` < `#t`; booleans
+;         are often used in programming as a convenient stand-in for a
+;         two-valued enum type which has no defined ordering.
 ;
-;      - (Done) For compiled code expressions
-;        (`compiled-expression?`), we're choosing not to define
-;        smooshing. Comparing them by their exact source code isn't
-;        necessarily consistent with the intent of the programmer who
-;        wrote that code, and comparing them by their behavior isn't
-;        necessarily feasible.
+;       - (Done) Numbers with NaN parts, not even known to be equal to
+;         themselves.
 ;
-;      - (Done) Mutable and immutable strings, treating immutable
-;        strings as being equal when their exact encoding as sequences
-;        of Unicode scalars is identical. (TODO SMOOSH: Let's leave
-;        the equality or ordering of non-identical immutable strings
-;        unknown rather than defining this as a discretely ordered
-;        type. There are many possible ways to normalize and collate
-;        Unicode strings, and the only thing that's necessarily
-;        obvious across all of those is that identical Unicode scalar
-;        sequences are equal.)
+;       - (Done) Numbers with no NaN parts, with the ones whose
+;         imaginary parts are `=` zero being ordered in a way that's
+;         consistent with `<=` and `=` on their real parts.
 ;
-;      - (Done) Mutable and immutable byte strings. (TODO SMOOSH:
-;        Let's leave the equality or ordering of non-identical
-;        immutable byte strings unknown rather than defining this as a
-;        discretely ordered type. There are many possible formats
-;        binary could be intended to encode, and while it would be
-;        nice to assume byte strings are meant to represent exact
-;        sequences of bytes, the way they have a reader syntax makes
-;        it likely that they're meant to represent UTF-8 text or a
-;        format consisting largely of UTF-8 text. This means they
-;        inherit all the possible gotchas of UTF-8 text comparison.)
+;       - (Done) NaN extflonums, not even known to be equal to
+;         themselves.
 ;
-;      - Flvectors. (NOTE: As of Racket 8.12 [cs], the implementation
-;        of `equal-always?` for this type seems to be incorrect, so
-;        we're not supporting this yet.)
+;       - (Done) Non-NaN extflonums, ordered in a way consistent with
+;         `extfl<=` and `extfl=`.
 ;
-;      - Fxvectors. (NOTE: As of Racket 8.12 [cs], the implementation
-;        of `equal-always?` for this type seems to be incorrect, so
-;        we're not supporting this yet.)
+;       - (Done) Characters, immutable strings, and immutable byte
+;         strings, which are known to be equal to themselves when
+;         they're `equal-always?` but not necessarily known to be
+;         distinct from each other. There are many possible ways to
+;         normalize and collate Unicode strings, and the only thing
+;         that's necessarily obvious across all of those is that
+;         identical Unicode scalar sequences are equal. Byte strings
+;         may seem easier to justify distinguishing from each other
+;         according to a byte-by-byte comparison, but the reader gives
+;         them a text representation that a programmer may refactor
+;         into similar Unicode text without realizing they've made a
+;         change.
 ;
-;      - (Done) Empty lists.
+;       - (Done) Regular expressions (`regexp?`) and compiled code
+;         expressions (`compiled-expression?`), not even known to be
+;         equal to themselves. Comparing them by their exact source
+;         code isn't necessarily consistent with the intent of the
+;         programmer who wrote that code, and comparing them by their
+;         behavior isn't necessarily feasible.
 ;
-;      - (Done) Cons cells. (TODO SMOOSH: Let's keep defining cons
-;        cells, empty lists, symbols, and keywords as being known to
-;        be distinct from each other. Let's make them known to be
-;        distinct from any other readable data as well, notably
-;        including numbers with NaN components, NaN extflonums,
-;        regular expressions, compiled code expressions, flvectors,
-;        and fxvectors, which are interactions we're currently not
-;        defining. Then let's undefine interactions between any other
-;        two types (including two of those other readable data types
-;        with each other, and drawing fine-grained distinctions where
-;        types like hash tables are broken up so mutable `eq?` hash
-;        tables don't have known comparisons with immutable `eqv?`
-;        hash tables, etc.). This design will help clarify which parts
-;        of an s-expression's data should be inspectable by a typical
-;        parser and which parts should be considered subject to more
-;        invisible change (replacing strings with normalized strings,
-;        etc.).)
+;       - (Done) Immutable boxes, ordered according to the elements'
+;         orderings and in a way that's consistent with a
+;         `chaperone-of?` information ordering if the elements'
+;         orderings are.
 ;
-;      - (Done) Mutable and immutable boxes.
+;       - (Done) Immutable vectors, ordered according to the elements'
+;         orderings and in a way that's consistent with a
+;         `chaperone-of?` information ordering if the elements'
+;         orderings are. Vectors of different lengths are known to be
+;         distinct from each other (TODO SMOOSH: but maybe they
+;         shouldn't be) and unrelated by order (TODO SMOOSH: but maybe
+;         they shouldn't be).
 ;
-;      - (Done) Mutable and immutable vectors.
+;       - (Done) Prefab structs with no mutable fields, ordered
+;         according to the elements' orderings and in a way that's
+;         consistent with a `chaperone-of?` information ordering if
+;         the elements' orderings are. Prefab structs with different
+;         keys and/or different numbers of fields are known to be
+;         distinct from each other (TODO SMOOSH: but maybe they
+;         shouldn't be) and unrelated by order (TODO SMOOSH: but maybe
+;         they shouldn't be).
 ;
-;      - (Done) Prefab structs, at least of the kinds supported by
-;        Racket so far.
+;       - (Done) Immutable hash tables with various comparison
+;         functions, ordered according to the keys' and values'
+;         orderings and in a way that's consistent with a 
+;         `chaperone-of?` information ordering if the elements'
+;         orderings are. Hash tables which use different comparison
+;         functions or which have different sets of keys according to
+;         their comparison functions are known to be distinct from
+;         each other (TODO SMOOSH: but maybe they shouldn't be) and
+;         unrelated by order (TODO SMOOSH: but maybe they shouldn't
+;         be).
 ;
-;      - (Done) Hash tables of various kinds.
-;
-;      - Potentially others in future versions of Racket. The above
-;        list is up-to-date as of Racket 8.12.
+;     - Potentially others in future versions of Racket. The above
+;       list is up-to-date as of Racket 8.12.
 ;
 ;   - Types defined by Lathe Comforts that this smooshing framework
 ;     uses.
 ;
-;     - (Done) `maybe?`
+;     - (Done) `maybe?` values, ordered according to the elements'
+;       orderings and in a way that's consistent with a
+;       `chaperone-of?` information ordering if the elements'
+;       orderings are. A `just?` value and a `nothing?` value are
+;       known to be distinct from each other (TODO SMOOSH: but maybe
+;       they shouldn't be) and unrelated by order (TODO SMOOSH: but
+;       maybe they shouldn't be).
 ;
 ;   - Types defined here in smoosh.rkt.
 ;
 ;     - (Done) `known?` values, `example-unknown?` values, and their
-;       interactions with other `unknown?` values.
+;       interactions with other `unknown?` values. The `known?` values
+;       are ordered according to the elements' orderings and in a way
+;       that's consistent with a `chaperone-of?` information ordering
+;       if the elements' orderings are. In their level-0 ordering, any
+;       smoosh involving an `unknown?` value is unknown. In their
+;       information ordering, any `known?` value is considered greater
+;       than any `unknown?` value, and any `example-unknown?` value is
+;       considered equal to any `unknown?` value.
 ;
-;     - (Done) `path-related-wrapper?` (though it relies on a pretty
-;       terrible hash code until we can get TODO SMOOSH HASH CODE
-;       implemented).
+;     - (Done) `path-related-wrapper?` values, ordered according to
+;       whether elements are path-related according to the "any"
+;       type's smoosh ordering. (This relies on a pretty terrible hash
+;       code until we can get TODO SMOOSH HASH CODE implemented.)
 ;
-;     - (Done) `info-wrapper?` (though it relies on a pretty
-;       terrible hash code until we can get TODO SMOOSH HASH CODE
-;       implemented).
+;     - (Done) `info-wrapper?` values, ordered according to whether
+;       elements are related according to the "any" type's information
+;       ordering. (This relies on a pretty terrible hash code until we
+;       can get TODO SMOOSH HASH CODE implemented.)
 ;
-;     - (Done) `gloss?` (though part of it relies on a pretty
+;     - (Done) `gloss?` values, ordered according to the keys' and
+;       values' smoosh orderings. `gloss?` values which have
+;       known-different sets of keys according to smoosh-ordering are
+;       known to be distinct from each other (TODO SMOOSH: but maybe
+;       they shouldn't be) and unrelated by order (TODO SMOOSH: but
+;       maybe they shouldn't be). (This partly relies on a pretty
 ;       terrible hash code until we can get TODO SMOOSH HASH CODE
-;       implemented).
+;       implemented.)
 ;
 ;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
@@ -4799,7 +4941,15 @@
 ;
 ;       - `dead-end-dynamic-type?`
 ;
-;       - `base-readable-discrete-atom-dynamic-type?`
+;       - `equal-always-indistinct-dynamic-type?`
+;
+;       - `flvector-dynamic-type?`
+;
+;       - `fxvector-dynamic-type?`
+;
+;       - `base-syntactic-atom-dynamic-type?`
+;
+;       - `boolean-dynamic-type?`
 ;
 ;       - `non-nan-number-dynamic-type?`
 ;
@@ -4809,24 +4959,19 @@
 ;
 ;       - `immutable-vector-dynamic-type?`
 ;
-;       - `mutable-vector-dynamic-type?`
+;       - `base-mutable-readable-dynamic-type?`
 ;
 ;       - `immutable-box-dynamic-type?`
 ;
-;       - `mutable-box-dynamic-type?`
-;
 ;       - `immutable-prefab-struct-dynamic-type?`
-;
-;       - `mutable-prefab-struct-dynamic-type?`
 ;
 ;       - `immutable-hash-dynamic-type?`
 ;
-;       - `mutable-hash-dynamic-type?`
+;       - `base-literal-dynamic-type?` (the type belonging to
+;         `base-literal-dynamic-type-case`)
 ;
 ;       - `base-readable-dynamic-type?` (the type belonging to
 ;         `base-readable-dynamic-type-case`)
-;
-;       - `nothing-dynamic-type?`
 ;
 ;       - `just-dynamic-type?`
 ;
@@ -4838,9 +4983,9 @@
 ;
 ;       - `gloss-dynamic-type?`
 ;
-;       - `dynamic-type-for-dynamic-type-var-for-any-dynamic-type?`
-;
-;       - `equal-always-gloss-key-wrapper-dynamic-type?`
+;       - `maybe-dynamic-type?` (a type used in an intermediate way in
+;         the definition of
+;         `known-to-lathe-comforts-data-dynamic-type`)
 ;
 ;       - `known-to-lathe-comforts-data-dynamic-type?` (the type
 ;         constructed by `known-to-lathe-comforts-data-dynamic-type`)

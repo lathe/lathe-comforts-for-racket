@@ -40,6 +40,8 @@
   blame-add-context coerce-chaperone-contract coerce-contract coerce-flat-contract contract-first-order-passes? make-chaperone-contract make-contract make-flat-contract raise-blame-error)
 (only-in racket/contract/region invariant-assertion)
 (only-in racket/extflonum extflonum? extfl<= extfl= extfl>=)
+(only-in racket/fixnum fxvector?)
+(only-in racket/flonum flvector?)
 (only-in racket/hash hash-union)
 (only-in racket/hash-code
   hash-code-combine hash-code-combine* hash-code-combine-unordered*)
