@@ -2976,17 +2976,9 @@
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand, then the first such operand.
 ;     
-;     Otherwise, build a new inhabitant (created by the given
+;     Otherwise, a new inhabitant (created by the given
 ;     `example-and-list->` function using the first operand as the
-;     example) whose elements are those recursive results. If
-;     comparing that new inhabitant with an operand without regard for
-;     their elements using
-;     `inhabitant-shallowly-equal-always?-knowable` (usually
-;     `equal-always?/recur`) returns an unknown result or shows they
-;     differ, or if the new inhabitant is not an acceptable result,
-;     then unknown.
-;     
-;     Otherwise, that new inhabitant.
+;     example) whose elements are those recursive results.
 ;   <=, >=:
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
@@ -3060,24 +3052,9 @@
         #:on-result-knowable-promise-maybe-knowable-promise
         (fn kpmkp-list
           (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-            (promise-map
-              (knowable-promise-zip-map kp-list /fn result-list
-                result-list)
-              (fn list-k
-                (knowable-bind list-k /fn result-list
-                  (if (list-elements-eq? result-list a-list) (known a)
-                  /w- noncanonical-result
-                    (example-and-list-> a result-list)
-                  /if
-                    ; If reconstructing an inhabitant from the smoosh
-                    ; results results in an inhabitant with a
-                    ; different structure even when not comparing
-                    ; elements, we have no `known?` result.
-                    (knowable->falsable
-                      (inhabitant-shallowly-equal-always?-knowable
-                        a noncanonical-result))
-                    (known noncanonical-result)
-                  /unknown))))))))
+            (knowable-promise-zip-map kp-list /fn result-list
+              (if (list-elements-eq? result-list a-list) a
+              /example-and-list-> a result-list))))))
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self b-dt a b
@@ -3112,25 +3089,10 @@
         #:on-smoosh-result-knowable-promise-maybe-knowable-promise
         (fn kpmkp-list
           (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-            (promise-map
-              (knowable-promise-zip-map kp-list /fn result-list
-                result-list)
-              (fn list-k
-                (knowable-bind list-k /fn result-list
-                  (if (list-elements-eq? result-list a-list) (known a)
-                  /if (list-elements-eq? result-list b-list) (known b)
-                  /w- noncanonical-result
-                    (example-and-list-> a result-list)
-                  /if
-                    ; If reconstructing an inhabitant from the smoosh
-                    ; results results in an inhabitant with a
-                    ; different structure even when not comparing
-                    ; elements, we have no `known?` result.
-                    (knowable->falsable
-                      (inhabitant-shallowly-equal-always?-knowable
-                        a noncanonical-result))
-                    (known noncanonical-result)
-                  /unknown))))))))
+            (knowable-promise-zip-map kp-list /fn result-list
+              (if (list-elements-eq? result-list a-list) a
+              /if (list-elements-eq? result-list b-list) b
+              /example-and-list-> a result-list))))))
     
     ))
 
@@ -3207,13 +3169,8 @@
 ;     
 ;     Otherwise, build a new inhabitant (created by the given
 ;     `example-and-list->` function using the first operand as the
-;     example) whose elements are those recursive results. If
-;     comparing that new inhabitant with an operand without regard for
-;     their elements or their impersonator or chaperone wrappers using
-;     the given `inhabitant-shallowly-equal-always?-knowable` (usually
-;     `equal-always?/recur`) returns an unknown result or shows they
-;     differ, or if the new inhabitant is not an acceptable result,
-;     then unknown.
+;     example) whose elements are those recursive results. If the new
+;     inhabitant is not an acceptable result, then unknown.
 ;     
 ;     Otherwise, that new inhabitant.
 ;     
@@ -3240,7 +3197,7 @@
 ;         result is found among the operands, the result will be
 ;         unknown.)
 ;       If we're doing ==:
-;         Every result is acceptable if it and the operands are all
+;         Every operand is acceptable if the operands are all
 ;         shallowly chaperone-of each other.
 ;         
 ;         (We'll allow for the possibility that Racket will introduce
@@ -3281,14 +3238,14 @@
 ;     some reliable way. As such, we'll treat some results as unknown
 ;     even though a more Racket-version-pinned design might treat them
 ;     as known nothings.)
-;   Where for inhabitants X and Y with equal non-element,
-;   non-chaperone-or-impersonator-wrapper details, "X is shallowly
-;   chaperone-of Y" means:
+;   Where for values X and inhabitants Y, "X is shallowly chaperone-of
+;   Y" means:
 ;     If Y is shallowly unchaperoned:
 ;       It's true.
 ;     Otherwise:
 ;       It's true iff `(chaperone-of? X Y)` (which in this case will
-;       be guaranteed not to perform recursive comparisons).
+;       be guaranteed not to traverse any deeper than unwrapping
+;       chaperone wrappers).
 ;   Where for an inhabitant Y, "Y is shallowly unchaperoned" means:
 ;     It's true iff `(chaperone-of? (copy Y) Y)` using the given
 ;     `copy` function.
@@ -3381,23 +3338,14 @@
                       /w- noncanonical-result
                         (example-and-list-> a result-list)
                       /if
-                        (and
-                          ; If reconstructing an inhabitant from the
-                          ; smoosh results results in an inhabitant
-                          ; with a different structure even when not
-                          ; comparing chaperone wrappers or elements,
-                          ; we have no `known?` result.
-                          (knowable->falsable
-                            (inhabitant-shallowly-equal-always?-knowable
-                              a noncanonical-result))
-                          ; If we're doing a particularly strict check
-                          ; and the operand `a` is wrapped with
-                          ; impersonators or interposing chaperones,
-                          ; we have no `known?` result.
-                          (or
-                            (not result-needs-to-be-chaperone-of?)
-                            (force
-                              a-shallowly-unchaperoned?-promise)))
+                        ; If we're doing a particularly strict check
+                        ; and the operand `a` is wrapped with
+                        ; impersonators or interposing chaperones, we
+                        ; have no `known?` result.
+                        (or
+                          (not result-needs-to-be-chaperone-of?)
+                          (force
+                            a-shallowly-unchaperoned?-promise))
                         (known noncanonical-result)
                       /unknown))))))))
       /stream*
@@ -3475,15 +3423,11 @@
           (or
             (force a-shallowly-unchaperoned?-promise)
             (chaperone-of? b a)))
-      ; Given two inhabitants whose non-element,
-      ; non-chaperone-or-impersonator-wrapper details are known to be
-      ; equal (usually `equal-always?/recur` unless
-      ; `inhabitant-shallowly-equal-always?-knowable` is given) and
-      ; whose whose elements are known to pass the kind of smoosh
-      ; we're doing, this checks whether they would pass
-      ; `chaperone-of?` if every recursive element comparison
-      ; immediately returned `#t`. Like `chaperone-of?`, this takes
-      ; constant time if the inhabitants are `eq?` themselves.
+      ; Given an arbitrary value and an inhabitant, this checks
+      ; whether they would pass `chaperone-of?` if we compared only
+      ; their chaperone wrappers and not any other part of their
+      ; immediate data or their elements. Like `chaperone-of?`, this
+      ; takes constant time if the inhabitants are `eq?` themselves.
       /w- inhabitant-shallowly-chaperone-of?
         (fn s t
           (or (eq? s t)
@@ -3532,17 +3476,7 @@
                         (known b)
                       /w- noncanonical-result
                         (example-and-list-> a result-list)
-                      /if
-                        (and
-                          ; If reconstructing an inhabitant from the
-                          ; smoosh results results in an inhabitant
-                          ; with a different structure even when not
-                          ; comparing chaperone wrappers or elements,
-                          ; we have no `known?` result.
-                          (knowable->falsable
-                            (inhabitant-shallowly-equal-always?-knowable
-                              a noncanonical-result))
-                          (acceptable-result? noncanonical-result))
+                      /if (acceptable-result? noncanonical-result)
                         (known noncanonical-result)
                       /unknown))))))))
       /w- equivalent?-promise
