@@ -3105,16 +3105,16 @@
 ; way without redundant (quadratic-time) work checking all the
 ; elements, this uses a multi-step process: First it checks
 ; `(chaperone-of? (copy b) b)` to see if `b` has only non-interposing
-; chaperone wrappers. (This step doesn't need to traverse the elements
-; because they'll be `eq?`.) If `b` does have only non-interposing
-; chaperone wrappers, then we know the chaperone and impersonator
-; wrappers on `a` are at least as extant, making `a` shallowly
-; chaperone-of `b`. Otherwise, we know that `b` has some impersonator
-; wrapper or interposing chaperone wrapper, in which case we know we
-; can run `(chaperone-of? a b)` without it having to traverse all the
-; way into the elements; once it hits that wrapper on `b`, it'll check
-; `a`'s unwrappings for a wrapper that's `eq?` and stop if it's not
-; there.
+; chaperone wrappers. (This step doesn't need to traverse into the
+; elements because they'll be `eq?`.) If `b` does have only
+; non-interposing chaperone wrappers, then we know the chaperone and
+; impersonator wrappers on `a` are at least as extant, making `a`
+; shallowly chaperone-of `b`. Otherwise, we know that `b` has some
+; impersonator wrapper or interposing chaperone wrapper, in which case
+; we know we can run `(chaperone-of? a b)` without it having to
+; traverse all the way into the elements; once it hits that wrapper on
+; `b`, it'll check `a`'s unwrappings for a wrapper that's `eq?` and
+; stop if it's not there.
 ;
 ; The given `->->list` function should take an inhabitant (a value
 ; which passes the given `inhabitant?` predicate) and return a
@@ -3231,9 +3231,9 @@
 ;     
 ;     (We'll allow for the possibility that values which differ only
 ;     in the failure of a chaperone-of check could actually pass the
-;     chaperone-of check in the future when they're written to more
-;     diligently reusing chaperone-wrapped values. This kind of
-;     rewrite may be more feasible if and when Racket introduces
+;     chaperone-of check in the future when they're written to reuse
+;     chaperone-wrapped values more diligently. This kind of rewrite
+;     may be more feasible if and when Racket introduces
 ;     chaperone-wrapping operations that create equivalent wrappers in
 ;     some reliable way. As such, we'll treat some results as unknown
 ;     even though a more Racket-version-pinned design might treat them
@@ -3592,9 +3592,9 @@
 ;     
 ;     (We'll allow for the possibility that values which differ only
 ;     in the failure of a chaperone-of check could actually pass the
-;     chaperone-of check in the future when they're written to more
-;     diligently reusing chaperone-wrapped values. This kind of
-;     rewrite may be more feasible if and when Racket introduces
+;     chaperone-of check in the future when they're written to reuse
+;     chaperone-wrapped values more diligently. This kind of rewrite
+;     may be more feasible if and when Racket introduces
 ;     chaperone-wrapping operations that create equivalent wrappers in
 ;     some reliable way. As such, we'll treat some results as unknown
 ;     even though a more Racket-version-pinned design might treat them
