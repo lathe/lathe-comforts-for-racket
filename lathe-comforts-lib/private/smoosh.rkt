@@ -4731,7 +4731,23 @@
 ;
 ;      - (Done) Empty lists.
 ;
-;      - (Done) Cons cells.
+;      - (Done) Cons cells. (TODO SMOOSH: Let's keep defining cons
+;        cells, empty lists, symbols, and keywords as being known to
+;        be distinct from each other. Let's make them known to be
+;        distinct from any other readable data as well, notably
+;        including numbers with NaN components, NaN extflonums,
+;        regular expressions, compiled code expressions, flvectors,
+;        and fxvectors, which are interactions we're currently not
+;        defining. Then let's undefine interactions between any other
+;        two types (including two of those other readable data types
+;        with each other, and drawing fine-grained distinctions where
+;        types like hash tables are broken up so mutable `eq?` hash
+;        tables don't have known comparisons with immutable `eqv?`
+;        hash tables, etc.). This design will help clarify which parts
+;        of an s-expression's data should be inspectable by a typical
+;        parser and which parts should be considered subject to more
+;        invisible change (replacing strings with normalized strings,
+;        etc.).)
 ;
 ;      - (Done) Mutable and immutable boxes.
 ;
@@ -4844,3 +4860,29 @@
 ; knowing how to identify themselves by a dynamic type tag that can be
 ; distinguished from other tags. We may have some contradictory
 ; thoughts to iron out here.
+;
+; It turns out this is rather similar to another task we're aiming to
+; do, TODO SMOOSH HASH CODE, which will basically require specifying
+; hash code results associated with `==` and `path-related` smooshes
+; at all information-ordering levels of a smoosh report sequence, all
+; just so that `gloss?` values can have useful
+; `equal-always-hash-code` results.
+;
+; Since we're planning to let a lot of values have unknown equality
+; with each other, the way we expect to treat these hash codes is that
+; they'll only try to distinguish values from other values their
+; author knows them to be distinct from. If the user extends this
+; knowledge with the additional knowledge that certain values from
+; different authors are actually equal after all, then the user will
+; have to *opt out* of those authors' supplied hash code behaviors.
+;
+; Another idea, possibly usable in combination with that one, is that
+; instead of having data structures do a first lookup by a value's
+; hash code or its `custom-gloss-key-dynamic-type-variant-knowable`
+; result value, they first check *what system(s) of hash codes or
+; variants* the value declares its hash code or variant with respect
+; to. This is basically a second variant tag, but this tag must be
+; more or less consistent across all the keys in a `gloss?`. Users may
+; extend the system with knowledge that certain hash code or variant
+; systems have known interactions with each other, or by extending a
+; value to declare hash codes or variants for additional systems.
