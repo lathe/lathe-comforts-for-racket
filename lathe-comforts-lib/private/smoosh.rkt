@@ -28,7 +28,7 @@
   hash-kv-map-maybe hash-ref-maybe hash-set-maybe hash-v-map
   make-similar-hash)
 (require /only-in lathe-comforts/list
-  list-any list-foldl list-length=nat? list-map list-zip-map)
+  list-all list-any list-foldl list-length=nat? list-map list-zip-map)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
   define-imitation-simple-struct immutable-prefab-struct?
@@ -54,6 +54,7 @@
   knowable/c
   knowable-bind
   knowable-map
+  knowable-if
   knowable->falsable
   falsable->uninformative-knowable
   knowable-predicate-impl?
@@ -92,6 +93,8 @@
   prop:custom-gloss-key-dynamic-type
   make-custom-gloss-key-dynamic-type-impl
   get-dynamic-type-with-default-bindings
+  knowable-zip
+  maybe-min-zip
   knowable-promise-zip-map
   boolean-and-knowable-promise-zip-map
   boolean-and-knowable-thunk-zip
@@ -102,10 +105,10 @@
   gloss?
   gloss-union-of-zero
   gloss-km-union-of-two
+  gloss-iteration-sequence
   gloss-ref-maybe-knowable
   gloss-set-maybe-knowable
   gloss-count
-  gloss-iteration-sequence
   make-gloss-glossesque-sys
   uninformative-dynamic-type
   dynamic-type-var-for-any-dynamic-type?)
@@ -161,6 +164,15 @@
   equalw-gloss-key-wrapper
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
+  make-expressly-smooshable-dynamic-type-impl-for-atom
+  non-nan-number?
+  non-nan-extflonum?
+  make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+  make-expressly-smooshable-dynamic-type-impl-for-mutable
+  gloss-ref
+  gloss-set
+  make-gloss
+  gloss-keys
   any-dynamic-type?)
 (provide
   any-dynamic-type)
@@ -216,6 +228,12 @@
   (knowable-bind kble /fn value
   /known /func value))
 
+(define/own-contract (knowable-if condition then)
+  (-> boolean? (-> any/c) knowable?)
+  (if condition
+    (known /then)
+    (unknown)))
+
 (define/own-contract (knowable->falsable kble)
   (-> knowable? any/c)
   (mat kble (known value)
@@ -224,9 +242,7 @@
 
 (define/own-contract (falsable->uninformative-knowable fble)
   (-> any/c knowable?)
-  (if fble
-    (known fble)
-    (unknown)))
+  (knowable-if fble /fn fble))
 
 
 (define-imitation-simple-generics
@@ -429,8 +445,6 @@
   (-> any/c any/c)
   (path-related-wrapper-unguarded v))
 
-; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type`.
 (define-imitation-simple-struct
   (info-wrapper? info-wrapper-value)
   info-wrapper-unguarded
@@ -534,20 +548,17 @@
   (-> any/c any/c)
   ; TODO SMOOSH: These uses of `known-to-lathe-comforts-data?`,
   ; `known-to-lathe-comforts-data-dynamic-type`, `any-dynamic-type`,
-  ; `get-dynamic-type`, `gloss-set-maybe-knowable`,
-  ; `gloss-union-of-zero`, and `dynamic-type-var-for-any-dynamic-type`
-  ; are forward references. See if we can untangle them.
+  ; `get-dynamic-type`, `make-gloss`, and
+  ; `dynamic-type-var-for-any-dynamic-type` are forward references.
+  ; See if we can untangle them.
   (if (known-to-lathe-comforts-data? v)
     (known-to-lathe-comforts-data-dynamic-type /any-dynamic-type)
   /get-dynamic-type
-    ; TODO SMOOSH: Consider changing this to
-    ; `(make-gloss /list /cons ...)`.
-    (known-value /gloss-set-maybe-knowable (gloss-union-of-zero)
+    (known-value /make-gloss /list /cons
       (dynamic-type-var-for-any-dynamic-type)
       (just /any-dynamic-type))
     v))
 
-; TODO SMOOSH: Export this.
 (define (knowable-zip knowable-list)
   (-> (listof knowable?) (knowable/c list?))
   (expect knowable-list (cons knowable knowable-list) (known /list)
@@ -555,7 +566,6 @@
   /knowable-map (knowable-zip knowable-list) /fn element-list
     (cons element element-list)))
 
-; TODO SMOOSH: Export this.
 (define (maybe-min-zip maybe-list)
   (-> (listof maybe?) (maybe/c list?))
   (expect maybe-list (cons maybe maybe-list) (list)
@@ -567,9 +577,8 @@
   (-> (listof (promise/c knowable?)) (-> any/c any/c)
     (promise/c knowable?))
   (delay
-    (if (list-any kp-list /fn kp /unknown? /force kp) (unknown)
-    /known /on-value /list-map kp-list /fn kp
-      (known-value /force kp))))
+    (knowable-if (list-all kp-list /fn kp /known? /force kp) /fn
+      (on-value /list-map kp-list /fn kp /known-value /force kp))))
 
 (define/own-contract
   (boolean-and-knowable-promise-zip-map kp-list on-true)
@@ -580,8 +589,8 @@
       (list-any kp-list /fn kp
         (mat (force kp) (known #f) #t #f))
       (known #f)
-    /if (list-any kp-list /fn kp /unknown? /force kp) (unknown)
-    /known /on-true)))
+    /knowable-if (list-all kp-list /fn kp /known? /force kp) /fn
+      (on-true))))
 
 (define/own-contract (boolean-and-knowable-thunk-zip kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
@@ -748,8 +757,17 @@
     gloss-custom-entries)
   gloss
   'gloss (current-inspector)
-  ; TODO SMOOSH: Stop using `auto-write` for this.
-  (auto-write)
+  
+  (#:gen gen:custom-write
+    (define write-proc
+      (make-constructor-style-printer
+        (fn self 'make-gloss)
+        (fn self
+          (for/list
+            ; TODO SMOOSH: This use of `gloss-iteration-sequence` is a
+            ; forward reference. See if we can untangle it.
+            ([(k v) (in-sequences /gloss-iteration-sequence self)])
+            (cons k v))))))
   
   (#:gen gen:equal-mode+hash
     
@@ -788,6 +806,8 @@
         (hash-code-combine* /list-map v /fn elem /hash-code-element elem))
       (define (hash-code-gloss v hash-code-value)
         (hash-code-combine-unordered* /for/list
+          ; TODO SMOOSH: This use of `gloss-iteration-sequence` is a
+          ; forward reference. See if we can untangle it.
           ([(k v) (in-sequences /gloss-iteration-sequence v)])
           (hash-code-combine
             (hash-code-smooshable k)
@@ -820,6 +840,23 @@
 (define/own-contract (gloss-union-of-zero)
   (-> gloss?)
   (gloss 0 (hashalw) (nothing)))
+
+(define/own-contract (gloss-iteration-sequence g)
+  (-> gloss? (sequence/c any/c any/c))
+  (dissect g (gloss _ atomic custom)
+  /apply in-sequences (in-hash atomic)
+    (expect custom (just custom) (list)
+    /for*/list
+      (
+        [ (variant custom-regress)
+          (in-sequences /gloss-iteration-sequence custom)]
+        [(mode custom-entry) (in-hash custom-regress)]
+        
+        #:do
+        [(match-define (list gs custom-unwrappings) custom-entry)]
+        
+        [(unwrapped-wrappers g) custom-unwrappings])
+      (glossesque-sys-glossesque-iteration-sequence gs g))))
 
 (define/own-contract (gloss-km-union-of-two a b km-union)
   (-> gloss? gloss? (-> any/c maybe? maybe? maybe?) gloss?)
@@ -971,23 +1008,6 @@
   (dissect g (gloss count _ _)
     count))
 
-(define/own-contract (gloss-iteration-sequence g)
-  (-> gloss? (sequence/c any/c any/c))
-  (dissect g (gloss _ atomic custom)
-  /apply in-sequences (in-hash atomic)
-    (expect custom (just custom) (list)
-    /for*/list
-      (
-        [ (variant custom-regress)
-          (in-sequences /gloss-iteration-sequence custom)]
-        [(mode custom-entry) (in-hash custom-regress)]
-        
-        #:do
-        [(match-define (list gs custom-unwrappings) custom-entry)]
-        
-        [(unwrapped-wrappers g) custom-unwrappings])
-      (glossesque-sys-glossesque-iteration-sequence gs g))))
-
 (define-imitation-simple-struct
   (gloss-glossesque-sys?)
   gloss-glossesque-sys
@@ -1028,8 +1048,6 @@
   (-> any/c)
   (uninformative-dynamic-type-unguarded))
 
-; TODO SMOOSH: Give this better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type`.
 (define-imitation-simple-struct
   (dynamic-type-var-for-any-dynamic-type?)
   dynamic-type-var-for-any-dynamic-type
@@ -2566,7 +2584,6 @@
   (sequence-zip-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
-; TODO SMOOSH: Consider exporting this.
 (define/own-contract (base-readable-discrete-atom? v)
   (-> any/c boolean?)
   (or
@@ -2579,14 +2596,6 @@
     (string? v)
     (bytes? v)
     (null? v)))
-
-; TODO SMOOSH: Export this.
-; TODO SMOOSH: Use this elsewhere in this file where it makes sense.
-(define/own-contract (knowable-if condition then)
-  (-> boolean? (-> any/c) knowable?)
-  (if condition
-    (known /then)
-    (unknown)))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for simple values that can be compared by
@@ -2601,8 +2610,6 @@
 ;     nothing (or, for a check, `#f`).
 ;     
 ;     Otherwise, the first operand (or, for a check, `#t`).
-;
-; TODO SMOOSH: Consider exporting this.
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-atom
@@ -2629,11 +2636,6 @@
     
     ))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both `base-readable-discrete-atom?`
@@ -2655,7 +2657,6 @@
     (make-expressly-smooshable-dynamic-type-impl-for-atom
       #:inhabitant? base-readable-discrete-atom?)))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (non-nan-number? v)
   (-> any/c boolean?)
   (and
@@ -2663,11 +2664,6 @@
     (not /nan? /real-part v)
     (not /nan? /imag-part v)))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; Level 0:
 ;   path-related:
 ;     If the operands are not both `number?` values without NaN parts,
@@ -2750,14 +2746,10 @@
           (delay /and (zero? /imag-part a) (zero? /imag-part b))
         /w- <=?-knowable-promise
           (promise-map real?-promise /fn real?
-            (if real?
-              (known /<= (real-part a) (real-part b))
-              (unknown)))
+            (knowable-if real? /fn /<= (real-part a) (real-part b)))
         /w- >=?-knowable-promise
           (promise-map real?-promise /fn real?
-            (if real?
-              (known />= (real-part a) (real-part b))
-              (unknown)))
+            (knowable-if real? />= (real-part a) (real-part b)))
         /w- join-knowable-promise-maybe-knowable-promise
           (promise-map <=?-knowable-promise /fn knowable
             (knowable-map knowable /fn result
@@ -2790,16 +2782,10 @@
       
       )))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (non-nan-extflonum? v)
   (-> any/c boolean?)
   (and (extflonum? v) (not /extfl= v v)))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; Level 0:
 ;   path-related:
 ;     If the operands are not both non-NaN `extflonum?` values, then
@@ -2918,11 +2904,6 @@
       (list result-car result-cdr)
       (cons result-car result-cdr))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; NOTE: This would be used like so:
 ;
 #;
@@ -3180,8 +3161,6 @@
 ;     recursive smoosh result always to be the first operand upon
 ;     success so that finding an acceptable result for the overall
 ;     smoosh is possible.
-;
-; TODO SMOOSH: Consider exporting this.
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
@@ -3544,8 +3523,6 @@
 ;   <=, >=:
 ;     Same as the description of level 1 == as a check.
 ;
-; TODO SMOOSH: Consider exporting this.
-;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-mutable
     #:inhabitant? inhabitant?)
@@ -3656,11 +3633,6 @@
     
     ))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of immutable vectors and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?` as long as the elements' information orderings are.
@@ -3704,11 +3676,6 @@
       
       #:copy (fn v /vector->immutable-vector /vector-copy v))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of mutable vectors and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?`. This is an instance of
@@ -3722,11 +3689,6 @@
     (make-expressly-smooshable-dynamic-type-impl-for-mutable
       #:inhabitant? (fn v /and (vector? v) (not /immutable? v)))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of immutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?` as long as the elements' information orderings are.
@@ -3772,11 +3734,6 @@
       
       )))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of mutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?`. This is an instance of
@@ -3790,11 +3747,6 @@
     (make-expressly-smooshable-dynamic-type-impl-for-mutable
       #:inhabitant? (fn v /and (box? v) (not /immutable? v)))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of immutable prefab structs and
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the elements' information orderings
@@ -3821,11 +3773,6 @@
       (fn example lst
         (apply make-prefab-struct (prefab-struct-key example) lst)))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of mutable prefab structs and
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?`. This is an instance of
@@ -3839,11 +3786,6 @@
     (make-expressly-smooshable-dynamic-type-impl-for-mutable
       #:inhabitant? mutable-prefab-struct?)))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of immutable hash tables and
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the keys' and values' information
@@ -3881,11 +3823,6 @@
       
       #:copy (fn v /hash-v-map v /fn v v))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of mutable hash tables and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?`. This is an instance of
@@ -3933,19 +3870,13 @@
       (fn any-dt /immutable-hash-dynamic-type any-dt))
     (list
       (fn v /and (hash? v) (not /immutable? v))
-      (fn any-dt /mutable-hash-dynamic-type))
-    ; TODO SMOOSH: Add more cases here.
-    ))
+      (fn any-dt /mutable-hash-dynamic-type))))
 
 (define/own-contract (base-readable? v)
   (-> any/c boolean?)
   (list-any base-readable-cases /dissectfn (list check? dt)
     (check? v)))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (base-readable-dynamic-type?
     base-readable-dynamic-type-get-any-dynamic-type)
@@ -4015,11 +3946,6 @@
           (knowable-map k /fn result-value
             (known result-value)))))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of `known?` and
 ; `example-unknown?` values, with handling of their interactions with
 ; other `unknown?` values. These are information-ordered so that
@@ -4211,13 +4137,6 @@
           report-0)))
     report-1+))
 
-; TODO SMOOSH: Definitely export this, since it uses the private
-; `path-related-wrapper-unguarded` match pattern that we don't intend
-; to export; users could build on themselves. Consider whether we want
-; to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of `path-related-wrapper`
 ; values, ordered so that one value is less than or equal to another
 ; if the wrapped values are path-related (related by some sequence of
@@ -4319,13 +4238,6 @@
     (stream* report-0 report-1+)
     report-1+))
 
-; TODO SMOOSH: Definitely export this, since it uses the private
-; `info-wrapper-unguarded` match pattern that we don't intend to
-; export; users could build on themselves. Consider whether we want to
-; give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of `info-wrapper` values,
 ; ordered so that one value is less than or equal to another if the
 ; wrapped values are path-related (related by some sequence of two or
@@ -4378,7 +4290,6 @@
       
       )))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (gloss-ref g k)
   (-> gloss? any/c any/c)
   (expect (gloss-ref-maybe-knowable g k) (known result)
@@ -4393,7 +4304,6 @@
       "key" k)
     result))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (gloss-set g k v)
   (-> gloss? any/c any/c gloss?)
   (expect (gloss-set-maybe-knowable g k (just v)) (known result)
@@ -4404,23 +4314,16 @@
       "value" v)
     result))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (make-gloss assocs)
   (-> (listof pair?) gloss?)
   (list-foldl (gloss-union-of-zero) assocs /fn g assoc
     (dissect assoc (cons k v)
     /gloss-set g k v)))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (gloss-keys g)
   (-> gloss? (sequence/c any/c))
   (sequence-map (fn k v k) /gloss-iteration-sequence g))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
-;
 ; This is an appropriate dynamic type of `gloss?` values,
 ; information-ordered in a way that's consistent with `chaperone-of?`
 ; as long as the keys' and values' information orderings are. This is
@@ -4464,10 +4367,6 @@
       
       #:copy (fn v v))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (dynamic-type-for-dynamic-type-var-for-any-dynamic-type?)
   dynamic-type-for-dynamic-type-var-for-any-dynamic-type
@@ -4478,10 +4377,6 @@
     (make-expressly-smooshable-dynamic-type-impl-for-atom
       #:inhabitant? dynamic-type-var-for-any-dynamic-type?)))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (equalw-gloss-key-wrapper-dynamic-type?)
   equalw-gloss-key-wrapper-dynamic-type
@@ -4492,10 +4387,6 @@
     (make-expressly-smooshable-dynamic-type-impl-for-atom
       #:inhabitant? equalw-gloss-key-wrapper?)))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
   'nothing-dynamic-type (current-inspector) (auto-write)
@@ -4515,10 +4406,6 @@
         (promise-map kp /fn k
           (knowable-map k /fn result-value /just result-value))))))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
   just-dynamic-type
@@ -4578,9 +4465,7 @@
     (list equalw-gloss-key-wrapper?
       (fn any-dt /equalw-gloss-key-wrapper-dynamic-type))
     (list nothing? (fn any-dt /nothing-dynamic-type))
-    (list just? (fn any-dt /just-dynamic-type any-dt))
-    ; TODO SMOOSH: Add more cases here.
-    ))
+    (list just? (fn any-dt /just-dynamic-type any-dt))))
 
 (define/own-contract (known-to-lathe-comforts-data? v)
   (-> any/c boolean?)
@@ -4588,10 +4473,6 @@
     (list check? dt)
     (check? v)))
 
-; TODO SMOOSH: Consider exporting this. If we export it, consider
-; whether we want to give it better smooshing behavior using
-; `prop:expressly-smooshable-dynamic-type` and/or implement
-; `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct
   (known-to-lathe-comforts-data-dynamic-type?
     known-to-lathe-comforts-data-dynamic-type-get-any-dynamic-type)
@@ -4658,9 +4539,6 @@
       
       )))
 
-; TODO SMOOSH: Consider whether we want to give this better smooshing
-; behavior using `prop:expressly-smooshable-dynamic-type` and/or
-; implement `gen:equal-mode+hash` for it.
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
   
@@ -4694,23 +4572,15 @@
 ; TODO SMOOSH: Implement the following parts of the API outlined in
 ; the last part of notes/2024-03-20-squashable-object-system.txt:
 ;
-; smooshable-dynamic-type-get-info-smooshable-dynamic-type
 ; make-empty-immutable-total-order-<=-based-dict
 ; make-empty-immutable-trie-dict
 ;
 ; We're not implementing the mutable dicts. (If we need them, we're
 ; just going to model them as mutable boxes containing immutable
 ; dicts, or tack on the mutable dict stuff as an afterthought.)
-;
-; For information-ordering-indexed data structures, since we've ended
-; up having only one concrete `gloss?` type, we have
-; `path-related-wrapper` and `info-wrapper` wrapper types for our key
-; values to indicate when they should be compared according to
-; path-relatedness or according to their information ordering.
 
-; TODO SMOOSH: Here we summarize some of our "implement smooshing"
-; tasks. Implement smooshing and better `gen:equal-mode+hash` equality
-; for these types:
+; TODO SMOOSH: Implement smooshing and better `gen:equal-mode+hash`
+; equality for these types:
 ;
 ;   - Various types that can result from the default Racket reader, as
 ;     well as their corresponding mutable types where these exist.
