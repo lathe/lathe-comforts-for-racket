@@ -82,10 +82,10 @@
   make-custom-gloss-key-report-impl
   path-related-wrapper
   info-wrapper
-  equalw-gloss-key?
-  equalw-gloss-key-impl?
-  prop:equalw-gloss-key
-  make-equalw-gloss-key-impl
+  equal-always-gloss-key?
+  equal-always-gloss-key-impl?
+  prop:equal-always-gloss-key
+  make-equal-always-gloss-key-impl
   custom-gloss-key-dynamic-type?
   custom-gloss-key-dynamic-type-impl?
   custom-gloss-key-dynamic-type-variant-knowable
@@ -161,7 +161,7 @@
   promise-map
   constant-smoosh-and-comparison-of-two-report
   constant-smoosh-and-comparison-of-two-reports
-  equalw-gloss-key-wrapper
+  equal-always-gloss-key-wrapper
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
   make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
@@ -487,15 +487,16 @@
   (info-wrapper-unguarded v))
 
 (define-imitation-simple-generics
-  equalw-gloss-key? equalw-gloss-key-impl?
-  prop:equalw-gloss-key make-equalw-gloss-key-impl
-  'equalw-gloss-key 'equalw-gloss-key-impl (list))
-(ascribe-own-contract equalw-gloss-key? (-> any/c boolean?))
-(ascribe-own-contract equalw-gloss-key-impl? (-> any/c boolean?))
-(ascribe-own-contract prop:equalw-gloss-key
-  (struct-type-property/c equalw-gloss-key-impl?))
-(ascribe-own-contract make-equalw-gloss-key-impl
-  (-> equalw-gloss-key-impl?))
+  equal-always-gloss-key? equal-always-gloss-key-impl?
+  prop:equal-always-gloss-key make-equal-always-gloss-key-impl
+  'equal-always-gloss-key 'equal-always-gloss-key-impl (list))
+(ascribe-own-contract equal-always-gloss-key? (-> any/c boolean?))
+(ascribe-own-contract equal-always-gloss-key-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract prop:equal-always-gloss-key
+  (struct-type-property/c equal-always-gloss-key-impl?))
+(ascribe-own-contract make-equal-always-gloss-key-impl
+  (-> equal-always-gloss-key-impl?))
 
 (define-imitation-simple-generics
   custom-gloss-key-dynamic-type? custom-gloss-key-dynamic-type-impl?
@@ -724,7 +725,7 @@
     
     ; An `equal-always?`-based `hash?` containing all the key-value
     ; entries in the gloss for which the key is an
-    ; `equalw-gloss-key?`.
+    ; `equal-always-gloss-key?`.
     ;
     gloss-atomic-entries
     
@@ -906,7 +907,7 @@
 (define/own-contract (gloss-ref-maybe-knowable g k)
   (-> gloss? any/c (knowable/c maybe?))
   (dissect g (gloss _ atomic custom)
-  /if (equalw-gloss-key? k) (known /hash-ref-maybe atomic k)
+  /if (equal-always-gloss-key? k) (known /hash-ref-maybe atomic k)
   /dissect (unwrap-gloss-key k)
     (list unwrapped-k path-mode depth unwrapped-wrappers)
   /w- unwrapped-k-dt
@@ -932,7 +933,7 @@
 (define/own-contract (gloss-set-maybe-knowable g k m)
   (-> gloss? any/c maybe? (knowable/c gloss?))
   (dissect g (gloss count atomic custom)
-  /if (equalw-gloss-key? k)
+  /if (equal-always-gloss-key? k)
     (known /gloss count (hash-set-maybe atomic k m) custom)
   /dissect (unwrap-gloss-key k)
     (list unwrapped-k path-mode depth unwrapped-wrappers)
@@ -1054,7 +1055,8 @@
   'dynamic-type-var-for-any-dynamic-type (current-inspector)
   (auto-write)
   (auto-equal)
-  (#:prop prop:equalw-gloss-key /make-equalw-gloss-key-impl))
+  (#:prop prop:equal-always-gloss-key
+    (make-equal-always-gloss-key-impl)))
 (ascribe-own-contract dynamic-type-var-for-any-dynamic-type?
   (-> any/c boolean?))
 
@@ -2520,33 +2522,35 @@
     result-knowable-promise-maybe-knowable-promise))
 
 (define-imitation-simple-struct
-  (equalw-gloss-key-wrapper? equalw-gloss-key-wrapper-value)
-  equalw-gloss-key-wrapper-unguarded
-  'equalw-gloss-key-wrapper (current-inspector) (auto-write)
+  (equal-always-gloss-key-wrapper?
+    equal-always-gloss-key-wrapper-value)
+  equal-always-gloss-key-wrapper-unguarded
+  'equal-always-gloss-key-wrapper (current-inspector) (auto-write)
   ; We use a comparison that consistently compares the value using
   ; `equal-always?`.
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (dissect a (equalw-gloss-key-wrapper-unguarded a-value)
-      /dissect b (equalw-gloss-key-wrapper-unguarded b-value)
+      (dissect a (equal-always-gloss-key-wrapper-unguarded a-value)
+      /dissect b (equal-always-gloss-key-wrapper-unguarded b-value)
       /equal-always? a-value b-value))
     
     (define (hash-mode-proc v recur now?)
-      (dissect v (equalw-gloss-key-wrapper-unguarded v-value)
+      (dissect v (equal-always-gloss-key-wrapper-unguarded v-value)
       /hash-code-combine
-        (equal-always-hash-code equalw-gloss-key-wrapper?)
+        (equal-always-hash-code equal-always-gloss-key-wrapper?)
         (equal-always-hash-code v-value)))
     
     )
-  (#:prop prop:equalw-gloss-key /make-equalw-gloss-key-impl))
+  (#:prop prop:equal-always-gloss-key
+    (make-equal-always-gloss-key-impl)))
 
 ; TODO SMOOSH: Use this. It should generally come in handy to
 ; construct the result in an implementation of
 ; `custom-gloss-key-dynamic-type-variant-knowable`.
-(define/own-contract (equalw-gloss-key-wrapper v)
+(define/own-contract (equal-always-gloss-key-wrapper v)
   (-> any/c any/c)
-  (equalw-gloss-key-wrapper-unguarded v))
+  (equal-always-gloss-key-wrapper-unguarded v))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-report-join reports-list)
@@ -4378,14 +4382,14 @@
       #:inhabitant? dynamic-type-var-for-any-dynamic-type?)))
 
 (define-imitation-simple-struct
-  (equalw-gloss-key-wrapper-dynamic-type?)
-  equalw-gloss-key-wrapper-dynamic-type
-  'equalw-gloss-key-wrapper-dynamic-type
+  (equal-always-gloss-key-wrapper-dynamic-type?)
+  equal-always-gloss-key-wrapper-dynamic-type
+  'equal-always-gloss-key-wrapper-dynamic-type
   (current-inspector)
   (auto-write)
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? equalw-gloss-key-wrapper?)))
+      #:inhabitant? equal-always-gloss-key-wrapper?)))
 
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
@@ -4462,8 +4466,8 @@
     (list dynamic-type-var-for-any-dynamic-type?
       (fn any-dt
         (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
-    (list equalw-gloss-key-wrapper?
-      (fn any-dt /equalw-gloss-key-wrapper-dynamic-type))
+    (list equal-always-gloss-key-wrapper?
+      (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type))
     (list nothing? (fn any-dt /nothing-dynamic-type))
     (list just? (fn any-dt /just-dynamic-type any-dt))))
 
@@ -4655,7 +4659,7 @@
 ;
 ;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
-;     - (Done) `equalw-gloss-key-wrapper?`
+;     - (Done) `equal-always-gloss-key-wrapper?`
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
@@ -4705,7 +4709,7 @@
 ;
 ;       - `dynamic-type-for-dynamic-type-var-for-any-dynamic-type?`
 ;
-;       - `equalw-gloss-key-wrapper-dynamic-type?`
+;       - `equal-always-gloss-key-wrapper-dynamic-type?`
 ;
 ;       - `nothing-dynamic-type?`
 ;
