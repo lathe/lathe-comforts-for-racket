@@ -3937,6 +3937,62 @@
       
       )))
 
+(define-imitation-simple-struct (nothing-dynamic-type?)
+  nothing-dynamic-type
+  'nothing-dynamic-type (current-inspector) (auto-write)
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? nothing?)))
+
+(define/own-contract
+  (on-just-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp)
+  (->
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (promise-map kpmkp /fn kpmk
+    (knowable-map kpmk /fn kpm
+      (maybe-map kpm /fn kp
+        (promise-map kp /fn k
+          (knowable-map k /fn result-value /just result-value))))))
+
+(define-imitation-simple-struct
+  (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
+  just-dynamic-type
+  'just-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (just-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? just?
+      #:->->list (fn a /dissectfn (just e) /list e)
+      
+      #:example-and-list->
+      (fn example lst
+        (dissect lst (list e)
+        /just e))
+      
+      #:copy (fn v v)
+      
+      #:get-smoosh-of-zero-report
+      (dissectfn (just-dynamic-type any-dt)
+        (smoosh-reports-map
+          (dynamic-type-get-smoosh-of-zero-report any-dt)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (fn kpmkp
+            (promise-map kpmkp /fn kpmk
+              (knowable-map kpmk /fn kpm
+                (maybe-map kpm /fn kp
+                  (promise-map kp /fn k
+                    (knowable-map k /fn result-value
+                      (just result-value)))))))))
+      
+      )))
+
 (define/own-contract
   (on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise
     kpmkp)
@@ -4391,68 +4447,14 @@
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? equal-always-gloss-key-wrapper?)))
 
-(define-imitation-simple-struct (nothing-dynamic-type?)
-  nothing-dynamic-type
-  'nothing-dynamic-type (current-inspector) (auto-write)
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? nothing?)))
-
-(define/own-contract
-  (on-just-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp)
-  (->
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (promise-map kpmkp /fn kpmk
-    (knowable-map kpmk /fn kpm
-      (maybe-map kpm /fn kp
-        (promise-map kp /fn k
-          (knowable-map k /fn result-value /just result-value))))))
-
-(define-imitation-simple-struct
-  (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
-  just-dynamic-type
-  'just-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
-      
-      #:self-get-any-dynamic-type
-      (dissectfn (just-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? just?
-      #:->->list (fn a /dissectfn (just e) /list e)
-      
-      #:example-and-list->
-      (fn example lst
-        (dissect lst (list e)
-        /just e))
-      
-      #:copy (fn v v)
-      
-      #:get-smoosh-of-zero-report
-      (dissectfn (just-dynamic-type any-dt)
-        (smoosh-reports-map
-          (dynamic-type-get-smoosh-of-zero-report any-dt)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn kpmkp
-            (promise-map kpmkp /fn kpmk
-              (knowable-map kpmk /fn kpm
-                (maybe-map kpm /fn kp
-                  (promise-map kp /fn k
-                    (knowable-map k /fn result-value
-                      (just result-value)))))))))
-      
-      )))
-
 (define/own-contract known-to-lathe-comforts-data-cases
   (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
   (list
     (list
       base-readable?
       (fn any-dt /base-readable-dynamic-type any-dt))
+    (list nothing? (fn any-dt /nothing-dynamic-type))
+    (list just? (fn any-dt /just-dynamic-type any-dt))
     (list
       knowable?
       (fn any-dt /knowable-dynamic-type any-dt))
@@ -4467,9 +4469,7 @@
       (fn any-dt
         (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
     (list equal-always-gloss-key-wrapper?
-      (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type))
-    (list nothing? (fn any-dt /nothing-dynamic-type))
-    (list just? (fn any-dt /just-dynamic-type any-dt))))
+      (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type))))
 
 (define/own-contract (known-to-lathe-comforts-data? v)
   (-> any/c boolean?)
@@ -4640,6 +4640,11 @@
 ;      - Potentially others in future versions of Racket. The above
 ;        list is up-to-date as of Racket 8.12.
 ;
+;   - Types defined by Lathe Comforts that this smooshing framework
+;     uses.
+;
+;     - (Done) `maybe?`
+;
 ;   - Types defined here in smoosh.rkt.
 ;
 ;     - (Done) `known?` values, `example-unknown?` values, and their
@@ -4699,6 +4704,10 @@
 ;
 ;       - `base-readable-dynamic-type?`
 ;
+;       - `nothing-dynamic-type?`
+;
+;       - `just-dynamic-type?`
+;
 ;       - `knowable-dynamic-type?`
 ;
 ;       - `path-related-wrapper-dynamic-type?`
@@ -4711,18 +4720,9 @@
 ;
 ;       - `equal-always-gloss-key-wrapper-dynamic-type?`
 ;
-;       - `nothing-dynamic-type?`
-;
-;       - `just-dynamic-type?`
-;
 ;       - `known-to-lathe-comforts-data-dynamic-type?`
 ;
 ;       - `any-dynamic-type?`
-;
-;   - Types defined by Lathe Comforts that this smooshing framework
-;     uses.
-;
-;     - (Done) `maybe?`
 ;
 ;   - Types defined by Lathe Comforts even if this smooshing framework
 ;     doesn't use them.
