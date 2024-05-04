@@ -169,6 +169,7 @@
   non-nan-extflonum?
   make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
+  dynamic-type-case-by-cases
   gloss-ref
   gloss-set
   make-gloss
@@ -3840,9 +3841,68 @@
     (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
       #:inhabitant? (fn v /and (hash? v) (not /immutable? v)))))
 
-(define/own-contract base-readable-cases
-  (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
-  (list
+(define/own-contract (dynamic-type-case-by-cases name cases)
+  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+    (list/c (-> any/c boolean?) (-> any/c any/c)))
+  (define (inhabitant? v)
+    (list-any cases /dissectfn (list check? dt)
+      (check? v)))
+  (define-imitation-simple-struct
+    (case-dynamic-type? case-dynamic-type-get-any-dynamic-type)
+    case-dynamic-type
+    name
+    (current-inspector)
+    (auto-write)
+    
+    (#:prop prop:expressly-smooshable-dynamic-type
+      (make-expressly-smooshable-dynamic-type-impl
+        
+        #:get-smoosh-of-zero-report
+        (fn self
+          (uninformative-smoosh-reports))
+        
+        #:get-smoosh-of-one-report
+        (fn self a
+          (dissect self (case-dynamic-type any-dt)
+          /w-loop next cases cases
+            (expect cases (cons case cases)
+              (uninformative-smoosh-reports)
+            /dissect case (list check? dt)
+            /if (check? a)
+              (dynamic-type-get-smoosh-of-one-report (dt any-dt) a)
+            /next cases)))
+        
+        #:get-smoosh-and-comparison-of-two-report
+        (fn self b-dt a b
+          (dissect self (case-dynamic-type any-dt)
+          /w-loop next cases cases
+            (expect cases (cons case cases)
+              (uninformative-smoosh-and-comparison-of-two-reports)
+            /dissect case (list check? dt)
+            /match (list (check? a) (check? b))
+              [ (list #t #t)
+                (w- a-dt (dt any-dt)
+                /dynamic-type-get-smoosh-and-comparison-of-two-report
+                  a-dt a b)]
+              [ (list #t #f)
+                (if
+                  (list-any cases /dissectfn (list check? dt)
+                    (check? b))
+                  (false-smoosh-and-comparison-of-two-reports)
+                  (uninformative-smoosh-and-comparison-of-two-reports))]
+              [ (list #f #t)
+                (if
+                  (list-any cases /dissectfn (list check? dt)
+                    (check? a))
+                  (false-smoosh-and-comparison-of-two-reports)
+                  (uninformative-smoosh-and-comparison-of-two-reports))]
+              [(list #f #f) (next cases)])))
+        
+        )))
+  (list inhabitant? case-dynamic-type))
+
+(define base-readable-dynamic-type-case
+  (dynamic-type-case-by-cases 'base-readable-dynamic-type /list
     (list
       base-readable-discrete-atom?
       (fn any-dt /base-readable-discrete-atom-dynamic-type any-dt))
@@ -3875,67 +3935,6 @@
     (list
       (fn v /and (hash? v) (not /immutable? v))
       (fn any-dt /mutable-hash-dynamic-type))))
-
-(define/own-contract (base-readable? v)
-  (-> any/c boolean?)
-  (list-any base-readable-cases /dissectfn (list check? dt)
-    (check? v)))
-
-(define-imitation-simple-struct
-  (base-readable-dynamic-type?
-    base-readable-dynamic-type-get-any-dynamic-type)
-  base-readable-dynamic-type
-  'base-readable-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-report
-      (fn self
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-of-one-report
-      (fn self a
-        (dissect self (base-readable-dynamic-type any-dt)
-        /w-loop next base-readable-cases base-readable-cases
-          (expect base-readable-cases
-            (cons base-readable-case base-readable-cases)
-            (uninformative-smoosh-reports)
-          /dissect base-readable-case (list check? dt)
-          /if (check? a)
-            (dynamic-type-get-smoosh-of-one-report (dt any-dt) a)
-          /next base-readable-cases)))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (dissect self (base-readable-dynamic-type any-dt)
-        /w-loop next base-readable-cases base-readable-cases
-          (expect base-readable-cases
-            (cons base-readable-case base-readable-cases)
-            (uninformative-smoosh-and-comparison-of-two-reports)
-          /dissect base-readable-case (list check? dt)
-          /match (list (check? a) (check? b))
-            [ (list #t #t)
-              (w- a-dt (dt any-dt)
-              /dynamic-type-get-smoosh-and-comparison-of-two-report
-                a-dt a b)]
-            [ (list #t #f)
-              (if
-                (list-any base-readable-cases /dissectfn
-                  (list check? dt)
-                  (check? b))
-                (false-smoosh-and-comparison-of-two-reports)
-                (uninformative-smoosh-and-comparison-of-two-reports))]
-            [ (list #f #t)
-              (if
-                (list-any base-readable-cases /dissectfn
-                  (list check? dt)
-                  (check? a))
-                (false-smoosh-and-comparison-of-two-reports)
-                (uninformative-smoosh-and-comparison-of-two-reports))]
-            [(list #f #f) (next base-readable-cases)])))
-      
-      )))
 
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
@@ -4447,101 +4446,31 @@
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? equal-always-gloss-key-wrapper?)))
 
-(define/own-contract known-to-lathe-comforts-data-cases
-  (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+(match-define
   (list
+    known-to-lathe-comforts-data?
+    known-to-lathe-comforts-data-dynamic-type)
+  (dynamic-type-case-by-cases
+    'known-to-lathe-comforts-data-dynamic-type
     (list
-      base-readable?
-      (fn any-dt /base-readable-dynamic-type any-dt))
-    (list nothing? (fn any-dt /nothing-dynamic-type))
-    (list just? (fn any-dt /just-dynamic-type any-dt))
-    (list
-      knowable?
-      (fn any-dt /knowable-dynamic-type any-dt))
-    (list
-      path-related-wrapper?
-      (fn any-dt /path-related-wrapper-dynamic-type any-dt))
-    (list
-      info-wrapper?
-      (fn any-dt /info-wrapper-dynamic-type any-dt))
-    (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
-    (list dynamic-type-var-for-any-dynamic-type?
-      (fn any-dt
-        (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
-    (list equal-always-gloss-key-wrapper?
-      (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type))))
-
-(define/own-contract (known-to-lathe-comforts-data? v)
-  (-> any/c boolean?)
-  (list-any known-to-lathe-comforts-data-cases /dissectfn
-    (list check? dt)
-    (check? v)))
-
-(define-imitation-simple-struct
-  (known-to-lathe-comforts-data-dynamic-type?
-    known-to-lathe-comforts-data-dynamic-type-get-any-dynamic-type)
-  known-to-lathe-comforts-data-dynamic-type
-  'known-to-lathe-comforts-data-dynamic-type (current-inspector)
-  (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-report
-      (fn self
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-of-one-report
-      (fn self a
-        (dissect self
-          (known-to-lathe-comforts-data-dynamic-type any-dt)
-        /w-loop next
-          known-to-lathe-comforts-data-cases
-          known-to-lathe-comforts-data-cases
-          (expect known-to-lathe-comforts-data-cases
-            (cons known-to-lathe-comforts-data-case
-              known-to-lathe-comforts-data-cases)
-            (uninformative-smoosh-reports)
-          /dissect known-to-lathe-comforts-data-case (list check? dt)
-          /if (check? a)
-            (dynamic-type-get-smoosh-of-one-report (dt any-dt) a)
-          /next known-to-lathe-comforts-data-cases)))
-      
-      #:get-smoosh-and-comparison-of-two-report
-      (fn self b-dt a b
-        (dissect self
-          (known-to-lathe-comforts-data-dynamic-type any-dt)
-        /w-loop next
-          known-to-lathe-comforts-data-cases
-          known-to-lathe-comforts-data-cases
-          (expect known-to-lathe-comforts-data-cases
-            (cons known-to-lathe-comforts-data-case
-              known-to-lathe-comforts-data-cases)
-            (uninformative-smoosh-and-comparison-of-two-reports)
-          /dissect known-to-lathe-comforts-data-case (list check? dt)
-          /match (list (check? a) (check? b))
-            [ (list #t #t)
-              (w- a-dt (dt any-dt)
-              /dynamic-type-get-smoosh-and-comparison-of-two-report
-                a-dt a b)]
-            [ (list #t #f)
-              (if
-                (list-any known-to-lathe-comforts-data-cases
-                  (dissectfn (list check? dt)
-                    (check? b)))
-                (false-smoosh-and-comparison-of-two-reports)
-                (uninformative-smoosh-and-comparison-of-two-reports))]
-            [ (list #f #t)
-              (if
-                (list-any known-to-lathe-comforts-data-cases
-                  (dissectfn (list check? dt)
-                    (check? a)))
-                (false-smoosh-and-comparison-of-two-reports)
-                (uninformative-smoosh-and-comparison-of-two-reports))]
-            [ (list #f #f)
-              (next known-to-lathe-comforts-data-cases)])))
-      
-      )))
+      base-readable-dynamic-type-case
+      (list nothing? (fn any-dt /nothing-dynamic-type))
+      (list just? (fn any-dt /just-dynamic-type any-dt))
+      (list
+        knowable?
+        (fn any-dt /knowable-dynamic-type any-dt))
+      (list
+        path-related-wrapper?
+        (fn any-dt /path-related-wrapper-dynamic-type any-dt))
+      (list
+        info-wrapper?
+        (fn any-dt /info-wrapper-dynamic-type any-dt))
+      (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
+      (list dynamic-type-var-for-any-dynamic-type?
+        (fn any-dt
+          (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
+      (list equal-always-gloss-key-wrapper?
+        (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type)))))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
@@ -4702,7 +4631,8 @@
 ;
 ;       - `mutable-hash-dynamic-type?`
 ;
-;       - `base-readable-dynamic-type?`
+;       - `base-readable-dynamic-type?` (the type belonging to
+;         `base-readable-dynamic-type-case`)
 ;
 ;       - `nothing-dynamic-type?`
 ;
@@ -4720,7 +4650,8 @@
 ;
 ;       - `equal-always-gloss-key-wrapper-dynamic-type?`
 ;
-;       - `known-to-lathe-comforts-data-dynamic-type?`
+;       - `known-to-lathe-comforts-data-dynamic-type?` (the type
+;         constructed by `known-to-lathe-comforts-data-dynamic-type`)
 ;
 ;       - `any-dynamic-type?`
 ;
