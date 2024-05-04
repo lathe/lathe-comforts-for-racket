@@ -164,11 +164,11 @@
   equalw-gloss-key-wrapper
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
-  make-expressly-smooshable-dynamic-type-impl-for-atom
+  make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
   non-nan-number?
   non-nan-extflonum?
   make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
-  make-expressly-smooshable-dynamic-type-impl-for-mutable
+  make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
   gloss-ref
   gloss-set
   make-gloss
@@ -2612,7 +2612,7 @@
 ;     Otherwise, the first operand (or, for a check, `#t`).
 ;
 (define/own-contract
-  (make-expressly-smooshable-dynamic-type-impl-for-atom
+  (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
     #:inhabitant? inhabitant?)
   (-> #:inhabitant? (-> any/c boolean?)
     expressly-smooshable-dynamic-type-impl?)
@@ -2654,7 +2654,7 @@
   (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-atom
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? base-readable-discrete-atom?)))
 
 (define/own-contract (non-nan-number? v)
@@ -3524,7 +3524,7 @@
 ;     Same as the description of level 1 == as a check.
 ;
 (define/own-contract
-  (make-expressly-smooshable-dynamic-type-impl-for-mutable
+  (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
     #:inhabitant? inhabitant?)
   (-> #:inhabitant? (-> any/c boolean?)
     expressly-smooshable-dynamic-type-impl?)
@@ -3679,14 +3679,14 @@
 ; This is an appropriate dynamic type of mutable vectors and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?`. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
+; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
 (define-imitation-simple-struct (mutable-vector-dynamic-type?)
   mutable-vector-dynamic-type
   'mutable-vector-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-mutable
+    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
       #:inhabitant? (fn v /and (vector? v) (not /immutable? v)))))
 
 ; This is an appropriate dynamic type of immutable boxes and their
@@ -3737,14 +3737,14 @@
 ; This is an appropriate dynamic type of mutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?`. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
+; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
 (define-imitation-simple-struct (mutable-box-dynamic-type?)
   mutable-box-dynamic-type
   'mutable-box-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-mutable
+    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
       #:inhabitant? (fn v /and (box? v) (not /immutable? v)))))
 
 ; This is an appropriate dynamic type of immutable prefab structs and
@@ -3776,14 +3776,14 @@
 ; This is an appropriate dynamic type of mutable prefab structs and
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?`. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
+; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
 (define-imitation-simple-struct (mutable-prefab-struct-dynamic-type?)
   mutable-prefab-struct-dynamic-type
   'mutable-prefab-struct-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-mutable
+    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
       #:inhabitant? mutable-prefab-struct?)))
 
 ; This is an appropriate dynamic type of immutable hash tables and
@@ -3826,14 +3826,14 @@
 ; This is an appropriate dynamic type of mutable hash tables and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?`. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-for-mutable`.
+; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
 (define-imitation-simple-struct (mutable-hash-dynamic-type?)
   mutable-hash-dynamic-type
   'mutable-hash-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-mutable
+    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
       #:inhabitant? (fn v /and (hash? v) (not /immutable? v)))))
 
 (define/own-contract base-readable-cases
@@ -4374,7 +4374,7 @@
   (current-inspector)
   (auto-write)
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-atom
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? dynamic-type-var-for-any-dynamic-type?)))
 
 (define-imitation-simple-struct
@@ -4384,14 +4384,14 @@
   (current-inspector)
   (auto-write)
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-atom
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? equalw-gloss-key-wrapper?)))
 
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
   'nothing-dynamic-type (current-inspector) (auto-write)
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-atom
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? nothing?)))
 
 (define/own-contract
