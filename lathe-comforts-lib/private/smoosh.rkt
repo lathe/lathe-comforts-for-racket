@@ -2600,8 +2600,6 @@
     (char? v)
     (symbol? v)
     (keyword? v)
-    (regexp? v)
-    (compiled-expression? v)
     (string? v)
     (bytes? v)
     (null? v)))
@@ -4645,9 +4643,14 @@
 ;     well as their corresponding mutable types where these exist.
 ;     We're referring to these as `base-readable?` values.
 ;
-;      - (Done) Booleans. (There is some precedent for considering
-;        booleans to be ordered, but we won't consider any order to be
-;        specified by default, at least for now.)
+;      - (Done) Booleans. (TODO SMOOSH: Let's leave the equality or
+;        ordering of different booleans unknown rather than defining
+;        this as a discretely ordered type. There is some precedent in
+;        abstract algebra for considering booleans to be ordered such
+;        that `#f` < `#t`, but it's unclear if programmers would
+;        usually intend this. It might be more common in programming to
+;        use booleans as a convenient stand-in for a two-valued enum
+;        type which has no defined ordering.)
 ;
 ;      - (Done) Numbers with no NaN parts, ordered in a way consistent
 ;        with `<=` and `=`, and treating checks as having unknown
@@ -4657,19 +4660,66 @@
 ;      - (Done) Non-NaN extflonums, ordered in a way consistent with
 ;        `extfl<=` and `extfl=`.
 ;
-;      - (Done) Characters.
+;      - (Done) Characters. (TODO SMOOSH: Let's leave the equality or
+;        ordering of different characters unknown rather than defining
+;        this as a discretely ordered type. There are many possible
+;        ways to normalize and collate Unicode strings, and the only
+;        thing that's necessarily obvious across all of those is that
+;        identical Unicode scalar sequences are equal.)
 ;
-;      - (Done) Symbols.
+;      - (Done) Symbols. (TODO SMOOSH: Let's leave the ordering of
+;        symbols undefined rather than defining this as a discretely
+;        ordered type. Symbols are usually used as though they're
+;        entirely separate formal concepts given meaning by
+;        potentially separate programmers who haven't coordinated to
+;        know whether their respective vocabularies have concepts in
+;        common with different spellings. While we could consider
+;        symbols to be ordered by `symbol<?`, that won't always be the
+;        intention.)
 ;
-;      - (Done) Keywords.
+;      - (Done) Keywords. (TODO SMOOSH: Let's leave the ordering of
+;        different keywords undefined rather than defining this as a
+;        discretely ordered type. Keywords are usually used as though
+;        they're entirely separate formal concepts given meaning by
+;        potentially separate programmers who haven't coordinated to
+;        know whether their respective vocabularies have concepts in
+;        common with different spellings. While we could consider
+;        keywords to be ordered by `keyword<?`, that won't always be
+;        the intention.)
 ;
-;      - (Done) Regular expressions.
+;      - (Done) For regular expressions, we're choosing not to define
+;        smooshing. Comparing them by their exact source code isn't
+;        necessarily consistent with the intent of the programmer who
+;        wrote that code, and comparing them by their behavior isn't
+;        necessarily feasible.
 ;
-;      - (Done) Compiled code expressions (`compiled-expression?`).
+;      - (Done) For compiled code expressions
+;        (`compiled-expression?`), we're choosing not to define
+;        smooshing. Comparing them by their exact source code isn't
+;        necessarily consistent with the intent of the programmer who
+;        wrote that code, and comparing them by their behavior isn't
+;        necessarily feasible.
 ;
-;      - (Done) Mutable and immutable strings.
+;      - (Done) Mutable and immutable strings, treating immutable
+;        strings as being equal when their exact encoding as sequences
+;        of Unicode scalars is identical. (TODO SMOOSH: Let's leave
+;        the equality or ordering of non-identical immutable strings
+;        unknown rather than defining this as a discretely ordered
+;        type. There are many possible ways to normalize and collate
+;        Unicode strings, and the only thing that's necessarily
+;        obvious across all of those is that identical Unicode scalar
+;        sequences are equal.)
 ;
-;      - (Done) Mutable and immutable byte strings.
+;      - (Done) Mutable and immutable byte strings. (TODO SMOOSH:
+;        Let's leave the equality or ordering of non-identical
+;        immutable byte strings unknown rather than defining this as a
+;        discretely ordered type. There are many possible formats
+;        binary could be intended to encode, and while it would be
+;        nice to assume byte strings are meant to represent exact
+;        sequences of bytes, the way they have a reader syntax makes
+;        it likely that they're meant to represent UTF-8 text or a
+;        format consisting largely of UTF-8 text. This means they
+;        inherit all the possible gotchas of UTF-8 text comparison.)
 ;
 ;      - Flvectors. (NOTE: As of Racket 8.12 [cs], the implementation
 ;        of `equal-always?` for this type seems to be incorrect, so
