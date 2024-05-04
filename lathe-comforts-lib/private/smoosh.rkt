@@ -167,7 +167,8 @@
   make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
   non-nan-number?
   non-nan-extflonum?
-  make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+  make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+  make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
   dynamic-type-case-by-cases
   gloss-ref
@@ -2912,77 +2913,6 @@
       (list result-car result-cdr)
       (cons result-car result-cdr))))
 
-; NOTE: This would be used like so:
-;
-#;
-(#:prop prop:expressly-has-dynamic-type
-  (make-expressly-has-dynamic-type-impl /fn bindings self
-    (expect
-      (known-value /gloss-ref-maybe-knowable bindings
-        (dynamic-type-var-for-any-dynamic-type))
-      (just any-dt)
-      (raise-arguments-error 'get-dynamic-type
-        "tried to get the dynamic type of a cons cell without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-        "bindings" bindings
-        "inhabitant" self)
-    /cons-dynamic-type any-dt)))
-;
-(define-imitation-simple-struct
-  (cons-dynamic-type? cons-dynamic-type-get-any-dynamic-type)
-  cons-dynamic-type
-  'cons-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-reports
-      (fn self
-        (dissect self (cons-dynamic-type any-dt)
-        /smoosh-reports-map
-          (dynamic-type-get-smoosh-of-zero-reports any-dt)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn kpmkp
-            (promise-map kpmkp /fn kpmk
-              (knowable-map kpmk /fn kpm
-                (maybe-map kpm /fn kp
-                  (promise-map kp /fn k
-                    (knowable-map k /fn result
-                      (cons result result)))))))))
-      
-      #:get-smoosh-of-one-reports
-      (fn self a
-        (dissect self (cons-dynamic-type any-dt)
-        /expect a (cons a-car a-cdr) (uninformative-smoosh-reports)
-        /smoosh-reports-zip-map
-          (list
-            (dynamic-type-get-smoosh-of-one-reports any-dt a-car)
-            (dynamic-type-get-smoosh-of-one-reports any-dt a-cdr))
-          #:on-result-knowable-promise-maybe-knowable-promise
-          on-cons-smoosh-result-knowable-promise-maybe-knowable-promise))
-      
-      #:get-smoosh-and-comparison-of-two-reports
-      (fn self b-dt a b
-        (dissect self (cons-dynamic-type any-dt)
-        /expect a (cons a-car a-cdr)
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect b (cons b-car b-cdr)
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /smoosh-and-comparison-of-two-reports-zip-map
-          (list
-            (dynamic-type-get-smoosh-and-comparison-of-two-reports
-              any-dt a-car b-car)
-            (dynamic-type-get-smoosh-and-comparison-of-two-reports
-              any-dt a-cdr b-cdr))
-          #:on-check-result-knowable-promise
-          (fn kp-list
-            (knowable-promise-zip-map kp-list /dissectfn
-              (list check-result-car check-result-cdr)
-              (and check-result-car check-result-cdr)))
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          on-cons-smoosh-result-knowable-promise-maybe-knowable-promise))
-      
-      )))
-
 ; Given two lists, this checks whether they have the same length and
 ; `eq?` elements.
 ;
@@ -2993,6 +2923,216 @@
   (and (= (length a) (length b))
     (for/and ([a-elem (in-list a)] [b-elem (in-list b)])
       (eq? a-elem b-elem))))
+
+; This is an appropriate `prop:expressly-smooshable-dynamic-type`
+; implementation for immutable tuple data structures that can't be
+; chaperoned or impersonated, information-ordered in a way that's
+; consistent with `chaperone-of?` as long as the elements' information
+; orderings are.
+;
+; The given `->->list` function should take an inhabitant (a value
+; which passes the given `inhabitant?` predicate) and return a
+; function that takes an inhabitant of similar structure and returns
+; the same list of elements that would be passed to the callback of
+; `equal-always?/recur`. By "similar structure," we mean that the
+; second inhabitant is `equal-always?/recur` to the first if the
+; recursive equality check callback always returns `#t` (or, if
+; `inhabitant-shallowly-equal-always?-knowable` is given, we use
+; that and assume that its true results are consistent with
+; `equal-always?/recur`). The two-stage approach here lets us
+; establish an iteration order and then use that iteration order
+; consistently for every operand, even if our inhabitants are hash
+; tables and don't have an entirely deterministic iteration order.
+;
+; The given `->->list` and `example-and-list->` functions should
+; specify an isomorphism between inhabitants and some set of lists.
+; This isn't possible for every type, so this is only a suitable
+; abstraction when it is possible to satisfy this condition.
+;
+; Level 0:
+;   path-related, join, meet, ==:
+;     Same as the description of level 1 path-related, but with "the
+;     same smoosh" referring to this level-0 smoosh.
+;   <=, >=:
+;     Same as the description of level 1 path-related as a check, but
+;     with "the same smoosh" referring to this level-0 check.
+; Level 1:
+;   path-related, join, meet, ==:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if comparing the operands without regard for their
+;     elements or their impersonator or chaperone wrappers using the
+;     given `inhabitant-shallowly-equal-always?-knowable` (usually
+;     `equal-always?/recur`) returns an unknown result, then unknown.
+;     
+;     Otherwise, if it shows they differ, or if the results of
+;     smooshing corresponding elements under the same smoosh include a
+;     known nothing, then a known nothing.
+;     
+;     Otherwise, if those recursive results include an unknown, then
+;     unknown.
+;     
+;     Otherwise, if those recursive results are `eq?` to the elements
+;     of an operand, then the first such operand.
+;     
+;     Otherwise, build a new inhabitant (created by the given
+;     `example-and-list->` function using the first operand as the
+;     example) whose elements are those recursive results. If
+;     comparing that new inhabitant with an operand without regard for
+;     their elements using
+;     `inhabitant-shallowly-equal-always?-knowable` (usually
+;     `equal-always?/recur`) returns an unknown result or shows they
+;     differ, or if the new inhabitant is not an acceptable result,
+;     then unknown.
+;     
+;     Otherwise, that new inhabitant.
+;   <=, >=:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if comparing the operands without regard for their
+;     elements or their impersonator or chaperone wrappers using the
+;     given `inhabitant-shallowly-equal-always?-knowable` (usually
+;     `equal-always?/recur`) returns an unknown result, then unknown.
+;     
+;     Otherwise, if it shows they differ, or if the results of
+;     smooshing corresponding elements under the same smoosh include a
+;     known `#f`, then a known `#f`.
+;     
+;     Otherwise, if those recursive results include an unknown, then
+;     unknown.
+;     
+;     Otherwise, a known `#t`.
+; Level 2+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 1 ==, but with "the same
+;     smoosh" referring to this level-2+ smoosh.
+;   <=, >=:
+;     Same as the description of level 1 == as a check, but with "the
+;     same smoosh" referring to this level-2+ check, understanding the
+;     recursive smoosh result always to be the first operand upon
+;     success so that finding an acceptable result for the overall
+;     smoosh is possible.
+;
+(define/own-contract
+  (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+    #:self-get-any-dynamic-type self-get-any-dynamic-type
+    #:inhabitant? inhabitant?
+    #:->->list ->->list
+    #:example-and-list-> example-and-list->
+    
+    #:inhabitant-shallowly-equal-always?-knowable
+    [ inhabitant-shallowly-equal-always?-knowable
+      (fn a b /known /equal-always?/recur a b /fn a-elem b-elem #t)]
+    
+    #:get-smoosh-of-zero-reports
+    [ get-smoosh-of-zero-reports
+      (fn self
+        (uninformative-smoosh-reports))])
+  (->*
+    (
+      #:self-get-any-dynamic-type (-> any/c any/c)
+      #:inhabitant? (-> any/c boolean?)
+      #:->->list (-> any/c (-> any/c list?))
+      #:example-and-list-> (-> any/c list? any/c))
+    (
+      #:inhabitant-shallowly-equal-always?-knowable
+      (-> any/c any/c (knowable/c boolean?))
+      
+      #:get-smoosh-of-zero-reports
+      (-> any/c (sequence/c smoosh-report?))
+      
+      )
+    expressly-smooshable-dynamic-type-impl?)
+  (make-expressly-smooshable-dynamic-type-impl
+    #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports
+    
+    #:get-smoosh-of-one-reports
+    (fn self a
+      (w- any-dt (self-get-any-dynamic-type self)
+      /expect (inhabitant? a) #t (uninformative-smoosh-reports)
+      /w- ->list (->->list a)
+      /w- a-list (->list a)
+      /smoosh-reports-zip-map
+        (list-map a-list /fn a-elem
+          (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
+        #:on-result-knowable-promise-maybe-knowable-promise
+        (fn kpmkp-list
+          (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
+            (promise-map
+              (knowable-promise-zip-map kp-list /fn result-list
+                result-list)
+              (fn list-k
+                (knowable-bind list-k /fn result-list
+                  (if (list-elements-eq? result-list a-list) (known a)
+                  /w- noncanonical-result
+                    (example-and-list-> a result-list)
+                  /if
+                    ; If reconstructing an inhabitant from the smoosh
+                    ; results results in an inhabitant with a
+                    ; different structure even when not comparing
+                    ; elements, we have no `known?` result.
+                    (knowable->falsable
+                      (inhabitant-shallowly-equal-always?-knowable
+                        a noncanonical-result))
+                    (known noncanonical-result)
+                  /unknown))))))))
+    
+    #:get-smoosh-and-comparison-of-two-reports
+    (fn self b-dt a b
+      (w- any-dt (self-get-any-dynamic-type self)
+      /expect (inhabitant? a) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (inhabitant? b) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      ; If the comparing the operands without comparing their elements
+      ; has an unknown result, we return an unknown result as well.
+      /expect (inhabitant-shallowly-equal-always?-knowable a b)
+        (known a-shallowly-equal-always-b?)
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      ; Otherwise, if it returns `#f`, we return a known nothing (when
+      ; doing a smoosh, or `#f` when doing a check).
+      /if (not a-shallowly-equal-always-b?)
+        (false-smoosh-and-comparison-of-two-reports)
+      /w- ->list (->->list a)
+      /w- a-list (->list a)
+      /w- b-list (->list b)
+      /smoosh-and-comparison-of-two-reports-zip-map
+        ; TODO SMOOSH: It's embarrassing that we're calling the rest
+        ; of these things `...-zip-map` when they take lists and
+        ; list-receiving functions, while `list-zip-map` here takes
+        ; two values and a two-value-receiving function.
+        (list-zip-map a-list b-list /fn a-elem b-elem
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports
+            any-dt a-elem b-elem))
+        #:on-check-result-knowable-promise
+        (fn kp-list
+          (boolean-and-knowable-promise-zip-map kp-list /fn #t))
+        #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+        (fn kpmkp-list
+          (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
+            (promise-map
+              (knowable-promise-zip-map kp-list /fn result-list
+                result-list)
+              (fn list-k
+                (knowable-bind list-k /fn result-list
+                  (if (list-elements-eq? result-list a-list) (known a)
+                  /if (list-elements-eq? result-list b-list) (known b)
+                  /w- noncanonical-result
+                    (example-and-list-> a result-list)
+                  /if
+                    ; If reconstructing an inhabitant from the smoosh
+                    ; results results in an inhabitant with a
+                    ; different structure even when not comparing
+                    ; elements, we have no `known?` result.
+                    (knowable->falsable
+                      (inhabitant-shallowly-equal-always?-knowable
+                        a noncanonical-result))
+                    (known noncanonical-result)
+                  /unknown))))))))
+    
+    ))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for immutable tuple data structures and their
@@ -3051,7 +3191,7 @@
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
-;     given `inhabitant-shallowly-equal-always?` (usually
+;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
 ;     Otherwise, if it shows they differ, or if the results of
@@ -3117,7 +3257,7 @@
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
-;     given `inhabitant-shallowly-equal-always?` (usually
+;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
 ;     Otherwise, if it shows they differ, or if the results of
@@ -3171,7 +3311,7 @@
 ;     smoosh is possible.
 ;
 (define/own-contract
-  (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+  (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
     #:->->list ->->list
@@ -3430,23 +3570,23 @@
           (on-check-result-knowable-promise #t #f)
           #:on->=?-knowable-promise
           (on-check-result-knowable-promise #f #t)
-          #:on-join-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-join-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             (fn v
               (and
                 (inhabitant-shallowly-chaperone-of? v a)
                 (inhabitant-shallowly-chaperone-of? v b))))
-          #:on-meet-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-meet-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             (fn v
               (and
                 (or (eq? v a) (eq? v b))
                 (inhabitant-shallowly-chaperone-of? a v)
                 (inhabitant-shallowly-chaperone-of? b v))))
-          #:on-==-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-==-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             ==-acceptable-result?)
-          #:on-path-related-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-path-related-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             path-related-acceptable-result?))
         (smoosh-and-comparison-of-two-reports-map report-2+
@@ -3614,22 +3754,22 @@
           (on-check-result-knowable-promise #t #f)
           #:on->=?-knowable-promise
           (on-check-result-knowable-promise #f #t)
-          #:on-join-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-join-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             (fn v
               (and
                 (inhabitant-chaperone-of? v a)
                 (inhabitant-chaperone-of? v b))))
-          #:on-meet-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-meet-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             (fn v
               (and
                 (inhabitant-chaperone-of? a v)
                 (inhabitant-chaperone-of? b v))))
-          #:on-==-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-==-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             ==-acceptable-result?)
-          #:on-path-related-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-path-related-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             path-related-acceptable-result?))
         (smoosh-and-comparison-of-two-reports-zip-map (list)
@@ -3641,11 +3781,64 @@
     
     ))
 
+; NOTE: This would be used like so:
+;
+#;
+(#:prop prop:expressly-has-dynamic-type
+  (make-expressly-has-dynamic-type-impl /fn bindings self
+    (expect
+      (known-value /gloss-ref-maybe-knowable bindings
+        (dynamic-type-var-for-any-dynamic-type))
+      (just any-dt)
+      (raise-arguments-error 'get-dynamic-type
+        "tried to get the dynamic type of a cons cell without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+        "bindings" bindings
+        "inhabitant" self)
+    /cons-dynamic-type any-dt)))
+;
+(define-imitation-simple-struct
+  (cons-dynamic-type? cons-dynamic-type-get-any-dynamic-type)
+  cons-dynamic-type
+  'cons-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (cons-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? pair?
+      
+      #:->->list
+      (fn a /dissectfn (cons first rest) /list first rest)
+      
+      #:example-and-list->
+      (fn example lst
+        (dissect lst (list first rest)
+        /cons first rest))
+      
+      #:get-smoosh-of-zero-reports
+      (fn self
+        (dissect self (cons-dynamic-type any-dt)
+        /smoosh-reports-map
+          (dynamic-type-get-smoosh-of-zero-reports any-dt)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (fn kpmkp
+            (promise-map kpmkp /fn kpmk
+              (knowable-map kpmk /fn kpm
+                (maybe-map kpm /fn kp
+                  (promise-map kp /fn k
+                    (knowable-map k /fn result
+                      (cons result result)))))))))
+      
+      )))
+
 ; This is an appropriate dynamic type of immutable vectors and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?` as long as the elements' information orderings are.
 ; This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
 ;
 ; NOTE: This would be used like so:
 ;
@@ -3669,7 +3862,7 @@
   'immutable-vector-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-vector-dynamic-type any-dt)
@@ -3701,7 +3894,7 @@
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?` as long as the elements' information orderings are.
 ; This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
 ;
 (define-imitation-simple-struct
   (immutable-box-dynamic-type?
@@ -3710,7 +3903,7 @@
   'immutable-box-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-box-dynamic-type any-dt)
@@ -3728,7 +3921,7 @@
       
       #:get-smoosh-of-zero-reports
       (fn self
-        (dissect self (cons-dynamic-type any-dt)
+        (dissect self (immutable-box-dynamic-type any-dt)
         /smoosh-reports-map
           (dynamic-type-get-smoosh-of-zero-reports any-dt)
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -3759,7 +3952,7 @@
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the elements' information orderings
 ; are. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
 ;
 (define-imitation-simple-struct
   (immutable-prefab-struct-dynamic-type?
@@ -3769,7 +3962,7 @@
   (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
@@ -3798,7 +3991,7 @@
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the keys' and values' information
 ; orderings are. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
 ;
 (define-imitation-simple-struct
   (immutable-hash-dynamic-type?
@@ -3807,7 +4000,7 @@
   'immutable-hash-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-hash-dynamic-type any-dt)
@@ -3964,7 +4157,7 @@
   'just-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+    (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (just-dynamic-type any-dt)
@@ -3977,8 +4170,6 @@
       (fn example lst
         (dissect lst (list e)
         /just e))
-      
-      #:copy (fn v v)
       
       #:get-smoosh-of-zero-reports
       (dissectfn (just-dynamic-type any-dt)
@@ -4390,7 +4581,7 @@
 ; information-ordered in a way that's consistent with `chaperone-of?`
 ; as long as the keys' and values' information orderings are. This is
 ; an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`.
 ; Note that this instance's
 ; `inhabitant-shallowly-equal-always?-knowable` can result in a
 ; non-`known?` value if any key comparison does.
@@ -4401,7 +4592,7 @@
   'gloss-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-list-isomorphism
+    (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (gloss-dynamic-type any-dt)
@@ -4425,9 +4616,7 @@
       
       #:inhabitant-shallowly-equal-always?-knowable
       (fn a b
-        (gloss-equal-always?-knowable a b /fn a b /known #t))
-      
-      #:copy (fn v v))))
+        (gloss-equal-always?-knowable a b /fn a b /known #t)))))
 
 (define-imitation-simple-struct
   (dynamic-type-for-dynamic-type-var-for-any-dynamic-type?)
