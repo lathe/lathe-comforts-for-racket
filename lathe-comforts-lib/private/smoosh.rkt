@@ -4548,6 +4548,17 @@
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             any-dt a-value b-value)))
       
+      #:get-smoosh-and-comparison-of-two-reports-via-second
+      (fn self a b
+        (dissect self (path-related-wrapper-dynamic-type any-dt)
+        /expect a (path-related-wrapper-unguarded a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (path-related-wrapper-unguarded b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+            any-dt a-value b-value)))
+      
       )))
 
 (define/own-contract
@@ -4633,6 +4644,17 @@
           (uninformative-smoosh-and-comparison-of-two-reports)
         /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
+            any-dt a-value b-value)))
+      
+      #:get-smoosh-and-comparison-of-two-reports-via-second
+      (fn self a b
+        (dissect self (info-wrapper-dynamic-type any-dt)
+        /expect a (info-wrapper-unguarded a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (info-wrapper-unguarded b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
             any-dt a-value b-value)))
       
       )))
