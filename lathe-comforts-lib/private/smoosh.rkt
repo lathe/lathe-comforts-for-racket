@@ -29,6 +29,7 @@
   make-similar-hash)
 (require /only-in lathe-comforts/list
   list-all list-any list-foldl list-length=nat? list-map list-zip-map)
+(require /only-in lathe-comforts/string immutable-string?)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
   define-imitation-simple-struct immutable-prefab-struct?
@@ -2667,21 +2668,6 @@
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not `equal-always?`, then unknown.
-;     
-;     Otherwise, the first operand (or, for a check, `#t`).
-;
-(define-imitation-simple-struct (equal-always-indistinct-dynamic-type?)
-  equal-always-indistinct-dynamic-type
-  'equal-always-indistinct-dynamic-type (current-inspector)
-  (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? (fn v #t))))
-
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both `flvector?` values, then unknown.
 ;     
 ;     If the operands are not `eq?`, then a known nothing (or, for a
@@ -2769,6 +2755,54 @@
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? boolean?
       #:known-distinct? #t)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both characters, then unknown.
+;     
+;     If the operands are not `equal-always?`, then unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
+  'char-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? char?)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both immutable strings, then unknown.
+;     
+;     If the operands are not `equal-always?`, then unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (immutable-string-dynamic-type?)
+  immutable-string-dynamic-type
+  'immutable-string-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? immutable-string?)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both immutable byte strings, then
+;     unknown.
+;     
+;     If the operands are not `equal-always?`, then unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (immutable-bytes-dynamic-type?)
+  immutable-bytes-dynamic-type
+  'immutable-bytes-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? (fn v /and (bytes? v) (immutable? v)))))
 
 (define/own-contract (nan-number? v)
   (-> any/c boolean?)
@@ -4149,13 +4183,12 @@
             (compiled-expression? v)))
         (fn any-dt /uninformative-dynamic-type))
       (list boolean? (fn any-dt /boolean-dynamic-type))
+      (list char? (fn any-dt /char-dynamic-type))
+      (list immutable-string?
+        (fn any-dt /immutable-string-dynamic-type))
       (list
-        (fn v
-          (or
-            (char? v)
-            (and (string? v) (immutable? v))
-            (and (bytes? v) (immutable? v))))
-        (fn any-dt /equal-always-indistinct-dynamic-type))
+        (fn v /and (bytes? v) (immutable? v))
+        (fn any-dt /immutable-bytes-dynamic-type))
       (list non-nan-number? (fn any-dt /non-nan-number-dynamic-type))
       (list
         non-nan-extflonum?
@@ -4197,6 +4230,20 @@
       (maybe-map kpm /fn kp
         (promise-map kp /fn k
           (knowable-map k /fn result-value /just result-value))))))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `nothing?` values, then unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (nothing-dynamic-type?)
+  nothing-dynamic-type
+  'nothing-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? nothing?)))
 
 (define-imitation-simple-struct
   (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
@@ -4674,9 +4721,7 @@
     (list
       base-readable-dynamic-type-case
       (dynamic-type-case-by-discrete-cases 'maybe-dynamic-type /list
-        (list
-          nothing?
-          (fn any-dt /equal-always-indistinct-dynamic-type))
+        (list nothing? (fn any-dt /nothing-dynamic-type))
         (list just? (fn any-dt /just-dynamic-type any-dt)))
       (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
       (list
@@ -4688,10 +4733,47 @@
       (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
       (list
         dynamic-type-var-for-any-dynamic-type?
-        (fn any-dt /equal-always-indistinct-dynamic-type))
+        (fn any-dt
+          (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
       (list
         equal-always-gloss-key-wrapper?
-        (fn any-dt /equal-always-indistinct-dynamic-type)))))
+        (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type)))))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both
+;     `dynamic-type-var-for-any-dynamic-type?` values, then
+;     unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct
+  (dynamic-type-for-dynamic-type-var-for-any-dynamic-type?)
+  dynamic-type-for-dynamic-type-var-for-any-dynamic-type
+  'dynamic-type-for-dynamic-type-var-for-any-dynamic-type
+  (current-inspector)
+  (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? dynamic-type-var-for-any-dynamic-type?)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `equal-always-gloss-key-wrapper?`
+;     values, then unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct
+  (equal-always-gloss-key-wrapper-dynamic-type?)
+  equal-always-gloss-key-wrapper-dynamic-type
+  'equal-always-gloss-key-wrapper-dynamic-type (current-inspector)
+  (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+      #:inhabitant? equal-always-gloss-key-wrapper?)))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
@@ -4918,8 +5000,6 @@
 ;
 ;       - `uninformative-dynamic-type?`
 ;
-;       - `equal-always-indistinct-dynamic-type?`
-;
 ;       - `flvector-dynamic-type?`
 ;
 ;       - `fxvector-dynamic-type?`
@@ -4927,6 +5007,12 @@
 ;       - `base-syntactic-atom-dynamic-type?`
 ;
 ;       - `boolean-dynamic-type?`
+;
+;       - `char-dynamic-type?`
+;
+;       - `immutable-string-dynamic-type?`
+;
+;       - `immutable-bytes-dynamic-type?`
 ;
 ;       - `non-nan-number-dynamic-type?`
 ;
@@ -4950,6 +5036,8 @@
 ;       - `base-readable-dynamic-type?` (the type belonging to
 ;         `base-readable-dynamic-type-case`)
 ;
+;       - `nothing-dynamic-type?`
+;
 ;       - `just-dynamic-type?`
 ;
 ;       - `knowable-dynamic-type?`
@@ -4959,6 +5047,10 @@
 ;       - `info-wrapper-dynamic-type?`
 ;
 ;       - `gloss-dynamic-type?`
+;
+;       - `dynamic-type-for-dynamic-type-var-for-any-dynamic-type?`
+;
+;       - `equal-always-gloss-key-wrapper-dynamic-type?`
 ;
 ;       - `maybe-dynamic-type?` (a type used in an intermediate way in
 ;         the definition of
