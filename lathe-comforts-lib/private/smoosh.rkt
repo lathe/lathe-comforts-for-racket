@@ -96,6 +96,7 @@
   get-dynamic-type-with-default-bindings
   knowable-zip
   maybe-min-zip
+  promise-zip-map
   knowable-promise-zip-map
   boolean-and-knowable-promise-zip-map
   boolean-and-knowable-thunk-zip
@@ -146,6 +147,19 @@
   dynamic-type-get-smoosh-of-one-reports
   dynamic-type-get-smoosh-and-comparison-of-two-reports
   dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+  uninformative-hash-code
+  smoosh-equal-hash-code-support-report?
+  smoosh-equal-hash-code-support-report-impl?
+  smoosh-equal-hash-code-support-report-==-hash-code-promise
+  smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+  prop:smoosh-equal-hash-code-support-report
+  make-smoosh-equal-hash-code-support-report-impl
+  uninformative-smoosh-equal-hash-code-support-report
+  uninformative-smoosh-equal-hash-code-support-reports
+  expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?
+  prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+  dynamic-type-get-smoosh-equal-hash-code-support-reports
   smoosh-report-map
   smoosh-reports-map
   smoosh-report-zip-map
@@ -154,12 +168,18 @@
   smoosh-and-comparison-of-two-reports-map
   smoosh-and-comparison-of-two-report-zip-map
   smoosh-and-comparison-of-two-reports-zip-map
+  smoosh-equal-hash-code-support-report-map
+  smoosh-equal-hash-code-support-reports-map
+  smoosh-equal-hash-code-support-report-zip-map
+  smoosh-equal-hash-code-support-reports-zip-map
   false-smoosh-and-comparison-of-two-reports
   constant-smoosh-report
   constant-smoosh-reports
   promise-map
   constant-smoosh-and-comparison-of-two-report
   constant-smoosh-and-comparison-of-two-reports
+  constant-smoosh-equal-hash-code-support-report
+  constant-smoosh-equal-hash-code-support-reports
   equal-always-gloss-key-wrapper
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
@@ -417,40 +437,37 @@
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (dissect a (path-related-wrapper-unguarded a-value)
-      /dissect b (path-related-wrapper-unguarded b-value)
-      /knowable->falsable /knowable-map
+      (knowable->falsable /knowable-map
         (force
           ; TODO SMOOSH: These uses of
-          ; `smoosh-report-path-related-knowable-promise-maybe-knowable-promise`,
+          ; `smoosh-report-==-knowable-promise-maybe-knowable-promise`,
           ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
           ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
           ; and `any-dynamic-type` are forward references. See if we can
           ; untangle them.
-          (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+          (smoosh-report-==-knowable-promise-maybe-knowable-promise
             (smoosh-and-comparison-of-two-report-get-smoosh-report
-              (dynamic-type-get-smoosh-and-comparison-of-two-reports
-                (any-dynamic-type)
-                a-value
-                b-value))))
+              (stream-first
+                (dynamic-type-get-smoosh-and-comparison-of-two-reports
+                  (any-dynamic-type)
+                  a
+                  b)))))
         (fn kpm
           (just? kpm))))
     
     (define (hash-mode-proc v recur now?)
-      (dissect v (path-related-wrapper-unguarded v-value)
-        0
-        ; TODO SMOOSH HASH CODE: Implement
-        ; `smoosh-report-path-related-hash-code` or something like it.
-        ; We'll need to implement a method like this on every smoosh
-        ; report, if we do this.
-      #;
-      /smoosh-report-path-related-hash-code
-        ; TODO SMOOSH: These uses of
-        ; `dynamic-type-get-smoosh-of-one-reports` and
-        ; `any-dynamic-type` are forward references. See if we can
-        ; untangle them.
-        (dynamic-type-get-smoosh-of-one-reports (any-dynamic-type)
-          v-value)))
+      ; TODO SMOOSH: These uses of
+      ; `smoosh-equal-hash-code-support-report-==-hash-code-promise`,
+      ; `dynamic-type-get-smoosh-equal-hash-code-support-reports`, and
+      ; `any-dynamic-type` are forward references. See if we can
+      ; untangle them.
+      (force
+        (smoosh-equal-hash-code-support-report-==-hash-code-promise
+          (stream-first
+            (dynamic-type-get-smoosh-equal-hash-code-support-reports
+              (any-dynamic-type)
+              v))
+          #f)))
     
     ))
 
@@ -466,9 +483,7 @@
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (dissect a (info-wrapper-unguarded a-value)
-      /dissect b (info-wrapper-unguarded b-value)
-      /knowable->falsable /knowable-map
+      (knowable->falsable /knowable-map
         (force
           ; TODO SMOOSH: These uses of
           ; `smoosh-report-==-knowable-promise-maybe-knowable-promise`,
@@ -477,30 +492,28 @@
           ; and `any-dynamic-type` are forward references. See if we can
           ; untangle them.
           (smoosh-report-==-knowable-promise-maybe-knowable-promise
-            (stream-first /stream-rest
-              (smoosh-and-comparison-of-two-report-get-smoosh-report
+            (smoosh-and-comparison-of-two-report-get-smoosh-report
+              (stream-first
                 (dynamic-type-get-smoosh-and-comparison-of-two-reports
                   (any-dynamic-type)
-                  a-value
-                  b-value)))))
+                  a
+                  b)))))
         (fn kpm
           (just? kpm))))
     
     (define (hash-mode-proc v recur now?)
-      (dissect v (info-wrapper-unguarded v-value)
-        0
-        ; TODO SMOOSH HASH CODE: Implement
-        ; `smoosh-report-==-hash-code` or something like it. We'll
-        ; need to implement a method like this on every smoosh report,
-        ; if we do this.
-      #;
-      /smoosh-report-==-hash-code /stream-first /stream-rest
-        ; TODO SMOOSH: These uses of
-        ; `dynamic-type-get-smoosh-of-one-reports` and
-        ; `any-dynamic-type` are forward references. See if we can
-        ; untangle them.
-        (dynamic-type-get-smoosh-of-one-reports (any-dynamic-type)
-          v-value)))
+      ; TODO SMOOSH: These uses of
+      ; `smoosh-equal-hash-code-support-report-==-hash-code-promise`,
+      ; `dynamic-type-get-smoosh-equal-hash-code-support-reports`, and
+      ; `any-dynamic-type` are forward references. See if we can
+      ; untangle them.
+      (force
+        (smoosh-equal-hash-code-support-report-==-hash-code-promise
+          (stream-first
+            (dynamic-type-get-smoosh-equal-hash-code-support-reports
+              (any-dynamic-type)
+              v))
+          #f)))
     
     ))
 
@@ -595,6 +608,10 @@
   /maybe-bind maybe /fn element
   /maybe-map (maybe-min-zip maybe-list) /fn element-list
     (cons element element-list)))
+
+(define/own-contract (promise-zip-map p-list on-value)
+  (-> (listof promise?) (-> any/c any/c) promise?)
+  (delay /on-value /list-map p-list /fn p /force p))
 
 (define/own-contract (knowable-promise-zip-map kp-list on-value)
   (-> (listof (promise/c knowable?)) (-> any/c any/c)
@@ -799,15 +816,13 @@
     
     (define (hash-mode-proc v recur now?)
       (define (hash-code-smooshable v)
-        0
-        ; TODO SMOOSH HASH CODE: Implement
-        ; `smoosh-report-==-hash-code` or something like it. We'll
-        ; need to implement a method like this on every smoosh report,
-        ; if we do this.
-        #;
-        (smoosh-report-==-hash-code /stream-first
-          (dynamic-type-get-smoosh-of-one-reports (any-dynamic-type)
-            v)))
+        (force
+          (smoosh-equal-hash-code-support-report-==-hash-code-promise
+            (stream-first
+              (dynamic-type-get-smoosh-equal-hash-code-support-reports
+                (any-dynamic-type)
+                v))
+            #f)))
       (define (hash-code-glossesque gs v hash-code-value)
         (hash-code-combine-unordered* /for/list
           (
@@ -1377,21 +1392,25 @@
     [ get-smoosh-and-comparison-of-two-reports-via-second
       (fn dt a b
         (get-smoosh-and-comparison-of-two-reports dt a b))])
-  (->
-    #:get-smoosh-of-zero-reports
-    (-> any/c (sequence/c smoosh-report?))
-    
-    #:get-smoosh-of-one-reports
-    (-> any/c any/c (sequence/c smoosh-report?))
-    
-    #:get-smoosh-and-comparison-of-two-reports
-    (-> any/c any/c any/c
-      (sequence/c smoosh-and-comparison-of-two-report?))
-    
-    #:get-smoosh-and-comparison-of-two-reports-via-second
-    (-> any/c any/c any/c
-      (sequence/c smoosh-and-comparison-of-two-report?))
-    
+  (->*
+    (
+      #:get-smoosh-of-zero-reports
+      (-> any/c (sequence/c smoosh-report?))
+      
+      #:get-smoosh-of-one-reports
+      (-> any/c any/c (sequence/c smoosh-report?))
+      
+      #:get-smoosh-and-comparison-of-two-reports
+      (-> any/c any/c any/c
+        (sequence/c smoosh-and-comparison-of-two-report?))
+      
+      )
+    (
+      #:get-smoosh-and-comparison-of-two-reports-via-second
+      (-> any/c any/c any/c
+        (sequence/c smoosh-and-comparison-of-two-report?))
+      
+      )
     expressly-smooshable-dynamic-type-impl?)
   (make-expressly-smooshable-dynamic-type-impl-from-various-unkeyworded
     get-smoosh-of-zero-reports
@@ -1442,6 +1461,140 @@
     (expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
       dt a b)
     (uninformative-smoosh-and-comparison-of-two-reports)))
+
+
+(define/own-contract (uninformative-hash-code)
+  (-> fixnum?)
+  0)
+
+
+(define-imitation-simple-generics
+  smoosh-equal-hash-code-support-report?
+  smoosh-equal-hash-code-support-report-impl?
+  
+  ; This says the `equal-hash-code` (if the given boolean is `#t`) or
+  ; `equal-always-hash-code` (if the given boolean is `#f`) of the
+  ; value.
+  (#:method smoosh-equal-hash-code-support-report-==-hash-code-promise
+    (#:this)
+    ())
+  
+  ; This says the `equal-hash-code` (if the given boolean is `#t`) or
+  ; `equal-always-hash-code` (if the given boolean is `#f`) of a
+  ; `path-related-wrapper` around the value.
+  (#:method
+    smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+    (#:this)
+    ())
+  
+  prop:smoosh-equal-hash-code-support-report
+  make-smoosh-equal-hash-code-support-report-impl-from-various-unkeyworded
+  'smoosh-equal-hash-code-support-report
+  'smoosh-equal-hash-code-support-report-impl (list))
+(define smoosh-equal-hash-code-support-report-component/c
+  (-> smoosh-equal-hash-code-support-report? boolean?
+    (promise/c fixnum?)))
+(ascribe-own-contract smoosh-equal-hash-code-support-report?
+  (-> any/c boolean?))
+(ascribe-own-contract smoosh-equal-hash-code-support-report-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract
+  smoosh-equal-hash-code-support-report-==-hash-code-promise
+  smoosh-equal-hash-code-support-report-component/c)
+(ascribe-own-contract
+  smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+  smoosh-equal-hash-code-support-report-component/c)
+(ascribe-own-contract prop:smoosh-equal-hash-code-support-report
+  (struct-type-property/c
+    smoosh-equal-hash-code-support-report-impl?))
+
+(define/own-contract
+  (make-smoosh-equal-hash-code-support-report-impl
+    #:==-hash-code-promise ==-hash-code-promise
+    #:path-related-hash-code-promise path-related-hash-code-promise)
+  (->
+    #:==-hash-code-promise
+    smoosh-equal-hash-code-support-report-component/c
+    
+    #:path-related-hash-code-promise
+    smoosh-equal-hash-code-support-report-component/c
+    
+    smoosh-equal-hash-code-support-report-impl?)
+  (make-smoosh-equal-hash-code-support-report-impl-from-various-unkeyworded
+    ==-hash-code-promise
+    path-related-hash-code-promise))
+
+(define-imitation-simple-struct
+  (uninformative-smoosh-equal-hash-code-support-report?)
+  uninformative-smoosh-equal-hash-code-support-report-unguarded
+  'uninformative-smoosh-equal-hash-code-support-report (current-inspector) (auto-write)
+  (#:prop prop:smoosh-equal-hash-code-support-report
+    (make-smoosh-equal-hash-code-support-report-impl
+      
+      #:==-hash-code-promise
+      (fn self now?
+        (delay/strict /uninformative-hash-code))
+      
+      #:path-related-hash-code-promise
+      (fn self now?
+        (delay/strict /uninformative-hash-code))
+      
+      )))
+
+(define/own-contract
+  (uninformative-smoosh-equal-hash-code-support-report)
+  (-> smoosh-equal-hash-code-support-report?)
+  (uninformative-smoosh-equal-hash-code-support-report-unguarded))
+
+(define/own-contract
+  (uninformative-smoosh-equal-hash-code-support-reports)
+  (-> (sequence/c smoosh-equal-hash-code-support-report?))
+  (in-cycle /list
+    (uninformative-smoosh-equal-hash-code-support-report)))
+
+
+(define-imitation-simple-generics
+  expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type?
+  expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?
+  (#:method
+    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-get-smoosh-equal-hash-code-support-reports
+    (#:this)
+    ())
+  prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-various-unkeyworded
+  'expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+  'expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+  (list))
+(ascribe-own-contract
+  expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract
+  prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+  (struct-type-property/c
+    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?))
+
+(define/own-contract
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+    #:get-smoosh-equal-hash-code-support-reports
+    get-smoosh-equal-hash-code-support-reports)
+  (->
+    #:get-smoosh-equal-hash-code-support-reports
+    (-> any/c any/c (sequence/c smoosh-report?))
+    
+    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-various-unkeyworded
+    get-smoosh-equal-hash-code-support-reports))
+
+(define/own-contract
+  (dynamic-type-get-smoosh-equal-hash-code-support-reports a-dt a)
+  (-> any/c any/c (sequence/c smoosh-report?))
+  (if
+    (expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type?
+      a-dt)
+    (expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-get-smoosh-equal-hash-code-support-reports
+      a-dt a)
+    (uninformative-smoosh-equal-hash-code-support-reports)))
+
 
 (define-imitation-simple-struct
   (mapped-smoosh-report?
@@ -1529,29 +1682,30 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    smoosh-report?
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+  (->*
+    (smoosh-report?)
+    (
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      )
     smoosh-report?)
   (mapped-smoosh-report
     on-join-knowable-promise-maybe-knowable-promise
@@ -1585,29 +1739,30 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    (sequence/c smoosh-report?)
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+  (->*
+    ((sequence/c smoosh-report?))
+    (
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      )
     (sequence/c smoosh-report?))
   (sequence-map
     (fn report
@@ -1728,39 +1883,40 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    (listof smoosh-report?)
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+  (->*
+    ((listof smoosh-report?))
+    (
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+      
+      )
     smoosh-report?)
   (zip-mapped-smoosh-report
     on-join-knowable-promise-maybe-knowable-promise
@@ -1800,45 +1956,43 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    (listof (sequence/c smoosh-report?))
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+  (->*
+    ((listof (sequence/c smoosh-report?)))
+    (
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+      
+      )
     (sequence/c smoosh-report?))
   (sequence-zip-map reports-list /fn report-list
     (smoosh-report-zip-map report-list
-      
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise
       
       #:on-join-knowable-promise-maybe-knowable-promise
       on-join-knowable-promise-maybe-knowable-promise
@@ -1934,12 +2088,10 @@
         kp)]
     
     #:on-<=?-knowable-promise
-    [ on-<=?-knowable-promise
-      on-check-result-knowable-promise]
+    [on-<=?-knowable-promise on-check-result-knowable-promise]
     
     #:on->=?-knowable-promise
-    [ on->=?-knowable-promise
-      on-check-result-knowable-promise]
+    [on->=?-knowable-promise on-check-result-knowable-promise]
     
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -1963,41 +2115,42 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    smoosh-and-comparison-of-two-report?
-    
-    #:on-check-result-knowable-promise
-    (-> (promise/c (knowable/c boolean?))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-<=?-knowable-promise
-    (-> (promise/c (knowable/c boolean?))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on->=?-knowable-promise
-    (-> (promise/c (knowable/c boolean?))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+  (->*
+    (smoosh-and-comparison-of-two-report?)
+    (
+      #:on-check-result-knowable-promise
+      (-> (promise/c (knowable/c boolean?))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-<=?-knowable-promise
+      (-> (promise/c (knowable/c boolean?))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on->=?-knowable-promise
+      (-> (promise/c (knowable/c boolean?))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      )
     smoosh-and-comparison-of-two-report?)
   (mapped-smoosh-and-comparison-of-two-report
     on-<=?-knowable-promise
@@ -2017,12 +2170,10 @@
         kp)]
     
     #:on-<=?-knowable-promise
-    [ on-<=?-knowable-promise
-      on-check-result-knowable-promise]
+    [on-<=?-knowable-promise on-check-result-knowable-promise]
     
     #:on->=?-knowable-promise
-    [ on->=?-knowable-promise
-      on-check-result-knowable-promise]
+    [on->=?-knowable-promise on-check-result-knowable-promise]
     
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -2046,41 +2197,42 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    (sequence/c smoosh-and-comparison-of-two-report?)
-    
-    #:on-check-result-knowable-promise
-    (-> (promise/c (knowable/c boolean?))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-<=?-knowable-promise
-    (-> (promise/c (knowable/c boolean?))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on->=?-knowable-promise
-    (-> (promise/c (knowable/c boolean?))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+  (->*
+    ((sequence/c smoosh-and-comparison-of-two-report?))
+    (
+      #:on-check-result-knowable-promise
+      (-> (promise/c (knowable/c boolean?))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-<=?-knowable-promise
+      (-> (promise/c (knowable/c boolean?))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on->=?-knowable-promise
+      (-> (promise/c (knowable/c boolean?))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
+        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      
+      )
     (sequence/c smoosh-and-comparison-of-two-report?))
   (sequence-map
     (fn report
@@ -2223,51 +2375,52 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    (listof smoosh-and-comparison-of-two-report?)
-    
-    #:on-check-result-knowable-promise
-    (-> (listof (promise/c (knowable/c boolean?)))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-<=?-knowable-promise
-    (-> (listof (promise/c (knowable/c boolean?)))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on->=?-knowable-promise
-    (-> (listof (promise/c (knowable/c boolean?)))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+  (->*
+    ((listof smoosh-and-comparison-of-two-report?))
+    (
+      #:on-check-result-knowable-promise
+      (-> (listof (promise/c (knowable/c boolean?)))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-<=?-knowable-promise
+      (-> (listof (promise/c (knowable/c boolean?)))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on->=?-knowable-promise
+      (-> (listof (promise/c (knowable/c boolean?)))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+      
+      )
     smoosh-and-comparison-of-two-report?)
   (zip-mapped-smoosh-and-comparison-of-two-report
     on-<=?-knowable-promise
@@ -2324,51 +2477,52 @@
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
-  (->
-    (listof (sequence/c smoosh-and-comparison-of-two-report?))
-    
-    #:on-check-result-knowable-promise
-    (-> (listof (promise/c (knowable/c boolean?)))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-<=?-knowable-promise
-    (-> (listof (promise/c (knowable/c boolean?)))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on->=?-knowable-promise
-    (-> (listof (promise/c (knowable/c boolean?)))
-      (promise/c (knowable/c boolean?)))
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+  (->*
+    ((listof (sequence/c smoosh-and-comparison-of-two-report?)))
+    (
+      #:on-check-result-knowable-promise
+      (-> (listof (promise/c (knowable/c boolean?)))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-<=?-knowable-promise
+      (-> (listof (promise/c (knowable/c boolean?)))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on->=?-knowable-promise
+      (-> (listof (promise/c (knowable/c boolean?)))
+        (promise/c (knowable/c boolean?)))
+      
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-join-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-join-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-meet-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    (->
-      (listof
+      
+      #:on-path-related-knowable-promise-maybe-knowable-promise
+      (->
+        (listof
+          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
         (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-    
+      
+      )
     (sequence/c smoosh-and-comparison-of-two-report?))
   (sequence-zip-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-zip-map report-list
@@ -2386,6 +2540,226 @@
       
       #:on-path-related-knowable-promise-maybe-knowable-promise
       on-path-related-knowable-promise-maybe-knowable-promise)))
+
+
+(define-imitation-simple-struct
+  (mapped-smoosh-equal-hash-code-support-report?
+    mapped-smoosh-equal-hash-code-support-report-on-==-hash-code-promise
+    mapped-smoosh-equal-hash-code-support-report-on-path-related-hash-code-promise
+    mapped-smoosh-equal-hash-code-support-report-original)
+  mapped-smoosh-equal-hash-code-support-report
+  'mapped-smoosh-equal-hash-code-support-report (current-inspector)
+  (auto-write)
+  (#:prop prop:smoosh-equal-hash-code-support-report
+    (make-smoosh-equal-hash-code-support-report-impl
+      
+      #:==-hash-code-promise
+      (fn self a now?
+        (dissect self
+          (mapped-smoosh-equal-hash-code-support-report
+            on-==-hash-code-promise
+            on-path-related-hash-code-promise
+            original)
+        /on-==-hash-code-promise
+          (smoosh-equal-hash-code-support-report-==-hash-code-promise
+            original)))
+      
+      #:path-related-hash-code-promise
+      (fn self a now?
+        (dissect self
+          (mapped-smoosh-equal-hash-code-support-report
+            on-==-hash-code-promise
+            on-path-related-hash-code-promise
+            original)
+        /on-path-related-hash-code-promise
+          (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+            original)))
+      
+      )))
+
+(define/own-contract
+  (smoosh-equal-hash-code-support-report-map report
+    
+    #:on-hash-code-promise
+    [ on-hash-code-promise
+      (fn p
+        p)]
+    
+    #:on-==-hash-code-promise
+    [on-==-hash-code-promise on-hash-code-promise]
+    
+    #:on-path-related-hash-code-promise
+    [on-path-related-hash-code-promise on-hash-code-promise]
+    
+    )
+  (->*
+    (smoosh-equal-hash-code-support-report?)
+    (
+      #:on-hash-code-promise
+      (-> (promise/c fixnum?) (promise/c fixnum?))
+      
+      #:on-==-hash-code-promise
+      (-> (promise/c fixnum?) (promise/c fixnum?))
+      
+      #:on-path-related-hash-code-promise
+      (-> (promise/c fixnum?) (promise/c fixnum?))
+      
+      )
+    smoosh-equal-hash-code-support-report?)
+  (mapped-smoosh-equal-hash-code-support-report
+    on-==-hash-code-promise on-path-related-hash-code-promise report))
+
+(define/own-contract
+  (smoosh-equal-hash-code-support-reports-map reports
+    
+    #:on-hash-code-promise
+    [ on-hash-code-promise
+      (fn p
+        p)]
+    
+    #:on-==-hash-code-promise
+    [on-==-hash-code-promise on-hash-code-promise]
+    
+    #:on-path-related-hash-code-promise
+    [on-path-related-hash-code-promise on-hash-code-promise]
+    
+    )
+  (->*
+    ((sequence/c smoosh-equal-hash-code-support-report?))
+    (
+      #:on-hash-code-promise
+      (-> (promise/c fixnum?) (promise/c fixnum?))
+      
+      #:on-==-hash-code-promise
+      (-> (promise/c fixnum?) (promise/c fixnum?))
+      
+      #:on-path-related-hash-code-promise
+      (-> (promise/c fixnum?) (promise/c fixnum?))
+      
+      )
+    (sequence/c smoosh-equal-hash-code-support-report?))
+  (sequence-map
+    (fn report
+      (smoosh-equal-hash-code-support-report-map report
+        #:on-hash-code-promise on-hash-code-promise
+        #:on-==-hash-code-promise on-==-hash-code-promise
+        
+        #:on-path-related-hash-code-promise
+        on-path-related-hash-code-promise
+        
+        ))
+    reports))
+
+(define-imitation-simple-struct
+  (zip-mapped-smoosh-equal-hash-code-support-report?
+    zip-mapped-smoosh-equal-hash-code-support-report-on-==-hash-code-promise
+    zip-mapped-smoosh-equal-hash-code-support-report-on-path-related-hash-code-promise
+    zip-mapped-smoosh-equal-hash-code-support-report-original-list)
+  zip-mapped-smoosh-equal-hash-code-support-report
+  'zip-mapped-smoosh-equal-hash-code-support-report (current-inspector)
+  (auto-write)
+  (#:prop prop:smoosh-equal-hash-code-support-report
+    (make-smoosh-equal-hash-code-support-report-impl
+      
+      #:==-hash-code-promise
+      (fn self a now?
+        (dissect self
+          (zip-mapped-smoosh-equal-hash-code-support-report
+            on-==-hash-code-promise
+            on-path-related-hash-code-promise
+            original-list)
+        /on-==-hash-code-promise
+          (list-map original-list /fn original
+            (smoosh-equal-hash-code-support-report-==-hash-code-promise
+              original))))
+      
+      #:path-related-hash-code-promise
+      (fn self a now?
+        (dissect self
+          (zip-mapped-smoosh-equal-hash-code-support-report
+            on-==-hash-code-promise
+            on-path-related-hash-code-promise
+            original-list)
+        /on-path-related-hash-code-promise
+          (list-map original-list /fn original
+            (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+              original))))
+      
+      )))
+
+(define/own-contract
+  (smoosh-equal-hash-code-support-report-zip-map report-list
+    
+    #:on-hash-code-promise
+    [ on-hash-code-promise
+      (fn p-list
+        (raise-arguments-error 'smoosh-equal-hash-code-support-report-zip-map
+          "tried to retrieve a smoosh result when its mapping behavior was undefined"
+          "hash-code-promise-list" p-list))]
+    
+    #:on-==-hash-code-promise
+    [on-==-hash-code-promise on-hash-code-promise]
+    
+    #:on-path-related-hash-code-promise
+    [on-path-related-hash-code-promise on-hash-code-promise]
+    
+    )
+  (->*
+    ((listof smoosh-equal-hash-code-support-report?))
+    (
+      #:on-hash-code-promise
+      (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
+      
+      #:on-==-hash-code-promise
+      (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
+      
+      #:on-path-related-hash-code-promise
+      (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
+      
+      )
+    smoosh-equal-hash-code-support-report?)
+  (zip-mapped-smoosh-equal-hash-code-support-report
+    on-==-hash-code-promise
+    on-path-related-hash-code-promise
+    report-list))
+
+(define/own-contract
+  (smoosh-equal-hash-code-support-reports-zip-map reports-list
+    
+    #:on-hash-code-promise
+    [ on-hash-code-promise
+      (fn p-list
+        (raise-arguments-error 'smoosh-equal-hash-code-support-reports-zip-map
+          "tried to retrieve a smoosh result when its mapping behavior was undefined"
+          "hash-code-promise-list" p-list))]
+    
+    #:on-==-hash-code-promise
+    [on-==-hash-code-promise on-hash-code-promise]
+    
+    #:on-path-related-hash-code-promise
+    [on-path-related-hash-code-promise on-hash-code-promise]
+    
+    )
+  (->*
+    ((listof (sequence/c smoosh-equal-hash-code-support-report?)))
+    (
+      #:on-hash-code-promise
+      (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
+      
+      #:on-==-hash-code-promise
+      (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
+      
+      #:on-path-related-hash-code-promise
+      (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
+      
+      )
+    (sequence/c smoosh-equal-hash-code-support-report?))
+  (sequence-zip-map reports-list /fn report-list
+    (smoosh-equal-hash-code-support-report-zip-map report-list
+      #:on-==-hash-code-promise on-==-hash-code-promise
+      
+      #:on-path-related-hash-code-promise
+      on-path-related-hash-code-promise)))
 
 (define/own-contract (false-smoosh-and-comparison-of-two-reports)
   (-> (sequence/c smoosh-and-comparison-of-two-report?))
@@ -2504,6 +2878,44 @@
     (sequence/c smoosh-and-comparison-of-two-report?))
   (in-cycle /list /constant-smoosh-and-comparison-of-two-report
     result-knowable-promise-maybe-knowable-promise))
+
+(define-imitation-simple-struct
+  (constant-smoosh-equal-hash-code-support-report?
+    constant-smoosh-equal-hash-code-support-report-hash-code-promise)
+  constant-smoosh-equal-hash-code-support-report-unguarded
+  'constant-smoosh-equal-hash-code-support-report (current-inspector)
+  (auto-write)
+  (#:prop prop:smoosh-equal-hash-code-support-report
+    (make-smoosh-equal-hash-code-support-report-impl
+      
+      #:==-hash-code-promise
+      (fn self now?
+        (dissect self
+          (constant-smoosh-equal-hash-code-support-report-unguarded
+            hash-code-promise)
+          hash-code-promise))
+      
+      #:path-related-hash-code-promise
+      (fn self now?
+        (dissect self
+          (constant-smoosh-equal-hash-code-support-report-unguarded
+            hash-code-promise)
+          hash-code-promise))
+      
+      )))
+
+(define/own-contract
+  (constant-smoosh-equal-hash-code-support-report hash-code-promise)
+  (-> (promise/c fixnum?) smoosh-equal-hash-code-support-report?)
+  (constant-smoosh-equal-hash-code-support-report-unguarded
+    hash-code-promise))
+
+(define/own-contract
+  (constant-smoosh-equal-hash-code-support-reports hash-code-promise)
+  (-> (promise/c fixnum?)
+    (sequence/c smoosh-equal-hash-code-support-report?))
+  (in-cycle /list /constant-smoosh-equal-hash-code-support-report
+    hash-code-promise))
 
 (define-imitation-simple-struct
   (equal-always-gloss-key-wrapper?
@@ -2666,6 +3078,20 @@
     
     ))
 
+(define/own-contract
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+    #:hash-code [hash-code (fn a /equal-always-hash-code a)])
+  (->* (#:hash-code (-> any/c fixnum?))
+    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+    
+    #:get-smoosh-equal-hash-code-support-reports
+    (fn self a
+      (constant-smoosh-equal-hash-code-support-reports
+        (delay /hash-code a)))
+    
+    ))
+
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both `flvector?` values, then unknown.
@@ -2683,7 +3109,10 @@
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? flvector?
       #:==? (fn a b /eq? a b)
-      #:known-discrete? #t)))
+      #:known-discrete? #t))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+      #:hash-code (fn a /eq-hash-code a))))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -2702,7 +3131,10 @@
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? fxvector?
       #:==? (fn a b /eq? a b)
-      #:known-discrete? #t)))
+      #:known-discrete? #t))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+      #:hash-code (fn a /eq-hash-code a))))
 
 (define/own-contract (base-syntactic-atom? v)
   (-> any/c boolean?)
@@ -2725,7 +3157,9 @@
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? base-syntactic-atom?
-      #:known-discrete? #t)))
+      #:known-discrete? #t))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 ; Level 0+:
 ;   path-related, join, meet, ==:
@@ -2754,7 +3188,9 @@
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
       #:inhabitant? boolean?
-      #:known-distinct? #t)))
+      #:known-distinct? #t))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -2769,7 +3205,9 @@
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? char?)))
+      #:inhabitant? char?))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -2785,7 +3223,9 @@
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? immutable-string?)))
+      #:inhabitant? immutable-string?))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -2802,7 +3242,9 @@
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? (fn v /and (bytes? v) (immutable? v)))))
+      #:inhabitant? (fn v /and (bytes? v) (immutable? v))))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 (define/own-contract (nan-number? v)
   (-> any/c boolean?)
@@ -2932,7 +3374,31 @@
               (delay/strict /known /just /delay/strict /known a)))
           report-1+))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+      
+      #:hash-code
+      (fn a
+        (expect (non-nan-number? a) #t (uninformative-hash-code)
+        /w- normalize-real
+          (fn a
+            (if (not /rational? a)
+              ; If the real number to normalize is infinity or
+              ; negative infinity, we return it unchanged.
+              a
+            /inexact->exact a))
+        /w- normalize-number
+          (fn a
+            (make-rectangular
+              (normalize-real /real-part a)
+              (normalize-real /imag-part a)))
+        /equal-always-hash-code /normalize-number a))
+      
+      ))
+  
+  )
 
 (define/own-contract (non-nan-extflonum? v)
   (-> any/c boolean?)
@@ -3043,7 +3509,17 @@
               (delay/strict /known /just /delay/strict /known a)))
           report-1+))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    ; TODO: According to the `extflonum?` documentation, the
+    ; `equal-always-hash-code` we're using here should actually work
+    ; properly for `extflonum?` values, even -0.0t0. Make sure it
+    ; does. If it doesn't, normalizing -0.0t0 seems to be the only
+    ; thing we'll need to worry about.
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom))
+  
+  )
 
 (define/own-contract
   (on-cons-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -3240,6 +3716,49 @@
               (if (list-elements-eq? result-list a-list) a
               /if (list-elements-eq? result-list b-list) b
               /example-and-list-> a result-list))))))
+    
+    ))
+
+(define/own-contract
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+    #:self-get-any-dynamic-type self-get-any-dynamic-type
+    #:inhabitant? inhabitant?
+    #:->->list ->->list
+    
+    #:combine-element-hash-codes
+    [ combine-element-hash-codes
+      (fn element-hash-codes
+        (hash-code-combine* element-hash-codes))]
+    
+    )
+  (->*
+    (
+      #:self-get-any-dynamic-type (-> any/c any/c)
+      #:inhabitant? (-> any/c boolean?)
+      #:->->list (-> any/c (-> any/c list?)))
+    (#:combine-element-hash-codes (-> (listof fixnum?) fixnum?))
+    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+    
+    #:get-smoosh-equal-hash-code-support-reports
+    (fn self a
+      (constant-smoosh-equal-hash-code-support-reports /delay
+        (expect (inhabitant? a) #t (uninformative-hash-code)
+        /w- any-dt (self-get-any-dynamic-type self)
+        /w- ->list (->->list a)
+        /w- a-list (->list a)
+        /smoosh-equal-hash-code-support-reports-zip-map
+          (list-map a-list /fn a-elem
+            (dynamic-type-get-smoosh-equal-hash-code-support-reports
+              any-dt a-elem))
+          #:on-hash-code-promise
+          (fn p-list
+            (promise-zip-map p-list /fn hash-code-list
+              (hash-code-combine
+                (equal-always-hash-code inhabitant?)
+                (equal-always-hash-code/recur a /fn a-elem
+                  (uninformative-hash-code))
+                (combine-element-hash-codes hash-code-list)))))))
     
     ))
 
@@ -3890,9 +4409,7 @@
         any-dt)
       
       #:inhabitant? pair?
-      
-      #:->->list
-      (fn a /dissectfn (cons first rest) /list first rest)
+      #:->->list (fn a /dissectfn (cons first rest) /list first rest)
       
       #:example-and-list->
       (fn example lst
@@ -3913,7 +4430,21 @@
                     (knowable-map k /fn result
                       (cons result result)))))))))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (cons-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? pair?
+      #:->->list (fn a /dissectfn (cons first rest) /list first rest)
+      
+      ))
+  
+  )
 
 ; This is an appropriate dynamic type of immutable vectors and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -3956,7 +4487,21 @@
       (fn example lst
         (vector->immutable-vector /list->vector lst))
       
-      #:copy (fn v /vector->immutable-vector /vector-copy v))))
+      #:copy (fn v /vector->immutable-vector /vector-copy v)))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-vector-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? (fn v /and (vector? v) (immutable? v))
+      #:->->list (fn a /fn b /vector->list b)
+      
+      ))
+  
+  )
 
 (define/own-contract (base-mutable-readable? v)
   (-> any/c boolean?)
@@ -3981,7 +4526,9 @@
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-      #:inhabitant? base-mutable-readable?)))
+      #:inhabitant? base-mutable-readable?))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 ; This is an appropriate dynamic type of immutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -4026,7 +4573,21 @@
                     (knowable-map k /fn result
                       (box-immutable result)))))))))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-box-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? (fn v /and (box? v) (immutable? v))
+      #:->->list (fn a /fn b /list /unbox b)
+      
+      ))
+  
+  )
 
 ; This is an appropriate dynamic type of immutable prefab structs and
 ; their chaperones, information-ordered in a way that's consistent
@@ -4052,7 +4613,21 @@
       #:->->list (fn a /fn b /cdr /vector->list /struct->vector b)
       #:example-and-list->
       (fn example lst
-        (apply make-prefab-struct (prefab-struct-key example) lst)))))
+        (apply make-prefab-struct (prefab-struct-key example) lst))))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? immutable-prefab-struct?
+      #:->->list (fn a /fn b /cdr /vector->list /struct->vector b)
+      
+      ))
+  
+  )
 
 ; This is an appropriate dynamic type of immutable hash tables and
 ; their chaperones, information-ordered in a way that's consistent
@@ -4089,7 +4664,34 @@
             (dissect entry (list k v)
             /cons k v))))
       
-      #:copy (fn v /hash-v-map v /fn v v))))
+      #:copy (fn v /hash-v-map v /fn v v)))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (immutable-hash-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? (fn v /and (hash? v) (immutable? v))
+      
+      #:->->list
+      (fn a
+        (w- keys (hash-keys a)
+        /fn b
+          (append* /for/list ([k (in-list keys)])
+            (list k (hash-ref b k)))))
+      
+      #:combine-element-hash-codes
+      (fn element-hash-codes
+        (hash-code-combine-unordered*
+          (for/list ([entry (in-slice 2 (in-list element-hash-codes))])
+            (dissect entry (list k v)
+            /hash-code-combine k v))))
+      
+      ))
+  
+  )
 
 (define/own-contract
   (dynamic-type-case-by-cases
@@ -4155,7 +4757,27 @@
                   (uninformative-smoosh-and-comparison-of-two-reports))]
               [(list #f #f) (next cases)])))
         
-        )))
+        ))
+    
+    (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+      (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+        
+        #:get-smoosh-equal-hash-code-support-reports
+        (fn self a
+          (dissect self (case-dynamic-type any-dt)
+          /w-loop next cases cases
+            (expect cases (cons case cases)
+              (uninformative-smoosh-equal-hash-code-support-reports)
+            /dissect case (list check? dt)
+            /if (check? a)
+              (dynamic-type-get-smoosh-equal-hash-code-support-reports
+                (dt any-dt)
+                a)
+            /next cases)))
+        
+        ))
+    
+    )
   (list inhabitant? case-dynamic-type))
 
 (define/own-contract
@@ -4243,7 +4865,9 @@
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? nothing?)))
+      #:inhabitant? nothing?))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 (define-imitation-simple-struct
   (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
@@ -4278,7 +4902,21 @@
                     (knowable-map k /fn result-value
                       (just result-value)))))))))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (just-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? just?
+      #:->->list (fn a /dissectfn (just e) /list e)
+      
+      ))
+  
+  )
 
 (define/own-contract
   (on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -4437,7 +5075,38 @@
             
             )))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+      
+      #:get-smoosh-equal-hash-code-support-reports
+      (fn self a
+        (dissect self (knowable-dynamic-type any-dt)
+        /expect (knowable? a) #t
+          (uninformative-smoosh-equal-hash-code-support-reports)
+        /mat a (known a-value)
+          (smoosh-equal-hash-code-support-reports-map
+            (dynamic-type-get-smoosh-equal-hash-code-support-reports
+              any-dt a-value)
+            #:on-hash-code-promise
+            (fn p
+              (promise-map p /fn a-value-hash-code
+                (hash-code-combine
+                  (equal-always-hash-code known?)
+                  a-value-hash-code))))
+        /stream*
+          (uninformative-smoosh-equal-hash-code-support-report)
+          (constant-smoosh-equal-hash-code-support-reports
+            (delay
+              (mat a (example-unknown)
+                (hash-code-combine
+                  (equal-always-hash-code example-unknown?))
+              /uninformative-hash-code)))))
+      
+      ))
+  
+  )
 
 (define/own-contract
   (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -4451,6 +5120,13 @@
         (promise-map kp /fn k
           (knowable-map k /fn result-value
             (path-related-wrapper result-value)))))))
+
+(define/own-contract (on-path-related-wrapper-hash-code-promise p)
+  (-> (promise/c fixnum?) (promise/c fixnum?))
+  (promise-map p /fn value-hash-code
+    (hash-code-combine
+      (equal-always-hash-code path-related-wrapper?)
+      value-hash-code)))
 
 (define/own-contract
   (path-related-wrapper-smoosh-reports-from-value-reports
@@ -4482,6 +5158,22 @@
       (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
         (smoosh-and-comparison-of-two-report-get-smoosh-report
           report-0)))
+    report-1+))
+
+(define/own-contract
+  (path-related-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c smoosh-equal-hash-code-support-report?)
+    (sequence/c smoosh-equal-hash-code-support-report?))
+  (dissect
+    (smoosh-equal-hash-code-support-reports-map value-reports
+      #:on-hash-code-promise
+      on-path-related-wrapper-hash-code-promise)
+    (stream* report-0 report-1+)
+  /stream*
+    (constant-smoosh-equal-hash-code-support-report
+      (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+        report-0))
     report-1+))
 
 ; This is an appropriate dynamic type of `path-related-wrapper`
@@ -4559,7 +5251,23 @@
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
             any-dt a-value b-value)))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+      
+      #:get-smoosh-equal-hash-code-support-reports
+      (fn self a
+        (dissect self (path-related-wrapper-dynamic-type any-dt)
+        /expect a (path-related-wrapper-unguarded a-value)
+          (uninformative-smoosh-equal-hash-code-support-reports)
+        /path-related-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+          (dynamic-type-get-smoosh-equal-hash-code-support-reports
+            any-dt a-value)))
+      
+      ))
+  
+  )
 
 (define/own-contract
   (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -4573,6 +5281,13 @@
         (promise-map kp /fn k
           (knowable-map k /fn result-value
             (info-wrapper result-value)))))))
+
+(define/own-contract (on-info-wrapper-hash-code-promise p)
+  (-> (promise/c fixnum?) (promise/c fixnum?))
+  (promise-map p /fn value-hash-code
+    (hash-code-combine
+      (equal-always-hash-code info-wrapper?)
+      value-hash-code)))
 
 (define/own-contract
   (info-wrapper-smoosh-reports-from-value-reports value-reports)
@@ -4593,6 +5308,17 @@
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+    (stream* report-0 report-1+)
+    report-1+))
+
+(define/own-contract
+  (info-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c smoosh-equal-hash-code-support-report?)
+    (sequence/c smoosh-equal-hash-code-support-report?))
+  (dissect
+    (smoosh-equal-hash-code-support-reports-map value-reports
+      #:on-hash-code-promise on-info-wrapper-hash-code-promise)
     (stream* report-0 report-1+)
     report-1+))
 
@@ -4657,7 +5383,23 @@
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
             any-dt a-value b-value)))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+      
+      #:get-smoosh-equal-hash-code-support-reports
+      (fn self a
+        (dissect self (info-wrapper-dynamic-type any-dt)
+        /expect a (info-wrapper-unguarded a-value)
+          (uninformative-smoosh-equal-hash-code-support-reports)
+        /info-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+          (dynamic-type-get-smoosh-equal-hash-code-support-reports
+            any-dt a-value)))
+      
+      ))
+  
+  )
 
 (define/own-contract (gloss-ref g k)
   (-> gloss? any/c any/c)
@@ -4732,7 +5474,34 @@
       
       #:inhabitant-shallowly-equal-always?-knowable
       (fn a b
-        (gloss-equal-always?-knowable a b /fn a b /known #t)))))
+        (gloss-equal-always?-knowable a b /fn a b /known #t))))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      
+      #:self-get-any-dynamic-type
+      (dissectfn (gloss-dynamic-type any-dt)
+        any-dt)
+      
+      #:inhabitant? gloss?
+      
+      #:->->list
+      (fn a
+        (w- keys (sequence->list /gloss-keys a)
+        /fn b
+          (append* /for/list ([k (in-list keys)])
+            (list k (gloss-ref b k)))))
+      
+      #:combine-element-hash-codes
+      (fn element-hash-codes
+        (hash-code-combine-unordered*
+          (for/list ([entry (in-slice 2 (in-list element-hash-codes))])
+            (dissect entry (list k v)
+            /hash-code-combine k v))))
+      
+      ))
+  
+  )
 
 (match-define
   (list
@@ -4778,7 +5547,9 @@
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? dynamic-type-var-for-any-dynamic-type?)))
+      #:inhabitant? dynamic-type-var-for-any-dynamic-type?))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -4795,7 +5566,9 @@
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? equal-always-gloss-key-wrapper?)))
+      #:inhabitant? equal-always-gloss-key-wrapper?))
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
@@ -4827,7 +5600,19 @@
         /dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
           b-dt a b))
       
-      )))
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+      
+      #:get-smoosh-equal-hash-code-support-reports
+      (fn self a
+        (w- a-dt (get-dynamic-type-with-default-bindings a)
+        /dynamic-type-get-smoosh-equal-hash-code-support-reports a-dt a))
+      
+      ))
+  
+  )
 (ascribe-own-contract any-dynamic-type? (-> any/c boolean?))
 
 
@@ -4841,8 +5626,10 @@
 ; just going to model them as mutable boxes containing immutable
 ; dicts, or tack on the mutable dict stuff as an afterthought.)
 
-; TODO SMOOSH: Implement smooshing and better `gen:equal-mode+hash`
-; equality for these types:
+; TODO SMOOSH: Implement smooshing, better `gen:equal-mode+hash`
+; equality, and
+; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`
+; hashing for these types:
 ;
 ;   - Various types that can result from the default Racket reader, as
 ;     well as their corresponding mutable types where these exist.
@@ -4991,22 +5778,18 @@
 ;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
 ;       whether elements are path-related according to the "any"
-;       type's smoosh ordering. (This relies on a pretty terrible hash
-;       code until we can get TODO SMOOSH HASH CODE implemented.)
+;       type's smoosh ordering.
 ;
 ;     - (Done) `info-wrapper?` values, ordered according to whether
 ;       elements are related according to the "any" type's information
-;       ordering. (This relies on a pretty terrible hash code until we
-;       can get TODO SMOOSH HASH CODE implemented.)
+;       ordering.
 ;
 ;     - (Done) `gloss?` values, ordered according to the keys' and
 ;       values' smoosh orderings. `gloss?` values which have
 ;       known-different sets of keys according to smoosh-ordering are
 ;       known to be distinct from each other (TODO SMOOSH: but maybe
 ;       they shouldn't be) and unrelated by order (TODO SMOOSH: but
-;       maybe they shouldn't be). (This partly relies on a pretty
-;       terrible hash code until we can get TODO SMOOSH HASH CODE
-;       implemented.)
+;       maybe they shouldn't be).
 ;
 ;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
@@ -5097,12 +5880,12 @@
 ; distinguished from other tags. We may have some contradictory
 ; thoughts to iron out here.
 ;
-; It turns out this is rather similar to another task we're aiming to
-; do, TODO SMOOSH HASH CODE, which will basically require specifying
-; hash code results associated with `==` and `path-related` smooshes
-; at all information-ordering levels of a smoosh report sequence, all
-; just so that `gloss?` values can have useful
-; `equal-always-hash-code` results.
+; It turns out this is rather similar to what we're doing with
+; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`.
+; That one basically requires specifying hash code results associated
+; with `==` and `path-related` smooshes at all information-ordering
+; levels of a smoosh report sequence, all just so that `gloss?` values
+; can have useful `equal-always-hash-code` results.
 ;
 ; Since we're planning to let a lot of values have unknown equality
 ; with each other, the way we expect to treat these hash codes is that
@@ -5122,3 +5905,14 @@
 ; extend the system with knowledge that certain hash code or variant
 ; systems have known interactions with each other, or by extending a
 ; value to declare hash codes or variants for additional systems.
+;
+; We don't actually go to any of that trouble with opt-outs or
+; tag-system tags for
+; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`
+; yet; we just implement those hash codes the same way we would if all
+; involved types were known to be distinct. That's because these are
+; hash codes meant for reasonable coexistence with Racket's `equal?`-
+; and `equal-always?`-based hashes, where the notion that two values
+; may have an unknown comparison result doesn't really exist. We have
+; `gloss?` values as our recommended replacement for these when using
+; this system.
