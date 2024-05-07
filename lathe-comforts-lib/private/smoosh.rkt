@@ -25,8 +25,7 @@
 (require /only-in lathe-comforts
   dissect dissectfn expect fn mat w- w-loop)
 (require /only-in lathe-comforts/hash
-  hash-kv-map-maybe hash-ref-maybe hash-set-maybe hash-v-map
-  make-similar-hash)
+  hash-ref-maybe hash-set-maybe hash-v-map make-similar-hash)
 (require /only-in lathe-comforts/list
   list-all list-any list-foldl list-length=nat? list-map list-zip-map)
 (require /only-in lathe-comforts/match match/c)
@@ -66,8 +65,8 @@
   make-knowable-predicate-procedure-impl
   glossesque-sys?
   glossesque-sys-impl?
-  glossesque-sys-glossesque-union-of-zero
-  glossesque-sys-glossesque-km-union-of-two
+  glossesque-sys-glossesque-union-of-zero-knowable
+  glossesque-sys-glossesque-km-union-of-two-knowable
   glossesque-sys-glossesque-ref-maybe-knowable
   glossesque-sys-glossesque-set-maybe-knowable
   glossesque-sys-glossesque-count
@@ -106,8 +105,11 @@
   sequence-zip-map
   knowable-promise-or
   gloss?
+  hash-kv-map-maybe-knowable
+  hash-km-union-of-two-knowable
+  maybe-m-union-of-two-knowable
   gloss-union-of-zero
-  gloss-km-union-of-two
+  gloss-km-union-of-two-knowable
   gloss-iteration-sequence
   gloss-ref-maybe-knowable
   gloss-set-maybe-knowable
@@ -329,9 +331,12 @@
 
 (define-imitation-simple-generics
   glossesque-sys? glossesque-sys-impl?
-  (#:method glossesque-sys-glossesque-union-of-zero (#:this))
-  (#:method
-    glossesque-sys-glossesque-km-union-of-two (#:this) () () ())
+  (#:method glossesque-sys-glossesque-union-of-zero-knowable (#:this))
+  (#:method glossesque-sys-glossesque-km-union-of-two-knowable
+    (#:this)
+    ()
+    ()
+    ())
   (#:method
     glossesque-sys-glossesque-ref-maybe-knowable (#:this) () ())
   (#:method
@@ -343,15 +348,17 @@
   'glossesque-sys 'glossesque-sys-impl (list))
 (ascribe-own-contract glossesque-sys? (-> any/c boolean?))
 (ascribe-own-contract glossesque-sys-impl? (-> any/c boolean?))
-(ascribe-own-contract glossesque-sys-glossesque-union-of-zero
-  (-> glossesque-sys? any/c))
-(ascribe-own-contract glossesque-sys-glossesque-km-union-of-two
-  (-> glossesque-sys? any/c any/c (-> any/c maybe? maybe? maybe?)
-    any/c))
+(ascribe-own-contract glossesque-sys-glossesque-union-of-zero-knowable
+  (-> glossesque-sys? knowable?))
+(ascribe-own-contract
+  glossesque-sys-glossesque-km-union-of-two-knowable
+  (-> glossesque-sys? any/c any/c
+    (-> any/c maybe? maybe? (knowable/c maybe?))
+    knowable?))
 (ascribe-own-contract glossesque-sys-glossesque-ref-maybe-knowable
   (-> glossesque-sys? any/c any/c (knowable/c maybe?)))
 (ascribe-own-contract glossesque-sys-glossesque-set-maybe-knowable
-  (-> glossesque-sys? any/c any/c maybe? (knowable/c any/c)))
+  (-> glossesque-sys? any/c any/c maybe? knowable?))
 (ascribe-own-contract glossesque-sys-glossesque-count
   (-> glossesque-sys? any/c natural?))
 (ascribe-own-contract glossesque-sys-glossesque-iteration-sequence
@@ -361,23 +368,29 @@
 
 (define/own-contract
   (make-glossesque-sys-impl
-    #:glossesque-union-of-zero glossesque-union-of-zero
-    #:glossesque-km-union-of-two glossesque-km-union-of-two
+    #:glossesque-union-of-zero-knowable
+    glossesque-union-of-zero-knowable
+    
+    #:glossesque-km-union-of-two-knowable
+    glossesque-km-union-of-two-knowable
+    
     #:glossesque-ref-maybe-knowable glossesque-ref-maybe-knowable
     #:glossesque-set-maybe-knowable glossesque-set-maybe-knowable
     #:glossesque-count glossesque-count
     #:glossesque-iteration-sequence glossesque-iteration-sequence)
   (->
-    #:glossesque-union-of-zero (-> glossesque-sys? any/c)
+    #:glossesque-union-of-zero-knowable (-> glossesque-sys? knowable?)
     
-    #:glossesque-km-union-of-two
-    (-> glossesque-sys? any/c any/c (-> any/c maybe? maybe? maybe?))
+    #:glossesque-km-union-of-two-knowable
+    (-> glossesque-sys? any/c any/c
+      (-> any/c maybe? maybe? (knowable/c maybe?))
+      knowable?)
     
     #:glossesque-ref-maybe-knowable
     (-> glossesque-sys? any/c any/c (knowable/c maybe?))
     
     #:glossesque-set-maybe-knowable
-    (-> glossesque-sys? any/c any/c maybe? (knowable/c any/c))
+    (-> glossesque-sys? any/c any/c maybe? knowable?)
     
     #:glossesque-count (-> glossesque-sys? any/c natural?)
     
@@ -386,8 +399,8 @@
     
     glossesque-sys-impl?)
   (make-glossesque-sys-impl-from-various-unkeyworded
-    glossesque-union-of-zero
-    glossesque-km-union-of-two
+    glossesque-union-of-zero-knowable
+    glossesque-km-union-of-two-knowable
     glossesque-ref-maybe-knowable
     glossesque-set-maybe-knowable
     glossesque-count
@@ -861,14 +874,35 @@
     ))
 (ascribe-own-contract gloss? (-> any/c boolean?))
 
-(define (hash-km-union-of-two a b km-union)
-  (hash-kv-map-maybe (hash-union a b #:combine /fn a b a) /fn k v
-    (km-union k (hash-ref-maybe a k) (hash-ref-maybe b k))))
+(define/own-contract
+  (hash-kv-map-maybe-knowable h kv-map-maybe-knowable)
+  (-> (and/c hash? immutable?) (-> any/c any/c (knowable/c maybe?))
+    (knowable/c (and/c hash? immutable?)))
+  (knowable-map
+    (knowable-zip /list-map (hash->list h) /dissectfn (cons k v)
+      (knowable-map (kv-map-maybe-knowable k v) /fn v-m
+        (expect v-m (just v) (list)
+        /list /cons k v)))
+  /fn kv-list-list
+    (make-similar-hash h /append* kv-list-list)))
 
-(define (maybe-m-union-of-two a b m-union)
-  (mat a (just _) (m-union a b)
-  /mat b (just _) (m-union a b)
-  /nothing))
+(define/own-contract
+  (hash-km-union-of-two-knowable a b km-union-knowable)
+  (-> (and/c hash? immutable?) (and/c hash? immutable?)
+    (-> any/c maybe? maybe? (knowable/c maybe?))
+    (knowable/c (and/c hash? immutable?)))
+  (hash-kv-map-maybe-knowable (hash-union a b #:combine /fn a b a)
+    (fn k v
+      (km-union-knowable
+        k (hash-ref-maybe a k) (hash-ref-maybe b k)))))
+
+(define/own-contract
+  (maybe-m-union-of-two-knowable a b m-union-knowable)
+  (-> maybe? maybe? (-> maybe? maybe? (knowable/c maybe?))
+    (knowable/c maybe?))
+  (mat a (just _) (m-union-knowable a b)
+  /mat b (just _) (m-union-knowable a b)
+  /known /nothing))
 
 (define (unwrap-gloss-key v)
   (w-loop next v v path-mode '== depth 0 unwrapped-wrappers (list)
@@ -901,35 +935,61 @@
         [(unwrapped-wrappers g) custom-unwrappings])
       (glossesque-sys-glossesque-iteration-sequence gs g))))
 
-(define/own-contract (gloss-km-union-of-two a b km-union)
-  (-> gloss? gloss? (-> any/c maybe? maybe? maybe?) gloss?)
+(define/own-contract
+  (gloss-km-union-of-two-knowable a b km-union-knowable)
+  (-> gloss? gloss? (-> any/c maybe? maybe? (knowable/c maybe?))
+    (knowable/c gloss?))
   (dissect a (gloss a-count a-atomic a-custom)
   /dissect b (gloss b-count b-atomic b-custom)
-  /w- atomic (hash-km-union-of-two a-atomic b-atomic km-union)
-  /w- custom
-    (maybe-m-union-of-two a-custom b-custom /fn a b
-      (just /gloss-km-union-of-two
-        (mat a (just a) a (gloss-union-of-zero))
-        (mat b (just b) b (gloss-union-of-zero))
-        (fn a b
-          (just /hash-km-union-of-two
-            (mat a (just a) a (hashalw))
-            (mat b (just b) b (hashalw))
-            (fn a b
-              (w- gs
-                (mat a (just /list gs _) gs
-                /dissect b (just /list gs _) gs)
-              /just /list gs /hash-km-union-of-two
-                (mat a (just /list _ a) a (hashalw))
-                (mat b (just /list _ b) b (hashalw))
-                (fn a b
-                  (just /glossesque-sys-glossesque-km-union-of-two gs
-                    (mat a (just /list _ a) a
-                      (glossesque-sys-glossesque-union-of-zero gs))
-                    (mat b (just /list _ b) b
-                      (glossesque-sys-glossesque-union-of-zero gs))
-                    km-union))))))))
-  /gloss
+  /knowable-bind
+    (hash-km-union-of-two-knowable a-atomic b-atomic /fn k a-v-m b-v-m
+      (km-union-knowable k a-v-m b-v-m))
+  /fn atomic
+  /knowable-bind
+    (maybe-m-union-of-two-knowable a-custom b-custom /fn a b
+      (knowable-bind
+        (gloss-km-union-of-two-knowable
+          (mat a (just a) a (gloss-union-of-zero))
+          (mat b (just b) b (gloss-union-of-zero))
+          (fn k a b
+            (knowable-bind
+              (hash-km-union-of-two-knowable
+                (mat a (just a) a (hashalw))
+                (mat b (just b) b (hashalw))
+                (fn k a b
+                  (w- gs
+                    (mat a (just /list gs _) gs
+                    /dissect b (just /list gs _) gs)
+                  /knowable-bind
+                    (hash-km-union-of-two-knowable
+                      (mat a (just /list _ a) a (hashalw))
+                      (mat b (just /list _ b) b (hashalw))
+                      (fn k a b
+                        (knowable-bind
+                          (mat a (just /list _ a) (known a)
+                            (glossesque-sys-glossesque-union-of-zero-knowable
+                              gs))
+                        /fn a
+                        /knowable-bind
+                          (mat b (just /list _ b) (known b)
+                            (glossesque-sys-glossesque-union-of-zero-knowable
+                              gs))
+                        /fn b
+                        /knowable-bind
+                          (glossesque-sys-glossesque-km-union-of-two-knowable
+                            gs a b
+                            (fn k a b
+                              (km-union-knowable k a b)))
+                        /fn result
+                        /known /just result)))
+                  /fn result
+                  /known /just /list gs result)))
+            /fn result
+            /known /just result))
+        /fn result
+        /known /just result)))
+  /fn custom
+  /known /gloss
     (+ (hash-count atomic)
       (expect custom (just custom) 0
         (for*/sum
@@ -1020,11 +1080,13 @@
   /expect (hash-ref-maybe custom-unwrappings unwrapped-wrappers)
     (just custom-g)
     (knowable-bind
+      (glossesque-sys-glossesque-union-of-zero-knowable custom-gs)
+    /fn empty-g
+    /knowable-bind
       (gloss-set-maybe-knowable custom variant
         (just /hash-set custom-regress mode
           (list custom-gs
-            (hash-set custom-unwrappings unwrapped-wrappers
-              (glossesque-sys-glossesque-union-of-zero custom-gs)))))
+            (hash-set custom-unwrappings unwrapped-wrappers empty-g))))
     /fn custom
     /gloss-set-maybe-knowable (gloss count atomic (just custom)) k m)
   /w- old-custom-g-count
@@ -1058,10 +1120,11 @@
   
   (#:prop prop:glossesque-sys /make-glossesque-sys-impl
     
-    #:glossesque-union-of-zero (fn gs /gloss-union-of-zero)
+    #:glossesque-union-of-zero-knowable
+    (fn gs /known /gloss-union-of-zero)
     
-    #:glossesque-km-union-of-two
-    (fn gs a b km-union /gloss-km-union-of-two a b km-union)
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union /gloss-km-union-of-two-knowable a b km-union)
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k /gloss-ref-maybe-knowable g k)
