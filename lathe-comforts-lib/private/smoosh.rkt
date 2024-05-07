@@ -29,15 +29,16 @@
   make-similar-hash)
 (require /only-in lathe-comforts/list
   list-all list-any list-foldl list-length=nat? list-map list-zip-map)
+(require /only-in lathe-comforts/match match/c)
+(require /only-in lathe-comforts/maybe
+  just just? just-value maybe? maybe-bind maybe/c maybe-if maybe-map
+  nothing nothing?)
 (require /only-in lathe-comforts/string immutable-string?)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
   define-imitation-simple-struct immutable-prefab-struct?
   mutable-prefab-struct?)
-(require /only-in lathe-comforts/match match/c)
-(require /only-in lathe-comforts/maybe
-  just just? just-value maybe? maybe-bind maybe/c maybe-if maybe-map
-  nothing nothing?)
+(require /only-in lathe-comforts/trivial trivial trivial?)
 
 
 (provide /own-contract-out
@@ -184,11 +185,15 @@
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
   make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+  make-expressly-smooshable-bundle-property-for-atom
   nan-number?
   non-nan-number?
   non-nan-extflonum?
   nan-extflonum?
   make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+  make-expressly-smooshable-bundle-property-from-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
   dynamic-type-case-by-indistinct-cases
@@ -3092,6 +3097,55 @@
     
     ))
 
+(define/own-contract
+  (make-expressly-smooshable-bundle-property-for-atom
+    #:ignore-chaperones? [ignore-chaperones? #f]
+    #:inhabitant? inhabitant?
+    #:known-discrete? [known-discrete? #f]
+    #:known-distinct? [known-distinct? known-discrete?]
+    #:==? [==? (fn a b /equal-always? a b)]
+    #:hash-code [hash-code (fn a /equal-always-hash-code a)])
+  (->*
+    (
+      #:inhabitant? (-> any/c boolean?)
+      #:known-discrete? boolean?
+      #:known-distinct? boolean?)
+    (
+      #:ignore-chaperones? boolean?
+      #:==? (-> any/c any/c boolean?)
+      #:hash-code (-> any/c fixnum?))
+    (struct-type-property/c trivial?))
+  (define-values (prop:bundle bundle? bundle-ref)
+    (make-struct-type-property
+      'expressly-smooshable-bundle-property-from-list-isomorphism
+      (fn value info
+        (expect value (trivial)
+          (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+            "expected the property value to be a trivial? value"
+            "value" value)
+          value))
+      (list
+        (cons
+          prop:expressly-smooshable-dynamic-type
+          (dissectfn (trivial)
+            (if ignore-chaperones?
+              (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+                #:inhabitant? inhabitant?
+                #:known-discrete? known-discrete?
+                #:known-distinct? known-distinct?
+                #:==? ==?)
+              ; TODO SMOOSH: This use of
+              ; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`
+              ; is a forward reference. See if we can untangle it.
+              (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
+                #:inhabitant? inhabitant?))))
+        (cons
+          prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+          (dissectfn (trivial)
+            (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+              #:hash-code hash-code))))))
+  prop:bundle)
+
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both `flvector?` values, then unknown.
@@ -3105,14 +3159,14 @@
   flvector-dynamic-type
   'flvector-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
       #:inhabitant? flvector?
       #:==? (fn a b /eq? a b)
-      #:known-discrete? #t))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-      #:hash-code (fn a /eq-hash-code a))))
+      #:known-discrete? #t
+      #:hash-code (fn a /eq-hash-code a))
+    (trivial)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -3127,14 +3181,14 @@
   fxvector-dynamic-type
   'fxvector-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
       #:inhabitant? fxvector?
       #:==? (fn a b /eq? a b)
-      #:known-discrete? #t))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-      #:hash-code (fn a /eq-hash-code a))))
+      #:known-discrete? #t
+      #:hash-code (fn a /eq-hash-code a))
+    (trivial)))
 
 (define/own-contract (base-syntactic-atom? v)
   (-> any/c boolean?)
@@ -3154,12 +3208,12 @@
   base-syntactic-atom-dynamic-type
   'base-syntactic-atom-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
       #:inhabitant? base-syntactic-atom?
-      #:known-discrete? #t))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+      #:known-discrete? #t)
+    (trivial)))
 
 ; Level 0+:
 ;   path-related, join, meet, ==:
@@ -3185,12 +3239,12 @@
   boolean-dynamic-type
   'boolean-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
       #:inhabitant? boolean?
-      #:known-distinct? #t))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+      #:known-distinct? #t)
+    (trivial)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -3203,11 +3257,11 @@
 (define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
   'char-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? char?))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? char?)
+    (trivial)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -3221,11 +3275,11 @@
   immutable-string-dynamic-type
   'immutable-string-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? immutable-string?))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? immutable-string?)
+    (trivial)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -3240,11 +3294,11 @@
   immutable-bytes-dynamic-type
   'immutable-bytes-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? (fn v /and (bytes? v) (immutable? v))))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
+    (trivial)))
 
 (define/own-contract (nan-number? v)
   (-> any/c boolean?)
@@ -3761,6 +3815,97 @@
                 (combine-element-hash-codes hash-code-list)))))))
     
     ))
+
+(define/own-contract
+  (make-expressly-smooshable-bundle-property-from-list-isomorphism
+    #:ignore-chaperones? [ignore-chaperones? #f]
+    #:self-get-any-dynamic-type self-get-any-dynamic-type
+    #:inhabitant? inhabitant?
+    #:->->list ->->list
+    #:example-and-list-> example-and-list->
+    
+    #:combine-element-hash-codes
+    [ combine-element-hash-codes
+      (fn element-hash-codes
+        (hash-code-combine* element-hash-codes))]
+    
+    #:inhabitant-shallowly-equal-always?-knowable
+    [ inhabitant-shallowly-equal-always?-knowable
+      (fn a b /known /equal-always?/recur a b /fn a-elem b-elem #t)]
+    
+    #:copy [copy (fn v /example-and-list-> v /(->->list v) v)]
+    
+    #:get-smoosh-of-zero-reports
+    [ get-smoosh-of-zero-reports
+      (fn self
+        (uninformative-smoosh-reports))])
+  (->*
+    (
+      #:self-get-any-dynamic-type (-> any/c any/c)
+      #:inhabitant? (-> any/c boolean?)
+      #:->->list (-> any/c (-> any/c list?))
+      #:example-and-list-> (-> any/c list? any/c))
+    (
+      #:ignore-chaperones? boolean?
+      #:combine-element-hash-codes (-> (listof fixnum?) fixnum?)
+      
+      #:inhabitant-shallowly-equal-always?-knowable
+      (-> any/c any/c (knowable/c boolean?))
+      
+      #:copy (-> any/c any/c)
+      
+      #:get-smoosh-of-zero-reports
+      (-> any/c (sequence/c smoosh-report?))
+      
+      )
+    (struct-type-property/c trivial?))
+  (define-values (prop:bundle bundle? bundle-ref)
+    (make-struct-type-property
+      'expressly-smooshable-bundle-property-from-list-isomorphism
+      (fn value info
+        (expect value (trivial)
+          (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+            "expected the property value to be a trivial? value"
+            "value" value)
+          value))
+      (list
+        (cons
+          prop:expressly-smooshable-dynamic-type
+          (dissectfn (trivial)
+            (if ignore-chaperones?
+              (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+                #:self-get-any-dynamic-type self-get-any-dynamic-type
+                #:inhabitant? inhabitant?
+                #:->->list ->->list
+                #:example-and-list-> example-and-list->
+                
+                #:inhabitant-shallowly-equal-always?-knowable
+                inhabitant-shallowly-equal-always?-knowable
+                
+                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports)
+              ; TODO SMOOSH: This use of
+              ; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
+              ; is a forward reference. See if we can untangle it.
+              (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+                #:self-get-any-dynamic-type self-get-any-dynamic-type
+                #:inhabitant? inhabitant?
+                #:->->list ->->list
+                #:example-and-list-> example-and-list->
+                
+                #:inhabitant-shallowly-equal-always?-knowable
+                inhabitant-shallowly-equal-always?-knowable
+                
+                #:copy copy
+                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports))))
+        (cons
+          prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+          (dissectfn (trivial)
+            (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+              #:self-get-any-dynamic-type self-get-any-dynamic-type
+              #:inhabitant? inhabitant?
+              #:->->list ->->list
+              #:combine-element-hash-codes combine-element-hash-codes))))))
+  prop:bundle)
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for immutable tuple data structures and their
@@ -4401,8 +4546,9 @@
   cons-dynamic-type
   'cons-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+  (#:prop
+    (make-expressly-smooshable-bundle-property-from-list-isomorphism
+      #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
       (dissectfn (cons-dynamic-type any-dt)
@@ -4430,19 +4576,8 @@
                     (knowable-map k /fn result
                       (cons result result)))))))))
       
-      ))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-      
-      #:self-get-any-dynamic-type
-      (dissectfn (cons-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? pair?
-      #:->->list (fn a /dissectfn (cons first rest) /list first rest)
-      
-      ))
+      )
+    (trivial))
   
   )
 
@@ -4473,8 +4608,8 @@
   immutable-vector-dynamic-type
   'immutable-vector-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+  (#:prop
+    (make-expressly-smooshable-bundle-property-from-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-vector-dynamic-type any-dt)
@@ -4487,19 +4622,10 @@
       (fn example lst
         (vector->immutable-vector /list->vector lst))
       
-      #:copy (fn v /vector->immutable-vector /vector-copy v)))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+      #:copy (fn v /vector->immutable-vector /vector-copy v)
       
-      #:self-get-any-dynamic-type
-      (dissectfn (immutable-vector-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? (fn v /and (vector? v) (immutable? v))
-      #:->->list (fn a /fn b /vector->list b)
-      
-      ))
+      )
+    (trivial))
   
   )
 
@@ -4524,11 +4650,10 @@
   base-mutable-readable-dynamic-type
   'base-mutable-readable-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-      #:inhabitant? base-mutable-readable?))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:inhabitant? base-mutable-readable?)
+    (trivial)))
 
 ; This is an appropriate dynamic type of immutable boxes and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -4542,8 +4667,8 @@
   immutable-box-dynamic-type
   'immutable-box-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+  (#:prop
+    (make-expressly-smooshable-bundle-property-from-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-box-dynamic-type any-dt)
@@ -4573,19 +4698,8 @@
                     (knowable-map k /fn result
                       (box-immutable result)))))))))
       
-      ))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-      
-      #:self-get-any-dynamic-type
-      (dissectfn (immutable-box-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? (fn v /and (box? v) (immutable? v))
-      #:->->list (fn a /fn b /list /unbox b)
-      
-      ))
+      )
+    (trivial))
   
   )
 
@@ -4602,8 +4716,8 @@
   'immutable-prefab-struct-dynamic-type (current-inspector)
   (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+  (#:prop
+    (make-expressly-smooshable-bundle-property-from-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
@@ -4613,19 +4727,8 @@
       #:->->list (fn a /fn b /cdr /vector->list /struct->vector b)
       #:example-and-list->
       (fn example lst
-        (apply make-prefab-struct (prefab-struct-key example) lst))))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-      
-      #:self-get-any-dynamic-type
-      (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? immutable-prefab-struct?
-      #:->->list (fn a /fn b /cdr /vector->list /struct->vector b)
-      
-      ))
+        (apply make-prefab-struct (prefab-struct-key example) lst)))
+    (trivial))
   
   )
 
@@ -4641,8 +4744,8 @@
   immutable-hash-dynamic-type
   'immutable-hash-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+  (#:prop
+    (make-expressly-smooshable-bundle-property-from-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-hash-dynamic-type any-dt)
@@ -4664,23 +4767,7 @@
             (dissect entry (list k v)
             /cons k v))))
       
-      #:copy (fn v /hash-v-map v /fn v v)))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-      
-      #:self-get-any-dynamic-type
-      (dissectfn (immutable-hash-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? (fn v /and (hash? v) (immutable? v))
-      
-      #:->->list
-      (fn a
-        (w- keys (hash-keys a)
-        /fn b
-          (append* /for/list ([k (in-list keys)])
-            (list k (hash-ref b k)))))
+      #:copy (fn v /hash-v-map v /fn v v)
       
       #:combine-element-hash-codes
       (fn element-hash-codes
@@ -4689,7 +4776,8 @@
             (dissect entry (list k v)
             /hash-code-combine k v))))
       
-      ))
+      )
+    (trivial))
   
   )
 
@@ -4841,18 +4929,6 @@
     (list pair? (fn any-dt /cons-dynamic-type any-dt))
     base-literal-dynamic-type-case))
 
-(define/own-contract
-  (on-just-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp)
-  (->
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (promise-map kpmkp /fn kpmk
-    (knowable-map kpmk /fn kpm
-      (maybe-map kpm /fn kp
-        (promise-map kp /fn k
-          (knowable-map k /fn result-value /just result-value))))))
-
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both `nothing?` values, then unknown.
@@ -4863,19 +4939,19 @@
   nothing-dynamic-type
   'nothing-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? nothing?))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? nothing?)
+    (trivial)))
 
 (define-imitation-simple-struct
   (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
   just-dynamic-type
   'just-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+  (#:prop
+    (make-expressly-smooshable-bundle-property-from-list-isomorphism
       
       #:self-get-any-dynamic-type
       (dissectfn (just-dynamic-type any-dt)
@@ -4902,21 +4978,26 @@
                     (knowable-map k /fn result-value
                       (just result-value)))))))))
       
-      ))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-      
-      #:self-get-any-dynamic-type
-      (dissectfn (just-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? just?
-      #:->->list (fn a /dissectfn (just e) /list e)
-      
-      ))
+      )
+    (trivial))
   
   )
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `trivial?` values, then unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (trivial-dynamic-type?)
+  trivial-dynamic-type
+  'trivial-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? trivial?)
+    (trivial)))
 
 (define/own-contract
   (on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5449,8 +5530,9 @@
   gloss-dynamic-type
   'gloss-dynamic-type (current-inspector) (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+  (#:prop
+    (make-expressly-smooshable-bundle-property-from-list-isomorphism
+      #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
       (dissectfn (gloss-dynamic-type any-dt)
@@ -5472,26 +5554,6 @@
             (dissect entry (list k v)
             /cons k v))))
       
-      #:inhabitant-shallowly-equal-always?-knowable
-      (fn a b
-        (gloss-equal-always?-knowable a b /fn a b /known #t))))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-      
-      #:self-get-any-dynamic-type
-      (dissectfn (gloss-dynamic-type any-dt)
-        any-dt)
-      
-      #:inhabitant? gloss?
-      
-      #:->->list
-      (fn a
-        (w- keys (sequence->list /gloss-keys a)
-        /fn b
-          (append* /for/list ([k (in-list keys)])
-            (list k (gloss-ref b k)))))
-      
       #:combine-element-hash-codes
       (fn element-hash-codes
         (hash-code-combine-unordered*
@@ -5499,7 +5561,12 @@
             (dissect entry (list k v)
             /hash-code-combine k v))))
       
-      ))
+      #:inhabitant-shallowly-equal-always?-knowable
+      (fn a b
+        (gloss-equal-always?-knowable a b /fn a b /known #t))
+      
+      )
+    (trivial))
   
   )
 
@@ -5514,6 +5581,7 @@
       (dynamic-type-case-by-discrete-cases 'maybe-dynamic-type /list
         (list nothing? (fn any-dt /nothing-dynamic-type))
         (list just? (fn any-dt /just-dynamic-type any-dt)))
+      (list trivial? (fn any-dt /trivial-dynamic-type))
       (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
       (list
         path-related-wrapper?
@@ -5545,11 +5613,11 @@
   (current-inspector)
   (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? dynamic-type-var-for-any-dynamic-type?))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? dynamic-type-var-for-any-dynamic-type?)
+    (trivial)))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -5564,11 +5632,11 @@
   'equal-always-gloss-key-wrapper-dynamic-type (current-inspector)
   (auto-write)
   
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-      #:inhabitant? equal-always-gloss-key-wrapper?))
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom)))
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? equal-always-gloss-key-wrapper?)
+    (trivial)))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
@@ -5754,7 +5822,8 @@
 ;       list is up-to-date as of Racket 8.12.
 ;
 ;   - Types defined by Lathe Comforts that this smooshing framework
-;     uses.
+;     uses. The following are indistinct from each other and from the
+;     other types listed above and below:
 ;
 ;     - (Done) `maybe?` values, ordered according to the elements'
 ;       orderings and in a way that's consistent with a
@@ -5764,7 +5833,10 @@
 ;       they shouldn't be) and unrelated by order (TODO SMOOSH: but
 ;       maybe they shouldn't be).
 ;
-;   - Types defined here in smoosh.rkt.
+;     - (Done) `trivial?` values.
+;
+;   - Types defined here in smoosh.rkt. The following are indistinct
+;     from each other and from the other types listed above and below:
 ;
 ;     - (Done) `known?` values, `example-unknown?` values, and their
 ;       interactions with other `unknown?` values. The `known?` values
@@ -5867,7 +5939,8 @@
 ;       - `any-dynamic-type?`
 ;
 ;   - Types defined by Lathe Comforts even if this smooshing framework
-;     doesn't use them.
+;     doesn't use them. The following are indistinct from each other
+;     and from the other types listed above:
 ;
 ;     - `obstinacy?`, for instance. Potentially others; we haven't
 ;       made a comprehensive list here yet.
