@@ -185,6 +185,7 @@
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
   make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
   make-expressly-smooshable-bundle-property-for-atom
   nan-number?
@@ -192,10 +193,9 @@
   non-nan-extflonum?
   nan-extflonum?
   make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+  make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
   make-expressly-smooshable-bundle-property-from-list-isomorphism
-  make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
-  make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
   dynamic-type-case-by-indistinct-cases
   dynamic-type-case-by-discrete-cases
   gloss-ref
@@ -3083,6 +3083,189 @@
     
     ))
 
+; This is an appropriate `prop:expressly-smooshable-dynamic-type`
+; implementation for mutable tuple data structures and their
+; chaperones, information-ordered in a way that's consistent with
+; `chaperone-of?`.
+;
+; Level 0:
+;   path-related, join, meet, ==:
+;     Same as the description of level 1 path-related.
+;   <=, >=:
+;     Same as the description of level 1 path-related as a check.
+; Level 1:
+;   path-related, join, meet, ==:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then a known
+;     nothing.
+;     
+;     Otherwise, if any operand counts as an acceptable result, then
+;     the first such operand.
+;     
+;     Otherwise, unknown.
+;     
+;     Where "acceptable result" means:
+;       If we're doing path-related:
+;         Every result is acceptable.
+;       If we're doing join:
+;         Every result is acceptable if it's `chaperone-of?` every
+;         operand.
+;         
+;         (We'll allow for the possibility that Racket will introduce
+;         chaperone wrappers that are chaperone-of each of two
+;         preexisting chaperones, so we'll treat some results as
+;         unknown even though a more Racket-version-pinned design
+;         might treat them as known nothings.)
+;       If we're doing meet:
+;         Every operand is acceptable if each of the operands is
+;         `chaperone-of?` it.
+;         
+;         (Note that the meet is often an object the program can refer
+;         to, but unless an acceptable result is found among the
+;         operands, there's no way to obtain it from the operands, so
+;         the result will be unknown.)
+;       If we're doing ==:
+;         Every result is acceptable if it and the operands are all
+;         `chaperone-of?` each other.
+;   <=, >=:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then a known
+;     `#f`.
+;     
+;     Otherwise, if the element we're proposing to be greater is
+;     `chaperone-of?` the other one, then a known `#t`.
+;     
+;     Otherwise, unknown.
+;     
+;     (We'll allow for the possibility that values which differ only
+;     in the failure of a chaperone-of check could actually pass the
+;     chaperone-of check in the future when they're written to reuse
+;     chaperone-wrapped values more diligently. This kind of rewrite
+;     may be more feasible if and when Racket introduces
+;     chaperone-wrapping operations that create equivalent wrappers in
+;     some reliable way. As such, we'll treat some results as unknown
+;     even though a more Racket-version-pinned design might treat them
+;     as known nothings.)
+; Level 2+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 1 ==.
+;   <=, >=:
+;     Same as the description of level 1 == as a check.
+;
+(define/own-contract
+  (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
+    #:inhabitant? inhabitant?)
+  (-> #:inhabitant? (-> any/c boolean?)
+    expressly-smooshable-dynamic-type-impl?)
+  (make-expressly-smooshable-dynamic-type-impl
+    
+    #:get-smoosh-of-zero-reports
+    (fn self
+      (uninformative-smoosh-reports))
+    
+    #:get-smoosh-of-one-reports
+    (fn self a
+      (constant-smoosh-reports /delay
+        (knowable-if (inhabitant? a) /fn
+          (just /delay/strict /known a))))
+    
+    #:get-smoosh-and-comparison-of-two-reports
+    (fn self a b
+      (expect (inhabitant? a) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (inhabitant? b) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /if (not /equal-always? a b)
+        (false-smoosh-and-comparison-of-two-reports)
+      /w- a-chaperone-of-b?-promise (delay /chaperone-of? a b)
+      /w- b-chaperone-of-a?-promise (delay /chaperone-of? b a)
+      ; Given two `equal-always?` inhabitants, this checks whether
+      ; they're `chaperone-of?`. Like `chaperone-of?`, this takes
+      ; constant time if the inhabitants are `eq?` themselves.
+      /w- inhabitant-chaperone-of?
+        (fn s t
+          (or (eq? s t)
+          /if (and (eq? s b) (eq? t a))
+            (force b-chaperone-of-a?-promise)
+          /if (and (eq? s a) (eq? t b))
+            (force a-chaperone-of-b?-promise)
+          /chaperone-of? s t))
+      /w- on-check-result-knowable-promise
+        (fn should-a-be-small? should-b-be-small?
+          (dissectfn (list)
+            (delay
+              (boolean-and-knowable-thunk-zip /list
+                (fn /boolean-or-knowable-thunk-zip /list
+                  (fn /known /not should-a-be-small?)
+                  (fn /falsable->uninformative-knowable
+                    (inhabitant-chaperone-of? b a)))
+                (fn /boolean-or-knowable-thunk-zip /list
+                  (fn /known /not should-b-be-small?)
+                  (fn /falsable->uninformative-knowable
+                    (inhabitant-chaperone-of? a b)))))))
+      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
+        (fn acceptable-result?
+          (dissectfn (list)
+            (delay/strict /known /just /delay
+              (if (acceptable-result? a)
+                (known a)
+              /if (acceptable-result? b)
+                (known b)
+              /unknown))))
+      /w- equivalent?-promise
+        (delay
+          (and
+            (inhabitant-chaperone-of? b a)
+            (inhabitant-chaperone-of? a b)))
+      /w- ==-acceptable-result?
+        (fn v
+          (force equivalent?-promise))
+      /w- path-related-acceptable-result?
+        (fn v
+          #t)
+      /stream*
+        (smoosh-and-comparison-of-two-report-zip-map (list)
+          #:on-check-result-knowable-promise
+          (on-check-result-knowable-promise #f #f)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            path-related-acceptable-result?))
+        (smoosh-and-comparison-of-two-report-zip-map (list)
+          #:on-<=?-knowable-promise
+          (on-check-result-knowable-promise #t #f)
+          #:on->=?-knowable-promise
+          (on-check-result-knowable-promise #f #t)
+          #:on-join-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn v
+              (and
+                (inhabitant-chaperone-of? v a)
+                (inhabitant-chaperone-of? v b))))
+          #:on-meet-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn v
+              (and
+                (inhabitant-chaperone-of? a v)
+                (inhabitant-chaperone-of? b v))))
+          #:on-==-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            ==-acceptable-result?)
+          #:on-path-related-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            path-related-acceptable-result?))
+        (smoosh-and-comparison-of-two-reports-zip-map (list)
+          #:on-check-result-knowable-promise
+          (on-check-result-knowable-promise #t #t)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            ==-acceptable-result?))))
+    
+    ))
+
 (define/own-contract
   (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
     #:hash-code [hash-code (fn a /equal-always-hash-code a)])
@@ -3134,9 +3317,6 @@
                 #:known-discrete? known-discrete?
                 #:known-distinct? known-distinct?
                 #:==? ==?)
-              ; TODO SMOOSH: This use of
-              ; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`
-              ; is a forward reference. See if we can untangle it.
               (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
                 #:inhabitant? inhabitant?))))
         (cons
@@ -3773,140 +3953,6 @@
     
     ))
 
-(define/own-contract
-  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-    #:self-get-any-dynamic-type self-get-any-dynamic-type
-    #:inhabitant? inhabitant?
-    #:->->list ->->list
-    
-    #:combine-element-hash-codes
-    [ combine-element-hash-codes
-      (fn element-hash-codes
-        (hash-code-combine* element-hash-codes))]
-    
-    )
-  (->*
-    (
-      #:self-get-any-dynamic-type (-> any/c any/c)
-      #:inhabitant? (-> any/c boolean?)
-      #:->->list (-> any/c (-> any/c list?)))
-    (#:combine-element-hash-codes (-> (listof fixnum?) fixnum?))
-    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
-  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
-    
-    #:get-smoosh-equal-hash-code-support-reports
-    (fn self a
-      (constant-smoosh-equal-hash-code-support-reports /delay
-        (expect (inhabitant? a) #t (uninformative-hash-code)
-        /w- any-dt (self-get-any-dynamic-type self)
-        /w- ->list (->->list a)
-        /w- a-list (->list a)
-        /smoosh-equal-hash-code-support-reports-zip-map
-          (list-map a-list /fn a-elem
-            (dynamic-type-get-smoosh-equal-hash-code-support-reports
-              any-dt a-elem))
-          #:on-hash-code-promise
-          (fn p-list
-            (promise-zip-map p-list /fn hash-code-list
-              (hash-code-combine
-                (equal-always-hash-code inhabitant?)
-                (equal-always-hash-code/recur a /fn a-elem
-                  (uninformative-hash-code))
-                (combine-element-hash-codes hash-code-list)))))))
-    
-    ))
-
-(define/own-contract
-  (make-expressly-smooshable-bundle-property-from-list-isomorphism
-    #:ignore-chaperones? [ignore-chaperones? #f]
-    #:self-get-any-dynamic-type self-get-any-dynamic-type
-    #:inhabitant? inhabitant?
-    #:->->list ->->list
-    #:example-and-list-> example-and-list->
-    
-    #:combine-element-hash-codes
-    [ combine-element-hash-codes
-      (fn element-hash-codes
-        (hash-code-combine* element-hash-codes))]
-    
-    #:inhabitant-shallowly-equal-always?-knowable
-    [ inhabitant-shallowly-equal-always?-knowable
-      (fn a b /known /equal-always?/recur a b /fn a-elem b-elem #t)]
-    
-    #:copy [copy (fn v /example-and-list-> v /(->->list v) v)]
-    
-    #:get-smoosh-of-zero-reports
-    [ get-smoosh-of-zero-reports
-      (fn self
-        (uninformative-smoosh-reports))])
-  (->*
-    (
-      #:self-get-any-dynamic-type (-> any/c any/c)
-      #:inhabitant? (-> any/c boolean?)
-      #:->->list (-> any/c (-> any/c list?))
-      #:example-and-list-> (-> any/c list? any/c))
-    (
-      #:ignore-chaperones? boolean?
-      #:combine-element-hash-codes (-> (listof fixnum?) fixnum?)
-      
-      #:inhabitant-shallowly-equal-always?-knowable
-      (-> any/c any/c (knowable/c boolean?))
-      
-      #:copy (-> any/c any/c)
-      
-      #:get-smoosh-of-zero-reports
-      (-> any/c (sequence/c smoosh-report?))
-      
-      )
-    (struct-type-property/c trivial?))
-  (define-values (prop:bundle bundle? bundle-ref)
-    (make-struct-type-property
-      'expressly-smooshable-bundle-property-from-list-isomorphism
-      (fn value info
-        (expect value (trivial)
-          (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
-            "expected the property value to be a trivial? value"
-            "value" value)
-          value))
-      (list
-        (cons
-          prop:expressly-smooshable-dynamic-type
-          (dissectfn (trivial)
-            (if ignore-chaperones?
-              (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
-                #:self-get-any-dynamic-type self-get-any-dynamic-type
-                #:inhabitant? inhabitant?
-                #:->->list ->->list
-                #:example-and-list-> example-and-list->
-                
-                #:inhabitant-shallowly-equal-always?-knowable
-                inhabitant-shallowly-equal-always?-knowable
-                
-                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports)
-              ; TODO SMOOSH: This use of
-              ; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
-              ; is a forward reference. See if we can untangle it.
-              (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
-                #:self-get-any-dynamic-type self-get-any-dynamic-type
-                #:inhabitant? inhabitant?
-                #:->->list ->->list
-                #:example-and-list-> example-and-list->
-                
-                #:inhabitant-shallowly-equal-always?-knowable
-                inhabitant-shallowly-equal-always?-knowable
-                
-                #:copy copy
-                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports))))
-        (cons
-          prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-          (dissectfn (trivial)
-            (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-              #:self-get-any-dynamic-type self-get-any-dynamic-type
-              #:inhabitant? inhabitant?
-              #:->->list ->->list
-              #:combine-element-hash-codes combine-element-hash-codes))))))
-  prop:bundle)
-
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for immutable tuple data structures and their
 ; chaperones, information-ordered in a way that's consistent with
@@ -4343,188 +4389,136 @@
     
     ))
 
-; This is an appropriate `prop:expressly-smooshable-dynamic-type`
-; implementation for mutable tuple data structures and their
-; chaperones, information-ordered in a way that's consistent with
-; `chaperone-of?`.
-;
-; Level 0:
-;   path-related, join, meet, ==:
-;     Same as the description of level 1 path-related.
-;   <=, >=:
-;     Same as the description of level 1 path-related as a check.
-; Level 1:
-;   path-related, join, meet, ==:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
-;     
-;     Otherwise, if the operands are not `equal-always?`, then a known
-;     nothing.
-;     
-;     Otherwise, if any operand counts as an acceptable result, then
-;     the first such operand.
-;     
-;     Otherwise, unknown.
-;     
-;     Where "acceptable result" means:
-;       If we're doing path-related:
-;         Every result is acceptable.
-;       If we're doing join:
-;         Every result is acceptable if it's `chaperone-of?` every
-;         operand.
-;         
-;         (We'll allow for the possibility that Racket will introduce
-;         chaperone wrappers that are chaperone-of each of two
-;         preexisting chaperones, so we'll treat some results as
-;         unknown even though a more Racket-version-pinned design
-;         might treat them as known nothings.)
-;       If we're doing meet:
-;         Every operand is acceptable if each of the operands is
-;         `chaperone-of?` it.
-;         
-;         (Note that the meet is often an object the program can refer
-;         to, but unless an acceptable result is found among the
-;         operands, there's no way to obtain it from the operands, so
-;         the result will be unknown.)
-;       If we're doing ==:
-;         Every result is acceptable if it and the operands are all
-;         `chaperone-of?` each other.
-;   <=, >=:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
-;     
-;     Otherwise, if the operands are not `equal-always?`, then a known
-;     `#f`.
-;     
-;     Otherwise, if the element we're proposing to be greater is
-;     `chaperone-of?` the other one, then a known `#t`.
-;     
-;     Otherwise, unknown.
-;     
-;     (We'll allow for the possibility that values which differ only
-;     in the failure of a chaperone-of check could actually pass the
-;     chaperone-of check in the future when they're written to reuse
-;     chaperone-wrapped values more diligently. This kind of rewrite
-;     may be more feasible if and when Racket introduces
-;     chaperone-wrapping operations that create equivalent wrappers in
-;     some reliable way. As such, we'll treat some results as unknown
-;     even though a more Racket-version-pinned design might treat them
-;     as known nothings.)
-; Level 2+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 1 ==.
-;   <=, >=:
-;     Same as the description of level 1 == as a check.
-;
 (define/own-contract
-  (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-    #:inhabitant? inhabitant?)
-  (-> #:inhabitant? (-> any/c boolean?)
-    expressly-smooshable-dynamic-type-impl?)
-  (make-expressly-smooshable-dynamic-type-impl
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+    #:self-get-any-dynamic-type self-get-any-dynamic-type
+    #:inhabitant? inhabitant?
+    #:->->list ->->list
     
-    #:get-smoosh-of-zero-reports
-    (fn self
-      (uninformative-smoosh-reports))
+    #:combine-element-hash-codes
+    [ combine-element-hash-codes
+      (fn element-hash-codes
+        (hash-code-combine* element-hash-codes))]
     
-    #:get-smoosh-of-one-reports
+    )
+  (->*
+    (
+      #:self-get-any-dynamic-type (-> any/c any/c)
+      #:inhabitant? (-> any/c boolean?)
+      #:->->list (-> any/c (-> any/c list?)))
+    (#:combine-element-hash-codes (-> (listof fixnum?) fixnum?))
+    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+    
+    #:get-smoosh-equal-hash-code-support-reports
     (fn self a
-      (constant-smoosh-reports /delay
-        (knowable-if (inhabitant? a) /fn
-          (just /delay/strict /known a))))
-    
-    #:get-smoosh-and-comparison-of-two-reports
-    (fn self a b
-      (expect (inhabitant? a) #t
-        (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (inhabitant? b) #t
-        (uninformative-smoosh-and-comparison-of-two-reports)
-      /if (not /equal-always? a b)
-        (false-smoosh-and-comparison-of-two-reports)
-      /w- a-chaperone-of-b?-promise (delay /chaperone-of? a b)
-      /w- b-chaperone-of-a?-promise (delay /chaperone-of? b a)
-      ; Given two `equal-always?` inhabitants, this checks whether
-      ; they're `chaperone-of?`. Like `chaperone-of?`, this takes
-      ; constant time if the inhabitants are `eq?` themselves.
-      /w- inhabitant-chaperone-of?
-        (fn s t
-          (or (eq? s t)
-          /if (and (eq? s b) (eq? t a))
-            (force b-chaperone-of-a?-promise)
-          /if (and (eq? s a) (eq? t b))
-            (force a-chaperone-of-b?-promise)
-          /chaperone-of? s t))
-      /w- on-check-result-knowable-promise
-        (fn should-a-be-small? should-b-be-small?
-          (dissectfn (list)
-            (delay
-              (boolean-and-knowable-thunk-zip /list
-                (fn /boolean-or-knowable-thunk-zip /list
-                  (fn /known /not should-a-be-small?)
-                  (fn /falsable->uninformative-knowable
-                    (inhabitant-chaperone-of? b a)))
-                (fn /boolean-or-knowable-thunk-zip /list
-                  (fn /known /not should-b-be-small?)
-                  (fn /falsable->uninformative-knowable
-                    (inhabitant-chaperone-of? a b)))))))
-      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
-        (fn acceptable-result?
-          (dissectfn (list)
-            (delay/strict /known /just /delay
-              (if (acceptable-result? a)
-                (known a)
-              /if (acceptable-result? b)
-                (known b)
-              /unknown))))
-      /w- equivalent?-promise
-        (delay
-          (and
-            (inhabitant-chaperone-of? b a)
-            (inhabitant-chaperone-of? a b)))
-      /w- ==-acceptable-result?
-        (fn v
-          (force equivalent?-promise))
-      /w- path-related-acceptable-result?
-        (fn v
-          #t)
-      /stream*
-        (smoosh-and-comparison-of-two-report-zip-map (list)
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #f #f)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-report-zip-map (list)
-          #:on-<=?-knowable-promise
-          (on-check-result-knowable-promise #t #f)
-          #:on->=?-knowable-promise
-          (on-check-result-knowable-promise #f #t)
-          #:on-join-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn v
-              (and
-                (inhabitant-chaperone-of? v a)
-                (inhabitant-chaperone-of? v b))))
-          #:on-meet-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn v
-              (and
-                (inhabitant-chaperone-of? a v)
-                (inhabitant-chaperone-of? b v))))
-          #:on-==-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            ==-acceptable-result?)
-          #:on-path-related-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-reports-zip-map (list)
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #t #t)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            ==-acceptable-result?))))
+      (constant-smoosh-equal-hash-code-support-reports /delay
+        (expect (inhabitant? a) #t (uninformative-hash-code)
+        /w- any-dt (self-get-any-dynamic-type self)
+        /w- ->list (->->list a)
+        /w- a-list (->list a)
+        /smoosh-equal-hash-code-support-reports-zip-map
+          (list-map a-list /fn a-elem
+            (dynamic-type-get-smoosh-equal-hash-code-support-reports
+              any-dt a-elem))
+          #:on-hash-code-promise
+          (fn p-list
+            (promise-zip-map p-list /fn hash-code-list
+              (hash-code-combine
+                (equal-always-hash-code inhabitant?)
+                (equal-always-hash-code/recur a /fn a-elem
+                  (uninformative-hash-code))
+                (combine-element-hash-codes hash-code-list)))))))
     
     ))
+
+(define/own-contract
+  (make-expressly-smooshable-bundle-property-from-list-isomorphism
+    #:ignore-chaperones? [ignore-chaperones? #f]
+    #:self-get-any-dynamic-type self-get-any-dynamic-type
+    #:inhabitant? inhabitant?
+    #:->->list ->->list
+    #:example-and-list-> example-and-list->
+    
+    #:combine-element-hash-codes
+    [ combine-element-hash-codes
+      (fn element-hash-codes
+        (hash-code-combine* element-hash-codes))]
+    
+    #:inhabitant-shallowly-equal-always?-knowable
+    [ inhabitant-shallowly-equal-always?-knowable
+      (fn a b /known /equal-always?/recur a b /fn a-elem b-elem #t)]
+    
+    #:copy [copy (fn v /example-and-list-> v /(->->list v) v)]
+    
+    #:get-smoosh-of-zero-reports
+    [ get-smoosh-of-zero-reports
+      (fn self
+        (uninformative-smoosh-reports))])
+  (->*
+    (
+      #:self-get-any-dynamic-type (-> any/c any/c)
+      #:inhabitant? (-> any/c boolean?)
+      #:->->list (-> any/c (-> any/c list?))
+      #:example-and-list-> (-> any/c list? any/c))
+    (
+      #:ignore-chaperones? boolean?
+      #:combine-element-hash-codes (-> (listof fixnum?) fixnum?)
+      
+      #:inhabitant-shallowly-equal-always?-knowable
+      (-> any/c any/c (knowable/c boolean?))
+      
+      #:copy (-> any/c any/c)
+      
+      #:get-smoosh-of-zero-reports
+      (-> any/c (sequence/c smoosh-report?))
+      
+      )
+    (struct-type-property/c trivial?))
+  (define-values (prop:bundle bundle? bundle-ref)
+    (make-struct-type-property
+      'expressly-smooshable-bundle-property-from-list-isomorphism
+      (fn value info
+        (expect value (trivial)
+          (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+            "expected the property value to be a trivial? value"
+            "value" value)
+          value))
+      (list
+        (cons
+          prop:expressly-smooshable-dynamic-type
+          (dissectfn (trivial)
+            (if ignore-chaperones?
+              (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+                #:self-get-any-dynamic-type self-get-any-dynamic-type
+                #:inhabitant? inhabitant?
+                #:->->list ->->list
+                #:example-and-list-> example-and-list->
+                
+                #:inhabitant-shallowly-equal-always?-knowable
+                inhabitant-shallowly-equal-always?-knowable
+                
+                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports)
+              (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+                #:self-get-any-dynamic-type self-get-any-dynamic-type
+                #:inhabitant? inhabitant?
+                #:->->list ->->list
+                #:example-and-list-> example-and-list->
+                
+                #:inhabitant-shallowly-equal-always?-knowable
+                inhabitant-shallowly-equal-always?-knowable
+                
+                #:copy copy
+                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports))))
+        (cons
+          prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+          (dissectfn (trivial)
+            (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+              #:self-get-any-dynamic-type self-get-any-dynamic-type
+              #:inhabitant? inhabitant?
+              #:->->list ->->list
+              #:combine-element-hash-codes combine-element-hash-codes))))))
+  prop:bundle)
 
 ; NOTE: This would be used like so:
 ;
