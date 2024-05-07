@@ -553,9 +553,10 @@
 
 (define-imitation-simple-generics
   custom-gloss-key-dynamic-type? custom-gloss-key-dynamic-type-impl?
-  (#:method custom-gloss-key-dynamic-type-variant-knowable (#:this))
-  (#:method custom-gloss-key-dynamic-type-get-reports-knowable
-    (#:this))
+  (#:method
+    custom-gloss-key-dynamic-type-variant-knowable (#:this) ())
+  (#:method
+    custom-gloss-key-dynamic-type-get-reports-knowable (#:this) ())
   prop:custom-gloss-key-dynamic-type
   make-custom-gloss-key-dynamic-type-impl-from-various-unkeyworded
   'custom-gloss-key-dynamic-type 'custom-gloss-key-dynamic-type-impl
@@ -565,7 +566,7 @@
 (ascribe-own-contract custom-gloss-key-dynamic-type-impl?
   (-> any/c boolean?))
 (ascribe-own-contract custom-gloss-key-dynamic-type-variant-knowable
-  (-> custom-gloss-key-dynamic-type? (knowable/c any/c)))
+  (-> custom-gloss-key-dynamic-type? any/c (knowable/c any/c)))
 (ascribe-own-contract
   custom-gloss-key-dynamic-type-get-reports-knowable
   ; For each report in the infinite sequence, the next report creates
@@ -573,7 +574,7 @@
   ; along that one's `==` but also, only if they do, smooshes their
   ; information ordering representatives along their information
   ; ordering.
-  (-> custom-gloss-key-dynamic-type?
+  (-> custom-gloss-key-dynamic-type? any/c
     (knowable/c (sequence/c custom-gloss-key-report?))))
 (ascribe-own-contract prop:custom-gloss-key-dynamic-type
   (struct-type-property/c custom-gloss-key-dynamic-type-impl?))
@@ -584,10 +585,10 @@
     #:get-reports-knowable get-reports-knowable)
   (->
     #:variant-knowable
-    (-> custom-gloss-key-dynamic-type? (knowable/c any/c))
+    (-> custom-gloss-key-dynamic-type? any/c (knowable/c any/c))
     
     #:get-reports-knowable
-    (-> custom-gloss-key-dynamic-type?
+    (-> custom-gloss-key-dynamic-type? any/c
       (knowable/c (sequence/c custom-gloss-key-report?)))
     
     custom-gloss-key-dynamic-type-impl?)
@@ -1017,7 +1018,8 @@
   /expect (custom-gloss-key-dynamic-type? unwrapped-k-dt) #t (unknown)
   /expect custom (just custom) (known /nothing)
   /knowable-bind
-    (custom-gloss-key-dynamic-type-variant-knowable unwrapped-k-dt)
+    (custom-gloss-key-dynamic-type-variant-knowable
+      unwrapped-k-dt unwrapped-k)
   /fn variant
   /knowable-bind (gloss-ref-maybe-knowable custom variant)
   /fn custom-regress
@@ -1048,7 +1050,8 @@
       k
       m)
   /knowable-bind
-    (custom-gloss-key-dynamic-type-variant-knowable unwrapped-k-dt)
+    (custom-gloss-key-dynamic-type-variant-knowable
+      unwrapped-k-dt unwrapped-k)
   /fn variant
   /knowable-bind (gloss-ref-maybe-knowable custom variant)
   /fn custom-regress
@@ -1061,7 +1064,7 @@
   /expect (hash-ref-maybe custom-regress mode) (just custom-entry)
     (knowable-bind
       (custom-gloss-key-dynamic-type-get-reports-knowable
-        unwrapped-k-dt)
+        unwrapped-k-dt unwrapped-k)
     /fn reports
     /w- report (sequence-ref reports depth)
     /w- custom-gs
