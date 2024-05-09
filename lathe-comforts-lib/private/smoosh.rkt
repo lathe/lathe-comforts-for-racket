@@ -5158,6 +5158,78 @@
   
   )
 
+; TODO: See if we should export this. If so, we should rewrite it to
+; use`syntax/parse`.
+(define-syntax-rule
+  (define-wrapper-variant
+    wrapper-variant-dynamic-type
+    wrapper-variant)
+  (begin
+    
+    (define-imitation-simple-struct
+      (wrapper-variant-dynamic-type?
+        wrapper-variant-dynamic-type-get-any-dynamic-type)
+      wrapper-variant-dynamic-type
+      'wrapper-variant-dynamic-type (current-inspector) (auto-write)
+      
+      (#:prop
+        (make-expressly-smooshable-bundle-property-from-list-isomorphism
+          #:ignore-chaperones? #t
+          
+          #:self-get-any-dynamic-type
+          (dissectfn (wrapper-variant-dynamic-type any-dt)
+            any-dt)
+          
+          #:inhabitant? wrapper-variant?
+          #:->->list
+          (fn a /dissectfn (wrapper-variant value) /list value)
+          
+          #:example-and-list->
+          (fn example lst
+            (dissect lst (list value)
+            /wrapper-variant value))
+          
+          #:get-smoosh-of-zero-reports
+          (fn self
+            (dissect self (wrapper-variant-dynamic-type any-dt)
+            /smoosh-reports-map
+              (dynamic-type-get-smoosh-of-zero-reports any-dt)
+              #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+              (fn kpmkp
+                (promise-map kpmkp /fn kpmk
+                  (knowable-map kpmk /fn kpm
+                    (maybe-map kpm /fn kp
+                      (promise-map kp /fn k
+                        (knowable-map k /fn result
+                          (wrapper-variant result)))))))))
+          
+          )
+        (trivial))
+      
+      )
+    
+    (define-imitation-simple-struct
+      (wrapper-variant? wrapper-variant-get-value-variant)
+      wrapper-variant
+      'wrapper-variant (current-inspector) (auto-write) (auto-equal)
+      (#:prop prop:expressly-has-dynamic-type
+        (make-expressly-has-dynamic-type-impl /fn bindings self
+          (expect
+            (known-value /gloss-ref-maybe-knowable bindings
+              (dynamic-type-var-for-any-dynamic-type))
+            (just any-dt)
+            (raise-arguments-error 'get-dynamic-type
+              "tried to get the dynamic type of a define-wrapper-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+              "bindings" bindings
+              "inhabitant" self)
+          /wrapper-variant-dynamic-type any-dt))))
+    
+    ))
+
+(define-wrapper-variant
+  path-related-wrapper-variant-dynamic-type
+  path-related-wrapper-variant)
+
 (define/own-contract
   (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
     kpmkp)
@@ -5223,6 +5295,38 @@
   /stream*
     (constant-smoosh-equal-hash-code-support-report
       (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+        report-0))
+    report-1+))
+
+; TODO SMOOSH: Implement `custom-gloss-key-reports-map`,
+; `glossesque-sys-map`, and `constant-custom-gloss-key-report`, and
+; then uncomment this.
+#;
+(define/own-contract
+  (path-related-wrapper-custom-gloss-key-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c custom-gloss-key-report?)
+    (sequence/c custom-gloss-key-report?))
+  (dissect
+    (custom-gloss-key-reports-map value-reports
+      #:on-tagged-glossesque-sys-knowable
+      (fn tgs-k
+        (knowable-map tgs-k
+          (dissectfn (tagged-glossesque-sys variant gs)
+            (tagged-glossesque-sys
+              (path-related-wrapper-variant variant)
+              (glossesque-sys-map gs
+                #:granted-key-knowable
+                (fn k
+                  (expect k (path-related-wrapper k) (unknown)
+                  /known k))
+                #:on-key
+                (fn k
+                  (path-related-wrapper k))))))))
+    (stream* report-0 report-1+)
+  /stream*
+    (constant-custom-gloss-key-report
+      (custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
         report-0))
     report-1+))
 
@@ -5317,7 +5421,29 @@
       
       ))
   
+  ; TODO SMOOSH: Implement `uninformative-custom-gloss-key-reports`,
+  ; and then uncomment this and
+  ; `path-related-wrapper-custom-gloss-key-reports-from-value-reports`.
+  #;
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (dissect self (path-related-wrapper-dynamic-type any-dt)
+        /expect a (path-related-wrapper-unguarded a-value)
+          (uninformative-custom-gloss-key-reports)
+        /path-related-wrapper-custom-gloss-key-reports-from-value-reports
+          (dynamic-type-get-custom-gloss-key-reports
+            any-dt a-value)))
+      
+      ))
+  
   )
+
+(define-wrapper-variant
+  info-wrapper-variant-dynamic-type
+  info-wrapper-variant)
 
 (define/own-contract
   (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5369,6 +5495,33 @@
   (dissect
     (smoosh-equal-hash-code-support-reports-map value-reports
       #:on-hash-code-promise on-info-wrapper-hash-code-promise)
+    (stream* report-0 report-1+)
+    report-1+))
+
+; TODO SMOOSH: Implement `custom-gloss-key-reports-map` and
+; `glossesque-sys-map`, and then uncomment this.
+#;
+(define/own-contract
+  (info-wrapper-custom-gloss-key-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c custom-gloss-key-report?)
+    (sequence/c custom-gloss-key-report?))
+  (dissect
+    (custom-gloss-key-reports-map value-reports
+      #:on-tagged-glossesque-sys-knowable
+      (fn tgs-k
+        (knowable-map tgs-k
+          (dissectfn (tagged-glossesque-sys variant gs)
+            (tagged-glossesque-sys
+              (info-wrapper-variant variant)
+              (glossesque-sys-map gs
+                #:granted-key-knowable
+                (fn k
+                  (expect k (info-wrapper k) (unknown)
+                  /known k))
+                #:on-key
+                (fn k
+                  (info-wrapper k))))))))
     (stream* report-0 report-1+)
     report-1+))
 
@@ -5445,6 +5598,24 @@
           (uninformative-smoosh-equal-hash-code-support-reports)
         /info-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
           (dynamic-type-get-smoosh-equal-hash-code-support-reports
+            any-dt a-value)))
+      
+      ))
+  
+  ; TODO SMOOSH: Implement `uninformative-custom-gloss-key-reports`,
+  ; and then uncomment this and
+  ; `info-wrapper-custom-gloss-key-reports-from-value-reports`.
+  #;
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (dissect self (info-wrapper-dynamic-type any-dt)
+        /expect a (info-wrapper-unguarded a-value)
+          (uninformative-custom-gloss-key-reports)
+        /info-wrapper-custom-gloss-key-reports-from-value-reports
+          (dynamic-type-get-custom-gloss-key-reports
             any-dt a-value)))
       
       ))
@@ -5646,6 +5817,16 @@
       (fn self a
         (w- a-dt (get-dynamic-type-with-default-bindings a)
         /dynamic-type-get-smoosh-equal-hash-code-support-reports a-dt a))
+      
+      ))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (w- a-dt (get-dynamic-type-with-default-bindings a)
+        /dynamic-type-get-custom-gloss-key-reports a-dt a))
       
       ))
   
@@ -5888,7 +6069,13 @@
 ;
 ;       - `knowable-dynamic-type?`
 ;
+;       - `path-related-wrapper-variant-dynamic-type?` (the type
+;         constructed by `path-related-wrapper-variant-dynamic-type`)
+;
 ;       - `path-related-wrapper-dynamic-type?`
+;
+;       - `info-wrapper-variant-dynamic-type?` (the type constructed
+;         by `info-wrapper-variant-dynamic-type`)
 ;
 ;       - `info-wrapper-dynamic-type?`
 ;
