@@ -87,6 +87,8 @@
   custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
   prop:custom-gloss-key-report
   make-custom-gloss-key-report-impl
+  uninformative-custom-gloss-key-report
+  uninformative-custom-gloss-key-reports
   path-related-wrapper
   info-wrapper
   equal-always-gloss-key?
@@ -470,6 +472,32 @@
     get-path-related-tagged-glossesque-sys-knowable))
 
 (define-imitation-simple-struct
+  (uninformative-custom-gloss-key-report?)
+  uninformative-custom-gloss-key-report-unguarded
+  'uninformative-custom-gloss-key-report (current-inspector)
+  (auto-write)
+  (#:prop prop:custom-gloss-key-report
+    (make-custom-gloss-key-report-impl
+      
+      #:get-==-tagged-glossesque-sys-knowable
+      (fn self
+        (unknown))
+      
+      #:get-path-related-tagged-glossesque-sys-knowable
+      (fn self
+        (unknown))
+      
+      )))
+
+(define/own-contract (uninformative-custom-gloss-key-report)
+  (-> custom-gloss-key-report?)
+  (uninformative-custom-gloss-key-report-unguarded))
+
+(define/own-contract (uninformative-custom-gloss-key-reports)
+  (-> (sequence/c custom-gloss-key-report?))
+  (in-cycle /list /uninformative-custom-gloss-key-report))
+
+(define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper-unguarded
   ; TODO SMOOSH: Stop using `auto-write` for this.
@@ -607,11 +635,11 @@
   ; along that one's `==` but also, only if they do, smooshes their
   ; information ordering representatives along their information
   ; ordering.
-  (-> any/c any/c (knowable/c (sequence/c custom-gloss-key-report?)))
+  (-> any/c any/c (sequence/c custom-gloss-key-report?))
   (if (expressly-custom-gloss-key-dynamic-type? dt)
     (expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports
       dt inhabitant)
-  /unknown))
+  /uninformative-custom-gloss-key-reports))
 
 
 ; TODO SMOOSH: Aren't we going to have the default "any" type depend
@@ -4834,6 +4862,23 @@
         
         ))
     
+    (#:prop prop:expressly-custom-gloss-key-dynamic-type
+      (make-expressly-custom-gloss-key-dynamic-type-impl
+        
+        #:get-custom-gloss-key-reports
+        (fn self a
+          (dissect self (case-dynamic-type any-dt)
+          /w-loop next cases cases
+            (expect cases (cons case cases)
+              (uninformative-custom-gloss-key-reports)
+            /dissect case (list check? dt)
+            /if (check? a)
+              (dynamic-type-get-custom-gloss-key-reports (dt any-dt)
+                a)
+            /next cases)))
+        
+        ))
+    
     )
   (list inhabitant? case-dynamic-type))
 
@@ -5167,6 +5212,24 @@
   (begin
     
     (define-imitation-simple-struct
+      (wrapper-variant? wrapper-variant-get-value-variant)
+      wrapper-variant
+      'wrapper-variant (current-inspector) (auto-write) (auto-equal)
+      (#:prop prop:expressly-has-dynamic-type
+        (make-expressly-has-dynamic-type-impl /fn bindings self
+          (expect
+            (known-value /gloss-ref-maybe-knowable bindings
+              (dynamic-type-var-for-any-dynamic-type))
+            (just any-dt)
+            (raise-arguments-error 'get-dynamic-type
+              "tried to get the dynamic type of a define-wrapper-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+              "bindings" bindings
+              "inhabitant" self)
+          ; TODO SMOOSH: This use of `wrapper-variant-dynamic-type` is
+          ; a forward reference. See if we can untangle it.
+          /wrapper-variant-dynamic-type any-dt))))
+    
+    (define-imitation-simple-struct
       (wrapper-variant-dynamic-type?
         wrapper-variant-dynamic-type-get-any-dynamic-type)
       wrapper-variant-dynamic-type
@@ -5207,22 +5270,6 @@
         (trivial))
       
       )
-    
-    (define-imitation-simple-struct
-      (wrapper-variant? wrapper-variant-get-value-variant)
-      wrapper-variant
-      'wrapper-variant (current-inspector) (auto-write) (auto-equal)
-      (#:prop prop:expressly-has-dynamic-type
-        (make-expressly-has-dynamic-type-impl /fn bindings self
-          (expect
-            (known-value /gloss-ref-maybe-knowable bindings
-              (dynamic-type-var-for-any-dynamic-type))
-            (just any-dt)
-            (raise-arguments-error 'get-dynamic-type
-              "tried to get the dynamic type of a define-wrapper-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-              "bindings" bindings
-              "inhabitant" self)
-          /wrapper-variant-dynamic-type any-dt))))
     
     ))
 
@@ -5421,8 +5468,7 @@
       
       ))
   
-  ; TODO SMOOSH: Implement `uninformative-custom-gloss-key-reports`,
-  ; and then uncomment this and
+  ; TODO SMOOSH: Uncomment this when we uncomment
   ; `path-related-wrapper-custom-gloss-key-reports-from-value-reports`.
   #;
   (#:prop prop:expressly-custom-gloss-key-dynamic-type
@@ -5602,8 +5648,7 @@
       
       ))
   
-  ; TODO SMOOSH: Implement `uninformative-custom-gloss-key-reports`,
-  ; and then uncomment this and
+  ; TODO SMOOSH: Uncomment this when we uncomment
   ; `info-wrapper-custom-gloss-key-reports-from-value-reports`.
   #;
   (#:prop prop:expressly-custom-gloss-key-dynamic-type
