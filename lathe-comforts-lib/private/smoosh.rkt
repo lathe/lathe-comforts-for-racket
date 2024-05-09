@@ -75,6 +75,7 @@
   ; TODO: When we document this, make sure we document its keyword
   ; arguments.
   make-glossesque-sys-impl
+  glossesque-sys-map
   tagged-glossesque-sys?
   tagged-glossesque-sys-variant
   tagged-glossesque-sys-get-glossesque-sys)
@@ -89,8 +90,19 @@
   make-custom-gloss-key-report-impl
   uninformative-custom-gloss-key-report
   uninformative-custom-gloss-key-reports
-  path-related-wrapper
-  info-wrapper
+  custom-gloss-key-report-map
+  custom-gloss-key-reports-map
+  custom-gloss-key-report-zip-map
+  custom-gloss-key-reports-zip-map
+  constant-custom-gloss-key-report
+  path-related-wrapper?)
+(provide
+  path-related-wrapper)
+(provide /own-contract-out
+  info-wrapper?)
+(provide
+  info-wrapper)
+(provide /own-contract-out
   equal-always-gloss-key?
   equal-always-gloss-key-impl?
   prop:equal-always-gloss-key
@@ -206,6 +218,14 @@
   make-expressly-smooshable-bundle-property-from-list-isomorphism
   dynamic-type-case-by-indistinct-cases
   dynamic-type-case-by-discrete-cases
+  path-related-wrapper-variant?)
+(provide
+  path-related-wrapper-variant)
+(provide /own-contract-out
+  info-wrapper-variant?)
+(provide
+  info-wrapper-variant)
+(provide /own-contract-out
   gloss-ref
   gloss-set
   make-gloss
@@ -412,6 +432,74 @@
     glossesque-count
     glossesque-iteration-sequence))
 
+(define-imitation-simple-struct
+  (mapped-glossesque-sys?
+    mapped-glossesque-sys-granted-key-knowable
+    mapped-glossesque-sys-on-key
+    mapped-glossesque-sys-original)
+  mapped-glossesque-sys
+  'mapped-glossesque-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero-knowable
+    (dissectfn
+      (mapped-glossesque-sys granted-key-knowable on-key original)
+      (glossesque-sys-glossesque-union-of-zero-knowable original))
+    
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union-knowable
+      (dissect gs
+        (mapped-glossesque-sys granted-key-knowable on-key original)
+      /glossesque-sys-glossesque-km-union-of-two-knowable original a b
+        (fn k a b
+          (km-union-knowable (on-key k) a b))))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (dissect gs
+        (mapped-glossesque-sys granted-key-knowable on-key original)
+      /knowable-bind (granted-key-knowable k) /fn k
+      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m
+      (dissect gs
+        (mapped-glossesque-sys granted-key-knowable on-key original)
+      /knowable-bind (granted-key-knowable k) /fn k
+      /glossesque-sys-glossesque-set-maybe-knowable original g k m))
+    
+    #:glossesque-count
+    (fn gs g
+      (dissect gs
+        (mapped-glossesque-sys granted-key-knowable on-key original)
+      /glossesque-sys-glossesque-count original g))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (dissect gs
+        (mapped-glossesque-sys granted-key-knowable on-key original)
+      /sequence-map
+        (fn k v
+          (values (on-key k) v))
+        (glossesque-sys-glossesque-iteration-sequence original g)))
+    
+    )
+  
+  )
+
+(define/own-contract
+  (glossesque-sys-map gs
+    #:granted-key-knowable [granted-key-knowable (fn k /known k)]
+    #:on-key [on-key (fn k k)])
+  (->*
+    (glossesque-sys?)
+    (
+      #:granted-key-knowable (-> any/c knowable?)
+      #:on-key (-> any/c any/c))
+    glossesque-sys?)
+  (mapped-glossesque-sys granted-key-knowable on-key gs))
+
 
 (define-imitation-simple-struct
   (tagged-glossesque-sys?
@@ -498,8 +586,259 @@
   (in-cycle /list /uninformative-custom-gloss-key-report))
 
 (define-imitation-simple-struct
+  (mapped-custom-gloss-key-report?
+    mapped-custom-gloss-key-report-on-==-tagged-glossesque-sys-knowable
+    mapped-custom-gloss-key-report-on-path-related-tagged-glossesque-sys-knowable
+    mapped-custom-gloss-key-report-original)
+  mapped-custom-gloss-key-report
+  'mapped-custom-gloss-key-report (current-inspector) (auto-write)
+  (#:prop prop:custom-gloss-key-report
+    (make-custom-gloss-key-report-impl
+      
+      #:get-==-tagged-glossesque-sys-knowable
+      (dissectfn
+        (mapped-custom-gloss-key-report
+          on-==-tagged-glossesque-sys-knowable
+          on-path-related-tagged-glossesque-sys-knowable
+          original)
+        (on-==-tagged-glossesque-sys-knowable
+          (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+            original)))
+      
+      #:get-path-related-tagged-glossesque-sys-knowable
+      (dissectfn
+        (mapped-custom-gloss-key-report
+          on-==-tagged-glossesque-sys-knowable
+          on-path-related-tagged-glossesque-sys-knowable
+          original)
+        (on-path-related-tagged-glossesque-sys-knowable
+          (custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
+            original)))
+      
+      )))
+
+(define/own-contract
+  (custom-gloss-key-report-map report
+    
+    #:on-tagged-glossesque-sys-knowable
+    [ on-tagged-glossesque-sys-knowable
+      (fn tgs-k
+        tgs-k)]
+    
+    #:on-==-tagged-glossesque-sys-knowable
+    [ on-==-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    #:on-path-related-tagged-glossesque-sys-knowable
+    [ on-path-related-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    )
+  (->*
+    (custom-gloss-key-report?)
+    (
+      #:on-tagged-glossesque-sys-knowable
+      (-> (knowable/c tagged-glossesque-sys?)
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-==-tagged-glossesque-sys-knowable
+      (-> (knowable/c tagged-glossesque-sys?)
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-path-related-tagged-glossesque-sys-knowable
+      (-> (knowable/c tagged-glossesque-sys?)
+        (knowable/c tagged-glossesque-sys?))
+      
+      )
+    custom-gloss-key-report?)
+  (mapped-custom-gloss-key-report
+    on-==-tagged-glossesque-sys-knowable
+    on-path-related-tagged-glossesque-sys-knowable
+    report))
+
+(define/own-contract
+  (custom-gloss-key-reports-map reports
+    
+    #:on-tagged-glossesque-sys-knowable
+    [ on-tagged-glossesque-sys-knowable
+      (fn tgs-k
+        tgs-k)]
+    
+    #:on-==-tagged-glossesque-sys-knowable
+    [ on-==-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    #:on-path-related-tagged-glossesque-sys-knowable
+    [ on-path-related-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    )
+  (->*
+    ((sequence/c custom-gloss-key-report?))
+    (
+      #:on-tagged-glossesque-sys-knowable
+      (-> (knowable/c tagged-glossesque-sys?)
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-==-tagged-glossesque-sys-knowable
+      (-> (knowable/c tagged-glossesque-sys?)
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-path-related-tagged-glossesque-sys-knowable
+      (-> (knowable/c tagged-glossesque-sys?)
+        (knowable/c tagged-glossesque-sys?))
+      
+      )
+    (sequence/c custom-gloss-key-report?))
+  (sequence-map
+    (fn report
+      (custom-gloss-key-report-map report
+        
+        #:on-==-tagged-glossesque-sys-knowable
+        on-==-tagged-glossesque-sys-knowable
+        
+        #:on-path-related-tagged-glossesque-sys-knowable
+        on-path-related-tagged-glossesque-sys-knowable
+        
+        ))
+    reports))
+
+(define-imitation-simple-struct
+  (zip-mapped-custom-gloss-key-report?
+    zip-mapped-custom-gloss-key-report-on-==-tagged-glossesque-sys-knowable
+    zip-mapped-custom-gloss-key-report-on-path-related-tagged-glossesque-sys-knowable
+    zip-mapped-custom-gloss-key-report-original-list)
+  zip-mapped-custom-gloss-key-report
+  'zip-mapped-custom-gloss-key-report (current-inspector) (auto-write)
+  (#:prop prop:custom-gloss-key-report
+    (make-custom-gloss-key-report-impl
+      
+      #:get-==-tagged-glossesque-sys-knowable
+      (dissectfn
+        (zip-mapped-custom-gloss-key-report
+          on-==-tagged-glossesque-sys-knowable
+          on-path-related-tagged-glossesque-sys-knowable
+          original-list)
+        (on-==-tagged-glossesque-sys-knowable
+          (list-map original-list /fn original
+            (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+              original))))
+      
+      #:get-path-related-tagged-glossesque-sys-knowable
+      (dissectfn
+        (zip-mapped-custom-gloss-key-report
+          on-==-tagged-glossesque-sys-knowable
+          on-path-related-tagged-glossesque-sys-knowable
+          original-list)
+        (on-path-related-tagged-glossesque-sys-knowable
+          (list-map original-list /fn original
+            (custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
+              original))))
+      
+      )))
+
+(define/own-contract
+  (custom-gloss-key-report-zip-map report-list
+    
+    #:on-tagged-glossesque-sys-knowable
+    [ on-tagged-glossesque-sys-knowable
+      (fn tgs-k-list
+        (raise-arguments-error 'custom-gloss-key-report-zip-map
+          "tried to retrieve a glossesque system from a custom gloss key report when its mapping behavior was undefined"
+          "tagged-glossesque-sys-knowable-list" tgs-k-list))]
+    
+    #:on-==-tagged-glossesque-sys-knowable
+    [ on-==-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    #:on-path-related-tagged-glossesque-sys-knowable
+    [ on-path-related-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    )
+  (->*
+    ((listof custom-gloss-key-report?))
+    (
+      #:on-tagged-glossesque-sys-knowable
+      (-> (listof (knowable/c tagged-glossesque-sys?))
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-==-tagged-glossesque-sys-knowable
+      (-> (listof (knowable/c tagged-glossesque-sys?))
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-path-related-tagged-glossesque-sys-knowable
+      (-> (listof (knowable/c tagged-glossesque-sys?))
+        (knowable/c tagged-glossesque-sys?))
+      
+      )
+    custom-gloss-key-report?)
+  (zip-mapped-custom-gloss-key-report
+    on-==-tagged-glossesque-sys-knowable
+    on-path-related-tagged-glossesque-sys-knowable
+    report-list))
+
+(define/own-contract
+  (custom-gloss-key-reports-zip-map reports-list
+    
+    #:on-tagged-glossesque-sys-knowable
+    [ on-tagged-glossesque-sys-knowable
+      (fn tgs-k-list
+        (raise-arguments-error 'custom-gloss-key-reports-zip-map
+          "tried to retrieve a glossesque system from a custom gloss key report when its mapping behavior was undefined"
+          "tagged-glossesque-sys-knowable-list" tgs-k-list))]
+    
+    #:on-==-tagged-glossesque-sys-knowable
+    [ on-==-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    #:on-path-related-tagged-glossesque-sys-knowable
+    [ on-path-related-tagged-glossesque-sys-knowable
+      on-tagged-glossesque-sys-knowable]
+    
+    )
+  (->*
+    ((listof (sequence/c custom-gloss-key-report?)))
+    (
+      #:on-tagged-glossesque-sys-knowable
+      (-> (listof (knowable/c tagged-glossesque-sys?))
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-==-tagged-glossesque-sys-knowable
+      (-> (listof (knowable/c tagged-glossesque-sys?))
+        (knowable/c tagged-glossesque-sys?))
+      
+      #:on-path-related-tagged-glossesque-sys-knowable
+      (-> (listof (knowable/c tagged-glossesque-sys?))
+        (knowable/c tagged-glossesque-sys?))
+      
+      )
+    (sequence/c custom-gloss-key-report?))
+  (sequence-zip-map reports-list /fn report-list
+    (custom-gloss-key-report-zip-map report-list
+      
+      #:on-==-tagged-glossesque-sys-knowable
+      on-==-tagged-glossesque-sys-knowable
+      
+      #:on-path-related-tagged-glossesque-sys-knowable
+      on-path-related-tagged-glossesque-sys-knowable)))
+
+(define/own-contract
+  (constant-custom-gloss-key-report
+    #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable)
+  (->
+    #:tagged-glossesque-sys-knowable
+    (knowable/c tagged-glossesque-sys?)
+    
+    custom-gloss-key-report?)
+  (custom-gloss-key-report-zip-map (list)
+    #:on-tagged-glossesque-sys-knowable
+    (dissectfn (list)
+      tagged-glossesque-sys-knowable)))
+
+(define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
-  path-related-wrapper-unguarded
+  path-related-wrapper
   ; TODO SMOOSH: Stop using `auto-write` for this.
   'path-related-wrapper (current-inspector) (auto-write)
   (#:gen gen:equal-mode+hash
@@ -538,16 +877,11 @@
           #f)))
     
     ))
+(ascribe-own-contract path-related-wrapper? (-> any/c boolean?))
 
-(define/own-contract (path-related-wrapper v)
-  (-> any/c any/c)
-  (path-related-wrapper-unguarded v))
-
-(define-imitation-simple-struct
-  (info-wrapper? info-wrapper-value)
-  info-wrapper-unguarded
+(define-imitation-simple-struct (info-wrapper? info-wrapper-value)
   ; TODO SMOOSH: Stop using `auto-write` for this.
-  'info-wrapper (current-inspector) (auto-write)
+  info-wrapper 'info-wrapper (current-inspector) (auto-write)
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
@@ -584,10 +918,7 @@
           #f)))
     
     ))
-
-(define/own-contract (info-wrapper v)
-  (-> any/c any/c)
-  (info-wrapper-unguarded v))
+(ascribe-own-contract info-wrapper? (-> any/c boolean?))
 
 (define-imitation-simple-generics
   equal-always-gloss-key? equal-always-gloss-key-impl?
@@ -1064,7 +1395,8 @@
     (fn gs /known /gloss-union-of-zero)
     
     #:glossesque-km-union-of-two-knowable
-    (fn gs a b km-union /gloss-km-union-of-two-knowable a b km-union)
+    (fn gs a b km-union-knowable
+      (gloss-km-union-of-two-knowable a b km-union-knowable))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k /gloss-ref-maybe-knowable g k)
@@ -1775,9 +2107,6 @@
   (sequence-map
     (fn report
       (smoosh-report-map report
-        
-        #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-        on-smoosh-result-knowable-promise-maybe-knowable-promise
         
         #:on-join-knowable-promise-maybe-knowable-promise
         on-join-knowable-promise-maybe-knowable-promise
@@ -5207,8 +5536,9 @@
 ; use`syntax/parse`.
 (define-syntax-rule
   (define-wrapper-variant
-    wrapper-variant-dynamic-type
-    wrapper-variant)
+    wrapper-variant?
+    wrapper-variant
+    wrapper-variant-dynamic-type)
   (begin
     
     (define-imitation-simple-struct
@@ -5228,6 +5558,7 @@
           ; TODO SMOOSH: This use of `wrapper-variant-dynamic-type` is
           ; a forward reference. See if we can untangle it.
           /wrapper-variant-dynamic-type any-dt))))
+    (ascribe-own-contract wrapper-variant? (-> any/c boolean?))
     
     (define-imitation-simple-struct
       (wrapper-variant-dynamic-type?
@@ -5274,8 +5605,9 @@
     ))
 
 (define-wrapper-variant
-  path-related-wrapper-variant-dynamic-type
-  path-related-wrapper-variant)
+  path-related-wrapper-variant?
+  path-related-wrapper-variant
+  path-related-wrapper-variant-dynamic-type)
 
 (define/own-contract
   (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5345,10 +5677,6 @@
         report-0))
     report-1+))
 
-; TODO SMOOSH: Implement `custom-gloss-key-reports-map`,
-; `glossesque-sys-map`, and `constant-custom-gloss-key-report`, and
-; then uncomment this.
-#;
 (define/own-contract
   (path-related-wrapper-custom-gloss-key-reports-from-value-reports
     value-reports)
@@ -5425,7 +5753,7 @@
       #:get-smoosh-of-one-reports
       (fn self a
         (dissect self (path-related-wrapper-dynamic-type any-dt)
-        /expect a (path-related-wrapper-unguarded a-value)
+        /expect a (path-related-wrapper a-value)
           (uninformative-smoosh-reports)
         /path-related-wrapper-smoosh-reports-from-value-reports
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
@@ -5433,9 +5761,9 @@
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
         (dissect self (path-related-wrapper-dynamic-type any-dt)
-        /expect a (path-related-wrapper-unguarded a-value)
+        /expect a (path-related-wrapper a-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect b (path-related-wrapper-unguarded b-value)
+        /expect b (path-related-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
@@ -5444,9 +5772,9 @@
       #:get-smoosh-and-comparison-of-two-reports-via-second
       (fn self a b
         (dissect self (path-related-wrapper-dynamic-type any-dt)
-        /expect a (path-related-wrapper-unguarded a-value)
+        /expect a (path-related-wrapper a-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect b (path-related-wrapper-unguarded b-value)
+        /expect b (path-related-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
@@ -5460,7 +5788,7 @@
       #:get-smoosh-equal-hash-code-support-reports
       (fn self a
         (dissect self (path-related-wrapper-dynamic-type any-dt)
-        /expect a (path-related-wrapper-unguarded a-value)
+        /expect a (path-related-wrapper a-value)
           (uninformative-smoosh-equal-hash-code-support-reports)
         /path-related-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
           (dynamic-type-get-smoosh-equal-hash-code-support-reports
@@ -5468,16 +5796,13 @@
       
       ))
   
-  ; TODO SMOOSH: Uncomment this when we uncomment
-  ; `path-related-wrapper-custom-gloss-key-reports-from-value-reports`.
-  #;
   (#:prop prop:expressly-custom-gloss-key-dynamic-type
     (make-expressly-custom-gloss-key-dynamic-type-impl
       
       #:get-custom-gloss-key-reports
       (fn self a
         (dissect self (path-related-wrapper-dynamic-type any-dt)
-        /expect a (path-related-wrapper-unguarded a-value)
+        /expect a (path-related-wrapper a-value)
           (uninformative-custom-gloss-key-reports)
         /path-related-wrapper-custom-gloss-key-reports-from-value-reports
           (dynamic-type-get-custom-gloss-key-reports
@@ -5488,8 +5813,9 @@
   )
 
 (define-wrapper-variant
-  info-wrapper-variant-dynamic-type
-  info-wrapper-variant)
+  info-wrapper-variant?
+  info-wrapper-variant
+  info-wrapper-variant-dynamic-type)
 
 (define/own-contract
   (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5544,9 +5870,6 @@
     (stream* report-0 report-1+)
     report-1+))
 
-; TODO SMOOSH: Implement `custom-gloss-key-reports-map` and
-; `glossesque-sys-map`, and then uncomment this.
-#;
 (define/own-contract
   (info-wrapper-custom-gloss-key-reports-from-value-reports
     value-reports)
@@ -5605,7 +5928,7 @@
       #:get-smoosh-of-one-reports
       (fn self a
         (dissect self (info-wrapper-dynamic-type any-dt)
-        /expect a (info-wrapper-unguarded a-value)
+        /expect a (info-wrapper a-value)
           (uninformative-smoosh-reports)
         /info-wrapper-smoosh-reports-from-value-reports
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
@@ -5613,9 +5936,9 @@
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
         (dissect self (info-wrapper-dynamic-type any-dt)
-        /expect a (info-wrapper-unguarded a-value)
+        /expect a (info-wrapper a-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect b (info-wrapper-unguarded b-value)
+        /expect b (info-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
@@ -5624,9 +5947,9 @@
       #:get-smoosh-and-comparison-of-two-reports-via-second
       (fn self a b
         (dissect self (info-wrapper-dynamic-type any-dt)
-        /expect a (info-wrapper-unguarded a-value)
+        /expect a (info-wrapper a-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect b (info-wrapper-unguarded b-value)
+        /expect b (info-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
@@ -5640,7 +5963,7 @@
       #:get-smoosh-equal-hash-code-support-reports
       (fn self a
         (dissect self (info-wrapper-dynamic-type any-dt)
-        /expect a (info-wrapper-unguarded a-value)
+        /expect a (info-wrapper a-value)
           (uninformative-smoosh-equal-hash-code-support-reports)
         /info-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
           (dynamic-type-get-smoosh-equal-hash-code-support-reports
@@ -5648,16 +5971,13 @@
       
       ))
   
-  ; TODO SMOOSH: Uncomment this when we uncomment
-  ; `info-wrapper-custom-gloss-key-reports-from-value-reports`.
-  #;
   (#:prop prop:expressly-custom-gloss-key-dynamic-type
     (make-expressly-custom-gloss-key-dynamic-type-impl
       
       #:get-custom-gloss-key-reports
       (fn self a
         (dissect self (info-wrapper-dynamic-type any-dt)
-        /expect a (info-wrapper-unguarded a-value)
+        /expect a (info-wrapper a-value)
           (uninformative-custom-gloss-key-reports)
         /info-wrapper-custom-gloss-key-reports-from-value-reports
           (dynamic-type-get-custom-gloss-key-reports
@@ -5769,8 +6089,14 @@
       (list trivial? (fn any-dt /trivial-dynamic-type))
       (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
       (list
+        path-related-wrapper-variant?
+        (fn any-dt /path-related-wrapper-variant-dynamic-type any-dt))
+      (list
         path-related-wrapper?
         (fn any-dt /path-related-wrapper-dynamic-type any-dt))
+      (list
+        info-wrapper-variant?
+        (fn any-dt /info-wrapper-variant-dynamic-type any-dt))
       (list
         info-wrapper?
         (fn any-dt /info-wrapper-dynamic-type any-dt))
