@@ -3621,12 +3621,11 @@
     #:==? [==? (fn a b /equal-always? a b)]
     #:hash-code [hash-code (fn a /equal-always-hash-code a)])
   (->*
-    (
-      #:inhabitant? (-> any/c boolean?)
-      #:known-discrete? boolean?
-      #:known-distinct? boolean?)
+    (#:inhabitant? (-> any/c boolean?))
     (
       #:ignore-chaperones? boolean?
+      #:known-discrete? boolean?
+      #:known-distinct? boolean?
       #:==? (-> any/c any/c boolean?)
       #:hash-code (-> any/c fixnum?))
     (struct-type-property/c trivial?))
