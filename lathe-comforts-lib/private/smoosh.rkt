@@ -91,7 +91,7 @@
   prop:expressly-custom-gloss-key-dynamic-type
   make-expressly-custom-gloss-key-dynamic-type-impl
   dynamic-type-custom-gloss-key-variant-knowable
-  dynamic-type-get-custom-gloss-key-reports-knowable
+  dynamic-type-get-custom-gloss-key-reports
   get-dynamic-type-with-default-bindings
   knowable-zip
   maybe-min-zip
@@ -558,7 +558,7 @@
   (#:method expressly-custom-gloss-key-dynamic-type-custom-gloss-key-variant-knowable
     (#:this)
     ())
-  (#:method expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports-knowable
+  (#:method expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports
     (#:this)
     ())
   prop:expressly-custom-gloss-key-dynamic-type
@@ -576,22 +576,18 @@
     #:custom-gloss-key-variant-knowable
     custom-gloss-key-variant-knowable
     
-    #:get-custom-gloss-key-reports-knowable
-    get-custom-gloss-key-reports-knowable
-    
-    )
+    #:get-custom-gloss-key-reports get-custom-gloss-key-reports)
   (->
     #:custom-gloss-key-variant-knowable
     (-> any/c any/c (knowable/c any/c))
     
-    #:get-custom-gloss-key-reports-knowable
-    (-> any/c any/c
-      (knowable/c (sequence/c custom-gloss-key-report?)))
+    #:get-custom-gloss-key-reports
+    (-> any/c any/c (sequence/c custom-gloss-key-report?))
     
     expressly-custom-gloss-key-dynamic-type-impl?)
   (make-expressly-custom-gloss-key-dynamic-type-impl-from-various-unkeyworded
     custom-gloss-key-variant-knowable
-    get-custom-gloss-key-reports-knowable))
+    get-custom-gloss-key-reports))
 
 (define/own-contract
   (dynamic-type-custom-gloss-key-variant-knowable dt inhabitant)
@@ -602,7 +598,7 @@
   /unknown))
 
 (define/own-contract
-  (dynamic-type-get-custom-gloss-key-reports-knowable dt inhabitant)
+  (dynamic-type-get-custom-gloss-key-reports dt inhabitant)
   ; For each report in the infinite sequence, the next report creates
   ; glossesques that not only compare keys by whether they smoosh
   ; along that one's `==` but also, only if they do, smooshes their
@@ -610,7 +606,7 @@
   ; ordering.
   (-> any/c any/c (knowable/c (sequence/c custom-gloss-key-report?)))
   (if (expressly-custom-gloss-key-dynamic-type? dt)
-    (expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports-knowable
+    (expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports
       dt inhabitant)
   /unknown))
 
@@ -1078,10 +1074,9 @@
     /gloss-set-maybe-knowable (gloss count atomic (just custom)) k m)
   /w- mode (list path-mode depth)
   /expect (hash-ref-maybe custom-regress mode) (just custom-entry)
-    (knowable-bind
-      (dynamic-type-get-custom-gloss-key-reports-knowable
+    (w- reports
+      (dynamic-type-get-custom-gloss-key-reports
         unwrapped-k-dt unwrapped-k)
-    /fn reports
     /w- report (sequence-ref reports depth)
     /knowable-bind
       (mat path-mode '==
