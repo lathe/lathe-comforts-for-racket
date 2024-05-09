@@ -77,8 +77,8 @@
   make-glossesque-sys-impl
   custom-gloss-key-report?
   custom-gloss-key-report-impl?
-  custom-gloss-key-report-get-==-glossesque-sys
-  custom-gloss-key-report-get-path-related-glossesque-sys
+  custom-gloss-key-report-get-==-glossesque-sys-knowable
+  custom-gloss-key-report-get-path-related-glossesque-sys-knowable
   prop:custom-gloss-key-report
   make-custom-gloss-key-report-impl
   path-related-wrapper
@@ -410,41 +410,43 @@
   custom-gloss-key-report? custom-gloss-key-report-impl?
   ; Returns a `glossesque-sys?` which compares keys by smooshing them
   ; along ==, i.e. (<= and >=).
-  (#:method custom-gloss-key-report-get-==-glossesque-sys (#:this))
+  (#:method custom-gloss-key-report-get-==-glossesque-sys-knowable
+    (#:this))
   ; Returns a `glossesque-sys?` which compares keys by smooshing them
   ; along the transitive closure of (<= or >=).
-  (#:method custom-gloss-key-report-get-path-related-glossesque-sys
+  (#:method
+    custom-gloss-key-report-get-path-related-glossesque-sys-knowable
     (#:this))
   prop:custom-gloss-key-report
   make-custom-gloss-key-report-impl-from-various-unkeyworded
   'custom-gloss-key-report 'custom-gloss-key-report-impl (list))
 (ascribe-own-contract custom-gloss-key-report? (-> any/c boolean?))
 (ascribe-own-contract custom-gloss-key-report-impl? (-> any/c boolean?))
-(ascribe-own-contract custom-gloss-key-report-get-==-glossesque-sys
-  (-> custom-gloss-key-report? glossesque-sys?))
+(ascribe-own-contract custom-gloss-key-report-get-==-glossesque-sys-knowable
+  (-> custom-gloss-key-report? (knowable/c glossesque-sys?)))
 (ascribe-own-contract
-  custom-gloss-key-report-get-path-related-glossesque-sys
-  (-> custom-gloss-key-report? glossesque-sys?))
+  custom-gloss-key-report-get-path-related-glossesque-sys-knowable
+  (-> custom-gloss-key-report? (knowable/c glossesque-sys?)))
 (ascribe-own-contract prop:custom-gloss-key-report
   (struct-type-property/c custom-gloss-key-report-impl?))
 
 (define/own-contract
   (make-custom-gloss-key-report-impl
-    #:get-==-glossesque-sys get-==-glossesque-sys
+    #:get-==-glossesque-sys-knowable get-==-glossesque-sys-knowable
     
-    #:get-path-related-glossesque-sys
-    get-path-related-glossesque-sys)
+    #:get-path-related-glossesque-sys-knowable
+    get-path-related-glossesque-sys-knowable)
   (->
-    #:get-==-glossesque-sys
-    (-> custom-gloss-key-report? glossesque-sys?)
+    #:get-==-glossesque-sys-knowable
+    (-> custom-gloss-key-report? (knowable/c glossesque-sys?))
     
-    #:get-path-related-glossesque-sys
-    (-> custom-gloss-key-report? glossesque-sys?)
+    #:get-path-related-glossesque-sys-knowable
+    (-> custom-gloss-key-report? (knowable/c glossesque-sys?))
     
     custom-gloss-key-report-impl?)
   (make-custom-gloss-key-report-impl-from-various-unkeyworded
-    get-==-glossesque-sys
-    get-path-related-glossesque-sys))
+    get-==-glossesque-sys-knowable
+    get-path-related-glossesque-sys-knowable))
 
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
@@ -1081,11 +1083,14 @@
         unwrapped-k-dt unwrapped-k)
     /fn reports
     /w- report (sequence-ref reports depth)
-    /w- custom-gs
+    /knowable-bind
       (mat path-mode '==
-        (custom-gloss-key-report-get-==-glossesque-sys report)
+        (custom-gloss-key-report-get-==-glossesque-sys-knowable
+          report)
       /dissect path-mode 'path-related
-        (custom-gloss-key-report-get-path-related-glossesque-sys report))
+        (custom-gloss-key-report-get-path-related-glossesque-sys-knowable
+          report))
+    /fn custom-gs
     /w- custom-regress
       (hash-set custom-regress mode (list custom-gs (hashalw)))
     /knowable-bind
