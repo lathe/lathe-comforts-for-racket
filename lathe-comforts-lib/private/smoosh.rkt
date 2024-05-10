@@ -212,15 +212,15 @@
   equal-always-atom-glossesque-sys
   normalized-glossesque-sys
   terminal-glossesque-sys
+  make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+  make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+  make-expressly-smooshable-bundle-property-from-list-isomorphism
   non-nan-number-glossesque-sys
   nan-number?
   non-nan-number?
   non-nan-extflonum?
   nan-extflonum?
-  make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
-  make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
-  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
-  make-expressly-smooshable-bundle-property-from-list-isomorphism
   dynamic-type-case-by-indistinct-cases
   dynamic-type-case-by-discrete-cases
   gloss-ref
@@ -3907,364 +3907,6 @@
   (-> glossesque-sys?)
   (normalized-glossesque-sys /fn k #f))
 
-; TODO SMOOSH DEFINE-VARIANT: Move these here once we can.
-#;#;#;
-(define-variant non-nan-number-variant)
-(define-variant non-nan-real-number-variant)
-(define-variant non-nan-non-real-number-variant
-  non-nan-non-real-number-variant-value)
-
-(define (normalize-non-nan-number a)
-  (define (normalize-real a)
-    (if (not /rational? a)
-      ; If the real number to normalize is infinity or negative
-      ; infinity, we return it unchanged.
-      a
-    /inexact->exact a))
-  (make-rectangular
-    (normalize-real /real-part a)
-    (normalize-real /imag-part a)))
-
-(define/own-contract (non-nan-number-glossesque-sys)
-  (-> glossesque-sys?)
-  (normalized-glossesque-sys /fn k /normalize-non-nan-number k))
-
-(define/own-contract (nan-number? v)
-  (-> any/c boolean?)
-  (and
-    (number? v)
-    (or
-      (nan? /real-part v)
-      (nan? /imag-part v))))
-
-(define/own-contract (non-nan-number? v)
-  (-> any/c boolean?)
-  (and (number? v) (not /nan-number? v)))
-
-; Level 0:
-;   path-related:
-;     If the operands are not both `number?` values without NaN parts,
-;     then unknown.
-;     
-;     Otherwise, if the operands are `=` or both have `imag-part`s `=`
-;     to `0`, the first operand.
-;     
-;     Otherwise, unknown.
-;   join (resp. meet):
-;     If the operands are not both `number?` values without NaN parts,
-;     then unknown.
-;     
-;     Otherwise, if the operands are `=`, the first operand.
-;     
-;     Otherwise, if the operands both have `imag-part`s `=` to `0`,
-;     the one with the greater (resp. lesser) `real-part` according to
-;     `<=`.
-;     
-;     Otherwise, unknown.
-;   ==:
-;     If the operands are not both `number?` values without NaN parts,
-;     then unknown.
-;     
-;     Otherwise, if the operands are `=`, the first operand.
-;     
-;     Otherwise, a known nothing.
-;   <= (resp. >=):
-;     If the operands are not both `number?` values without NaN parts,
-;     then unknown.
-;     
-;     Otherwise, if the operands are `=`, `#t`.
-;     
-;     Otherwise, if the operands both have `imag-part`s `=` to `0`,
-;     the `<=` (resp. `>=`) result on their `real-part`s.
-;     
-;     Otherwise, unknown.
-; Level 1+:
-;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both `number?` values without NaN parts,
-;     then unknown.
-;     
-;     Otherwise, if the operands are `equal-always?`, the first
-;     operand (or, for a check, `#t`).
-;     
-;     Otherwise, a known nothing (or, for a check, `#f`).
-;
-(define-imitation-simple-struct (non-nan-number-dynamic-type?)
-  non-nan-number-dynamic-type
-  'non-nan-number-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-reports
-      (fn self
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-of-one-reports
-      (fn self a
-        (expect (non-nan-number? a) #t (uninformative-smoosh-reports)
-        /constant-smoosh-reports
-          (delay/strict /known /just /delay/strict /known a)))
-      
-      #:get-smoosh-and-comparison-of-two-reports
-      (fn self a b
-        (expect (non-nan-number? a) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (non-nan-number? b) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /w- report-1+
-          (constant-smoosh-and-comparison-of-two-reports /delay /known
-            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
-        /if (= a b)
-          (stream*
-            (constant-smoosh-and-comparison-of-two-report
-              (delay/strict /known /just /delay/strict /known a))
-            report-1+)
-        /w- real?-promise
-          (delay /and (zero? /imag-part a) (zero? /imag-part b))
-        /w- <=?-knowable-promise
-          (promise-map real?-promise /fn real?
-            (knowable-if real? /fn /<= (real-part a) (real-part b)))
-        /w- >=?-knowable-promise
-          (promise-map real?-promise /fn real?
-            (knowable-if real? /fn />= (real-part a) (real-part b)))
-        /w- join-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn result
-              (just /delay/strict /known /if result b a)))
-        /w- meet-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn result
-              (just /delay/strict /known /if result a b)))
-        /stream*
-          (smoosh-and-comparison-of-two-reports-zip-map (list)
-            #:on-<=?-knowable-promise
-            (dissectfn (list)
-              <=?-knowable-promise)
-            #:on->=?-knowable-promise
-            (dissectfn (list)
-              >=?-knowable-promise)
-            #:on-join-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              join-knowable-promise-maybe-knowable-promise)
-            #:on-meet-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              meet-knowable-promise-maybe-knowable-promise)
-            #:on-==-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              (delay/strict /known /nothing))
-            #:on-path-related-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              (delay/strict /known /just /delay/strict /known a)))
-          report-1+))
-      
-      ))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-      
-      #:hash-code-0
-      (fn a
-        (expect (non-nan-number? a) #t (uninformative-hash-code)
-        /equal-always-hash-code /normalize-non-nan-number a))
-      
-      #:hash-code-1+ (fn a /equal-always-hash-code a)))
-  
-  (#:prop prop:expressly-custom-gloss-key-dynamic-type
-    (make-expressly-custom-gloss-key-dynamic-type-impl
-      
-      #:get-custom-gloss-key-reports
-      (fn self a
-        (expect (non-nan-number? a) #t
-          (uninformative-custom-gloss-key-reports)
-        /stream*
-          ; TODO SMOOSH DEFINE-VARIANT: These uses of
-          ; `non-nan-number-variant`, `non-nan-real-number-variant`,
-          ; and `non-nan-non-real-number-variant` are forward
-          ; references. See if we can untangle them.
-          (custom-gloss-key-report-zip-map (list)
-            #:on-==-tagged-glossesque-sys-knowable
-            (dissectfn (list)
-              (tagged-glossesque-sys
-                (non-nan-number-variant)
-                (non-nan-number-glossesque-sys)))
-            #:on-path-related-tagged-glossesque-sys-knowable
-            (dissectfn (list)
-              (if (zero? /imag-part a)
-                (tagged-glossesque-sys
-                  (non-nan-real-number-variant)
-                  (terminal-glossesque-sys))
-                (tagged-glossesque-sys
-                  (non-nan-non-real-number-variant
-                    (normalize-non-nan-number a))
-                  (terminal-glossesque-sys)))))
-          (constant-custom-gloss-key-reports
-            #:tagged-glossesque-sys-knowable
-            (tagged-glossesque-sys
-              (non-nan-number-variant)
-              (equal-always-atom-glossesque-sys)))))
-      
-      ))
-  
-  )
-
-; TODO SMOOSH DEFINE-VARIANT: Move this here once we can.
-#;
-(define-variant non-nan-extflonum-variant)
-
-(define/own-contract (non-nan-extflonum? v)
-  (-> any/c boolean?)
-  (and (extflonum? v) (extfl= v v)))
-
-(define/own-contract (nan-extflonum? v)
-  (-> any/c boolean?)
-  (and (extflonum? v) (not /non-nan-extflonum? v)))
-
-; Level 0:
-;   path-related:
-;     If the operands are not both non-NaN `extflonum?` values, then
-;     unknown.
-;     
-;     Otherwise, the first operand.
-;   join (resp. meet):
-;     If the operands are not both non-NaN `extflonum?` values, then
-;     unknown.
-;     
-;     Otherwise, if the operands are `extfl=`, the first operand.
-;     
-;     Otherwise, the greater (resp. lesser) operand according to
-;     `extfl<=`.
-;   ==:
-;     If the operands are not both non-NaN `extflonum?` values, then
-;     unknown.
-;     
-;     Otherwise, if the operands are `extfl=`, the first operand.
-;     
-;     Otherwise, a known nothing.
-;   <= (resp. >=):
-;     If the operands are not both `extflonum?` values without NaN
-;     parts, then unknown.
-;     
-;     Otherwise, the `extfl<=` (resp. `extfl>=`) result on the
-;     operands.
-; Level 1+:
-;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both non-NaN `extflonum?` values, then
-;     unknown.
-;     
-;     Otherwise, if the operands are `equal-always?`, the first
-;     operand (or, for a check, `#t`).
-;     
-;     Otherwise, a known nothing (or, for a check, `#f`).
-;
-(define-imitation-simple-struct (non-nan-extflonum-dynamic-type?)
-  non-nan-extflonum-dynamic-type
-  'non-nan-extflonum-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop prop:expressly-smooshable-dynamic-type
-    (make-expressly-smooshable-dynamic-type-impl
-      
-      #:get-smoosh-of-zero-reports
-      (fn self
-        (uninformative-smoosh-reports))
-      
-      #:get-smoosh-of-one-reports
-      (fn self a
-        (expect (non-nan-extflonum? a) #t
-          (uninformative-smoosh-reports)
-        /constant-smoosh-reports
-          (delay/strict /known /just /delay/strict /known a)))
-      
-      #:get-smoosh-and-comparison-of-two-reports
-      (fn self a b
-        (expect (non-nan-extflonum? a) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (non-nan-extflonum? b) #t
-          (uninformative-smoosh-and-comparison-of-two-reports)
-        /w- report-1+
-          (constant-smoosh-and-comparison-of-two-reports /delay /known
-            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
-        /if (extfl= a b)
-          (stream*
-            (constant-smoosh-and-comparison-of-two-report
-              (delay/strict /known /just /delay/strict /known a))
-            report-1+)
-        /w- <=?-knowable-promise (delay /known /extfl<= a b)
-        /w- >=?-knowable-promise (delay /known /extfl>= a b)
-        /w- join-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn <=?
-              (just /delay/strict /known /if <=? b a)))
-        /w- meet-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn <=?
-              (just /delay/strict /known /if <=? a b)))
-        /stream*
-          (smoosh-and-comparison-of-two-reports-zip-map (list)
-            #:on-<=?-knowable-promise
-            (dissectfn (list)
-              <=?-knowable-promise)
-            #:on->=?-knowable-promise
-            (dissectfn (list)
-              >=?-knowable-promise)
-            #:on-join-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              join-knowable-promise-maybe-knowable-promise)
-            #:on-meet-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              meet-knowable-promise-maybe-knowable-promise)
-            #:on-==-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              (delay/strict /known /nothing))
-            #:on-path-related-knowable-promise-maybe-knowable-promise
-            (dissectfn (list)
-              (delay/strict /known /just /delay/strict /known a)))
-          report-1+))
-      
-      ))
-  
-  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    ; TODO: According to the `extflonum?` documentation, the
-    ; `equal-always-hash-code` we're using here should actually work
-    ; properly for `extflonum?` values, even -0.0t0. Make sure it
-    ; does. If it doesn't, normalizing -0.0t0 seems to be the only
-    ; thing we'll need to worry about.
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom))
-  
-  (#:prop prop:expressly-custom-gloss-key-dynamic-type
-    (make-expressly-custom-gloss-key-dynamic-type-impl
-      
-      #:get-custom-gloss-key-reports
-      (fn self a
-        (expect (non-nan-extflonum? a) #t
-          (uninformative-custom-gloss-key-reports)
-        /constant-custom-gloss-key-reports
-          #:tagged-glossesque-sys-knowable
-          (tagged-glossesque-sys
-            ; TODO SMOOSH DEFINE-VARIANT: This use of
-            ; `non-nan-extflonum-variant` is a forward reference. See
-            ; if we can untangle it.
-            (non-nan-extflonum-variant)
-            (equal-always-atom-glossesque-sys))))
-      
-      ))
-  
-  )
-
-(define/own-contract
-  (on-cons-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp-list)
-  (->
-    (list/c
-      (promise/c
-        (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-      (promise/c
-        (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-    (knowable-promise-zip-map kp-list /dissectfn
-      (list result-car result-cdr)
-      (cons result-car result-cdr))))
-
 ; Given two lists, this checks whether they have the same length and
 ; `eq?` elements.
 ;
@@ -5096,12 +4738,352 @@
     
     ))
 
-; TODO SMOOSH DEFINE-VARIANT: Move these to places above once we can.
 (define-variant non-nan-number-variant)
 (define-variant non-nan-real-number-variant)
 (define-variant non-nan-non-real-number-variant
   non-nan-non-real-number-variant-value)
+
+(define (normalize-non-nan-number a)
+  (define (normalize-real a)
+    (if (not /rational? a)
+      ; If the real number to normalize is infinity or negative
+      ; infinity, we return it unchanged.
+      a
+    /inexact->exact a))
+  (make-rectangular
+    (normalize-real /real-part a)
+    (normalize-real /imag-part a)))
+
+(define/own-contract (non-nan-number-glossesque-sys)
+  (-> glossesque-sys?)
+  (normalized-glossesque-sys /fn k /normalize-non-nan-number k))
+
+(define/own-contract (nan-number? v)
+  (-> any/c boolean?)
+  (and
+    (number? v)
+    (or
+      (nan? /real-part v)
+      (nan? /imag-part v))))
+
+(define/own-contract (non-nan-number? v)
+  (-> any/c boolean?)
+  (and (number? v) (not /nan-number? v)))
+
+; Level 0:
+;   path-related:
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=` or both have `imag-part`s `=`
+;     to `0`, the first operand.
+;     
+;     Otherwise, unknown.
+;   join (resp. meet):
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=`, the first operand.
+;     
+;     Otherwise, if the operands both have `imag-part`s `=` to `0`,
+;     the one with the greater (resp. lesser) `real-part` according to
+;     `<=`.
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=`, the first operand.
+;     
+;     Otherwise, a known nothing.
+;   <= (resp. >=):
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `=`, `#t`.
+;     
+;     Otherwise, if the operands both have `imag-part`s `=` to `0`,
+;     the `<=` (resp. `>=`) result on their `real-part`s.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `number?` values without NaN parts,
+;     then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, a known nothing (or, for a check, `#f`).
+;
+(define-imitation-simple-struct (non-nan-number-dynamic-type?)
+  non-nan-number-dynamic-type
+  'non-nan-number-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-reports
+      (fn self
+        (uninformative-smoosh-reports))
+      
+      #:get-smoosh-of-one-reports
+      (fn self a
+        (expect (non-nan-number? a) #t (uninformative-smoosh-reports)
+        /constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      #:get-smoosh-and-comparison-of-two-reports
+      (fn self a b
+        (expect (non-nan-number? a) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (non-nan-number? b) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /w- report-1+
+          (constant-smoosh-and-comparison-of-two-reports /delay /known
+            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
+        /if (= a b)
+          (stream*
+            (constant-smoosh-and-comparison-of-two-report
+              (delay/strict /known /just /delay/strict /known a))
+            report-1+)
+        /w- real?-promise
+          (delay /and (zero? /imag-part a) (zero? /imag-part b))
+        /w- <=?-knowable-promise
+          (promise-map real?-promise /fn real?
+            (knowable-if real? /fn /<= (real-part a) (real-part b)))
+        /w- >=?-knowable-promise
+          (promise-map real?-promise /fn real?
+            (knowable-if real? /fn />= (real-part a) (real-part b)))
+        /w- join-knowable-promise-maybe-knowable-promise
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn result
+              (just /delay/strict /known /if result b a)))
+        /w- meet-knowable-promise-maybe-knowable-promise
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn result
+              (just /delay/strict /known /if result a b)))
+        /stream*
+          (smoosh-and-comparison-of-two-reports-zip-map (list)
+            #:on-<=?-knowable-promise
+            (dissectfn (list)
+              <=?-knowable-promise)
+            #:on->=?-knowable-promise
+            (dissectfn (list)
+              >=?-knowable-promise)
+            #:on-join-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              join-knowable-promise-maybe-knowable-promise)
+            #:on-meet-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              meet-knowable-promise-maybe-knowable-promise)
+            #:on-==-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /nothing))
+            #:on-path-related-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /just /delay/strict /known a)))
+          report-1+))
+      
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+      
+      #:hash-code-0
+      (fn a
+        (expect (non-nan-number? a) #t (uninformative-hash-code)
+        /equal-always-hash-code /normalize-non-nan-number a))
+      
+      #:hash-code-1+ (fn a /equal-always-hash-code a)))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (expect (non-nan-number? a) #t
+          (uninformative-custom-gloss-key-reports)
+        /stream*
+          (custom-gloss-key-report-zip-map (list)
+            #:on-==-tagged-glossesque-sys-knowable
+            (dissectfn (list)
+              (tagged-glossesque-sys
+                (non-nan-number-variant)
+                (non-nan-number-glossesque-sys)))
+            #:on-path-related-tagged-glossesque-sys-knowable
+            (dissectfn (list)
+              (if (zero? /imag-part a)
+                (tagged-glossesque-sys
+                  (non-nan-real-number-variant)
+                  (terminal-glossesque-sys))
+                (tagged-glossesque-sys
+                  (non-nan-non-real-number-variant
+                    (normalize-non-nan-number a))
+                  (terminal-glossesque-sys)))))
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable
+            (tagged-glossesque-sys
+              (non-nan-number-variant)
+              (equal-always-atom-glossesque-sys)))))
+      
+      ))
+  
+  )
+
 (define-variant non-nan-extflonum-variant)
+
+(define/own-contract (non-nan-extflonum? v)
+  (-> any/c boolean?)
+  (and (extflonum? v) (extfl= v v)))
+
+(define/own-contract (nan-extflonum? v)
+  (-> any/c boolean?)
+  (and (extflonum? v) (not /non-nan-extflonum? v)))
+
+; Level 0:
+;   path-related:
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, the first operand.
+;   join (resp. meet):
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, if the operands are `extfl=`, the first operand.
+;     
+;     Otherwise, the greater (resp. lesser) operand according to
+;     `extfl<=`.
+;   ==:
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, if the operands are `extfl=`, the first operand.
+;     
+;     Otherwise, a known nothing.
+;   <= (resp. >=):
+;     If the operands are not both `extflonum?` values without NaN
+;     parts, then unknown.
+;     
+;     Otherwise, the `extfl<=` (resp. `extfl>=`) result on the
+;     operands.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both non-NaN `extflonum?` values, then
+;     unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, a known nothing (or, for a check, `#f`).
+;
+(define-imitation-simple-struct (non-nan-extflonum-dynamic-type?)
+  non-nan-extflonum-dynamic-type
+  'non-nan-extflonum-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-reports
+      (fn self
+        (uninformative-smoosh-reports))
+      
+      #:get-smoosh-of-one-reports
+      (fn self a
+        (expect (non-nan-extflonum? a) #t
+          (uninformative-smoosh-reports)
+        /constant-smoosh-reports
+          (delay/strict /known /just /delay/strict /known a)))
+      
+      #:get-smoosh-and-comparison-of-two-reports
+      (fn self a b
+        (expect (non-nan-extflonum? a) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (non-nan-extflonum? b) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /w- report-1+
+          (constant-smoosh-and-comparison-of-two-reports /delay /known
+            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
+        /if (extfl= a b)
+          (stream*
+            (constant-smoosh-and-comparison-of-two-report
+              (delay/strict /known /just /delay/strict /known a))
+            report-1+)
+        /w- <=?-knowable-promise (delay /known /extfl<= a b)
+        /w- >=?-knowable-promise (delay /known /extfl>= a b)
+        /w- join-knowable-promise-maybe-knowable-promise
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn <=?
+              (just /delay/strict /known /if <=? b a)))
+        /w- meet-knowable-promise-maybe-knowable-promise
+          (promise-map <=?-knowable-promise /fn knowable
+            (knowable-map knowable /fn <=?
+              (just /delay/strict /known /if <=? a b)))
+        /stream*
+          (smoosh-and-comparison-of-two-reports-zip-map (list)
+            #:on-<=?-knowable-promise
+            (dissectfn (list)
+              <=?-knowable-promise)
+            #:on->=?-knowable-promise
+            (dissectfn (list)
+              >=?-knowable-promise)
+            #:on-join-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              join-knowable-promise-maybe-knowable-promise)
+            #:on-meet-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              meet-knowable-promise-maybe-knowable-promise)
+            #:on-==-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /nothing))
+            #:on-path-related-knowable-promise-maybe-knowable-promise
+            (dissectfn (list)
+              (delay/strict /known /just /delay/strict /known a)))
+          report-1+))
+      
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    ; TODO: According to the `extflonum?` documentation, the
+    ; `equal-always-hash-code` we're using here should actually work
+    ; properly for `extflonum?` values, even -0.0t0. Make sure it
+    ; does. If it doesn't, normalizing -0.0t0 seems to be the only
+    ; thing we'll need to worry about.
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (expect (non-nan-extflonum? a) #t
+          (uninformative-custom-gloss-key-reports)
+        /constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable
+          (tagged-glossesque-sys
+            (non-nan-extflonum-variant)
+            (equal-always-atom-glossesque-sys))))
+      
+      ))
+  
+  )
+
+(define/own-contract
+  (on-cons-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp-list)
+  (->
+    (list/c
+      (promise/c
+        (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+      (promise/c
+        (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
+    (knowable-promise-zip-map kp-list /dissectfn
+      (list result-car result-cdr)
+      (cons result-car result-cdr))))
 
 ; NOTE: This would be used like so:
 ;
