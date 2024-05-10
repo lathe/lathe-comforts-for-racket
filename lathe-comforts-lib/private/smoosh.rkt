@@ -95,6 +95,7 @@
   custom-gloss-key-report-zip-map
   custom-gloss-key-reports-zip-map
   constant-custom-gloss-key-report
+  constant-custom-gloss-key-reports
   path-related-wrapper?)
 (provide
   path-related-wrapper)
@@ -208,6 +209,10 @@
   make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
   make-expressly-smooshable-bundle-property-for-atom
+  equal-always-atom-glossesque-sys
+  normalized-glossesque-sys
+  terminal-glossesque-sys
+  non-nan-number-glossesque-sys
   nan-number?
   non-nan-number?
   non-nan-extflonum?
@@ -218,14 +223,6 @@
   make-expressly-smooshable-bundle-property-from-list-isomorphism
   dynamic-type-case-by-indistinct-cases
   dynamic-type-case-by-discrete-cases
-  path-related-wrapper-variant?)
-(provide
-  path-related-wrapper-variant)
-(provide /own-contract-out
-  info-wrapper-variant?)
-(provide
-  info-wrapper-variant)
-(provide /own-contract-out
   gloss-ref
   gloss-set
   make-gloss
@@ -835,6 +832,17 @@
     #:on-tagged-glossesque-sys-knowable
     (dissectfn (list)
       tagged-glossesque-sys-knowable)))
+
+(define/own-contract
+  (constant-custom-gloss-key-reports
+    #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable)
+  (->
+    #:tagged-glossesque-sys-knowable
+    (knowable/c tagged-glossesque-sys?)
+    
+    (sequence/c custom-gloss-key-report?))
+  (in-cycle /list /constant-custom-gloss-key-report
+    #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable))
 
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
@@ -3600,15 +3608,25 @@
 
 (define/own-contract
   (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-    #:hash-code [hash-code (fn a /equal-always-hash-code a)])
-  (->* (#:hash-code (-> any/c fixnum?))
+    #:hash-code [hash-code (fn a /equal-always-hash-code a)]
+    #:hash-code-0 [hash-code-0 hash-code]
+    #:hash-code-1+ [hash-code-1+ hash-code])
+  (->*
+    ()
+    (
+      #:hash-code (-> any/c fixnum?)
+      #:hash-code-0 (-> any/c fixnum?)
+      #:hash-code-1+ (-> any/c fixnum?))
     expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
   (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
     
     #:get-smoosh-equal-hash-code-support-reports
     (fn self a
-      (constant-smoosh-equal-hash-code-support-reports
-        (delay /hash-code a)))
+      (stream*
+        (constant-smoosh-equal-hash-code-support-report
+          (delay /hash-code-0 a))
+        (constant-smoosh-equal-hash-code-support-reports
+          (delay /hash-code-1+ a))))
     
     ))
 
@@ -3619,7 +3637,9 @@
     #:known-discrete? [known-discrete? #f]
     #:known-distinct? [known-distinct? known-discrete?]
     #:==? [==? (fn a b /equal-always? a b)]
-    #:hash-code [hash-code (fn a /equal-always-hash-code a)])
+    #:hash-code [hash-code (fn a /equal-always-hash-code a)]
+    #:hash-code-0 [hash-code-0 hash-code]
+    #:hash-code-1+ [hash-code-1+ hash-code])
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (
@@ -3627,7 +3647,9 @@
       #:known-discrete? boolean?
       #:known-distinct? boolean?
       #:==? (-> any/c any/c boolean?)
-      #:hash-code (-> any/c fixnum?))
+      #:hash-code (-> any/c fixnum?)
+      #:hash-code-0 (-> any/c fixnum?)
+      #:hash-code-1+ (-> any/c fixnum?))
     (struct-type-property/c trivial?))
   (define-values (prop:bundle bundle? bundle-ref)
     (make-struct-type-property
@@ -3654,7 +3676,8 @@
           prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
           (dissectfn (trivial)
             (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-              #:hash-code hash-code))))))
+              #:hash-code-0 hash-code-0
+              #:hash-code-1+ hash-code-1+))))))
   prop:bundle)
 
 ; Level 0+:
@@ -3811,6 +3834,98 @@
       #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
     (trivial)))
 
+(define-imitation-simple-struct (equal-always-atom-glossesque-sys?)
+  equal-always-atom-glossesque-sys-unguarded
+  'equal-always-atom-glossesque-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero-knowable
+    (fn gs
+      (known /hashalw))
+    
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union-knowable
+      (hash-km-union-of-two-knowable a b km-union-knowable))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (known /hash-ref-maybe g k))
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m
+      (known /hash-set-maybe g k m))
+    
+    #:glossesque-count
+    (fn gs g
+      (hash-count g))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (in-hash g))
+    
+    )
+  
+  )
+
+(define/own-contract (equal-always-atom-glossesque-sys)
+  (-> glossesque-sys?)
+  (equal-always-atom-glossesque-sys-unguarded))
+
+(define-imitation-simple-struct
+  (normalized-key? normalized-key-normalized normalized-key-original)
+  normalized-key 'normalized-key (current-inspector) (auto-write)
+  
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (dissect a (normalized-key a-normalized a-original)
+      /dissect b (normalized-key b-normalized b-original)
+      /recur a b))
+    
+    (define (hash-mode-proc v recur now?)
+      (dissect v (normalized-key v-normalized v-original)
+      /recur v))
+    
+    ))
+
+(define/own-contract (normalized-glossesque-sys normalize)
+  (-> (-> any/c any/c) glossesque-sys?)
+  (glossesque-sys-map (equal-always-atom-glossesque-sys)
+    #:granted-key-knowable
+    (fn k
+      (known /normalized-key (normalize k) k))
+    #:on-key
+    (fn k
+      (dissect k (normalized-key normalized original)
+        original))))
+
+(define/own-contract (terminal-glossesque-sys)
+  (-> glossesque-sys?)
+  (normalized-glossesque-sys /fn k #f))
+
+; TODO SMOOSH DEFINE-VARIANT: Move these here once we can.
+#;#;#;
+(define-variant non-nan-number-variant)
+(define-variant non-nan-real-number-variant)
+(define-variant non-nan-non-real-number-variant
+  non-nan-non-real-number-variant-value)
+
+(define (normalize-non-nan-number a)
+  (define (normalize-real a)
+    (if (not /rational? a)
+      ; If the real number to normalize is infinity or negative
+      ; infinity, we return it unchanged.
+      a
+    /inexact->exact a))
+  (make-rectangular
+    (normalize-real /real-part a)
+    (normalize-real /imag-part a)))
+
+(define/own-contract (non-nan-number-glossesque-sys)
+  (-> glossesque-sys?)
+  (normalized-glossesque-sys /fn k /normalize-non-nan-number k))
+
 (define/own-contract (nan-number? v)
   (-> any/c boolean?)
   (and
@@ -3908,7 +4023,7 @@
             (knowable-if real? /fn /<= (real-part a) (real-part b)))
         /w- >=?-knowable-promise
           (promise-map real?-promise /fn real?
-            (knowable-if real? />= (real-part a) (real-part b)))
+            (knowable-if real? /fn />= (real-part a) (real-part b)))
         /w- join-knowable-promise-maybe-knowable-promise
           (promise-map <=?-knowable-promise /fn knowable
             (knowable-map knowable /fn result
@@ -3944,26 +4059,54 @@
   (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
     (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
       
-      #:hash-code
+      #:hash-code-0
       (fn a
         (expect (non-nan-number? a) #t (uninformative-hash-code)
-        /w- normalize-real
-          (fn a
-            (if (not /rational? a)
-              ; If the real number to normalize is infinity or
-              ; negative infinity, we return it unchanged.
-              a
-            /inexact->exact a))
-        /w- normalize-number
-          (fn a
-            (make-rectangular
-              (normalize-real /real-part a)
-              (normalize-real /imag-part a)))
-        /equal-always-hash-code /normalize-number a))
+        /equal-always-hash-code /normalize-non-nan-number a))
+      
+      #:hash-code-1+ (fn a /equal-always-hash-code a)))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (expect (non-nan-number? a) #t
+          (uninformative-custom-gloss-key-reports)
+        /stream*
+          ; TODO SMOOSH DEFINE-VARIANT: These uses of
+          ; `non-nan-number-variant`, `non-nan-real-number-variant`,
+          ; and `non-nan-non-real-number-variant` are forward
+          ; references. See if we can untangle them.
+          (custom-gloss-key-report-zip-map (list)
+            #:on-==-tagged-glossesque-sys-knowable
+            (dissectfn (list)
+              (tagged-glossesque-sys
+                (non-nan-number-variant)
+                (non-nan-number-glossesque-sys)))
+            #:on-path-related-tagged-glossesque-sys-knowable
+            (dissectfn (list)
+              (if (zero? /imag-part a)
+                (tagged-glossesque-sys
+                  (non-nan-real-number-variant)
+                  (terminal-glossesque-sys))
+                (tagged-glossesque-sys
+                  (non-nan-non-real-number-variant
+                    (normalize-non-nan-number a))
+                  (terminal-glossesque-sys)))))
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable
+            (tagged-glossesque-sys
+              (non-nan-number-variant)
+              (equal-always-atom-glossesque-sys)))))
       
       ))
   
   )
+
+; TODO SMOOSH DEFINE-VARIANT: Move this here once we can.
+#;
+(define-variant non-nan-extflonum-variant)
 
 (define/own-contract (non-nan-extflonum? v)
   (-> any/c boolean?)
@@ -4083,6 +4226,24 @@
     ; does. If it doesn't, normalizing -0.0t0 seems to be the only
     ; thing we'll need to worry about.
     (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (expect (non-nan-extflonum? a) #t
+          (uninformative-custom-gloss-key-reports)
+        /constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable
+          (tagged-glossesque-sys
+            ; TODO SMOOSH DEFINE-VARIANT: This use of
+            ; `non-nan-extflonum-variant` is a forward reference. See
+            ; if we can untangle it.
+            (non-nan-extflonum-variant)
+            (equal-always-atom-glossesque-sys))))
+      
+      ))
   
   )
 
@@ -4851,6 +5012,94 @@
               #:combine-element-hash-codes combine-element-hash-codes))))))
   prop:bundle)
 
+; TODO: See if we should export this. If so, we should rewrite it to
+; use`syntax/parse`.
+(define-syntax-parse-rule
+  (define-variant my-variant my-variant-field ...)
+  
+  #:with (field ...) (generate-temporaries #'(my-variant-field ...))
+  
+  #:with (result-for-field ...)
+  (for/list ([field (syntax->list #'(my-variant-field ...))])
+    #'result)
+  
+  (begin
+    
+    (define-imitation-simple-struct (my-variant? my-variant-field ...)
+      my-variant
+      'my-variant (current-inspector) (auto-write) (auto-equal)
+      (#:prop prop:expressly-has-dynamic-type
+        (make-expressly-has-dynamic-type-impl /fn bindings self
+          (expect
+            (known-value /gloss-ref-maybe-knowable bindings
+              (dynamic-type-var-for-any-dynamic-type))
+            (just any-dt)
+            (raise-arguments-error 'get-dynamic-type
+              "tried to get the dynamic type of a define-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+              "bindings" bindings
+              "inhabitant" self)
+          ; TODO SMOOSH: This use of `my-variant-dynamic-type` is
+          ; a forward reference. See if we can untangle it.
+          /my-variant-dynamic-type any-dt))))
+    (ascribe-own-contract my-variant? (-> any/c boolean?))
+    
+    (define-imitation-simple-struct
+      (my-variant-dynamic-type?
+        my-variant-dynamic-type-get-any-dynamic-type)
+      my-variant-dynamic-type
+      (string->symbol /string-append
+        (symbol->string 'my-variant)
+        "-dynamic-type")
+      (current-inspector)
+      (auto-write)
+      
+      (#:prop
+        (make-expressly-smooshable-bundle-property-from-list-isomorphism
+          #:ignore-chaperones? #t
+          
+          #:self-get-any-dynamic-type
+          (dissectfn (my-variant-dynamic-type any-dt)
+            any-dt)
+          
+          #:inhabitant? my-variant?
+          #:->->list
+          (fn a
+            (dissectfn (my-variant my-variant-field ...)
+              (list my-variant-field ...)))
+          
+          #:example-and-list->
+          (fn example lst
+            (dissect lst (list my-variant-field ...)
+            /my-variant my-variant-field ...))
+          
+          #:get-smoosh-of-zero-reports
+          (fn self
+            (dissect self (my-variant-dynamic-type any-dt)
+            /smoosh-reports-map
+              (dynamic-type-get-smoosh-of-zero-reports any-dt)
+              #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+              (fn kpmkp
+                (promise-map kpmkp /fn kpmk
+                  (knowable-map kpmk /fn kpm
+                    (maybe-map kpm /fn kp
+                      (promise-map kp /fn k
+                        (knowable-map k /fn result
+                          (my-variant result-for-field ...)))))))))
+          
+          )
+        (trivial))
+      
+      )
+    
+    ))
+
+; TODO SMOOSH DEFINE-VARIANT: Move these to places above once we can.
+(define-variant non-nan-number-variant)
+(define-variant non-nan-real-number-variant)
+(define-variant non-nan-non-real-number-variant
+  non-nan-non-real-number-variant-value)
+(define-variant non-nan-extflonum-variant)
+
 ; NOTE: This would be used like so:
 ;
 #;
@@ -5531,82 +5780,8 @@
   
   )
 
-; TODO: See if we should export this. If so, we should rewrite it to
-; use`syntax/parse`.
-(define-syntax-rule
-  (define-wrapper-variant
-    wrapper-variant?
-    wrapper-variant
-    wrapper-variant-dynamic-type)
-  (begin
-    
-    (define-imitation-simple-struct
-      (wrapper-variant? wrapper-variant-get-value-variant)
-      wrapper-variant
-      'wrapper-variant (current-inspector) (auto-write) (auto-equal)
-      (#:prop prop:expressly-has-dynamic-type
-        (make-expressly-has-dynamic-type-impl /fn bindings self
-          (expect
-            (known-value /gloss-ref-maybe-knowable bindings
-              (dynamic-type-var-for-any-dynamic-type))
-            (just any-dt)
-            (raise-arguments-error 'get-dynamic-type
-              "tried to get the dynamic type of a define-wrapper-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-              "bindings" bindings
-              "inhabitant" self)
-          ; TODO SMOOSH: This use of `wrapper-variant-dynamic-type` is
-          ; a forward reference. See if we can untangle it.
-          /wrapper-variant-dynamic-type any-dt))))
-    (ascribe-own-contract wrapper-variant? (-> any/c boolean?))
-    
-    (define-imitation-simple-struct
-      (wrapper-variant-dynamic-type?
-        wrapper-variant-dynamic-type-get-any-dynamic-type)
-      wrapper-variant-dynamic-type
-      'wrapper-variant-dynamic-type (current-inspector) (auto-write)
-      
-      (#:prop
-        (make-expressly-smooshable-bundle-property-from-list-isomorphism
-          #:ignore-chaperones? #t
-          
-          #:self-get-any-dynamic-type
-          (dissectfn (wrapper-variant-dynamic-type any-dt)
-            any-dt)
-          
-          #:inhabitant? wrapper-variant?
-          #:->->list
-          (fn a /dissectfn (wrapper-variant value) /list value)
-          
-          #:example-and-list->
-          (fn example lst
-            (dissect lst (list value)
-            /wrapper-variant value))
-          
-          #:get-smoosh-of-zero-reports
-          (fn self
-            (dissect self (wrapper-variant-dynamic-type any-dt)
-            /smoosh-reports-map
-              (dynamic-type-get-smoosh-of-zero-reports any-dt)
-              #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-              (fn kpmkp
-                (promise-map kpmkp /fn kpmk
-                  (knowable-map kpmk /fn kpm
-                    (maybe-map kpm /fn kp
-                      (promise-map kp /fn k
-                        (knowable-map k /fn result
-                          (wrapper-variant result)))))))))
-          
-          )
-        (trivial))
-      
-      )
-    
-    ))
-
-(define-wrapper-variant
-  path-related-wrapper-variant?
-  path-related-wrapper-variant
-  path-related-wrapper-variant-dynamic-type)
+(define-variant path-related-wrapper-variant
+  path-related-wrapper-variant-get-value-variant)
 
 (define/own-contract
   (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5811,10 +5986,8 @@
   
   )
 
-(define-wrapper-variant
-  info-wrapper-variant?
-  info-wrapper-variant
-  info-wrapper-variant-dynamic-type)
+(define-variant info-wrapper-variant
+  info-wrapper-variant-get-value-variant)
 
 (define/own-contract
   (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -6088,14 +6261,8 @@
       (list trivial? (fn any-dt /trivial-dynamic-type))
       (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
       (list
-        path-related-wrapper-variant?
-        (fn any-dt /path-related-wrapper-variant-dynamic-type any-dt))
-      (list
         path-related-wrapper?
         (fn any-dt /path-related-wrapper-dynamic-type any-dt))
-      (list
-        info-wrapper-variant?
-        (fn any-dt /info-wrapper-variant-dynamic-type any-dt))
       (list
         info-wrapper?
         (fn any-dt /info-wrapper-dynamic-type any-dt))
@@ -6387,6 +6554,24 @@
 ;
 ;     - (Done) `equal-always-gloss-key-wrapper?`
 ;
+;     - (Done) `non-nan-number-variant?` (a value constructed by
+;       `non-nan-number-variant`)
+;
+;     - (Done) `non-nan-real-number-variant?` (a value constructed by
+;       `non-nan-real-number-variant`)
+;
+;     - (Done) `non-nan-non-real-number-variant?` (a value constructed
+;       constructed by `non-nan-non-real-number-variant`)
+;
+;     - (Done) `non-nan-extflonum-variant?` (a value constructed by
+;       `non-nan-extflonum-variant`)
+;
+;     - (Done) `path-related-wrapper-variant?` (a value constructed by
+;       `path-related-wrapper-variant`)
+;
+;     - (Done) `info-wrapper-variant-dynamic-type?` (a value
+;       constructed by `info-wrapper-variant`)
+;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
 ;       when they don't have identities with meaningful details
@@ -6411,7 +6596,23 @@
 ;
 ;       - `immutable-bytes-dynamic-type?`
 ;
+;       - `non-nan-number-variant-dynamic-type?` (the dynamic type
+;         obtained from a value constructed by
+;         `non-nan-number-variant`)
+;
+;       - `non-nan-real-number-variant-dynamic-type?` (the dynamic
+;         type obtained from a value constructed by
+;         `non-nan-real-number-variant`)
+;
+;       - `non-nan-non-real-number-variant-dynamic-type?` (the dynamic
+;         type obtained from a value constructed by
+;         `non-nan-non-real-number-variant`)
+;
 ;       - `non-nan-number-dynamic-type?`
+;
+;       - `non-nan-extflonum-variant-dynamic-type?` (the dynamic type
+;         obtained from a value constructed by
+;         `non-nan-extflonum-variant`)
 ;
 ;       - `non-nan-extflonum-dynamic-type?`
 ;
@@ -6439,13 +6640,14 @@
 ;
 ;       - `knowable-dynamic-type?`
 ;
-;       - `path-related-wrapper-variant-dynamic-type?` (the type
-;         constructed by `path-related-wrapper-variant-dynamic-type`)
+;       - `path-related-wrapper-variant-dynamic-type?` (the dynamic
+;         type obtained from a value constructed by
+;         `path-related-wrapper-variant`)
 ;
 ;       - `path-related-wrapper-dynamic-type?`
 ;
-;       - `info-wrapper-variant-dynamic-type?` (the type constructed
-;         by `info-wrapper-variant-dynamic-type`)
+;       - `info-wrapper-variant-dynamic-type?` (the dynamic type
+;         obtained from a value constructed by `info-wrapper-variant`)
 ;
 ;       - `info-wrapper-dynamic-type?`
 ;
