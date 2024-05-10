@@ -3338,13 +3338,17 @@
 ; knowing that two values are distinct means we positively know that
 ; they aren't related by ordering either.
 ;
+; The given `==?` function (usually `equal-always?`) should be an
+; equivalence comparison at least as strong as `equal-always?`, in the
+; sense that when `==?` is true, `equal-always?` is true.
+;
 ; Level 0+:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if the operands pass the given `==?` function
-;     (usually `equal-always?`), the first operand.
+;     Otherwise, if the operands pass the given `==?` function, the
+;     first operand.
 ;     
 ;     Otherwise, if `known-distinct?` is true, a known nothing.
 ;     
@@ -3353,8 +3357,7 @@
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if the operands pass the given `==?` function
-;     (usually `equal-always?`), `#t`.
+;     Otherwise, if the operands pass the given `==?` function, `#t`.
 ;     
 ;     Otherwise, if `known-distinct?` and `known-discrete?` are true,
 ;     `#f`.
