@@ -210,6 +210,8 @@
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
   make-expressly-smooshable-bundle-property-for-atom
   equal-always-atom-glossesque-sys
+  eq-atom-glossesque-sys
+  eq-indistinct-atom-glossesque-sys
   normalized-glossesque-sys
   terminal-glossesque-sys
   make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
@@ -3363,11 +3365,6 @@
 ;     `#f`.
 ;     
 ;     Otherwise, unknown.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
-;   <=, >=:
-;     Same as the description of level 0 == as a check.
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
@@ -3376,11 +3373,11 @@
     #:known-distinct? [known-distinct? known-discrete?]
     #:==? [==? (fn a b /equal-always? a b)])
   (->*
+    (#:inhabitant? (-> any/c boolean?))
     (
-      #:inhabitant? (-> any/c boolean?)
       #:known-discrete? boolean?
-      #:known-distinct? boolean?)
-    (#:==? (-> any/c any/c boolean?))
+      #:known-distinct? boolean?
+      #:==? (-> any/c any/c boolean?))
     expressly-smooshable-dynamic-type-impl?)
   (make-expressly-smooshable-dynamic-type-impl
     
@@ -3397,8 +3394,9 @@
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
       (w- ==?-kp
-        (knowable-if (not /and (inhabitant? a) (inhabitant? b)) /fn
-          (==? a b))
+        (delay
+          (knowable-if (not /and (inhabitant? a) (inhabitant? b)) /fn
+            (==? a b)))
       /w- ==-known-true?-kp
         (promise-map ==?-kp /fn ==?-k
           (knowable-bind ==?-k /fn ==? /knowable-if ==? /fn #t))
@@ -3634,6 +3632,35 @@
     ))
 
 (define/own-contract
+  (make-expressly-custom-gloss-key-dynamic-type-impl-for-eq-atom
+    #:inhabitant? inhabitant?
+    #:known-discrete? [known-discrete? #f]
+    #:known-distinct? [known-distinct? known-discrete?])
+  (->*
+    (#:inhabitant? (-> any/c boolean?))
+    (#:known-discrete? boolean? #:known-distinct? boolean?)
+    expressly-custom-gloss-key-dynamic-type-impl?)
+  (make-expressly-custom-gloss-key-dynamic-type-impl
+    
+    #:get-custom-gloss-key-reports
+    (fn self a
+      (expect (inhabitant? a) #t
+        (uninformative-custom-gloss-key-reports)
+      /constant-custom-gloss-key-reports
+        #:tagged-glossesque-sys-knowable
+        ; TODO SMOOSH: These uses of `eq-atom-variant`,
+        ; `eq-atom-glossesque-sys`, and
+        ; `eq-indistinct-atom-glossesque-sys` are forward
+        ; references. See if we can untangle them.
+        (tagged-glossesque-sys
+          (eq-atom-variant)
+          (if known-distinct?
+            (eq-atom-glossesque-sys)
+            (eq-indistinct-atom-glossesque-sys)))))
+    
+    ))
+
+(define/own-contract
   (make-expressly-smooshable-bundle-property-for-atom
     #:ignore-chaperones? [ignore-chaperones? #f]
     #:inhabitant? inhabitant?
@@ -3683,6 +3710,44 @@
               #:hash-code-1+ hash-code-1+))))))
   prop:bundle)
 
+(define/own-contract
+  (make-expressly-smooshable-bundle-property-for-eq-atom
+    #:inhabitant? inhabitant?
+    #:known-discrete? [known-discrete? #f]
+    #:known-distinct? [known-distinct? known-discrete?])
+  (->*
+    (#:inhabitant? (-> any/c boolean?))
+    (#:known-discrete? boolean? #:known-distinct? boolean?)
+    (struct-type-property/c trivial?))
+  (define-values (prop:bundle bundle? bundle-ref)
+    (make-struct-type-property
+      'expressly-smooshable-bundle-property-from-list-isomorphism
+      (fn value info
+        (expect value (trivial)
+          (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+            "expected the property value to be a trivial? value"
+            "value" value)
+          value))
+      (list
+        (cons
+          (make-expressly-smooshable-bundle-property-for-atom
+            #:ignore-chaperones? #t
+            #:inhabitant? inhabitant?
+            #:known-discrete? known-discrete?
+            #:known-distinct? known-distinct?
+            #:==? (fn a b /eq? a b)
+            #:hash-code (fn a /eq-hash-code a))
+          (dissectfn (trivial)
+            (trivial)))
+        (cons
+          prop:expressly-custom-gloss-key-dynamic-type
+          (dissectfn (trivial)
+            (make-expressly-custom-gloss-key-dynamic-type-impl-for-eq-atom
+              #:inhabitant? inhabitant?
+              #:known-discrete? known-discrete?
+              #:known-distinct? known-distinct?))))))
+  prop:bundle)
+
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both `flvector?` values, then unknown.
@@ -3695,14 +3760,10 @@
 (define-imitation-simple-struct (flvector-dynamic-type?)
   flvector-dynamic-type
   'flvector-dynamic-type (current-inspector) (auto-write)
-  
   (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
+    (make-expressly-smooshable-bundle-property-for-eq-atom
       #:inhabitant? flvector?
-      #:==? (fn a b /eq? a b)
-      #:known-discrete? #t
-      #:hash-code (fn a /eq-hash-code a))
+      #:known-discrete? #t)
     (trivial)))
 
 ; Level 0+:
@@ -3717,14 +3778,10 @@
 (define-imitation-simple-struct (fxvector-dynamic-type?)
   fxvector-dynamic-type
   'fxvector-dynamic-type (current-inspector) (auto-write)
-  
   (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
+    (make-expressly-smooshable-bundle-property-for-eq-atom
       #:inhabitant? fxvector?
-      #:==? (fn a b /eq? a b)
-      #:known-discrete? #t
-      #:hash-code (fn a /eq-hash-code a))
+      #:known-discrete? #t)
     (trivial)))
 
 (define/own-contract (base-syntactic-atom? v)
@@ -3837,15 +3894,61 @@
       #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
     (trivial)))
 
-(define-imitation-simple-struct (equal-always-atom-glossesque-sys?)
-  equal-always-atom-glossesque-sys-unguarded
-  'equal-always-atom-glossesque-sys (current-inspector) (auto-write)
-  
-  (#:prop prop:glossesque-sys /make-glossesque-sys-impl
+(define/own-contract
+  (make-glossesque-sys-impl-for-indistinct ==?)
+  (-> (-> any/c any/c boolean?) glossesque-sys-impl?)
+  (make-glossesque-sys-impl
     
     #:glossesque-union-of-zero-knowable
     (fn gs
-      (known /hashalw))
+      (known /nothing))
+    
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union-knowable
+      (expect a (just a-entry) (unknown)
+      /dissect a-entry (cons a-k a-v)
+      /expect b (just b-entry) (unknown)
+      /dissect b-entry (cons b-k b-v)
+      /expect (==? a-k b-k) #t (unknown)
+      /knowable-map (km-union-knowable a-k (just a-v) (just b-v))
+        (fn v-maybe
+          (maybe-map v-maybe /fn v /cons a-k v))))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (expect g (just g-entry) (known /nothing)
+      /dissect g-entry (cons g-k g-v)
+      /expect (==? k g-k) #t (unknown)
+      /known /just g-v))
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m
+      (expect g (just g-entry) (known /maybe-map m /fn v /cons k v)
+      /dissect g-entry (cons g-k g-v)
+      /expect (==? k g-k) #t (unknown)
+      /known /just /maybe-map m /fn v /cons g-k v))
+    
+    #:glossesque-count
+    (fn gs g
+      (expect g (just g-entry) 0
+        1))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (expect g (just g-entry) (list)
+      /dissect g-entry (cons k v)
+      /in-parallel (in-value k) (in-value v)))
+    
+    ))
+
+(define/own-contract
+  (make-glossesque-sys-impl-for-hash make-empty-hash)
+  (-> (-> (and/c hash? immutable?)) glossesque-sys-impl?)
+  (make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero-knowable
+    (fn gs
+      (known /make-empty-hash))
     
     #:glossesque-km-union-of-two-knowable
     (fn gs a b km-union-knowable
@@ -3867,13 +3970,37 @@
     (fn gs g
       (in-hash g))
     
-    )
-  
-  )
+    ))
+
+(define-imitation-simple-struct (equal-always-atom-glossesque-sys?)
+  equal-always-atom-glossesque-sys-unguarded
+  'equal-always-atom-glossesque-sys (current-inspector) (auto-write)
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-hash /fn
+    (hashalw)))
 
 (define/own-contract (equal-always-atom-glossesque-sys)
   (-> glossesque-sys?)
   (equal-always-atom-glossesque-sys-unguarded))
+
+(define-imitation-simple-struct (eq-atom-glossesque-sys?)
+  eq-atom-glossesque-sys-unguarded
+  'eq-atom-glossesque-sys (current-inspector) (auto-write)
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-hash /fn
+    (hasheq)))
+
+(define/own-contract (eq-atom-glossesque-sys)
+  (-> glossesque-sys?)
+  (eq-atom-glossesque-sys-unguarded))
+
+(define-imitation-simple-struct (eq-indistinct-atom-glossesque-sys?)
+  eq-indistinct-atom-glossesque-sys-unguarded
+  'eq-indistinct-atom-glossesque-sys (current-inspector) (auto-write)
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-indistinct
+    (fn a b /eq? a b)))
+
+(define/own-contract (eq-indistinct-atom-glossesque-sys)
+  (-> glossesque-sys?)
+  (eq-indistinct-atom-glossesque-sys-unguarded))
 
 (define-imitation-simple-struct
   (normalized-key? normalized-key-normalized normalized-key-original)
@@ -4737,6 +4864,12 @@
       )
     
     ))
+
+; TODO SMOOSH: See if we should export this. We probably should, but
+; do we need to export it as just a constructor function rather than
+; having `match` capability? Do we need to export `eq-atom-variant?`
+; along with it?
+(define-variant eq-atom-variant)
 
 (define-variant non-nan-number-variant)
 (define-variant non-nan-real-number-variant)
@@ -6378,7 +6511,9 @@
 ;     clarify which parts of an s-expression's data should be
 ;     inspectable by a typical parser and which parts should be
 ;     considered subject to more unsensational changes (such as
-;     replacing strings with normalized strings):
+;     replacing strings with normalized strings) (TODO SMOOSH: Make
+;     these not be known to be discretely ordered; comparisons other
+;     than equality should be unknown.):
 ;
 ;     - (Done) Mutable strings, mutable byte strings, mutable boxes,
 ;       mutable vectors, prefab structs with mutable fields, and
@@ -6386,14 +6521,26 @@
 ;       way consistent with `equal-always?` and information-ordered in
 ;       a way consistent with `chaperone-of?`. (TODO SMOOSH: Is there
 ;       a way we can define these to be non-overlapping even with
-;       user-defined types?)
+;       user-defined types?) (TODO SMOOSH: Currently these are
+;       indistinct with each other, unlike how we describe them here.
+;       Let's make them known to be distinct. Let's not make them
+;       known to be discretely ordered.)
 ;
 ;     - (Done) Flvectors and fxvectors, all equatable and
 ;       distinguishable in a way consistent with `eq?`. (TODO: As of
 ;       Racket 8.12 [cs], the implementation of `equal-always?` for
 ;       flvectors and fxvectors is incorrect. Once we're on 8.13 or
 ;       so, simplify the design by grouping these with the other
-;       mutable data structures.)
+;       mutable data structures.) (TODO SMOOSH: Currently these use
+;       the same variant for their custom gloss key behavior, and as a
+;       result, they'll be distinguishable keys of the same `gloss?`.
+;       This is intended, and even consistent with their smoosh
+;       behavior, but it uses a rather inverted conceptual framework
+;       compared to how the smoosh behavior works (a system of
+;       file-path-like self-attested variants to achieve hierarchy, vs
+;       a system of type composition operations like
+;       `dynamic-type-case-by-discrete-cases` where the hierarchy is
+;       represented in the use of multiple composition operations).)
 ;
 ;     - (Done) Symbols and keywords, which are all known to be
 ;       distinct from each other. They're not known to be ordered, not
@@ -6435,7 +6582,8 @@
 ;         themselves.
 ;
 ;       - (Done) Non-NaN extflonums, ordered in a way consistent with
-;         `extfl<=` and `extfl=`.
+;         `extfl<=` and `extfl=`. (TODO SMOOSH: Make the information
+;         ordering distinguish `-0.0t0` and `0.0t0`.)
 ;
 ;       - (Done) Characters, immutable strings, and immutable byte
 ;         strings, which are known to be equal to themselves when
@@ -6466,18 +6614,18 @@
 ;         orderings and in a way that's consistent with a
 ;         `chaperone-of?` information ordering if the elements'
 ;         orderings are. Vectors of different lengths are known to be
-;         distinct from each other (TODO SMOOSH: but maybe they
-;         shouldn't be) and unrelated by order (TODO SMOOSH: but maybe
-;         they shouldn't be).
+;         distinct from each other (TODO SMOOSH: as they should be)
+;         and unrelated by order (TODO SMOOSH: actually we want their
+;         order to be unknown).
 ;
 ;       - (Done) Prefab structs with no mutable fields, ordered
 ;         according to the elements' orderings and in a way that's
 ;         consistent with a `chaperone-of?` information ordering if
 ;         the elements' orderings are. Prefab structs with different
 ;         keys and/or different numbers of fields are known to be
-;         distinct from each other (TODO SMOOSH: but maybe they
-;         shouldn't be) and unrelated by order (TODO SMOOSH: but maybe
-;         they shouldn't be).
+;         distinct from each other (TODO SMOOSH: as they should be)
+;         and unrelated by order (TODO SMOOSH: actually we want their
+;         order to be unknown).
 ;
 ;       - (Done) Immutable hash tables with various comparison
 ;         functions, ordered according to the keys' and values'
@@ -6486,9 +6634,9 @@
 ;         orderings are. Hash tables which use different comparison
 ;         functions or which have different sets of keys according to
 ;         their comparison functions are known to be distinct from
-;         each other (TODO SMOOSH: but maybe they shouldn't be) and
-;         unrelated by order (TODO SMOOSH: but maybe they shouldn't
-;         be).
+;         each other(TODO SMOOSH: as they should be) and unrelated by
+;         order (TODO SMOOSH: actually we want their order to be
+;         unknown).
 ;
 ;     - Potentially others in future versions of Racket. The above
 ;       list is up-to-date as of Racket 8.12.
@@ -6501,9 +6649,9 @@
 ;       orderings and in a way that's consistent with a
 ;       `chaperone-of?` information ordering if the elements'
 ;       orderings are. A `just?` value and a `nothing?` value are
-;       known to be distinct from each other (TODO SMOOSH: but maybe
-;       they shouldn't be) and unrelated by order (TODO SMOOSH: but
-;       maybe they shouldn't be).
+;       known to be distinct from each other (TODO SMOOSH: as they
+;       should be ) and unrelated by order (TODO SMOOSH: actually we
+;       want their order to be unknown).
 ;
 ;     - (Done) `trivial?` values.
 ;
@@ -6531,13 +6679,16 @@
 ;     - (Done) `gloss?` values, ordered according to the keys' and
 ;       values' smoosh orderings. `gloss?` values which have
 ;       known-different sets of keys according to smoosh-ordering are
-;       known to be distinct from each other (TODO SMOOSH: but maybe
-;       they shouldn't be) and unrelated by order (TODO SMOOSH: but
-;       maybe they shouldn't be).
+;       known to be distinct from each other (TODO SMOOSH: as they
+;       should be) and unrelated by order (TODO SMOOSH: actually we
+;       want their order to be unknown).
 ;
 ;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
 ;     - (Done) `equal-always-gloss-key-wrapper?`
+;
+;     - (Done) `eq-atom-variant?` (a value constructed by
+;       `eq-atom-variant`)
 ;
 ;     - (Done) `non-nan-number-variant?` (a value constructed by
 ;       `non-nan-number-variant`)
@@ -6554,8 +6705,8 @@
 ;     - (Done) `path-related-wrapper-variant?` (a value constructed by
 ;       `path-related-wrapper-variant`)
 ;
-;     - (Done) `info-wrapper-variant-dynamic-type?` (a value
-;       constructed by `info-wrapper-variant`)
+;     - (Done) `info-wrapper-variant?` (a value constructed by
+;       `info-wrapper-variant`)
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
@@ -6580,6 +6731,9 @@
 ;       - `immutable-string-dynamic-type?`
 ;
 ;       - `immutable-bytes-dynamic-type?`
+;
+;       - `eq-atom-variant-dynamic-type?` (the dynamic type obtained
+;         from a value constructed by `eq-atom-variant`)
 ;
 ;       - `non-nan-number-variant-dynamic-type?` (the dynamic type
 ;         obtained from a value constructed by
