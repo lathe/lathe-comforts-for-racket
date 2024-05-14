@@ -3336,12 +3336,14 @@
 ; equivalence comparison function.
 ;
 ; The given `known-distinct?` indicates whether a false result of
-; comparison means we positively know the values are distinct (rather
-; than just not knowing that they're equal). The given
-; `known-discrete?` indicates whether knowing that two values are
-; distinct means we positively know that they aren't related by
-; ordering either. (Otherwise, their results for ordered comparisons
-; are unknown.)
+; the underlying comparison means we positively know the values are
+; distinct (rather than just not knowing that they're equal). The
+; given `known-discrete?` indicates whether knowing that two values
+; are distinct means we positively know that they aren't related by
+; ordering either. (Otherwise, their results for those failed ordered
+; comparisons are unknown.) These situations only apply for failures
+; of shallow comparison; a known failure of comparison of elements
+; still results in a known failure of comparison overall.
 ;
 ; The given `==?` function (usually `equal-always?`) should be an
 ; equivalence comparison at least as strong as `equal-always?`, in the
@@ -3376,9 +3378,9 @@
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-    #:inhabitant? inhabitant?
+    #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
-    #:known-distinct? [known-distinct? known-discrete?]
+    #:inhabitant? inhabitant?
     #:==? [==? (fn a b /equal-always? a b)])
   (->*
     (#:inhabitant? (-> any/c boolean?))
@@ -3455,7 +3457,10 @@
     (fn kpmkp
       (promise-map kpmkp /fn kpmk
         (knowable-bind kpmk /fn kpm
-          (knowable-if (just? kpm) /fn kpm))))))
+          (knowable-if (just? kpm) /fn kpm))))
+    #:on-==-knowable-promise-maybe-knowable-promise
+    (fn kpmkp
+      kpmkp)))
 
 ; TODO SMOOSH: Consider exporting this. If we do, find a better name
 ; for it.
@@ -3469,11 +3474,13 @@
     #:known-discrete? boolean?
     (sequence/c smoosh-and-comparison-of-two-report?))
   (dissect reports (app sequence->stream /stream* report-0 report-1+)
-  /w- report-0
+  /stream*
     (smoosh-and-comparison-of-two-report-censor report-0
       #:known-distinct? known-distinct?
       #:known-discrete? known-discrete?)
-  /stream* report-0 report-1+))
+    (smoosh-and-comparison-of-two-reports-censor report-1+
+      #:known-distinct? #t
+      #:known-discrete? #f)))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for mutable tuple data structures and their
@@ -3481,12 +3488,12 @@
 ; `chaperone-of?`.
 ;
 ; The given `known-distinct?` indicates whether a false result of
-; comparison means we positively know the values are distinct (rather
-; than just not knowing that they're equal). The given
-; `known-discrete?` indicates whether knowing that two values are
-; distinct means we positively know that they aren't related by
-; ordering either. (Otherwise, their results for ordered comparisons
-; are unknown.)
+; the underlying comparison means we positively know the values are
+; distinct (rather than just not knowing that they're equal). The
+; given `known-discrete?` indicates whether knowing that two values
+; are distinct means we positively know that they aren't related by
+; ordering either. (Otherwise, their results for those failed ordered
+; comparisons are unknown.)
 ;
 ; Level 0:
 ;   path-related, join, meet, ==:
@@ -3562,9 +3569,9 @@
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-    #:inhabitant? inhabitant?
+    #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
-    #:known-distinct? [known-distinct? known-discrete?])
+    #:inhabitant? inhabitant?)
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (#:known-distinct? boolean? #:known-discrete? boolean?)
@@ -3703,9 +3710,9 @@
 
 (define/own-contract
   (make-expressly-custom-gloss-key-dynamic-type-impl-for-eq-atom
-    #:inhabitant? inhabitant?
+    #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
-    #:known-distinct? [known-distinct? known-discrete?])
+    #:inhabitant? inhabitant?)
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (#:known-distinct? boolean? #:known-discrete? boolean?)
@@ -3733,9 +3740,9 @@
 (define/own-contract
   (make-expressly-smooshable-bundle-property-for-atom
     #:ignore-chaperones? [ignore-chaperones? #f]
-    #:inhabitant? inhabitant?
+    #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
-    #:known-distinct? [known-distinct? known-discrete?]
+    #:inhabitant? inhabitant?
     #:==? [==? (fn a b /equal-always? a b)]
     #:hash-code [hash-code (fn a /equal-always-hash-code a)]
     #:hash-code-0 [hash-code-0 hash-code]
@@ -3744,8 +3751,8 @@
     (#:inhabitant? (-> any/c boolean?))
     (
       #:ignore-chaperones? boolean?
-      #:known-discrete? boolean?
       #:known-distinct? boolean?
+      #:known-discrete? boolean?
       #:==? (-> any/c any/c boolean?)
       #:hash-code (-> any/c fixnum?)
       #:hash-code-0 (-> any/c fixnum?)
@@ -3753,10 +3760,10 @@
     (struct-type-property/c trivial?))
   (define-values (prop:bundle bundle? bundle-ref)
     (make-struct-type-property
-      'expressly-smooshable-bundle-property-from-list-isomorphism
+      'expressly-smooshable-bundle-property-for-atom
       (fn value info
         (expect value (trivial)
-          (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+          (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-atom
             "expected the property value to be a trivial? value"
             "value" value)
           value))
@@ -3766,14 +3773,14 @@
           (dissectfn (trivial)
             (if ignore-chaperones?
               (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-                #:inhabitant? inhabitant?
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
+                #:inhabitant? inhabitant?
                 #:==? ==?)
               (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-                #:inhabitant? inhabitant?
                 #:known-distinct? known-distinct?
-                #:known-discrete? known-discrete?))))
+                #:known-discrete? known-discrete?
+                #:inhabitant? inhabitant?))))
         (cons
           prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
           (dissectfn (trivial)
@@ -3784,19 +3791,19 @@
 
 (define/own-contract
   (make-expressly-smooshable-bundle-property-for-eq-atom
-    #:inhabitant? inhabitant?
+    #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
-    #:known-distinct? [known-distinct? known-discrete?])
+    #:inhabitant? inhabitant?)
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (#:known-distinct? boolean? #:known-discrete? boolean?)
     (struct-type-property/c trivial?))
   (define-values (prop:bundle bundle? bundle-ref)
     (make-struct-type-property
-      'expressly-smooshable-bundle-property-from-list-isomorphism
+      'expressly-smooshable-bundle-property-for-eq-atom
       (fn value info
         (expect value (trivial)
-          (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+          (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-eq-atom
             "expected the property value to be a trivial? value"
             "value" value)
           value))
@@ -3804,9 +3811,9 @@
         (cons
           (make-expressly-smooshable-bundle-property-for-atom
             #:ignore-chaperones? #t
-            #:inhabitant? inhabitant?
             #:known-distinct? known-distinct?
             #:known-discrete? known-discrete?
+            #:inhabitant? inhabitant?
             #:==? (fn a b /eq? a b)
             #:hash-code (fn a /eq-hash-code a))
           (dissectfn (trivial)
@@ -3840,8 +3847,7 @@
   'flvector-dynamic-type (current-inspector) (auto-write)
   (#:prop
     (make-expressly-smooshable-bundle-property-for-eq-atom
-      #:inhabitant? flvector?
-      #:known-discrete? #t)
+      #:inhabitant? flvector?)
     (trivial)))
 
 ; Level 0+:
@@ -3864,8 +3870,7 @@
   'fxvector-dynamic-type (current-inspector) (auto-write)
   (#:prop
     (make-expressly-smooshable-bundle-property-for-eq-atom
-      #:inhabitant? fxvector?
-      #:known-discrete? #t)
+      #:inhabitant? fxvector?)
     (trivial)))
 
 (define/own-contract (base-syntactic-atom? v)
@@ -3896,8 +3901,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? base-syntactic-atom?
-      #:known-distinct? #t)
+      #:inhabitant? base-syntactic-atom?)
     (trivial)))
 
 ; Level 0+:
@@ -3922,8 +3926,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? boolean?
-      #:known-distinct? #t)
+      #:inhabitant? boolean?)
     (trivial)))
 
 ; Level 0+:
@@ -3941,6 +3944,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
+      #:known-distinct? #f
       #:inhabitant? char?)
     (trivial)))
 
@@ -3960,6 +3964,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
+      #:known-distinct? #f
       #:inhabitant? immutable-string?)
     (trivial)))
 
@@ -3980,6 +3985,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
+      #:known-distinct? #f
       #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
     (trivial)))
 
@@ -4140,6 +4146,16 @@
 ; consistent with `chaperone-of?` as long as the elements' information
 ; orderings are.
 ;
+; The given `known-distinct?` indicates whether a false result of
+; the underlying comparison means we positively know the values are
+; distinct (rather than just not knowing that they're equal). The
+; given `known-discrete?` indicates whether knowing that two values
+; are distinct means we positively know that they aren't related by
+; ordering either. (Otherwise, their results for those failed ordered
+; comparisons are unknown.) These situations only apply for failures
+; of shallow comparison; a known failure of comparison of elements
+; still results in a known failure of comparison overall.
+;
 ; The given `->->list` function should take an inhabitant (a value
 ; which passes the given `inhabitant?` predicate) and return a
 ; function that takes an inhabitant of similar structure and returns
@@ -4162,10 +4178,15 @@
 ; Level 0:
 ;   path-related, join, meet, ==:
 ;     Same as the description of level 1 path-related, but with "the
-;     same smoosh" referring to this level-0 smoosh.
+;     same smoosh" referring to this level-0 smoosh, and translating a
+;     known nothing result that comes from a failed shallow comparison
+;     into an unknown result if `known-distinct?` is false.
 ;   <=, >=:
 ;     Same as the description of level 1 path-related as a check, but
-;     with "the same smoosh" referring to this level-0 check.
+;     with "the same smoosh" referring to this level-0 check, and
+;     translating an unknown result that comes from a failed shallow
+;     comparison into an known `#f` if (`known-distinct?` and
+;     `known-discrete?`) is true.
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
@@ -4176,9 +4197,15 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, or if the results of
-;     smooshing corresponding elements under the same smoosh include a
-;     known nothing, then a known nothing.
+;     Otherwise, if it shows they differ, and if we're doing ==, then
+;     a known nothing. (This is the known nothing result that level 0
+;     adjusts into an unknown result when `known-distinct?` is false.)
+;     
+;     Otherwise, if it shows they differ, then unknown.
+;     
+;     Otherwise, if the results of smooshing corresponding elements
+;     under the same smoosh include a known nothing, then a known
+;     nothing.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -4198,9 +4225,12 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, or if the results of
-;     smooshing corresponding elements under the same smoosh include a
-;     known `#f`, then a known `#f`.
+;     Otherwise, if it shows they differ, then unknown. (This is the
+;     unknown result that level 0 adjusts into a known nothing result
+;     when (`known-distinct?` and `known-discrete?`) is true.)
+;     
+;     Otherwise, if the results of smooshing corresponding elements
+;     under the same smoosh include a known `#f`, then a known `#f`.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -4219,6 +4249,8 @@
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
     #:->->list ->->list
@@ -4239,6 +4271,9 @@
       #:->->list (-> any/c (-> any/c list?))
       #:example-and-list-> (-> any/c list? any/c))
     (
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?
+      
       #:inhabitant-shallowly-equal-always?-knowable
       (-> any/c any/c (knowable/c boolean?))
       
@@ -4279,9 +4314,16 @@
         (known a-shallowly-equal-always-b?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       ; Otherwise, if it returns `#f`, we return a known nothing (when
-      ; doing a smoosh, or `#f` when doing a check).
+      ; doing a smoosh, or `#f` when doing a check). When the info
+      ; level is nonzero or `known-discrete?` is false, the check
+      ; results are unknown instead. When the info level is 0 *and*
+      ; `known-distinct?` is false, the smoosh results and the check
+      ; results are unknown instead.
       /if (not a-shallowly-equal-always-b?)
-        (false-smoosh-and-comparison-of-two-reports)
+        (smoosh-and-comparison-of-two-reports-censor
+          (false-smoosh-and-comparison-of-two-reports)
+          #:known-distinct? known-distinct?
+          #:known-discrete? known-discrete?)
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /w- b-list (->list b)
@@ -4352,10 +4394,15 @@
 ; Level 0:
 ;   path-related, join, meet, ==:
 ;     Same as the description of level 1 path-related, but with "the
-;     same smoosh" referring to this level-0 smoosh.
+;     same smoosh" referring to this level-0 smoosh, and translating a
+;     known nothing result that comes from a failed shallow comparison
+;     into an unknown result if `known-distinct?` is false.
 ;   <=, >=:
 ;     Same as the description of level 1 path-related as a check, but
-;     with "the same smoosh" referring to this level-0 check.
+;     with "the same smoosh" referring to this level-0 check, and
+;     translating an unknown result that comes from a failed shallow
+;     comparison into an known `#f` if (`known-distinct?` and
+;     `known-discrete?`) is true.
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
@@ -4366,9 +4413,15 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, or if the results of
-;     smooshing corresponding elements under the same smoosh include a
-;     known nothing, then a known nothing.
+;     Otherwise, if it shows they differ, and if we're doing ==, then
+;     a known nothing. (This is the known nothing result that level 0
+;     adjusts into an unknown result when `known-distinct?` is false.)
+;     
+;     Otherwise, if it shows they differ, then unknown.
+;     
+;     Otherwise, if the results of smooshing corresponding elements
+;     under the same smoosh include a known nothing, then a known
+;     nothing.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -4427,9 +4480,12 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, or if the results of
-;     smooshing corresponding elements under the same smoosh include a
-;     known `#f`, then a known `#f`.
+;     Otherwise, if it shows they differ, then unknown. (This is the
+;     unknown result that level 0 adjusts into a known nothing result
+;     when (`known-distinct?` and `known-discrete?`) is true.)
+;     
+;     Otherwise, if the results of smooshing corresponding elements
+;     under the same smoosh include a known `#f`, then a known `#f`.
 ;     
 ;     Otherwise, if those recursive results include an unknown, then
 ;     unknown.
@@ -4479,6 +4535,8 @@
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
     #:->->list ->->list
@@ -4501,6 +4559,9 @@
       #:->->list (-> any/c (-> any/c list?))
       #:example-and-list-> (-> any/c list? any/c))
     (
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?
+      
       #:inhabitant-shallowly-equal-always?-knowable
       (-> any/c any/c (knowable/c boolean?))
       
@@ -4595,9 +4656,16 @@
         (known a-shallowly-equal-always-b?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       ; Otherwise, if it returns `#f`, we return a known nothing (when
-      ; doing a smoosh, or `#f` when doing a check).
+      ; doing a smoosh, or `#f` when doing a check). When the info
+      ; level is nonzero or `known-discrete?` is false, the check
+      ; results are unknown instead. When the info level is 0 *and*
+      ; `known-distinct?` is false, the smoosh results and the check
+      ; results are unknown instead.
       /if (not a-shallowly-equal-always-b?)
-        (false-smoosh-and-comparison-of-two-reports)
+        (smoosh-and-comparison-of-two-reports-censor
+          (false-smoosh-and-comparison-of-two-reports)
+          #:known-distinct? known-distinct?
+          #:known-discrete? known-discrete?)
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /w- b-list (->list b)
@@ -4788,6 +4856,8 @@
 (define/own-contract
   (make-expressly-smooshable-bundle-property-from-list-isomorphism
     #:ignore-chaperones? [ignore-chaperones? #f]
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
     #:->->list ->->list
@@ -4816,6 +4886,8 @@
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:ignore-chaperones? boolean?
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?
       #:combine-element-hash-codes (-> (listof fixnum?) fixnum?)
       
       #:inhabitant-shallowly-equal-always?-knowable
@@ -4843,6 +4915,8 @@
           (dissectfn (trivial)
             (if ignore-chaperones?
               (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+                #:known-distinct? known-distinct?
+                #:known-discrete? known-discrete?
                 #:self-get-any-dynamic-type self-get-any-dynamic-type
                 #:inhabitant? inhabitant?
                 #:->->list ->->list
@@ -4853,6 +4927,8 @@
                 
                 #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports)
               (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+                #:known-distinct? known-distinct?
+                #:known-discrete? known-discrete?
                 #:self-get-any-dynamic-type self-get-any-dynamic-type
                 #:inhabitant? inhabitant?
                 #:->->list ->->list
@@ -5433,8 +5509,7 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:inhabitant? base-mutable-readable?
-      #:known-distinct? #t)
+      #:inhabitant? base-mutable-readable?)
     (trivial)))
 
 ; This is an appropriate dynamic type of immutable boxes and their
@@ -5762,6 +5837,7 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
+      #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
       (dissectfn (just-dynamic-type any-dt)
@@ -6541,8 +6617,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? equal-always-gloss-key-wrapper?
-      #:known-distinct? #t)
+      #:inhabitant? equal-always-gloss-key-wrapper?)
     (trivial)))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
@@ -6647,7 +6722,9 @@
 ;       file-path-like self-attested variants to achieve hierarchy, vs
 ;       a system of type composition operations like
 ;       `dynamic-type-case-by-distinct-cases` where the hierarchy is
-;       represented in the use of multiple composition operations).)
+;       represented in the use of multiple composition operations).
+;       See if this will cause problems for us in trying to keep one
+;       system's results consistent with the other's.)
 ;
 ;     - (Done) Symbols and keywords, which are all known to be
 ;       distinct from each other. They're not known to be ordered, not
@@ -6721,18 +6798,14 @@
 ;         orderings and in a way that's consistent with a
 ;         `chaperone-of?` information ordering if the elements'
 ;         orderings are. Vectors of different lengths are known to be
-;         distinct from each other (TODO SMOOSH: as they should be)
-;         and unrelated by order (TODO SMOOSH: actually we want their
-;         order to be unknown).
+;         distinct from each other.
 ;
 ;       - (Done) Prefab structs with no mutable fields, ordered
 ;         according to the elements' orderings and in a way that's
 ;         consistent with a `chaperone-of?` information ordering if
 ;         the elements' orderings are. Prefab structs with different
 ;         keys and/or different numbers of fields are known to be
-;         distinct from each other (TODO SMOOSH: as they should be)
-;         and unrelated by order (TODO SMOOSH: actually we want their
-;         order to be unknown).
+;         distinct from each other.
 ;
 ;       - (Done) Immutable hash tables with various comparison
 ;         functions, ordered according to the keys' and values'
@@ -6741,9 +6814,7 @@
 ;         orderings are. Hash tables which use different comparison
 ;         functions or which have different sets of keys according to
 ;         their comparison functions are known to be distinct from
-;         each other (TODO SMOOSH: as they should be) and unrelated by
-;         order (TODO SMOOSH: actually we want their order to be
-;         unknown).
+;         each other.
 ;
 ;     - Potentially others in future versions of Racket. The above
 ;       list is up-to-date as of Racket 8.12.
@@ -6784,9 +6855,7 @@
 ;     - (Done) `gloss?` values, ordered according to the keys' and
 ;       values' smoosh orderings. `gloss?` values which have
 ;       known-different sets of keys according to smoosh-ordering are
-;       known to be distinct from each other (TODO SMOOSH: as they
-;       should be) and unrelated by order (TODO SMOOSH: actually we
-;       want their order to be unknown).
+;       known to be distinct from each other.
 ;
 ;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
