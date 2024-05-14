@@ -1066,7 +1066,7 @@
     (-> (non-empty-listof any/c) any/c)
     (sequence/c any/c))
   (sequence-map
-    (fn elements /on-element elements)
+    (lambda elements /on-element elements)
     (apply in-parallel sequences)))
 
 (define/own-contract (knowable-promise-or kp-list)
@@ -3333,18 +3333,21 @@
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for simple values that can be compared by a simple
-; equivalence comparison function. The given `known-distinct?`
-; indicates whether a false result of comparison means we positively
-; know the values are distinct (rather than just not knowing that
-; they're equal). The given `known-discrete?` indicates whether
-; knowing that two values are distinct means we positively know that
-; they aren't related by ordering either.
+; equivalence comparison function.
+;
+; The given `known-distinct?` indicates whether a false result of
+; comparison means we positively know the values are distinct (rather
+; than just not knowing that they're equal). The given
+; `known-discrete?` indicates whether knowing that two values are
+; distinct means we positively know that they aren't related by
+; ordering either. (Otherwise, their results for ordered comparisons
+; are unknown.)
 ;
 ; The given `==?` function (usually `equal-always?`) should be an
 ; equivalence comparison at least as strong as `equal-always?`, in the
 ; sense that when `==?` is true, `equal-always?` is true.
 ;
-; Level 0+:
+; Level 0:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
@@ -3365,6 +3368,11 @@
 ;     `#f`.
 ;     
 ;     Otherwise, unknown.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     Same as the description of level 0, except that
+;     `known-distinct?` is considered to be true and `known-discrete?`
+;     is considered to be false regardless of the values given.
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
@@ -3375,8 +3383,8 @@
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (
-      #:known-discrete? boolean?
       #:known-distinct? boolean?
+      #:known-discrete? boolean?
       #:==? (-> any/c any/c boolean?))
     expressly-smooshable-dynamic-type-impl?)
   (make-expressly-smooshable-dynamic-type-impl
@@ -3408,32 +3416,87 @@
       /w- ->thunk
         (fn result
           (lambda (list) result))
-      /if (and known-distinct? known-discrete?)
-        (constant-smoosh-and-comparison-of-two-reports /->mkp ==?-kp)
-      /if known-distinct?
-        (w- ==?-mkp (->mkp ==?-kp)
-        /stream*
+      /w- ==?-mkp (->mkp ==?-kp)
+      /w- report-0
+        (if (and known-distinct? known-discrete?)
+          (constant-smoosh-and-comparison-of-two-report ==?-mkp)
+        /if known-distinct?
           (smoosh-and-comparison-of-two-report-zip-map (list)
             #:on-check-result-knowable-promise
             (->thunk ==-known-true?-kp)
             #:on-smoosh-result-knowable-promise-maybe-knowable-promise
             (->thunk ==?-mkp))
-          (constant-smoosh-and-comparison-of-two-reports ==?-mkp))
-        (constant-smoosh-and-comparison-of-two-reports
-          (->mkp ==-known-true?-kp))))
+          (constant-smoosh-and-comparison-of-two-report
+            (->mkp ==-known-true?-kp)))
+      /stream* report-0
+        (constant-smoosh-and-comparison-of-two-reports ==?-mkp)))
     
     ))
+
+; TODO SMOOSH: Consider exporting this. If we do, find a better name
+; for it.
+(define/own-contract
+  (smoosh-and-comparison-of-two-report-censor report
+    #:known-distinct? known-distinct?
+    #:known-discrete? known-discrete?)
+  (->
+    smoosh-and-comparison-of-two-report?
+    #:known-distinct? boolean?
+    #:known-discrete? boolean?
+    smoosh-and-comparison-of-two-report?)
+  (if (and known-distinct? known-discrete?) report
+  /smoosh-and-comparison-of-two-report-map report
+    #:on-check-result-knowable-promise
+    (fn kp
+      (promise-map kp /fn k
+        (knowable-bind k /fn result
+          (knowable-if (or result known-distinct?) /fn result))))
+    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+    (fn kpmkp
+      (promise-map kpmkp /fn kpmk
+        (knowable-bind kpmk /fn kpm
+          (knowable-if (just? kpm) /fn kpm))))))
+
+; TODO SMOOSH: Consider exporting this. If we do, find a better name
+; for it.
+(define/own-contract
+  (smoosh-and-comparison-of-two-reports-censor reports
+    #:known-distinct? known-distinct?
+    #:known-discrete? known-discrete?)
+  (->
+    (sequence/c smoosh-and-comparison-of-two-report?)
+    #:known-distinct? boolean?
+    #:known-discrete? boolean?
+    (sequence/c smoosh-and-comparison-of-two-report?))
+  (dissect reports (app sequence->stream /stream* report-0 report-1+)
+  /w- report-0
+    (smoosh-and-comparison-of-two-report-censor report-0
+      #:known-distinct? known-distinct?
+      #:known-discrete? known-discrete?)
+  /stream* report-0 report-1+))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for mutable tuple data structures and their
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?`.
 ;
+; The given `known-distinct?` indicates whether a false result of
+; comparison means we positively know the values are distinct (rather
+; than just not knowing that they're equal). The given
+; `known-discrete?` indicates whether knowing that two values are
+; distinct means we positively know that they aren't related by
+; ordering either. (Otherwise, their results for ordered comparisons
+; are unknown.)
+;
 ; Level 0:
 ;   path-related, join, meet, ==:
-;     Same as the description of level 1 path-related.
+;     Same as the description of level 1 path-related, except that if
+;     `known-distinct?` is false, a result that would be a known
+;      nothing is instead unknown.
 ;   <=, >=:
-;     Same as the description of level 1 path-related as a check.
+;     Same as the description of level 1 path-related as a check,
+;     except that if (`known-distinct?` and `known-discrete?`) is
+;     false, a result that would be a known `#f` is instead unknown.
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
@@ -3499,8 +3562,12 @@
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-    #:inhabitant? inhabitant?)
-  (-> #:inhabitant? (-> any/c boolean?)
+    #:inhabitant? inhabitant?
+    #:known-discrete? [known-discrete? #f]
+    #:known-distinct? [known-distinct? known-discrete?])
+  (->*
+    (#:inhabitant? (-> any/c boolean?))
+    (#:known-distinct? boolean? #:known-discrete? boolean?)
     expressly-smooshable-dynamic-type-impl?)
   (make-expressly-smooshable-dynamic-type-impl
     
@@ -3569,12 +3636,15 @@
         (fn v
           #t)
       /stream*
-        (smoosh-and-comparison-of-two-report-zip-map (list)
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #f #f)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            path-related-acceptable-result?))
+        (smoosh-and-comparison-of-two-report-censor
+          #:known-distinct? known-distinct?
+          #:known-discrete? known-discrete?
+          (smoosh-and-comparison-of-two-report-zip-map (list)
+            #:on-check-result-knowable-promise
+            (on-check-result-knowable-promise #f #f)
+            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (on-smoosh-result-knowable-promise-maybe-knowable-promise
+              path-related-acceptable-result?)))
         (smoosh-and-comparison-of-two-report-zip-map (list)
           #:on-<=?-knowable-promise
           (on-check-result-knowable-promise #t #f)
@@ -3638,7 +3708,7 @@
     #:known-distinct? [known-distinct? known-discrete?])
   (->*
     (#:inhabitant? (-> any/c boolean?))
-    (#:known-discrete? boolean? #:known-distinct? boolean?)
+    (#:known-distinct? boolean? #:known-discrete? boolean?)
     expressly-custom-gloss-key-dynamic-type-impl?)
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
@@ -3697,11 +3767,13 @@
             (if ignore-chaperones?
               (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
                 #:inhabitant? inhabitant?
-                #:known-discrete? known-discrete?
                 #:known-distinct? known-distinct?
+                #:known-discrete? known-discrete?
                 #:==? ==?)
               (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-                #:inhabitant? inhabitant?))))
+                #:inhabitant? inhabitant?
+                #:known-distinct? known-distinct?
+                #:known-discrete? known-discrete?))))
         (cons
           prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
           (dissectfn (trivial)
@@ -3717,7 +3789,7 @@
     #:known-distinct? [known-distinct? known-discrete?])
   (->*
     (#:inhabitant? (-> any/c boolean?))
-    (#:known-discrete? boolean? #:known-distinct? boolean?)
+    (#:known-distinct? boolean? #:known-discrete? boolean?)
     (struct-type-property/c trivial?))
   (define-values (prop:bundle bundle? bundle-ref)
     (make-struct-type-property
@@ -3733,8 +3805,8 @@
           (make-expressly-smooshable-bundle-property-for-atom
             #:ignore-chaperones? #t
             #:inhabitant? inhabitant?
-            #:known-discrete? known-discrete?
             #:known-distinct? known-distinct?
+            #:known-discrete? known-discrete?
             #:==? (fn a b /eq? a b)
             #:hash-code (fn a /eq-hash-code a))
           (dissectfn (trivial)
@@ -3744,18 +3816,24 @@
           (dissectfn (trivial)
             (make-expressly-custom-gloss-key-dynamic-type-impl-for-eq-atom
               #:inhabitant? inhabitant?
-              #:known-discrete? known-discrete?
-              #:known-distinct? known-distinct?))))))
+              #:known-distinct? known-distinct?
+              #:known-discrete? known-discrete?))))))
   prop:bundle)
 
 ; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `flvector?` values, then unknown.
 ;     
-;     If the operands are not `eq?`, then a known nothing (or, for a
-;     check, `#f`).
+;     Otherwise, if the operands are `eq?`, then the first operand
+;     (or, for a check, `#t`).
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `flvector?` values, then unknown.
+;     
+;     Otherwise, if the operands are `eq?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
 ;
 (define-imitation-simple-struct (flvector-dynamic-type?)
   flvector-dynamic-type
@@ -3767,13 +3845,19 @@
     (trivial)))
 
 ; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `fxvector?` values, then unknown.
 ;     
-;     If the operands are not `eq?`, then a known nothing (or, for a
-;     check, `#f`).
+;     Otherwise, if the operands are `eq?`, then the first operand
+;     (or, for a check, `#t`).
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `fxvector?` values, then unknown.
+;     
+;     Otherwise, if the operands are `eq?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
 ;
 (define-imitation-simple-struct (fxvector-dynamic-type?)
   fxvector-dynamic-type
@@ -3789,14 +3873,21 @@
   (or (symbol? v) (keyword? v) (null? v)))
 
 ; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `base-syntactic-atom?` values, then
 ;     unknown.
 ;     
-;     If the operands are not `equal-always?`, then a known nothing
-;     (or, for a check, `#f`).
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `base-syntactic-atom?` values, then
+;     unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
 ;
 (define-imitation-simple-struct (base-syntactic-atom-dynamic-type?)
   base-syntactic-atom-dynamic-type
@@ -3806,28 +3897,23 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
       #:inhabitant? base-syntactic-atom?
-      #:known-discrete? #t)
+      #:known-distinct? #t)
     (trivial)))
 
 ; Level 0+:
-;   path-related, join, meet, ==:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `boolean?` values, then unknown.
 ;     
-;     Otherwise, if the operands are `equal-always?`, the first
-;     operand.
-;     
-;     Otherwise, a known nothing.
-;   <=, >=:
-;     If the operands are not both `boolean?` values, then unknown.
-;     
-;     Otherwise, if the operands are `equal-always?`, then `#t`.
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
-;   <=, >=:
-;     Same as the description of level 0 == as a check.
+;   ==:
+;     If the operands are not both `boolean?` values, then unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
 ;
 (define-imitation-simple-struct (boolean-dynamic-type?)
   boolean-dynamic-type
@@ -3844,9 +3930,10 @@
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both characters, then unknown.
 ;     
-;     If the operands are not `equal-always?`, then unknown.
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, unknown.
 ;
 (define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
   'char-dynamic-type (current-inspector) (auto-write)
@@ -3861,9 +3948,10 @@
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both immutable strings, then unknown.
 ;     
-;     If the operands are not `equal-always?`, then unknown.
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand (or, for a check, `#t`).
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, unknown.
 ;
 (define-imitation-simple-struct (immutable-string-dynamic-type?)
   immutable-string-dynamic-type
@@ -3880,9 +3968,10 @@
 ;     If the operands are not both immutable byte strings, then
 ;     unknown.
 ;     
-;     If the operands are not `equal-always?`, then unknown.
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand (or, for a check, `#t`).
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, unknown.
 ;
 (define-imitation-simple-struct (immutable-bytes-dynamic-type?)
   immutable-bytes-dynamic-type
@@ -4529,7 +4618,7 @@
             (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
               (knowable-promise-zip-map kp-list /fn result-list
                 result-list))))
-        (stream* report-0 report-1 report-2+)
+        (app sequence->stream /stream* report-0 report-1 report-2+)
       /w- a-shallowly-unchaperoned?-promise
         (delay /inhabitant-shallowly-unchaperoned? a)
       /w- b-shallowly-unchaperoned?-promise
@@ -5333,9 +5422,9 @@
 
 ; This is an appropriate dynamic type of mutable strings, mutable byte
 ; strings, mutable boxes, mutable vectors, prefab structs with mutable
-; fields, mutable hash tables, and their chaperones,
-; information-ordered in a way that's consistent with `chaperone-of?`.
-; This is an instance of
+; fields, mutable hash tables, and their chaperones, distinguishable
+; from each other and information-ordered in a way that's consistent
+; with `chaperone-of?`. This is an instance of
 ; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
 (define-imitation-simple-struct (base-mutable-readable-dynamic-type?)
@@ -5344,7 +5433,8 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:inhabitant? base-mutable-readable?)
+      #:inhabitant? base-mutable-readable?
+      #:known-distinct? #t)
     (trivial)))
 
 ; This is an appropriate dynamic type of immutable boxes and their
@@ -5527,13 +5617,13 @@
                 (if
                   (list-any cases /dissectfn (list check? dt)
                     (check? b))
-                  (false-smoosh-and-comparison-of-two-reports)
+                  distinct-cases-smoosh-and-comparison-of-two-reports
                   (uninformative-smoosh-and-comparison-of-two-reports))]
               [ (list #f #t)
                 (if
                   (list-any cases /dissectfn (list check? dt)
                     (check? a))
-                  (false-smoosh-and-comparison-of-two-reports)
+                  distinct-cases-smoosh-and-comparison-of-two-reports
                   (uninformative-smoosh-and-comparison-of-two-reports))]
               [(list #f #f) (next cases)])))
         
@@ -5584,6 +5674,17 @@
   (dynamic-type-case-by-cases
     name (uninformative-smoosh-and-comparison-of-two-reports) cases))
 
+(define/own-contract
+  (dynamic-type-case-by-distinct-cases name cases)
+  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+    (list/c (-> any/c boolean?) (-> any/c any/c)))
+  (w- distinct-cases-reports
+    (smoosh-and-comparison-of-two-reports-censor
+      (false-smoosh-and-comparison-of-two-reports)
+      #:known-distinct? #t
+      #:known-discrete? #f)
+  /dynamic-type-case-by-cases name distinct-cases-reports cases))
+
 (define/own-contract (dynamic-type-case-by-discrete-cases name cases)
   (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
     (list/c (-> any/c boolean?) (-> any/c any/c)))
@@ -5626,7 +5727,7 @@
         (fn any-dt /immutable-hash-dynamic-type any-dt)))))
 
 (define base-readable-dynamic-type-case
-  (dynamic-type-case-by-discrete-cases 'base-readable-dynamic-type /list
+  (dynamic-type-case-by-distinct-cases 'base-readable-dynamic-type /list
     (list
       base-mutable-readable?
       (fn any-dt /base-mutable-readable-dynamic-type))
@@ -5794,7 +5895,7 @@
             (dynamic-type-get-smoosh-of-zero-reports any-dt)
             #:on-smoosh-result-knowable-promise-maybe-knowable-promise
             on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
-          (stream* report-0 report-1+)
+          (app sequence->stream /stream* report-0 report-1+)
         /stream* report-0 /uninformative-smoosh-reports))
       
       #:get-smoosh-of-one-reports
@@ -5885,8 +5986,7 @@
                 (hash-code-combine
                   (equal-always-hash-code known?)
                   a-value-hash-code))))
-        /stream*
-          (uninformative-smoosh-equal-hash-code-support-report)
+        /stream* (uninformative-smoosh-equal-hash-code-support-report)
           (constant-smoosh-equal-hash-code-support-reports
             (delay
               (mat a (example-unknown)
@@ -5929,7 +6029,7 @@
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
   /stream*
     (constant-smoosh-report
       (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
@@ -5945,7 +6045,7 @@
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
   /stream*
     (constant-smoosh-report
       (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
@@ -5962,7 +6062,7 @@
     (smoosh-equal-hash-code-support-reports-map value-reports
       #:on-hash-code-promise
       on-path-related-wrapper-hash-code-promise)
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
   /stream*
     (constant-smoosh-equal-hash-code-support-report
       (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
@@ -5990,7 +6090,7 @@
                 #:on-key
                 (fn k
                   (path-related-wrapper k))))))))
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
   /stream*
     (constant-custom-gloss-key-report
       (custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
@@ -6134,7 +6234,7 @@
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
     report-1+))
 
 (define/own-contract
@@ -6146,7 +6246,7 @@
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
     report-1+))
 
 (define/own-contract
@@ -6157,7 +6257,7 @@
   (dissect
     (smoosh-equal-hash-code-support-reports-map value-reports
       #:on-hash-code-promise on-info-wrapper-hash-code-promise)
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
     report-1+))
 
 (define/own-contract
@@ -6181,7 +6281,7 @@
                 #:on-key
                 (fn k
                   (info-wrapper k))))))))
-    (stream* report-0 report-1+)
+    (app sequence->stream /stream* report-0 report-1+)
     report-1+))
 
 ; This is an appropriate dynamic type of `info-wrapper` values,
@@ -6373,7 +6473,7 @@
     'known-to-lathe-comforts-data-dynamic-type
     (list
       base-readable-dynamic-type-case
-      (dynamic-type-case-by-discrete-cases 'maybe-dynamic-type /list
+      (dynamic-type-case-by-distinct-cases 'maybe-dynamic-type /list
         (list nothing? (fn any-dt /nothing-dynamic-type))
         (list just? (fn any-dt /just-dynamic-type any-dt)))
       (list trivial? (fn any-dt /trivial-dynamic-type))
@@ -6415,11 +6515,22 @@
     (trivial)))
 
 ; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `equal-always-gloss-key-wrapper?`
 ;     values, then unknown.
 ;     
-;     Otherwise, the first operand (or, for a check, `#t`).
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `equal-always-gloss-key-wrapper?`
+;     values, then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand.
+;     
+;     Otherwise, a known nothing.
 ;
 (define-imitation-simple-struct
   (equal-always-gloss-key-wrapper-dynamic-type?)
@@ -6430,7 +6541,8 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? equal-always-gloss-key-wrapper?)
+      #:inhabitant? equal-always-gloss-key-wrapper?
+      #:known-distinct? #t)
     (trivial)))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
@@ -6511,9 +6623,7 @@
 ;     clarify which parts of an s-expression's data should be
 ;     inspectable by a typical parser and which parts should be
 ;     considered subject to more unsensational changes (such as
-;     replacing strings with normalized strings) (TODO SMOOSH: Make
-;     these not be known to be discretely ordered; comparisons other
-;     than equality should be unknown.):
+;     replacing strings with normalized strings):
 ;
 ;     - (Done) Mutable strings, mutable byte strings, mutable boxes,
 ;       mutable vectors, prefab structs with mutable fields, and
@@ -6521,10 +6631,7 @@
 ;       way consistent with `equal-always?` and information-ordered in
 ;       a way consistent with `chaperone-of?`. (TODO SMOOSH: Is there
 ;       a way we can define these to be non-overlapping even with
-;       user-defined types?) (TODO SMOOSH: Currently these are
-;       indistinct with each other, unlike how we describe them here.
-;       Let's make them known to be distinct. Let's not make them
-;       known to be discretely ordered.)
+;       user-defined types?)
 ;
 ;     - (Done) Flvectors and fxvectors, all equatable and
 ;       distinguishable in a way consistent with `eq?`. (TODO: As of
@@ -6539,7 +6646,7 @@
 ;       compared to how the smoosh behavior works (a system of
 ;       file-path-like self-attested variants to achieve hierarchy, vs
 ;       a system of type composition operations like
-;       `dynamic-type-case-by-discrete-cases` where the hierarchy is
+;       `dynamic-type-case-by-distinct-cases` where the hierarchy is
 ;       represented in the use of multiple composition operations).)
 ;
 ;     - (Done) Symbols and keywords, which are all known to be
@@ -6587,15 +6694,15 @@
 ;
 ;       - (Done) Characters, immutable strings, and immutable byte
 ;         strings, which are known to be equal to themselves when
-;         they're `equal-always?` but not necessarily known to be
-;         distinct from each other. There are many possible ways to
-;         normalize and collate Unicode strings, and the only thing
-;         that's necessarily obvious across all of those is that
-;         identical Unicode scalar sequences are equal. Byte strings
-;         may seem easier to justify distinguishing from each other
-;         according to a byte-by-byte comparison, but the reader gives
-;         them a text representation that a programmer may refactor
-;         into similar Unicode text without realizing they've made a
+;         they're `equal-always?` but not known to be distinct from
+;         each other. There are many possible ways to normalize and
+;         collate Unicode strings, and the only thing that's
+;         necessarily obvious across all of those is that identical
+;         Unicode scalar sequences are equal. Byte strings may seem
+;         easier to justify distinguishing from each other according
+;         to a byte-by-byte comparison, but the reader gives them a
+;         text representation that a programmer may refactor into
+;         similar Unicode text without realizing they've made a
 ;         change.
 ;
 ;       - (Done) Regular expressions (`regexp?`) and compiled code
@@ -6634,7 +6741,7 @@
 ;         orderings are. Hash tables which use different comparison
 ;         functions or which have different sets of keys according to
 ;         their comparison functions are known to be distinct from
-;         each other(TODO SMOOSH: as they should be) and unrelated by
+;         each other (TODO SMOOSH: as they should be) and unrelated by
 ;         order (TODO SMOOSH: actually we want their order to be
 ;         unknown).
 ;
@@ -6649,9 +6756,7 @@
 ;       orderings and in a way that's consistent with a
 ;       `chaperone-of?` information ordering if the elements'
 ;       orderings are. A `just?` value and a `nothing?` value are
-;       known to be distinct from each other (TODO SMOOSH: as they
-;       should be ) and unrelated by order (TODO SMOOSH: actually we
-;       want their order to be unknown).
+;       known to be distinct from each other.
 ;
 ;     - (Done) `trivial?` values.
 ;
