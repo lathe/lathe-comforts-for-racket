@@ -1267,11 +1267,10 @@
   (dissect g (gloss _ atomic custom)
   /apply in-sequences (in-hash atomic)
     (expect custom (just custom) (list)
-    /for*/list
+    /for/list
       (
-        [ (variant custom-regress)
-          (in-sequences /gloss-iteration-sequence custom)]
-        [(mode custom-entry) (in-hash custom-regress)])
+        [ (variant custom-entry)
+          (in-sequences /gloss-iteration-sequence custom)])
       (dissect custom-entry (list gs g)
       /glossesque-sys-glossesque-iteration-sequence gs g))))
 
@@ -1316,7 +1315,7 @@
   /known /gloss
     (+ (hash-count atomic)
       (expect custom (just custom) 0
-        (for*/sum
+        (for/sum
           (
             [ (variant entry)
               (in-sequences /gloss-iteration-sequence custom)])
@@ -3358,6 +3357,8 @@
 ;     first operand.
 ;     
 ;     Otherwise, if `known-distinct?` is true, a known nothing.
+;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+;     checking `known-discrete?` as well for smooshes other than ==.)
 ;     
 ;     Otherwise, unknown.
 ;   <=, >=:
@@ -3375,6 +3376,9 @@
 ;     Same as the description of level 0, except that
 ;     `known-distinct?` is considered to be true and `known-discrete?`
 ;     is considered to be false regardless of the values given.
+;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+;     treating any values that are known to be distinct at level N as
+;     being known to be unrelated at level N+1.)
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
@@ -3480,6 +3484,10 @@
       #:known-discrete? known-discrete?)
     (smoosh-and-comparison-of-two-reports-censor report-1+
       #:known-distinct? #t
+      
+      ; TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+      ; treating any values that are known to be distinct at level N
+      ; as being known to be unrelated at level N+1.
       #:known-discrete? #f)))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
@@ -3500,6 +3508,8 @@
 ;     Same as the description of level 1 path-related, except that if
 ;     `known-distinct?` is false, a result that would be a known
 ;      nothing is instead unknown.
+;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+;     checking `known-discrete?` as well for smooshes other than ==.)
 ;   <=, >=:
 ;     Same as the description of level 1 path-related as a check,
 ;     except that if (`known-distinct?` and `known-discrete?`) is
@@ -3709,13 +3719,17 @@
     ))
 
 (define/own-contract
-  (make-expressly-custom-gloss-key-dynamic-type-impl-for-eq-atom
+  (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+    #:eq-matters? [eq-matters? #f]
+    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
-    #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?)
   (->*
     (#:inhabitant? (-> any/c boolean?))
-    (#:known-distinct? boolean? #:known-discrete? boolean?)
+    (
+      #:eq-matters? boolean?
+      #:ignore-chaperones? boolean?
+      #:known-distinct? boolean?)
     expressly-custom-gloss-key-dynamic-type-impl?)
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
@@ -3723,33 +3737,107 @@
     (fn self a
       (expect (inhabitant? a) #t
         (uninformative-custom-gloss-key-reports)
-      /constant-custom-gloss-key-reports
-        #:tagged-glossesque-sys-knowable
+      ; TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+      ; checking `known-discrete?` as well for smooshes other than ==.
+      ; In this place in the code, that means we'll have to add a
+      ; `known-discrete?` argument to
+      ; `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
+      ; and have the `path-related` parts of the gloss key results
+      ; vary based on that information.
+      /if eq-matters?
         ; TODO SMOOSH: These uses of `eq-atom-variant`,
         ; `eq-atom-glossesque-sys`, and
         ; `eq-indistinct-atom-glossesque-sys` are forward
         ; references. See if we can untangle them.
-        (tagged-glossesque-sys
-          (eq-atom-variant)
-          (if known-distinct?
-            (eq-atom-glossesque-sys)
-            (eq-indistinct-atom-glossesque-sys)))))
+        (w- known-distinct-reports
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable
+            (known /tagged-glossesque-sys
+              (eq-atom-variant)
+              (eq-atom-glossesque-sys)))
+        /if known-distinct?
+          known-distinct-reports
+        /stream*
+          (constant-custom-gloss-key-report
+            #:tagged-glossesque-sys-knowable
+            (known /tagged-glossesque-sys
+              (eq-atom-variant)
+              (eq-indistinct-atom-glossesque-sys)))
+          known-distinct-reports)
+      
+      ; TODO SMOOSH: These uses of `define-variant`,
+      ; `equal-always-atom-glossesque-sys`,
+      ; `chaperone-of-atom-glossesque-sys`,
+      ; `equal-always-indistinct-atom-glossesque-sys`, and
+      ; `chaperone-of-indistinct-atom-glossesque-sys` are forward
+      ; references. See if we can untangle them.
+      ;
+      ; TODO SMOOSH: Add arguments to
+      ; `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
+      ; and `define-variant` that let us specify debug names for these
+      ; variants and their dynamic types.
+      ;
+      /let ()
+        (define-variant variant)
+        (define-variant specific-variant specific-variant-value)
+      /w- known-distinct-reports
+        (constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable
+          (known /tagged-glossesque-sys
+            (variant)
+            (if ignore-chaperones?
+              (equal-always-atom-glossesque-sys)
+              (chaperone-of-atom-glossesque-sys))))
+      /if known-distinct?
+        known-distinct-reports
+      ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
+      ; isn't quite right for this purpose. In fact, is it even right
+      ; for its original purpose? We originally intended to have
+      ; variants be instances of it directly, but since we want most
+      ; pairs of distinct variants to be incomparable, while instances
+      ; of this are always distinguishable, it doesn't seem very
+      ; useful going forward. But we need some base case for gloss
+      ; keys, and right here we need a wrapper that compares its
+      ; wrapped value according to `equal-always?`.
+      /w- tag (specific-variant /equal-always-gloss-key-wrapper a)
+      /stream*
+        (constant-custom-gloss-key-report
+          #:tagged-glossesque-sys-knowable
+          (known /tagged-glossesque-sys
+            tag
+            (if ignore-chaperones?
+              (equal-always-indistinct-atom-glossesque-sys)
+              (chaperone-of-indistinct-atom-glossesque-sys))))
+        known-distinct-reports))
     
     ))
 
 (define/own-contract
   (make-expressly-smooshable-bundle-property-for-atom
-    #:ignore-chaperones? [ignore-chaperones? #f]
+    #:eq-matters? [eq-matters? #f]
+    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?
-    #:==? [==? (fn a b /equal-always? a b)]
-    #:hash-code [hash-code (fn a /equal-always-hash-code a)]
+    
+    #:==?
+    [ ==?
+      (if eq-matters?
+        (fn a b /eq? a b)
+        (fn a b /equal-always? a b))]
+    
+    #:hash-code
+    [ hash-code
+      (if eq-matters?
+        (fn a /eq-hash-code a)
+        (fn a /equal-always-hash-code a))]
+    
     #:hash-code-0 [hash-code-0 hash-code]
     #:hash-code-1+ [hash-code-1+ hash-code])
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (
+      #:eq-matters? boolean?
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
@@ -3786,45 +3874,15 @@
           (dissectfn (trivial)
             (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
               #:hash-code-0 hash-code-0
-              #:hash-code-1+ hash-code-1+))))))
-  prop:bundle)
-
-(define/own-contract
-  (make-expressly-smooshable-bundle-property-for-eq-atom
-    #:known-distinct? [known-distinct? #t]
-    #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?)
-  (->*
-    (#:inhabitant? (-> any/c boolean?))
-    (#:known-distinct? boolean? #:known-discrete? boolean?)
-    (struct-type-property/c trivial?))
-  (define-values (prop:bundle bundle? bundle-ref)
-    (make-struct-type-property
-      'expressly-smooshable-bundle-property-for-eq-atom
-      (fn value info
-        (expect value (trivial)
-          (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-eq-atom
-            "expected the property value to be a trivial? value"
-            "value" value)
-          value))
-      (list
-        (cons
-          (make-expressly-smooshable-bundle-property-for-atom
-            #:ignore-chaperones? #t
-            #:known-distinct? known-distinct?
-            #:known-discrete? known-discrete?
-            #:inhabitant? inhabitant?
-            #:==? (fn a b /eq? a b)
-            #:hash-code (fn a /eq-hash-code a))
-          (dissectfn (trivial)
-            (trivial)))
+              #:hash-code-1+ hash-code-1+)))
         (cons
           prop:expressly-custom-gloss-key-dynamic-type
           (dissectfn (trivial)
-            (make-expressly-custom-gloss-key-dynamic-type-impl-for-eq-atom
-              #:inhabitant? inhabitant?
+            (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+              #:eq-matters? eq-matters?
+              #:ignore-chaperones? ignore-chaperones?
               #:known-distinct? known-distinct?
-              #:known-discrete? known-discrete?))))))
+              #:inhabitant? inhabitant?))))))
   prop:bundle)
 
 ; Level 0+:
@@ -3835,6 +3893,11 @@
 ;     (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
+;     other than ==.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `flvector?` values, then unknown.
 ;     
@@ -3846,7 +3909,8 @@
   flvector-dynamic-type
   'flvector-dynamic-type (current-inspector) (auto-write)
   (#:prop
-    (make-expressly-smooshable-bundle-property-for-eq-atom
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:eq-matters? #t
       #:inhabitant? flvector?)
     (trivial)))
 
@@ -3858,6 +3922,11 @@
 ;     (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
+;     other than ==.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `fxvector?` values, then unknown.
 ;     
@@ -3869,7 +3938,8 @@
   fxvector-dynamic-type
   'fxvector-dynamic-type (current-inspector) (auto-write)
   (#:prop
-    (make-expressly-smooshable-bundle-property-for-eq-atom
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:eq-matters? #t
       #:inhabitant? fxvector?)
     (trivial)))
 
@@ -3886,6 +3956,11 @@
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
+;     other than ==.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `base-syntactic-atom?` values, then
 ;     unknown.
@@ -3912,6 +3987,11 @@
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
+;     other than ==.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `boolean?` values, then unknown.
 ;     
@@ -3937,6 +4017,11 @@
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we probably aren't currently
+;     censoring smooshes at levels 1+.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;
 (define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
   'char-dynamic-type (current-inspector) (auto-write)
@@ -3956,6 +4041,11 @@
 ;     operand (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we probably aren't currently
+;     censoring smooshes at levels 1+.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;
 (define-imitation-simple-struct (immutable-string-dynamic-type?)
   immutable-string-dynamic-type
@@ -3977,6 +4067,11 @@
 ;     operand (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we probably aren't currently
+;     censoring smooshes at levels 1+.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;
 (define-imitation-simple-struct (immutable-bytes-dynamic-type?)
   immutable-bytes-dynamic-type
@@ -4067,6 +4162,171 @@
     
     ))
 
+(define/own-contract (atom-chaperone-of=? a b)
+  (-> any/c any/c boolean?)
+  (and (chaperone-of? a b) (chaperone-of? b a)))
+
+; TODO SMOOSH: Export this.
+(define/own-contract (list-rev-append rev-past rest)
+  (-> list? any/c any/c)
+  (expect rev-past (cons elem rev-past) rest
+  /list-rev-append rev-past (cons elem rest)))
+
+; TODO SMOOSH: Clean up this interface, and export this.
+(define/own-contract (list-rem-first-maybe lst check?)
+  (-> list? (-> any/c boolean?) (maybe/c (list/c any/c list?)))
+  (w-loop next rev-past (list) lst lst
+    (expect lst (cons elem lst) (nothing)
+    /if (check? elem) (just /list elem (list-rev-append rev-past lst))
+    /next (cons elem rev-past) lst)))
+
+; TODO SMOOSH: Export this.
+(define/own-contract
+  (assoc-list-km-union-of-two-knowable ==? a b km-union-knowable)
+  (-> (-> any/c any/c boolean?) (listof pair?) (listof pair?)
+    (-> any/c maybe? maybe? (knowable/c maybe?))
+    (knowable/c (listof pair?)))
+  (w-loop next a a b b rev-result (list)
+    (w- entry-and-next
+      (fn a b rev-result k a-v-m b-v-m
+        (knowable-bind (km-union-knowable k a-v-m b-v-m) /fn v-m
+        /next a b
+          (expect v-m (just v) rev-result
+          /cons (cons k v) rev-result)))
+    /expect a (cons a-entry a)
+      (expect b (cons b-entry b)
+        (reverse rev-result)
+      /dissect b-entry (cons b-k b-v)
+      /entry-and-next a b rev-result b-k (nothing) (just b-v))
+    /dissect a-entry (cons a-k a-v)
+    /expect (list-rem-first-maybe b /dissectfn (cons b-k b-v) /==? a-k b-k)
+      (just b-entry-and-b)
+      (entry-and-next a b rev-result a-k (just a-v) (nothing))
+    /dissect b-entry-and-b (list (cons b-k b-v) b)
+    /entry-and-next a b rev-result a-k (just a-v) (just b-v))))
+
+; TODO SMOOSH: Export this.
+(define/own-contract (assoc-ref-maybe ==? a k)
+  (-> (-> any/c any/c boolean?) (listof pair?) any/c maybe?)
+  (expect (assf (fn a-k /==? k a-k) a) (cons a-k v) (nothing)
+  /just v))
+
+; TODO SMOOSH: Export this.
+(define/own-contract (assoc-set-maybe ==? a k m)
+  (-> (-> any/c any/c boolean?) (listof pair?) any/c maybe?
+    (listof pair?))
+  (w- finish
+    (fn k a
+      (expect m (just v) a
+      /cons (cons k v) a))
+  /expect
+    (list-rem-first-maybe a /dissectfn (cons a-k a-v) /==? k a-k)
+    (just a-entry-and-a)
+    (finish k a)
+  /dissect a-entry-and-a (list (cons a-k a-v) a)
+  /finish a-k a))
+
+; TODO SMOOSH: See if we'll use this.
+(define/own-contract (make-glossesque-sys-impl-for-assoc ==?)
+  (-> (-> any/c any/c boolean?) glossesque-sys-impl?)
+  (make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero-knowable
+    (fn gs
+      (known /list))
+    
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union-knowable
+      (assoc-list-km-union-of-two-knowable ==? a b /fn k a-v-m b-v-m
+        (km-union-knowable k a-v-m b-v-m)))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (known /assoc-ref-maybe ==? g k))
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m
+      (known /assoc-set-maybe ==? g m))
+    
+    #:glossesque-count
+    (fn gs g
+      (length g))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (sequence-map (dissectfn (cons k v) (values k v)) g))
+    
+    ))
+
+(define/own-contract
+  (make-glossesque-sys-impl-for-chaperone-of-atom gs-for-equal-always)
+  (-> glossesque-sys? glossesque-sys-impl?)
+  (make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero-knowable
+    (fn gs
+      (glossesque-sys-glossesque-union-of-zero-knowable
+        gs-for-equal-always))
+    
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union-knowable
+      (glossesque-sys-glossesque-km-union-of-two-knowable
+        gs-for-equal-always a b
+        (fn k a-bin-m b-bin-m
+          (maybe-m-union-of-two-knowable a-bin-m b-bin-m
+            (fn a-bin b-bin
+              (assoc-list-km-union-of-two-knowable atom-chaperone-of=?
+                a-bin
+                b-bin
+                (fn k a-v-m b-v-m
+                  (km-union-knowable k a-v-m b-v-m))))))))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (knowable-map
+        (glossesque-sys-glossesque-ref-maybe-knowable
+          gs-for-equal-always g k)
+      /fn bin-m
+        (maybe-bind bin-m /fn bin
+        /assoc-ref-maybe atom-chaperone-of=? bin k)))
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m
+      (knowable-bind
+        (glossesque-sys-glossesque-ref-maybe-knowable
+          gs-for-equal-always g k)
+      /fn bin-m
+      /w- bin
+        (mat bin-m (just bin) bin
+        /list)
+      /w- bin (assoc-set-maybe atom-chaperone-of=? bin m)
+      /w- bin-m (maybe-if (pair? bin) /fn bin)
+      /glossesque-sys-glossesque-set-maybe-knowable
+        gs-for-equal-always g k bin-m))
+    
+    #:glossesque-count
+    (fn gs g
+      (for/sum
+        (
+          [ (k bin)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence
+                gs-for-equal-always g))])
+        (length bin)))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (apply in-sequences
+        (for/list
+          (
+            [ (k bin)
+              (in-sequences
+                (glossesque-sys-glossesque-iteration-sequence
+                  gs-for-equal-always g))])
+          (sequence-map (dissectfn (cons _ v) (values k v)) bin))))
+    
+    ))
+
 (define-imitation-simple-struct (equal-always-atom-glossesque-sys?)
   equal-always-atom-glossesque-sys-unguarded
   'equal-always-atom-glossesque-sys (current-inspector) (auto-write)
@@ -4076,6 +4336,42 @@
 (define/own-contract (equal-always-atom-glossesque-sys)
   (-> glossesque-sys?)
   (equal-always-atom-glossesque-sys-unguarded))
+
+(define-imitation-simple-struct
+  (equal-always-indistinct-atom-glossesque-sys?)
+  equal-always-indistinct-atom-glossesque-sys-unguarded
+  'equal-always-indistinct-atom-glossesque-sys (current-inspector)
+  (auto-write)
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-indistinct
+    (fn a b /equal-always? a b)))
+
+(define/own-contract (equal-always-indistinct-atom-glossesque-sys)
+  (-> glossesque-sys?)
+  (equal-always-indistinct-atom-glossesque-sys-unguarded))
+
+(define-imitation-simple-struct (chaperone-of-atom-glossesque-sys?)
+  chaperone-of-atom-glossesque-sys-unguarded
+  'chaperone-of-atom-glossesque-sys (current-inspector) (auto-write)
+  (#:prop prop:glossesque-sys
+    (make-glossesque-sys-impl-for-chaperone-of-atom
+      (equal-always-atom-glossesque-sys))))
+
+(define/own-contract (chaperone-of-atom-glossesque-sys)
+  (-> glossesque-sys?)
+  (chaperone-of-atom-glossesque-sys-unguarded))
+
+(define-imitation-simple-struct
+  (chaperone-of-indistinct-atom-glossesque-sys?)
+  chaperone-of-indistinct-atom-glossesque-sys-unguarded
+  'chaperone-of-indistinct-atom-glossesque-sys (current-inspector)
+  (auto-write)
+  (#:prop prop:glossesque-sys
+    (make-glossesque-sys-impl-for-chaperone-of-atom
+      (equal-always-indistinct-atom-glossesque-sys))))
+
+(define/own-contract (chaperone-of-indistinct-atom-glossesque-sys)
+  (-> glossesque-sys?)
+  (chaperone-of-indistinct-atom-glossesque-sys-unguarded))
 
 (define-imitation-simple-struct (eq-atom-glossesque-sys?)
   eq-atom-glossesque-sys-unguarded
@@ -4181,6 +4477,8 @@
 ;     same smoosh" referring to this level-0 smoosh, and translating a
 ;     known nothing result that comes from a failed shallow comparison
 ;     into an unknown result if `known-distinct?` is false.
+;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+;     checking `known-discrete?` as well for smooshes other than ==.)
 ;   <=, >=:
 ;     Same as the description of level 1 path-related as a check, but
 ;     with "the same smoosh" referring to this level-0 check, and
@@ -4200,6 +4498,14 @@
 ;     Otherwise, if it shows they differ, and if we're doing ==, then
 ;     a known nothing. (This is the known nothing result that level 0
 ;     adjusts into an unknown result when `known-distinct?` is false.)
+;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+;     checking `known-discrete?` as well for smooshes other than ==.)
+;     (TODO SMOOSH DISCRETE: Well, not necessarily, this time. We
+;     should ideally be treating any values that are known to be
+;     distinct at level N as being known to be unrelated at level N+1,
+;     and right here we're describing a level N+1, so maybe we
+;     shouldn't actually be checking `known-discrete?` here. Are we
+;     doing what we should be doing already?)
 ;     
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
@@ -4319,6 +4625,13 @@
       ; results are unknown instead. When the info level is 0 *and*
       ; `known-distinct?` is false, the smoosh results and the check
       ; results are unknown instead.
+      ; (TODO SMOOSH DISCRETE: Keep this up to date as we resolve the
+      ; relevant TODO SMOOSH DISCRETE comments above. To wit, we need
+      ; to figure out whether or not we should be checking
+      ; `known-discrete?` as well for smooshes other than == and
+      ; whether levels 1+ need to treat `known-discrete?` as being
+      ; just true enough to rule out ordering between the previous
+      ; level's known-distinct values.)
       /if (not a-shallowly-equal-always-b?)
         (smoosh-and-comparison-of-two-reports-censor
           (false-smoosh-and-comparison-of-two-reports)
@@ -4397,6 +4710,8 @@
 ;     same smoosh" referring to this level-0 smoosh, and translating a
 ;     known nothing result that comes from a failed shallow comparison
 ;     into an unknown result if `known-distinct?` is false.
+;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+;     checking `known-discrete?` as well for smooshes other than ==.)
 ;   <=, >=:
 ;     Same as the description of level 1 path-related as a check, but
 ;     with "the same smoosh" referring to this level-0 check, and
@@ -4416,6 +4731,14 @@
 ;     Otherwise, if it shows they differ, and if we're doing ==, then
 ;     a known nothing. (This is the known nothing result that level 0
 ;     adjusts into an unknown result when `known-distinct?` is false.)
+;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
+;     checking `known-discrete?` as well for smooshes other than ==.)
+;     (TODO SMOOSH DISCRETE: Well, not necessarily, this time. We
+;     should ideally be treating any values that are known to be
+;     distinct at level N as being known to be unrelated at level N+1,
+;     and right here we're describing a level N+1, so maybe we
+;     shouldn't actually be checking `known-discrete?` here. Are we
+;     doing what we should be doing already?)
 ;     
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
@@ -4661,6 +4984,13 @@
       ; results are unknown instead. When the info level is 0 *and*
       ; `known-distinct?` is false, the smoosh results and the check
       ; results are unknown instead.
+      ; (TODO SMOOSH DISCRETE: Keep this up to date as we resolve the
+      ; relevant TODO SMOOSH DISCRETE comments above. To wit, we need
+      ; to figure out whether or not we should be checking
+      ; `known-discrete?` as well for smooshes other than == and
+      ; whether levels 1+ need to treat `known-discrete?` as being
+      ; just true enough to rule out ordering between the previous
+      ; level's known-distinct values.)
       /if (not a-shallowly-equal-always-b?)
         (smoosh-and-comparison-of-two-reports-censor
           (false-smoosh-and-comparison-of-two-reports)
@@ -5222,7 +5552,7 @@
                   (terminal-glossesque-sys)))))
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
-            (tagged-glossesque-sys
+            (known /tagged-glossesque-sys
               (non-nan-number-variant)
               (equal-always-atom-glossesque-sys)))))
       
@@ -5360,7 +5690,7 @@
           (uninformative-custom-gloss-key-reports)
         /constant-custom-gloss-key-reports
           #:tagged-glossesque-sys-knowable
-          (tagged-glossesque-sys
+          (known /tagged-glossesque-sys
             (non-nan-extflonum-variant)
             (equal-always-atom-glossesque-sys))))
       
@@ -5779,7 +6109,8 @@
         (fn any-dt /uninformative-dynamic-type))
       (list boolean? (fn any-dt /boolean-dynamic-type))
       (list char? (fn any-dt /char-dynamic-type))
-      (list immutable-string?
+      (list
+        immutable-string?
         (fn any-dt /immutable-string-dynamic-type))
       (list
         (fn v /and (bytes? v) (immutable? v))
@@ -6599,6 +6930,11 @@
 ;     operand (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
+;     other than ==.)
+;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
+;     any values that are known to be distinct at level N as being
+;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `equal-always-gloss-key-wrapper?`
 ;     values, then unknown.
@@ -6846,11 +7182,15 @@
 ;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
 ;       whether elements are path-related according to the "any"
-;       type's smoosh ordering.
+;       type's smoosh ordering. (TODO SMOOSH: Several of our smoosh
+;       behaviors will be incorrect in ways that affect this type's
+;       smooshing, as noted at various TODO SMOOSH DISCRETE comments.)
 ;
 ;     - (Done) `info-wrapper?` values, ordered according to whether
 ;       elements are related according to the "any" type's information
-;       ordering.
+;       ordering. (TODO SMOOSH: Several of our smoosh behaviors will
+;       will be incorrect in ways that affect this type's smooshing,
+;       as noted at various TODO SMOOSH DISCRETE comments.)
 ;
 ;     - (Done) `gloss?` values, ordered according to the keys' and
 ;       values' smoosh orderings. `gloss?` values which have
@@ -6881,6 +7221,22 @@
 ;
 ;     - (Done) `info-wrapper-variant?` (a value constructed by
 ;       `info-wrapper-variant`)
+;
+;     - (Done) An inhabitant of any of various other variant types
+;       created by
+;       `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
+;       when its `#:eq-matters?` argument is `#f` or missing.
+;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
+;       between the `nothing-dynamic-type?`'s variant values and the
+;       `just-dynamic-type?`'s variant values. (Actually, the latter
+;       variant values don't exist yet.) These should be known to be
+;       distinct from each other.) (TODO SMOOSH: We haven't
+;       implemented proper smooshing behavior between the variant
+;       values of `base-mutable-readable-dynamic-type?`,
+;       `flvector-dynamic-type?`, `fxvector-dynamic-type?`,
+;       `base-syntactic-atom-dynamic-type?`, `cons-dynamic-type?`, and
+;       `base-literal-dynamic-type?`. These should be known to be
+;       distinct from each other.)
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
@@ -6979,6 +7335,11 @@
 ;
 ;       - `any-dynamic-type?`
 ;
+;       - A dynamic type of an inhabitant of any of various other
+;         variant types created by
+;         `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
+;         when its `#:eq-matters?` argument is `#f` or missing.
+;
 ;   - Types defined by Lathe Comforts even if this smooshing framework
 ;     doesn't use them. The following are indistinct from each other
 ;     and from the other types listed above:
@@ -6987,12 +7348,18 @@
 ;       made a comprehensive list here yet.
 
 ; TODO SMOOSH: Implement usability as a `gloss?` key for all our
-; smooshable values. Curiously, we have been implementing
-; smooshability as though values return unknown results when smooshed
-; with values they don't recognize, but `gloss?` keys rely on values
-; knowing how to identify themselves by a dynamic type tag that can be
-; distinguished from other tags. We may have some contradictory
-; thoughts to iron out here.
+; smooshable values.
+;
+; We've now made at least a first attempt at custom gloss key behavior
+; for all types except `knowable-dynamic-type?` and the ones that use
+; `make-expressly-smooshable-bundle-property-from-list-isomorphism`.
+;
+; Curiously, we have been implementing smooshability as though values
+; return unknown results when smooshed with values they don't
+; recognize, but `gloss?` keys rely on values knowing how to identify
+; themselves by a dynamic type tag that can be distinguished from
+; other tags. We may have some contradictory thoughts to iron out
+; here.
 ;
 ; It turns out this is rather similar to what we're doing with
 ; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`.
