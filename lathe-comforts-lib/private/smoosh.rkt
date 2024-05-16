@@ -3352,7 +3352,7 @@
         (knowable-bind kpmk /fn kpm
         /knowable-if (just? kpm) /fn kpm)))
   /if (not known-distinct?)
-    (smoosh-and-comparison-of-two-report-map report
+    (smoosh-and-comparison-of-two-reports-map reports
       #:on-check-result-knowable-promise kp->known-true
       
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -3725,51 +3725,66 @@
       ; `equal-always-indistinct-atom-glossesque-sys`, and
       ; `chaperone-of-indistinct-atom-glossesque-sys` are forward
       ; references. See if we can untangle them.
-      /w- distinct-tgs-k
+      /w- distinct-0-tgs-k
         (if eq-matters?
           (known /tagged-glossesque-sys
             (eq-atom-variant)
             (eq-atom-glossesque-sys))
           (known /tagged-glossesque-sys
             (variant)
-            (if ignore-chaperones?
-              (equal-always-atom-glossesque-sys)
-              (chaperone-of-atom-glossesque-sys))))
-      /w- indistinct-tgs-k
+            (equal-always-atom-glossesque-sys)))
+      /w- distinct-1+-tgs-k
+        (if (or eq-matters? ignore-chaperones?)
+          distinct-0-tgs-k
+          (known /tagged-glossesque-sys
+            (variant)
+            (chaperone-of-atom-glossesque-sys)))
+      ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
+      ; isn't quite right for this purpose. In fact, is it even right
+      ; for its original purpose? We originally intended to have
+      ; variants be instances of it directly, but since we want most
+      ; pairs of distinct variants to be incomparable, while instances
+      ; of this are always distinguishable, it doesn't seem very
+      ; useful going forward. But we need some base case for gloss
+      ; keys, and right here we need a wrapper that compares its
+      ; wrapped value according to `equal-always?`.
+      /w- indistinct-tag
+        (specific-variant /equal-always-gloss-key-wrapper a)
+      /w- indistinct-0-tgs-k
         (if eq-matters?
           (known /tagged-glossesque-sys
             (eq-indistinct-atom-variant)
             (eq-indistinct-atom-glossesque-sys))
           (known /tagged-glossesque-sys
-            ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
-            ; isn't quite right for this purpose. In fact, is it even right
-            ; for its original purpose? We originally intended to have
-            ; variants be instances of it directly, but since we want most
-            ; pairs of distinct variants to be incomparable, while instances
-            ; of this are always distinguishable, it doesn't seem very
-            ; useful going forward. But we need some base case for gloss
-            ; keys, and right here we need a wrapper that compares its
-            ; wrapped value according to `equal-always?`.
-            (specific-variant /equal-always-gloss-key-wrapper a)
-            (if ignore-chaperones?
-              (equal-always-indistinct-atom-glossesque-sys)
-              (chaperone-of-indistinct-atom-glossesque-sys))))
-      /w- distinct-reports
-        (constant-custom-gloss-key-reports
-          #:tagged-glossesque-sys-knowable distinct-tgs-k)
-      /w- indistinct-reports
-        (constant-custom-gloss-key-reports
-          #:tagged-glossesque-sys-knowable indistinct-tgs-k)
+            indistinct-tag
+            (equal-always-indistinct-atom-glossesque-sys)))
+      /w- indistinct-1+-tgs-k
+        (if (or eq-matters? ignore-chaperones?)
+          indistinct-0-tgs-k
+          (known /tagged-glossesque-sys
+            indistinct-tag
+            (chaperone-of-indistinct-atom-glossesque-sys)))
       /if (and known-distinct? known-discrete?)
-        distinct-reports
+        (stream*
+          (constant-custom-gloss-key-report
+            #:tagged-glossesque-sys-knowable distinct-0-tgs-k)
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable distinct-1+-tgs-k))
       /if (not known-distinct?)
-        indistinct-reports
+        (stream*
+          (constant-custom-gloss-key-report
+            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable indistinct-1+-tgs-k))
       /stream*
-        (custom-gloss-key-report-map indistinct-reports
+        (custom-gloss-key-report-map
+          (constant-custom-gloss-key-report
+            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
           #:on-==-tagged-glossesque-sys-knowable
           (fn tgs-k
-            distinct-tgs-k))
-        distinct-reports))
+            distinct-0-tgs-k))
+        (constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable distinct-1+-tgs-k)))
     
     ))
 
@@ -5267,11 +5282,12 @@
     
     ))
 
-; TODO SMOOSH: See if we should export this. We probably should, but
-; do we need to export it as just a constructor function rather than
+; TODO SMOOSH: See if we should export these. We probably should, but
+; do we need to export them as just constructor functions rather than
 ; having `match` capability? Do we need to export `eq-atom-variant?`
-; along with it?
+; and `eq-indistinct-atom-variant?` along with them?
 (define-variant eq-atom-variant)
+(define-variant eq-indistinct-atom-variant)
 
 (define-variant non-nan-number-variant)
 (define-variant non-nan-real-number-variant)
@@ -5879,7 +5895,7 @@
   (dynamic-type-case-by-cases
     name
     #:known-distinct? [known-distinct? #t]
-    #:known-discrete? [known-dicrete? #f]
+    #:known-discrete? [known-discrete? #f]
     cases)
   (->*
     (symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c))))
@@ -7090,6 +7106,9 @@
 ;     - (Done) `eq-atom-variant?` (a value constructed by
 ;       `eq-atom-variant`)
 ;
+;     - (Done) `eq-indistinct-atom-variant?` (a value constructed by
+;       `eq-indistinct-atom-variant`)
+;
 ;     - (Done) `non-nan-number-variant?` (a value constructed by
 ;       `non-nan-number-variant`)
 ;
@@ -7150,6 +7169,10 @@
 ;
 ;       - `eq-atom-variant-dynamic-type?` (the dynamic type obtained
 ;         from a value constructed by `eq-atom-variant`)
+;
+;       - `eq-indistinct-atom-variant-dynamic-type?` (the dynamic type
+;         obtained from a value constructed by
+;         `eq-indistinct-atom-variant`)
 ;
 ;       - `non-nan-number-variant-dynamic-type?` (the dynamic type
 ;         obtained from a value constructed by
