@@ -223,8 +223,7 @@
   non-nan-number?
   non-nan-extflonum?
   nan-extflonum?
-  dynamic-type-case-by-indistinct-cases
-  dynamic-type-case-by-discrete-cases
+  dynamic-type-case-by-cases
   gloss-ref
   gloss-set
   make-gloss
@@ -3330,6 +3329,51 @@
   (sequence-zip-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
+; TODO SMOOSH: Consider exporting this. If we do, find a better name
+; for it.
+(define/own-contract
+  (smoosh-and-comparison-of-two-reports-censor reports
+    #:known-distinct? known-distinct?
+    #:known-discrete? known-discrete?)
+  (->
+    (sequence/c smoosh-and-comparison-of-two-report?)
+    #:known-distinct? boolean?
+    #:known-discrete? boolean?
+    (sequence/c smoosh-and-comparison-of-two-report?))
+  (if (and known-distinct? known-discrete?) reports
+  /w- kp->known-true
+    (fn kp
+      (promise-map kp /fn k
+        (knowable-bind k /fn result
+        /knowable-if result /fn result)))
+  /w- kpmkp->known-true
+    (fn kpmkp
+      (promise-map kpmkp /fn kpmk
+        (knowable-bind kpmk /fn kpm
+        /knowable-if (just? kpm) /fn kpm)))
+  /if (not known-distinct?)
+    (smoosh-and-comparison-of-two-report-map report
+      #:on-check-result-knowable-promise kp->known-true
+      
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      kpmkp->known-true
+      
+      )
+  /dissect reports (app sequence->stream /stream* report-0 report-1+)
+  /stream*
+    (smoosh-and-comparison-of-two-report-map report-0
+      #:on-check-result-knowable-promise kp->known-true
+      
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      kpmkp->known-true
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (fn kpmkp
+        kpmkp)
+      
+      )
+    report-1+))
+
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for simple values that can be compared by a simple
 ; equivalence comparison function.
@@ -3349,7 +3393,18 @@
 ; sense that when `==?` is true, `equal-always?` is true.
 ;
 ; Level 0:
-;   path-related, join, meet, ==:
+;   <=, >=, path-related, join, meet:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands pass the given `==?` function, the
+;     first operand (or, for a check, `#t`).
+;     
+;     Otherwise, if (`known-distinct?` and `known-discrete?`) is true,
+;     a known nothing (or, for a check, `#f`).
+;     
+;     Otherwise, unknown.
+;   ==:
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
@@ -3357,28 +3412,13 @@
 ;     first operand.
 ;     
 ;     Otherwise, if `known-distinct?` is true, a known nothing.
-;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-;     checking `known-discrete?` as well for smooshes other than ==.)
-;     
-;     Otherwise, unknown.
-;   <=, >=:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
-;     
-;     Otherwise, if the operands pass the given `==?` function, `#t`.
-;     
-;     Otherwise, if `known-distinct?` and `known-discrete?` are true,
-;     `#f`.
 ;     
 ;     Otherwise, unknown.
 ; Level 1+:
-;   <=, >=, path-related, join, meet, ==:
-;     Same as the description of level 0, except that
-;     `known-distinct?` is considered to be true and `known-discrete?`
-;     is considered to be false regardless of the values given.
-;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-;     treating any values that are known to be distinct at level N as
-;     being known to be unrelated at level N+1.)
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
@@ -3407,88 +3447,14 @@
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (w- ==?-kp
-        (delay
+      (smoosh-and-comparison-of-two-reports-censor
+        #:known-distinct? known-distinct?
+        #:known-discrete? known-discrete?
+        (constant-smoosh-and-comparison-of-two-reports /delay
           (knowable-if (not /and (inhabitant? a) (inhabitant? b)) /fn
-            (==? a b)))
-      /w- ==-known-true?-kp
-        (promise-map ==?-kp /fn ==?-k
-          (knowable-bind ==?-k /fn ==? /knowable-if ==? /fn #t))
-      /w- ->mkp
-        (fn kp
-          (promise-map kp /fn k
-            (knowable-map k /fn result
-              (maybe-if result /fn /delay/strict /known a))))
-      /w- ->thunk
-        (fn result
-          (lambda (list) result))
-      /w- ==?-mkp (->mkp ==?-kp)
-      /w- report-0
-        (if (and known-distinct? known-discrete?)
-          (constant-smoosh-and-comparison-of-two-report ==?-mkp)
-        /if known-distinct?
-          (smoosh-and-comparison-of-two-report-zip-map (list)
-            #:on-check-result-knowable-promise
-            (->thunk ==-known-true?-kp)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (->thunk ==?-mkp))
-          (constant-smoosh-and-comparison-of-two-report
-            (->mkp ==-known-true?-kp)))
-      /stream* report-0
-        (constant-smoosh-and-comparison-of-two-reports ==?-mkp)))
+            (maybe-if (==? a b) /fn /delay/strict /known a)))))
     
     ))
-
-; TODO SMOOSH: Consider exporting this. If we do, find a better name
-; for it.
-(define/own-contract
-  (smoosh-and-comparison-of-two-report-censor report
-    #:known-distinct? known-distinct?
-    #:known-discrete? known-discrete?)
-  (->
-    smoosh-and-comparison-of-two-report?
-    #:known-distinct? boolean?
-    #:known-discrete? boolean?
-    smoosh-and-comparison-of-two-report?)
-  (if (and known-distinct? known-discrete?) report
-  /smoosh-and-comparison-of-two-report-map report
-    #:on-check-result-knowable-promise
-    (fn kp
-      (promise-map kp /fn k
-        (knowable-bind k /fn result
-          (knowable-if (or result known-distinct?) /fn result))))
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (fn kpmkp
-      (promise-map kpmkp /fn kpmk
-        (knowable-bind kpmk /fn kpm
-          (knowable-if (just? kpm) /fn kpm))))
-    #:on-==-knowable-promise-maybe-knowable-promise
-    (fn kpmkp
-      kpmkp)))
-
-; TODO SMOOSH: Consider exporting this. If we do, find a better name
-; for it.
-(define/own-contract
-  (smoosh-and-comparison-of-two-reports-censor reports
-    #:known-distinct? known-distinct?
-    #:known-discrete? known-discrete?)
-  (->
-    (sequence/c smoosh-and-comparison-of-two-report?)
-    #:known-distinct? boolean?
-    #:known-discrete? boolean?
-    (sequence/c smoosh-and-comparison-of-two-report?))
-  (dissect reports (app sequence->stream /stream* report-0 report-1+)
-  /stream*
-    (smoosh-and-comparison-of-two-report-censor report-0
-      #:known-distinct? known-distinct?
-      #:known-discrete? known-discrete?)
-    (smoosh-and-comparison-of-two-reports-censor report-1+
-      #:known-distinct? #t
-      
-      ; TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-      ; treating any values that are known to be distinct at level N
-      ; as being known to be unrelated at level N+1.
-      #:known-discrete? #f)))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for mutable tuple data structures and their
@@ -3504,23 +3470,22 @@
 ; comparisons are unknown.)
 ;
 ; Level 0:
-;   path-related, join, meet, ==:
-;     Same as the description of level 1 path-related, except that if
-;     `known-distinct?` is false, a result that would be a known
-;      nothing is instead unknown.
-;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-;     checking `known-discrete?` as well for smooshes other than ==.)
-;   <=, >=:
-;     Same as the description of level 1 path-related as a check,
-;     except that if (`known-distinct?` and `known-discrete?`) is
-;     false, a result that would be a known `#f` is instead unknown.
+;   <=, >=, path-related, join, meet:
+;     Same as the description of level 1 path-related (as a check when
+;     applicable), except that if `known-discrete?` is false, a result
+;     that would be a known nothing is instead unknown.
+;   ==:
+;     Same as the description of level 1 path-related.
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if the operands are not `equal-always?`, then a known
-;     nothing.
+;     Otherwise, if the operands are not `equal-always?` and
+;     `known-distinct?` is true, then a known nothing.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then
+;     unknown.
 ;     
 ;     Otherwise, if any operand counts as an acceptable result, then
 ;     the first such operand.
@@ -3554,8 +3519,11 @@
 ;     If the operands do not both pass the given `inhabitant?`
 ;     predicate, then unknown.
 ;     
-;     Otherwise, if the operands are not `equal-always?`, then a known
-;     `#f`.
+;     Otherwise, if the operands are not `equal-always?` and
+;     `known-distinct?` is true, then a known `#f`.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then
+;     unknown.
 ;     
 ;     Otherwise, if the element we're proposing to be greater is
 ;     `chaperone-of?` the other one, then a known `#t`.
@@ -3605,7 +3573,10 @@
       /expect (inhabitant? b) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
       /if (not /equal-always? a b)
-        (false-smoosh-and-comparison-of-two-reports)
+        (smoosh-and-comparison-of-two-reports-censor
+          #:known-distinct? known-distinct?
+          #:known-discrete? known-discrete?
+          (false-smoosh-and-comparison-of-two-reports))
       /w- a-chaperone-of-b?-promise (delay /chaperone-of? a b)
       /w- b-chaperone-of-a?-promise (delay /chaperone-of? b a)
       ; Given two `equal-always?` inhabitants, this checks whether
@@ -3653,15 +3624,12 @@
         (fn v
           #t)
       /stream*
-        (smoosh-and-comparison-of-two-report-censor
-          #:known-distinct? known-distinct?
-          #:known-discrete? known-discrete?
-          (smoosh-and-comparison-of-two-report-zip-map (list)
-            #:on-check-result-knowable-promise
-            (on-check-result-knowable-promise #f #f)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (on-smoosh-result-knowable-promise-maybe-knowable-promise
-              path-related-acceptable-result?)))
+        (smoosh-and-comparison-of-two-report-zip-map (list)
+          #:on-check-result-knowable-promise
+          (on-check-result-knowable-promise #f #f)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            path-related-acceptable-result?))
         (smoosh-and-comparison-of-two-report-zip-map (list)
           #:on-<=?-knowable-promise
           (on-check-result-knowable-promise #t #f)
@@ -3723,92 +3691,85 @@
     #:eq-matters? [eq-matters? #f]
     #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?)
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (
       #:eq-matters? boolean?
       #:ignore-chaperones? boolean?
-      #:known-distinct? boolean?)
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?)
     expressly-custom-gloss-key-dynamic-type-impl?)
+  ; TODO SMOOSH: These uses of `define-variant` are forward
+  ; references. See if we can untangle them.
+  ;
+  ; TODO SMOOSH: Add arguments to
+  ; `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
+  ; and `define-variant` that let us specify debug names for these
+  ; variants and their dynamic types.
+  ;
+  (define-variant variant)
+  (define-variant specific-variant specific-variant-value)
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
     #:get-custom-gloss-key-reports
     (fn self a
       (expect (inhabitant? a) #t
         (uninformative-custom-gloss-key-reports)
-      ; TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-      ; checking `known-discrete?` as well for smooshes other than ==.
-      ; In this place in the code, that means we'll have to add a
-      ; `known-discrete?` argument to
-      ; `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
-      ; and have the `path-related` parts of the gloss key results
-      ; vary based on that information.
-      /if eq-matters?
-        ; TODO SMOOSH: These uses of `eq-atom-variant`,
-        ; `eq-atom-glossesque-sys`, and
-        ; `eq-indistinct-atom-glossesque-sys` are forward
-        ; references. See if we can untangle them.
-        (w- known-distinct-reports
-          (constant-custom-gloss-key-reports
-            #:tagged-glossesque-sys-knowable
-            (known /tagged-glossesque-sys
-              (eq-atom-variant)
-              (eq-atom-glossesque-sys)))
-        /if known-distinct?
-          known-distinct-reports
-        /stream*
-          (constant-custom-gloss-key-report
-            #:tagged-glossesque-sys-knowable
-            (known /tagged-glossesque-sys
-              (eq-atom-variant)
-              (eq-indistinct-atom-glossesque-sys)))
-          known-distinct-reports)
-      
-      ; TODO SMOOSH: These uses of `define-variant`,
-      ; `equal-always-atom-glossesque-sys`,
+      ; TODO SMOOSH: These uses of `eq-atom-variant`,
+      ; `eq-atom-glossesque-sys`, `equal-always-atom-glossesque-sys`,
       ; `chaperone-of-atom-glossesque-sys`,
+      ; `eq-indistinct-atom-variant`,
+      ; `eq-indistinct-atom-glossesque-sys`,
       ; `equal-always-indistinct-atom-glossesque-sys`, and
       ; `chaperone-of-indistinct-atom-glossesque-sys` are forward
       ; references. See if we can untangle them.
-      ;
-      ; TODO SMOOSH: Add arguments to
-      ; `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
-      ; and `define-variant` that let us specify debug names for these
-      ; variants and their dynamic types.
-      ;
-      /let ()
-        (define-variant variant)
-        (define-variant specific-variant specific-variant-value)
-      /w- known-distinct-reports
-        (constant-custom-gloss-key-reports
-          #:tagged-glossesque-sys-knowable
+      /w- distinct-tgs-k
+        (if eq-matters?
+          (known /tagged-glossesque-sys
+            (eq-atom-variant)
+            (eq-atom-glossesque-sys))
           (known /tagged-glossesque-sys
             (variant)
             (if ignore-chaperones?
               (equal-always-atom-glossesque-sys)
               (chaperone-of-atom-glossesque-sys))))
-      /if known-distinct?
-        known-distinct-reports
-      ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
-      ; isn't quite right for this purpose. In fact, is it even right
-      ; for its original purpose? We originally intended to have
-      ; variants be instances of it directly, but since we want most
-      ; pairs of distinct variants to be incomparable, while instances
-      ; of this are always distinguishable, it doesn't seem very
-      ; useful going forward. But we need some base case for gloss
-      ; keys, and right here we need a wrapper that compares its
-      ; wrapped value according to `equal-always?`.
-      /w- tag (specific-variant /equal-always-gloss-key-wrapper a)
-      /stream*
-        (constant-custom-gloss-key-report
-          #:tagged-glossesque-sys-knowable
+      /w- indistinct-tgs-k
+        (if eq-matters?
           (known /tagged-glossesque-sys
-            tag
+            (eq-indistinct-atom-variant)
+            (eq-indistinct-atom-glossesque-sys))
+          (known /tagged-glossesque-sys
+            ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
+            ; isn't quite right for this purpose. In fact, is it even right
+            ; for its original purpose? We originally intended to have
+            ; variants be instances of it directly, but since we want most
+            ; pairs of distinct variants to be incomparable, while instances
+            ; of this are always distinguishable, it doesn't seem very
+            ; useful going forward. But we need some base case for gloss
+            ; keys, and right here we need a wrapper that compares its
+            ; wrapped value according to `equal-always?`.
+            (specific-variant /equal-always-gloss-key-wrapper a)
             (if ignore-chaperones?
               (equal-always-indistinct-atom-glossesque-sys)
               (chaperone-of-indistinct-atom-glossesque-sys))))
-        known-distinct-reports))
+      /w- distinct-reports
+        (constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable distinct-tgs-k)
+      /w- indistinct-reports
+        (constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable indistinct-tgs-k)
+      /if (and known-distinct? known-discrete?)
+        distinct-reports
+      /if (not known-distinct?)
+        indistinct-reports
+      /stream*
+        (custom-gloss-key-report-map indistinct-reports
+          #:on-==-tagged-glossesque-sys-knowable
+          (fn tgs-k
+            distinct-tgs-k))
+        distinct-reports))
     
     ))
 
@@ -3882,10 +3843,11 @@
               #:eq-matters? eq-matters?
               #:ignore-chaperones? ignore-chaperones?
               #:known-distinct? known-distinct?
+              #:known-discrete? known-discrete?
               #:inhabitant? inhabitant?))))))
   prop:bundle)
 
-; Level 0+:
+; Level 0:
 ;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `flvector?` values, then unknown.
 ;     
@@ -3893,17 +3855,17 @@
 ;     (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
-;     other than ==.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `flvector?` values, then unknown.
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand.
 ;     
 ;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (flvector-dynamic-type?)
   flvector-dynamic-type
@@ -3914,7 +3876,7 @@
       #:inhabitant? flvector?)
     (trivial)))
 
-; Level 0+:
+; Level 0:
 ;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `fxvector?` values, then unknown.
 ;     
@@ -3922,17 +3884,17 @@
 ;     (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
-;     other than ==.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `fxvector?` values, then unknown.
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand.
 ;     
 ;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (fxvector-dynamic-type?)
   fxvector-dynamic-type
@@ -3947,7 +3909,7 @@
   (-> any/c boolean?)
   (or (symbol? v) (keyword? v) (null? v)))
 
-; Level 0+:
+; Level 0:
 ;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `base-syntactic-atom?` values, then
 ;     unknown.
@@ -3956,11 +3918,6 @@
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
-;     other than ==.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `base-syntactic-atom?` values, then
 ;     unknown.
@@ -3968,6 +3925,11 @@
 ;     If the operands are `equal-always?`, then the first operand.
 ;     
 ;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (base-syntactic-atom-dynamic-type?)
   base-syntactic-atom-dynamic-type
@@ -3979,7 +3941,7 @@
       #:inhabitant? base-syntactic-atom?)
     (trivial)))
 
-; Level 0+:
+; Level 0:
 ;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `boolean?` values, then unknown.
 ;     
@@ -3987,17 +3949,17 @@
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
-;     other than ==.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `boolean?` values, then unknown.
 ;     
 ;     If the operands are `equal-always?`, then the first operand.
 ;     
 ;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (boolean-dynamic-type?)
   boolean-dynamic-type
@@ -4017,11 +3979,6 @@
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we probably aren't currently
-;     censoring smooshes at levels 1+.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;
 (define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
   'char-dynamic-type (current-inspector) (auto-write)
@@ -4041,11 +3998,6 @@
 ;     operand (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we probably aren't currently
-;     censoring smooshes at levels 1+.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;
 (define-imitation-simple-struct (immutable-string-dynamic-type?)
   immutable-string-dynamic-type
@@ -4067,11 +4019,6 @@
 ;     operand (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we probably aren't currently
-;     censoring smooshes at levels 1+.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;
 (define-imitation-simple-struct (immutable-bytes-dynamic-type?)
   immutable-bytes-dynamic-type
@@ -4472,19 +4419,14 @@
 ; abstraction when it is possible to satisfy this condition.
 ;
 ; Level 0:
-;   path-related, join, meet, ==:
-;     Same as the description of level 1 path-related, but with "the
-;     same smoosh" referring to this level-0 smoosh, and translating a
-;     known nothing result that comes from a failed shallow comparison
-;     into an unknown result if `known-distinct?` is false.
-;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-;     checking `known-discrete?` as well for smooshes other than ==.)
-;   <=, >=:
-;     Same as the description of level 1 path-related as a check, but
-;     with "the same smoosh" referring to this level-0 check, and
-;     translating an unknown result that comes from a failed shallow
-;     comparison into an known `#f` if (`known-distinct?` and
-;     `known-discrete?`) is true.
+;   <=, >=, path-related, join, meet:
+;     Same as the description of level 1 path-related (as a check when
+;     applicable), but with "the same smoosh" referring to this
+;     level-0 smoosh or check, and translating a known nothing result
+;     that comes from a failed shallow comparison into an unknown
+;     result if `known-discrete?` is false.
+;   ==:
+;     Same as the description of level 1 path-related.
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
@@ -4495,17 +4437,10 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, and if we're doing ==, then
-;     a known nothing. (This is the known nothing result that level 0
-;     adjusts into an unknown result when `known-distinct?` is false.)
-;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-;     checking `known-discrete?` as well for smooshes other than ==.)
-;     (TODO SMOOSH DISCRETE: Well, not necessarily, this time. We
-;     should ideally be treating any values that are known to be
-;     distinct at level N as being known to be unrelated at level N+1,
-;     and right here we're describing a level N+1, so maybe we
-;     shouldn't actually be checking `known-discrete?` here. Are we
-;     doing what we should be doing already?)
+;     Otherwise, if it shows they differ and `known-distinct?` is
+;     true, then a known nothing. (This is the known nothing result
+;     that level 0 smooshes and checks other than == adjust into an
+;     unknown result when `known-discrete?` is false.)
 ;     
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
@@ -4531,9 +4466,10 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, then unknown. (This is the
-;     unknown result that level 0 adjusts into a known nothing result
-;     when (`known-distinct?` and `known-discrete?`) is true.)
+;     Otherwise, if it shows they differ and `known-distinct?` is
+;     true, then a known `#f`.
+;     
+;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
 ;     under the same smoosh include a known `#f`, then a known `#f`.
@@ -4620,23 +4556,14 @@
         (known a-shallowly-equal-always-b?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       ; Otherwise, if it returns `#f`, we return a known nothing (when
-      ; doing a smoosh, or `#f` when doing a check). When the info
-      ; level is nonzero or `known-discrete?` is false, the check
-      ; results are unknown instead. When the info level is 0 *and*
-      ; `known-distinct?` is false, the smoosh results and the check
-      ; results are unknown instead.
-      ; (TODO SMOOSH DISCRETE: Keep this up to date as we resolve the
-      ; relevant TODO SMOOSH DISCRETE comments above. To wit, we need
-      ; to figure out whether or not we should be checking
-      ; `known-discrete?` as well for smooshes other than == and
-      ; whether levels 1+ need to treat `known-discrete?` as being
-      ; just true enough to rule out ordering between the previous
-      ; level's known-distinct values.)
+      ; doing a smoosh, or `#f` when doing a check). This is sometimes
+      ; adjusted to an unknown result according to `known-distinct?`
+      ; and `known-discrete?`.
       /if (not a-shallowly-equal-always-b?)
         (smoosh-and-comparison-of-two-reports-censor
-          (false-smoosh-and-comparison-of-two-reports)
           #:known-distinct? known-distinct?
-          #:known-discrete? known-discrete?)
+          #:known-discrete? known-discrete?
+          (false-smoosh-and-comparison-of-two-reports))
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /w- b-list (->list b)
@@ -4705,19 +4632,14 @@
 ; impersonator wrappers or interposing chaperone wrappers.
 ;
 ; Level 0:
-;   path-related, join, meet, ==:
-;     Same as the description of level 1 path-related, but with "the
-;     same smoosh" referring to this level-0 smoosh, and translating a
-;     known nothing result that comes from a failed shallow comparison
-;     into an unknown result if `known-distinct?` is false.
-;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-;     checking `known-discrete?` as well for smooshes other than ==.)
-;   <=, >=:
-;     Same as the description of level 1 path-related as a check, but
-;     with "the same smoosh" referring to this level-0 check, and
-;     translating an unknown result that comes from a failed shallow
-;     comparison into an known `#f` if (`known-distinct?` and
-;     `known-discrete?`) is true.
+;   <=, >=, path-related, join, meet:
+;     Same as the description of level 1 path-related (as a check when
+;     applicable), but with "the same smoosh" referring to this
+;     level-0 smoosh or check, and translating a known nothing result
+;     that comes from a failed shallow comparison into an unknown
+;     result if `known-discrete?` is false.
+;   ==:
+;     Same as the description of level 1 path-related.
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both pass the given `inhabitant?`
@@ -4728,17 +4650,10 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, and if we're doing ==, then
-;     a known nothing. (This is the known nothing result that level 0
-;     adjusts into an unknown result when `known-distinct?` is false.)
-;     (TODO SMOOSH DISCRETE: Hmm, actually, we should ideally be
-;     checking `known-discrete?` as well for smooshes other than ==.)
-;     (TODO SMOOSH DISCRETE: Well, not necessarily, this time. We
-;     should ideally be treating any values that are known to be
-;     distinct at level N as being known to be unrelated at level N+1,
-;     and right here we're describing a level N+1, so maybe we
-;     shouldn't actually be checking `known-discrete?` here. Are we
-;     doing what we should be doing already?)
+;     Otherwise, if it shows they differ and `known-distinct?` is
+;     true, then a known nothing. (This is the known nothing result
+;     that level 0 smooshes and checks other than == adjust into an
+;     unknown result when `known-discrete?` is false.)
 ;     
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
@@ -4803,9 +4718,10 @@
 ;     given `inhabitant-shallowly-equal-always?-knowable` (usually
 ;     `equal-always?/recur`) returns an unknown result, then unknown.
 ;     
-;     Otherwise, if it shows they differ, then unknown. (This is the
-;     unknown result that level 0 adjusts into a known nothing result
-;     when (`known-distinct?` and `known-discrete?`) is true.)
+;     Otherwise, if it shows they differ and `known-distinct?` is
+;     true, then a known `#f`.
+;     
+;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
 ;     under the same smoosh include a known `#f`, then a known `#f`.
@@ -4979,23 +4895,14 @@
         (known a-shallowly-equal-always-b?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       ; Otherwise, if it returns `#f`, we return a known nothing (when
-      ; doing a smoosh, or `#f` when doing a check). When the info
-      ; level is nonzero or `known-discrete?` is false, the check
-      ; results are unknown instead. When the info level is 0 *and*
-      ; `known-distinct?` is false, the smoosh results and the check
-      ; results are unknown instead.
-      ; (TODO SMOOSH DISCRETE: Keep this up to date as we resolve the
-      ; relevant TODO SMOOSH DISCRETE comments above. To wit, we need
-      ; to figure out whether or not we should be checking
-      ; `known-discrete?` as well for smooshes other than == and
-      ; whether levels 1+ need to treat `known-discrete?` as being
-      ; just true enough to rule out ordering between the previous
-      ; level's known-distinct values.)
+      ; doing a smoosh, or `#f` when doing a check). This is sometimes
+      ; adjusted to an unknown result according to `known-distinct?`
+      ; and `known-discrete?`.
       /if (not a-shallowly-equal-always-b?)
         (smoosh-and-comparison-of-two-reports-censor
-          (false-smoosh-and-comparison-of-two-reports)
           #:known-distinct? known-distinct?
-          #:known-discrete? known-discrete?)
+          #:known-discrete? known-discrete?
+          (false-smoosh-and-comparison-of-two-reports))
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /w- b-list (->list b)
@@ -5971,13 +5878,18 @@
 (define/own-contract
   (dynamic-type-case-by-cases
     name
-    distinct-cases-smoosh-and-comparison-of-two-reports
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-dicrete? #f]
     cases)
-  (->
-    symbol?
-    (sequence/c smoosh-and-comparison-of-two-report?)
-    (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
+  (->*
+    (symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c))))
+    (#:known-distinct? boolean? #:known-discrete? boolean?)
     (list/c (-> any/c boolean?) (-> any/c any/c)))
+  (define distinct-cases-smoosh-and-comparison-of-two-reports
+    (smoosh-and-comparison-of-two-reports-censor
+      #:known-distinct? known-distinct?
+      #:known-discrete? known-discrete?
+      (false-smoosh-and-comparison-of-two-reports)))
   (define (inhabitant? v)
     (list-any cases /dissectfn (list check? dt)
       (check? v)))
@@ -6072,32 +5984,9 @@
     )
   (list inhabitant? case-dynamic-type))
 
-(define/own-contract
-  (dynamic-type-case-by-indistinct-cases name cases)
-  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
-    (list/c (-> any/c boolean?) (-> any/c any/c)))
-  (dynamic-type-case-by-cases
-    name (uninformative-smoosh-and-comparison-of-two-reports) cases))
-
-(define/own-contract
-  (dynamic-type-case-by-distinct-cases name cases)
-  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
-    (list/c (-> any/c boolean?) (-> any/c any/c)))
-  (w- distinct-cases-reports
-    (smoosh-and-comparison-of-two-reports-censor
-      (false-smoosh-and-comparison-of-two-reports)
-      #:known-distinct? #t
-      #:known-discrete? #f)
-  /dynamic-type-case-by-cases name distinct-cases-reports cases))
-
-(define/own-contract (dynamic-type-case-by-discrete-cases name cases)
-  (-> symbol? (listof (list/c (-> any/c boolean?) (-> any/c any/c)))
-    (list/c (-> any/c boolean?) (-> any/c any/c)))
-  (dynamic-type-case-by-cases
-    name (false-smoosh-and-comparison-of-two-reports) cases))
-
 (define base-literal-dynamic-type-case
-  (dynamic-type-case-by-indistinct-cases 'base-literal-dynamic-type
+  (dynamic-type-case-by-cases 'base-literal-dynamic-type
+    #:known-distinct? #f
     (list
       (list
         (fn v
@@ -6133,7 +6022,7 @@
         (fn any-dt /immutable-hash-dynamic-type any-dt)))))
 
 (define base-readable-dynamic-type-case
-  (dynamic-type-case-by-distinct-cases 'base-readable-dynamic-type /list
+  (dynamic-type-case-by-cases 'base-readable-dynamic-type /list
     (list
       base-mutable-readable?
       (fn any-dt /base-mutable-readable-dynamic-type))
@@ -6876,11 +6765,12 @@
   (list
     known-to-lathe-comforts-data?
     known-to-lathe-comforts-data-dynamic-type)
-  (dynamic-type-case-by-indistinct-cases
+  (dynamic-type-case-by-cases
     'known-to-lathe-comforts-data-dynamic-type
+    #:known-distinct? #f
     (list
       base-readable-dynamic-type-case
-      (dynamic-type-case-by-distinct-cases 'maybe-dynamic-type /list
+      (dynamic-type-case-by-cases 'maybe-dynamic-type /list
         (list nothing? (fn any-dt /nothing-dynamic-type))
         (list just? (fn any-dt /just-dynamic-type any-dt)))
       (list trivial? (fn any-dt /trivial-dynamic-type))
@@ -6921,7 +6811,7 @@
       #:inhabitant? dynamic-type-var-for-any-dynamic-type?)
     (trivial)))
 
-; Level 0+:
+; Level 0:
 ;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `equal-always-gloss-key-wrapper?`
 ;     values, then unknown.
@@ -6930,11 +6820,6 @@
 ;     operand (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
-;     (TODO SMOOSH DISCRETE: Actually, we don't yet censor smooshes
-;     other than ==.)
-;     (TODO SMOOSH DISCRETE: Actually, we should ideally be treating
-;     any values that are known to be distinct at level N as being
-;     known to be unrelated at level N+1.)
 ;   ==:
 ;     If the operands are not both `equal-always-gloss-key-wrapper?`
 ;     values, then unknown.
@@ -6943,6 +6828,11 @@
 ;     operand.
 ;     
 ;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct
   (equal-always-gloss-key-wrapper-dynamic-type?)
@@ -7057,7 +6947,7 @@
 ;       compared to how the smoosh behavior works (a system of
 ;       file-path-like self-attested variants to achieve hierarchy, vs
 ;       a system of type composition operations like
-;       `dynamic-type-case-by-distinct-cases` where the hierarchy is
+;       `dynamic-type-case-by-cases` where the hierarchy is
 ;       represented in the use of multiple composition operations).
 ;       See if this will cause problems for us in trying to keep one
 ;       system's results consistent with the other's.)
@@ -7182,15 +7072,11 @@
 ;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
 ;       whether elements are path-related according to the "any"
-;       type's smoosh ordering. (TODO SMOOSH: Several of our smoosh
-;       behaviors will be incorrect in ways that affect this type's
-;       smooshing, as noted at various TODO SMOOSH DISCRETE comments.)
+;       type's smoosh ordering.
 ;
 ;     - (Done) `info-wrapper?` values, ordered according to whether
 ;       elements are related according to the "any" type's information
-;       ordering. (TODO SMOOSH: Several of our smoosh behaviors will
-;       will be incorrect in ways that affect this type's smooshing,
-;       as noted at various TODO SMOOSH DISCRETE comments.)
+;       ordering.
 ;
 ;     - (Done) `gloss?` values, ordered according to the keys' and
 ;       values' smoosh orderings. `gloss?` values which have
