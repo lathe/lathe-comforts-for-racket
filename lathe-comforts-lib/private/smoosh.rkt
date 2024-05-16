@@ -216,11 +216,16 @@
   chaperone-of-indistinct-atom-glossesque-sys
   eq-atom-glossesque-sys
   eq-indistinct-atom-glossesque-sys
+  equal-always-from-list-injection-glossesque-sys
+  equal-always-indistinct-from-list-injection-glossesque-sys
+  chaperone=-from-list-injection-glossesque-sys
+  chaperone=-indistinct-from-list-injection-glossesque-sys
   normalized-glossesque-sys
   terminal-glossesque-sys
   make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+  make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
   make-expressly-smooshable-bundle-property-from-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
   make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
@@ -3539,7 +3544,7 @@
     
     #:glossesque-set-maybe-knowable
     (fn gs g k m
-      (known /assoc-set-maybe ==? g m))
+      (known /assoc-set-maybe ==? g k m))
     
     #:glossesque-count
     (fn gs g
@@ -3566,13 +3571,11 @@
       (glossesque-sys-glossesque-km-union-of-two-knowable
         gs-for-equal-always a b
         (fn k a-bin-m b-bin-m
-          (maybe-m-union-of-two-knowable a-bin-m b-bin-m
-            (fn a-bin b-bin
-              (assoc-list-km-union-of-two-knowable atom-chaperone=?
-                a-bin
-                b-bin
-                (fn k a-v-m b-v-m
-                  (km-union-knowable k a-v-m b-v-m))))))))
+          (assoc-list-km-union-of-two-knowable atom-chaperone=?
+            (mat a-bin-m (just a-bin) a-bin (list))
+            (mat b-bin-m (just b-bin) b-bin (list))
+            (fn k a-v-m b-v-m
+              (km-union-knowable k a-v-m b-v-m))))))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
@@ -3592,7 +3595,7 @@
       /w- bin
         (mat bin-m (just bin) bin
         /list)
-      /w- bin (assoc-set-maybe atom-chaperone=? bin m)
+      /w- bin (assoc-set-maybe atom-chaperone=? bin k m)
       /w- bin-m (maybe-if (pair? bin) /fn bin)
       /glossesque-sys-glossesque-set-maybe-knowable
         gs-for-equal-always g k bin-m))
@@ -3687,6 +3690,437 @@
   (eq-indistinct-atom-glossesque-sys-unguarded))
 
 (define-imitation-simple-struct
+  (shallow-wrapper? shallow-wrapper-value)
+  shallow-wrapper 'shallow-wrapper (current-inspector) (auto-write)
+  
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (dissect a (shallow-wrapper a-value)
+      /dissect b (shallow-wrapper b-value)
+      /equal-always?/recur a-value b-value /fn a b #t))
+    
+    (define (hash-mode-proc v recur now?)
+      (dissect v (shallow-wrapper v-value)
+      /equal-always-hash-code/recur v-value /fn v
+        (uninformative-hash-code)))
+    
+    ))
+
+(define-imitation-simple-struct
+  (glossesque-from-list-injection?
+    glossesque-from-list-injection-count
+    glossesque-from-list-injection-glossesque-for-shallow)
+  glossesque-from-list-injection
+  'glossesque-from-list-injection (current-inspector) (auto-write))
+
+(define/own-contract
+  (make-glossesque-sys-impl-from-list-injection
+    gs-for-shallow get-->->list)
+  (-> glossesque-sys? (-> glossesque-sys? (-> any/c (-> any/c list?)))
+    glossesque-sys-impl?)
+  (make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero-knowable
+    (fn gs
+      (knowable-map
+        (glossesque-sys-glossesque-union-of-zero-knowable
+          gs-for-shallow)
+        (fn g
+          (glossesque-from-list-injection 0 g))))
+    
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union-knowable
+      (dissect a (glossesque-from-list-injection a-count a-g)
+      /dissect b (glossesque-from-list-injection b-count b-g)
+      /knowable-bind
+        (glossesque-sys-glossesque-km-union-of-two-knowable
+          gs-for-shallow a-g b-g
+          (fn k a-->list-and-trie-m b-->list-and-trie-m
+            (w- ->list
+              (mat a-->list-and-trie-m (just a-->list-and-trie)
+                (dissect a-->list-and-trie (list a-->list a-trie)
+                  a-->list)
+              /dissect b-->list-and-trie-m (just b-->list-and-trie)
+                (dissect b-->list-and-trie (list b-->list b-trie)
+                  b-->list))
+            /w- a-trie
+              (expect a-->list-and-trie-m (just a-->list-and-trie)
+                (list 0 (nothing) (gloss-union-of-zero))
+              /dissect a-->list-and-trie (list a-->list a-trie)
+                a-trie)
+            /w- b-trie
+              (expect b-->list-and-trie-m (just b-->list-and-trie)
+                (list 0 (nothing) (gloss-union-of-zero))
+              /dissect b-->list-and-trie (list b-->list b-trie)
+                b-trie)
+            /knowable-bind
+              (w-loop next a-trie a-trie b-trie b-trie
+                (dissect a-trie (list a-count a-nil-m a-cons-tries)
+                /dissect b-trie (list b-count b-nil-m b-cons-tries)
+                /knowable-bind
+                  (maybe-m-union-of-two-knowable a-nil-m b-nil-m
+                    (fn a-nil-m b-nil-m
+                      (w- k
+                        (mat a-nil-m (just a-kv)
+                          (dissect a-kv (list a-k a-v)
+                            a-k)
+                        /dissect b-nil-m (just b-kv)
+                          (dissect b-kv (list b-k b-v)
+                            b-k))
+                      /km-union-knowable k
+                        (maybe-map a-nil-m /dissectfn (list k v) v)
+                        (maybe-map b-nil-m /dissectfn (list k v) v))))
+                /fn nil-m
+                /knowable-bind
+                  (gloss-km-union-of-two-knowable
+                    a-cons-tries
+                    b-cons-tries
+                    (fn elem a-trie b-trie
+                      (knowable-map (next a-trie b-trie) /fn trie
+                        (just trie))))
+                /fn cons-tries
+                /known /list
+                  (+ (if (just? nil-m) 1 0)
+                    (for/sum
+                      (
+                        [ (elem trie)
+                          (in-sequences
+                            (gloss-iteration-sequence cons-tries))])
+                      (dissect trie (list count nil-m cons-tries)
+                        count)))
+                  nil-m
+                  cons-tries))
+            /fn trie
+            /known /just /list ->list trie)))
+      /fn g
+      /glossesque-from-list-injection
+        (for/sum
+          (
+            [ (tag ->list-and-trie)
+              (in-sequences
+                (glossesque-sys-glossesque-iteration-sequence
+                  gs-for-shallow g))])
+          (dissect ->list-and-trie
+            (list ->list (list count nil-m cons-tries))
+            count))
+        g))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (dissect g (glossesque-from-list-injection count g)
+      /knowable-bind
+        (glossesque-sys-glossesque-ref-maybe-knowable gs-for-shallow g
+          (shallow-wrapper k))
+      /fn ->list-and-trie-maybe
+      /expect ->list-and-trie-maybe (just ->list-and-trie)
+        (known /nothing)
+      /dissect ->list-and-trie (list ->list trie)
+      /w-loop next trie trie k (->list k)
+        (dissect trie (list count nil-m cons-tries)
+        /expect k (cons elem k)
+          (known /maybe-map nil-m /dissectfn (list k v) v)
+        /knowable-bind
+          (gloss-ref-maybe-knowable cons-tries elem)
+        /fn trie
+        /next trie k)))
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m
+      (dissect g (glossesque-from-list-injection count g)
+      /w- tag (shallow-wrapper k)
+      /knowable-bind
+        (glossesque-sys-glossesque-ref-maybe-knowable
+          gs-for-shallow g tag)
+      /fn ->list-and-trie-maybe
+      /w- ->->list (get-->->list gs)
+      /dissect
+        (mat ->list-and-trie-maybe (just ->list-and-trie)
+          ->list-and-trie
+          (list
+            (->->list k)
+            (list 0 (nothing) (gloss-union-of-zero))))
+        (list ->list trie)
+      /dissect trie (list old-trie-count _ _)
+      /knowable-bind
+        (w-loop next trie trie current-k (->list k)
+          (dissect trie (list count nil-m cons-tries)
+          /expect current-k (cons elem current-k)
+            (known /list
+              (+ count (- (if (just? m) 1 0) (if (just? nil-m) 1 0)))
+              (maybe-map m /fn v /list k v)
+              cons-tries)
+          /knowable-bind
+            (gloss-ref-maybe-knowable cons-tries elem)
+          /fn trie-m
+          /w- trie
+            (mat trie-m (just trie) trie
+            /list 0 (nothing) (gloss-union-of-zero))
+          /dissect trie (list old-trie-count _ _)
+          /knowable-bind (next trie current-k) /fn trie
+          /dissect trie (list new-trie-count _ _)
+          /knowable-bind
+            (gloss-set-maybe-knowable cons-tries elem
+              (mat new-trie-count 0 (nothing)
+              /just trie))
+          /fn cons-tries
+          /known /list
+            (+ count (- new-trie-count old-trie-count))
+            nil-m
+            cons-tries))
+      /fn trie
+      /dissect trie (list new-trie-count _ _)
+      /knowable-bind
+        (glossesque-sys-glossesque-set-maybe-knowable
+          gs-for-shallow g tag
+          (mat new-trie-count 0 (nothing)
+          /just /list ->list trie))
+      /fn g
+      /glossesque-from-list-injection
+        (+ count (- new-trie-count old-trie-count))
+        g))
+    
+    #:glossesque-count
+    (fn gs g
+      (dissect g (glossesque-from-list-injection count g)
+        count))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (dissect g (glossesque-from-list-injection count g)
+      /apply in-sequences
+        (for/list
+          (
+            [ (tag ->list-and-trie)
+              (in-sequences
+                (glossesque-sys-glossesque-iteration-sequence
+                  gs-for-shallow g))])
+          (dissect ->list-and-trie (list ->list trie)
+          /w-loop next trie trie
+            (dissect trie (list count nil-m cons-tries)
+            /apply in-sequences
+              (expect nil-m (just kv) (list)
+                (dissect kv (list k v)
+                /in-parallel (in-value k) (in-value v)))
+              (for/list
+                (
+                  [ (elem trie)
+                    (in-sequences
+                      (gloss-iteration-sequence cons-tries))])
+                (next trie)))))))
+    
+    ))
+
+(define-imitation-simple-struct
+  (equal-always-from-list-injection-glossesque-sys?
+    equal-always-from-list-injection-glossesque-sys-->->list)
+  equal-always-from-list-injection-glossesque-sys-unguarded
+  'equal-always-from-list-injection-glossesque-sys (current-inspector)
+  (auto-write)
+  (#:prop prop:glossesque-sys
+    (make-glossesque-sys-impl-from-list-injection
+      (equal-always-atom-glossesque-sys)
+      (dissectfn
+        (equal-always-from-list-injection-glossesque-sys-unguarded
+          ->->list)
+        ->->list))))
+
+(define/own-contract
+  (equal-always-from-list-injection-glossesque-sys
+    #:->->list ->->list)
+  (-> #:->->list (-> any/c (-> any/c list?)) glossesque-sys?)
+  (equal-always-from-list-injection-glossesque-sys-unguarded
+    ->->list))
+
+(define-imitation-simple-struct
+  (equal-always-indistinct-from-list-injection-glossesque-sys?
+    equal-always-indistinct-from-list-injection-glossesque-sys-->->list)
+  equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
+  'equal-always-indistinct-from-list-injection-glossesque-sys
+  (current-inspector)
+  (auto-write)
+  (#:prop prop:glossesque-sys
+    (make-glossesque-sys-impl-from-list-injection
+      (equal-always-indistinct-atom-glossesque-sys)
+      (dissectfn
+        (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
+          ->->list)
+        ->->list))))
+
+(define/own-contract
+  (equal-always-indistinct-from-list-injection-glossesque-sys
+    #:->->list ->->list)
+  (-> #:->->list (-> any/c (-> any/c list?)) glossesque-sys?)
+  (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
+    ->->list))
+
+; TODO: See if we should export this.
+(define/own-contract (shallowly-unchaperoned? copy v)
+  (-> (-> any/c any/c) any/c boolean?)
+  (chaperone-of? (copy v) v))
+
+(define/own-contract
+  (make-glossesque-sys-impl-for-chaperone=-from-list-injection
+    gs-for-equal-always
+    get-copy)
+  (-> glossesque-sys? (-> glossesque-sys? (-> any/c any/c))
+    glossesque-sys-impl?)
+  (make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero-knowable
+    (fn gs
+      (glossesque-sys-glossesque-union-of-zero-knowable
+        gs-for-equal-always))
+    
+    #:glossesque-km-union-of-two-knowable
+    (fn gs a b km-union-knowable
+      (glossesque-sys-glossesque-km-union-of-two-knowable
+        gs-for-equal-always a b
+        (fn k a-bin-m b-bin-m
+          (dissect
+            (mat a-bin-m (just a-bin) a-bin
+              (list (nothing) (list)))
+            (list a-chaperoneless-m a-chaperoned)
+          /dissect
+            (mat b-bin-m (just b-bin) b-bin
+              (list (nothing) (list)))
+            (list b-chaperoneless-m b-chaperoned)
+          /knowable-bind
+            (mat a-chaperoneless-m (just a-kv)
+              (dissect a-kv (list a-k a-v)
+              /km-union-knowable a-k
+                (just a-v)
+                (maybe-map b-chaperoneless-m
+                  (dissectfn (list b-k b-v)
+                    b-v)))
+            /mat b-chaperoneless-m (just b-kv)
+              (dissect b-kv (list b-k b-v)
+              /km-union-knowable b-k (nothing) (just b-v))
+            /known /nothing)
+          /fn chaperoneless-m
+          /knowable-bind
+            (assoc-list-km-union-of-two-knowable atom-chaperone=?
+              a-chaperoned
+              b-chaperoned
+              (fn k a-v-m b-v-m
+                (km-union-knowable k a-v-m b-v-m)))
+          /fn chaperoned
+          /known /just /list chaperoneless-m chaperoned))))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (knowable-map
+        (glossesque-sys-glossesque-ref-maybe-knowable
+          gs-for-equal-always g k)
+      /fn bin-m
+        (maybe-bind bin-m /dissectfn (list chaperoneless-m chaperoned)
+          (w- copy (get-copy gs)
+          /if (shallowly-unchaperoned? copy k)
+            (maybe-map chaperoneless-m /dissectfn (list k v) v)
+            (assoc-ref-maybe atom-chaperone=? chaperoned k)))))
+    
+    #:glossesque-set-maybe-knowable
+    (fn gs g k m
+      (knowable-bind
+        (glossesque-sys-glossesque-ref-maybe-knowable
+          gs-for-equal-always g k)
+      /fn bin-m
+      /w- bin
+        (mat bin-m (just bin) bin
+          (list (nothing) (list)))
+      /dissect bin (list chaperoneless-m chaperoned)
+      /w- copy (get-copy gs)
+      /knowable-bind
+        (if (shallowly-unchaperoned? copy k)
+          (known
+            (w- chaperoneless-m
+              (w- k
+                (expect chaperoneless-m (just kv) k
+                /dissect kv (list old-k v)
+                  old-k)
+              /maybe-map m /fn v /list k v)
+            /list chaperoneless-m chaperoned))
+          (knowable-map
+            (assoc-set-maybe atom-chaperone=? chaperoned k m)
+          /fn chaperoned
+            (list chaperoneless-m chaperoned)))
+      /fn bin
+      /w- bin-m
+        (maybe-if (mat bin (list (nothing) (list)) #f #t) /fn bin)
+      /glossesque-sys-glossesque-set-maybe-knowable
+        gs-for-equal-always g k bin-m))
+    
+    #:glossesque-count
+    (fn gs g
+      (for/sum
+        (
+          [ (k bin)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence
+                gs-for-equal-always g))])
+        (dissect bin (list chaperoneless-m chaperoned)
+        /+ (if (just? chaperoneless-m) 1 0) (length chaperoned))))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (apply in-sequences
+        (for/list
+          (
+            [ (k bin)
+              (in-sequences
+                (glossesque-sys-glossesque-iteration-sequence
+                  gs-for-equal-always g))])
+          (dissect bin (list chaperoneless-m chaperoned)
+          /apply in-sequences
+            (expect chaperoneless-m (just kv) (list)
+              (dissect kv (list k v)
+              /in-parallel (in-value k) (in-value v)))
+            (sequence-map (dissectfn (cons k v) (values k v))
+              chaperoned)))))
+    
+    ))
+
+(define-imitation-simple-struct
+  (chaperone=-from-list-injection-glossesque-sys?
+    chaperone=-from-list-injection-glossesque-sys-get-copy)
+  chaperone=-from-list-injection-glossesque-sys-unguarded
+  'chaperone=-from-list-injection-glossesque-sys (current-inspector)
+  (auto-write)
+  (#:prop prop:glossesque-sys
+    (make-glossesque-sys-impl-for-chaperone=-from-list-injection
+      (equal-always-atom-glossesque-sys)
+      (dissectfn
+        (chaperone=-from-list-injection-glossesque-sys-unguarded copy)
+        copy))))
+
+(define/own-contract
+  (chaperone=-from-list-injection-glossesque-sys #:copy copy)
+  (-> #:copy (-> any/c (-> any/c list?)) glossesque-sys?)
+  (chaperone=-from-list-injection-glossesque-sys-unguarded copy))
+
+(define-imitation-simple-struct
+  (chaperone=-indistinct-from-list-injection-glossesque-sys?
+    chaperone=-indistinct-from-list-injection-glossesque-sys-get-copy)
+  chaperone=-indistinct-from-list-injection-glossesque-sys-unguarded
+  'chaperone=-indistinct-from-list-injection-glossesque-sys
+  (current-inspector)
+  (auto-write)
+  (#:prop prop:glossesque-sys
+    (make-glossesque-sys-impl-for-chaperone=-from-list-injection
+      (equal-always-indistinct-atom-glossesque-sys)
+      (dissectfn
+        (chaperone=-indistinct-from-list-injection-glossesque-sys-unguarded
+          copy)
+        copy))))
+
+(define/own-contract
+  (chaperone=-indistinct-from-list-injection-glossesque-sys
+    #:copy copy)
+  (-> #:copy (-> any/c (-> any/c list?)) glossesque-sys?)
+  (chaperone=-indistinct-from-list-injection-glossesque-sys-unguarded
+    copy))
+
+(define-imitation-simple-struct
   (normalized-key? normalized-key-normalized normalized-key-original)
   normalized-key 'normalized-key (current-inspector) (auto-write)
   
@@ -3695,11 +4129,11 @@
     (define (equal-mode-proc a b recur now?)
       (dissect a (normalized-key a-normalized a-original)
       /dissect b (normalized-key b-normalized b-original)
-      /recur a b))
+      /recur a-normalized b-normalized))
     
     (define (hash-mode-proc v recur now?)
       (dissect v (normalized-key v-normalized v-original)
-      /recur v))
+      /recur v-normalized))
     
     ))
 
@@ -4159,7 +4593,7 @@
     expressly-smooshable-dynamic-type-impl?)
   (w- inhabitant-shallowly-unchaperoned?
     (fn v
-      (chaperone-of? (copy v) v))
+      (shallowly-unchaperoned? copy v))
   /make-expressly-smooshable-dynamic-type-impl
     #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports
     
@@ -4436,8 +4870,122 @@
     
     ))
 
+; Here are some rough notes for how this works when
+; `#:ignore-chaperones?` is false, `#:known-distinct?` is true, and
+; `#:known-discrete?` is false (their default values):
+;
+; Level 0:
+;   path-related:
+;     equal-always indistinct trie: Two collections with different
+;     sets of keys cannot be added at once because their
+;     path-relatedness is unknown.
+;   ==:
+;     Same as level 1 path-related.
+; Level 1:
+;   path-related:
+;     equal-always distinct trie: Two collections with different sets
+;     of keys can both be added and begin two independent subtries.
+;   ==:
+;     chaperone= distinct trie: Two collections with different sets of
+;     keys begin two subtries again. Two with the same set of keys may
+;     begin the same subtrie, but only if they're shallowly
+;     chaperone=. To be shallowly chaperone=, we check that either
+;     they're both chaperoneless (by making copies and checking that
+;     the copies are `chaperone-of?` the originals) or they're
+;     `chaperone-of?` in both directions. A key that has been inserted
+;     into the trie has already had a copy made of it once, so we
+;     don't need to repeat that work when comparing it to other tries.
+; Level 2+:
+;   path-related, ==:
+;     Same as level 1 ==.
+;
+(define/own-contract
+  (make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
+    #:ignore-chaperones? [ignore-chaperones? #f]
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
+    #:inhabitant? inhabitant?
+    #:->->list ->->list
+    #:copy copy)
+  (->*
+    (
+      #:inhabitant? (-> any/c boolean?)
+      #:->->list (-> any/c (-> any/c list?))
+      #:copy (-> any/c any/c))
+    (
+      #:ignore-chaperones? boolean?
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?)
+    expressly-custom-gloss-key-dynamic-type-impl?)
+  ; TODO SMOOSH: Add arguments to
+  ; `make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection`
+  ; and `define-variant` that let us specify debug names for these
+  ; variants and their dynamic types.
+  (define-variant variant)
+  (make-expressly-custom-gloss-key-dynamic-type-impl
+    
+    #:get-custom-gloss-key-reports
+    (fn self a
+      (expect (inhabitant? a) #t
+        (uninformative-custom-gloss-key-reports)
+      /w- equal-always-indistinct-tgs-k
+        (known /tagged-glossesque-sys
+          (variant)
+          (equal-always-indistinct-from-list-injection-glossesque-sys
+            #:->->list ->->list))
+      /w- equal-always-distinct-tgs-k
+        (known /tagged-glossesque-sys
+          (variant)
+          (equal-always-from-list-injection-glossesque-sys
+            #:->->list ->->list))
+      /w- equal-always-tgs-k
+        (if known-distinct?
+          equal-always-distinct-tgs-k
+          equal-always-indistinct-tgs-k)
+      /w- chaperone=-indistinct-tgs-k
+        (known /tagged-glossesque-sys
+          (variant)
+          (chaperone=-indistinct-from-list-injection-glossesque-sys
+            #:copy copy))
+      /w- chaperone=-distinct-tgs-k
+        (known /tagged-glossesque-sys
+          (variant)
+          (chaperone=-from-list-injection-glossesque-sys
+            #:copy copy))
+      /w- chaperone=-tgs-k
+        (if known-distinct?
+          chaperone=-distinct-tgs-k
+          chaperone=-indistinct-tgs-k)
+      /w- possibly-chaperone=-tgs-k
+        (if ignore-chaperones?
+          equal-always-tgs-k
+          chaperone=-tgs-k)
+      /stream*
+        (custom-gloss-key-report-zip-map (list)
+          #:on-path-related-glossesque-sys-knowable
+          (dissectfn (list)
+            (if (and known-distinct? known-discrete?)
+              equal-always-distinct-tgs-k
+              equal-always-indistinct-tgs-k))
+          #:on-==-tagged-glossesque-sys-knowable
+          (dissectfn (list)
+            equal-always-tgs-k))
+        (custom-gloss-key-report-zip-map (list)
+          #:on-path-related-glossesque-sys-knowable
+          (dissectfn (list)
+            equal-always-tgs-k)
+          #:on-==-tagged-glossesque-sys-knowable
+          (dissectfn (list)
+            possibly-chaperone=-tgs-k))
+        (constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable
+          possibly-chaperone=-tgs-k)))
+    
+    ))
+
 (define/own-contract
   (make-expressly-smooshable-bundle-property-from-list-isomorphism
+    #:omit-gloss-key-behavior? [omit-gloss-key-behavior? #f]
     #:ignore-chaperones? [ignore-chaperones? #f]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
@@ -4492,8 +5040,8 @@
             "expected the property value to be a trivial? value"
             "value" value)
           value))
-      (list
-        (cons
+      (append
+        (list /cons
           prop:expressly-smooshable-dynamic-type
           (dissectfn (trivial)
             (if ignore-chaperones?
@@ -4522,96 +5070,168 @@
                 
                 #:copy copy
                 #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports))))
-        (cons
+        (list /cons
           prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
           (dissectfn (trivial)
             (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
               #:self-get-any-dynamic-type self-get-any-dynamic-type
               #:inhabitant? inhabitant?
               #:->->list ->->list
-              #:combine-element-hash-codes combine-element-hash-codes))))))
+              #:combine-element-hash-codes combine-element-hash-codes)))
+        (if omit-gloss-key-behavior?
+          (list)
+          (list /cons
+            prop:expressly-custom-gloss-key-dynamic-type
+            (dissectfn (trivial)
+              (make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
+                #:ignore-chaperones? ignore-chaperones?
+                #:known-distinct? known-distinct?
+                #:known-discrete? known-discrete?
+                #:inhabitant? inhabitant?
+                #:->->list ->->list
+                #:copy copy)))))))
   prop:bundle)
 
 ; TODO: See if we should export this. If so, we should rewrite it to
 ; use`syntax/parse`.
-(define-syntax-parse-rule
-  (define-variant my-variant my-variant-field ...)
-  
-  #:with (field ...) (generate-temporaries #'(my-variant-field ...))
-  
-  #:with (result-for-field ...)
-  (for/list ([field (syntax->list #'(my-variant-field ...))])
-    #'result)
-  
-  (begin
-    
-    (define-imitation-simple-struct (my-variant? my-variant-field ...)
-      my-variant
-      'my-variant (current-inspector) (auto-write) (auto-equal)
-      (#:prop prop:expressly-has-dynamic-type
-        (make-expressly-has-dynamic-type-impl /fn bindings self
-          (expect
-            (known-value /gloss-ref-maybe-knowable bindings
-              (dynamic-type-var-for-any-dynamic-type))
-            (just any-dt)
-            (raise-arguments-error 'get-dynamic-type
-              "tried to get the dynamic type of a define-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-              "bindings" bindings
-              "inhabitant" self)
-          ; TODO SMOOSH: This use of `my-variant-dynamic-type` is
-          ; a forward reference. See if we can untangle it.
-          /my-variant-dynamic-type any-dt))))
-    (ascribe-own-contract my-variant? (-> any/c boolean?))
-    
-    (define-imitation-simple-struct
-      (my-variant-dynamic-type?
-        my-variant-dynamic-type-get-any-dynamic-type)
-      my-variant-dynamic-type
-      (string->symbol /string-append
-        (symbol->string 'my-variant)
-        "-dynamic-type")
-      (current-inspector)
-      (auto-write)
+(define-syntax (define-variant stx)
+  (syntax-parse stx
+    #;
+    [ (define-variant my-variant)
+      #'(begin
+          
+          (define-imitation-simple-struct (my-variant?) my-variant
+            'my-variant (current-inspector) (auto-write) (auto-equal)
+            (#:prop prop:equal-always-gloss-key
+              (make-equal-always-gloss-key-impl))
+            (#:prop prop:expressly-has-dynamic-type
+              (make-expressly-has-dynamic-type-impl /fn bindings self
+                (expect
+                  (known-value /gloss-ref-maybe-knowable bindings
+                    (dynamic-type-var-for-any-dynamic-type))
+                  (just any-dt)
+                  (raise-arguments-error 'get-dynamic-type
+                    "tried to get the dynamic type of a define-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+                    "bindings" bindings
+                    "inhabitant" self)
+                ; TODO SMOOSH: This use of `my-variant-dynamic-type`
+                ; is a forward reference. See if we can untangle it.
+                /my-variant-dynamic-type))))
+          (ascribe-own-contract my-variant? (-> any/c boolean?))
+          
+          (define-imitation-simple-struct (my-variant-dynamic-type?)
+            my-variant-dynamic-type
+            (string->symbol /string-append
+              (symbol->string 'my-variant)
+              "-dynamic-type")
+            (current-inspector)
+            (auto-write)
+            
+            (#:prop
+              (make-expressly-smooshable-bundle-property-for-atom
+                #:omit-gloss-key-behavior? #t
+                #:ignore-chaperones? #t
+                #:inhabitant? my-variant?)
+              (trivial))
+            
+            )
+          
+          )]
+    [ (define-variant my-variant my-variant-field ...)
       
-      (#:prop
-        (make-expressly-smooshable-bundle-property-from-list-isomorphism
-          #:ignore-chaperones? #t
-          
-          #:self-get-any-dynamic-type
-          (dissectfn (my-variant-dynamic-type any-dt)
-            any-dt)
-          
-          #:inhabitant? my-variant?
-          #:->->list
-          (fn a
-            (dissectfn (my-variant my-variant-field ...)
-              (list my-variant-field ...)))
-          
-          #:example-and-list->
-          (fn example lst
-            (dissect lst (list my-variant-field ...)
-            /my-variant my-variant-field ...))
-          
-          #:get-smoosh-of-zero-reports
-          (fn self
-            (dissect self (my-variant-dynamic-type any-dt)
-            /smoosh-reports-map
-              (dynamic-type-get-smoosh-of-zero-reports any-dt)
-              #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-              (fn kpmkp
-                (promise-map kpmkp /fn kpmk
-                  (knowable-map kpmk /fn kpm
-                    (maybe-map kpm /fn kp
-                      (promise-map kp /fn k
-                        (knowable-map k /fn result
-                          (my-variant result-for-field ...)))))))))
-          
-          )
-        (trivial))
+      #:with (field ...) (generate-temporaries #'(my-variant-field ...))
       
-      )
-    
-    ))
+      #:with (result-for-field ...)
+      (for/list ([field (syntax->list #'(my-variant-field ...))])
+        #'result)
+      
+      #:with (inhabitant-props ...)
+      (syntax->list
+        (if (null? /syntax->list #'(my-variant-field ...))
+          #'(
+              (#:prop prop:equal-always-gloss-key
+                (make-equal-always-gloss-key-impl)))
+          #'()))
+      
+      #:with (dynamic-type-impl-args ...)
+      (syntax->list
+        (if (null? /syntax->list #'(my-variant-field ...))
+          #'(#:omit-gloss-key-behavior? #t)
+          #'()))
+      
+      #'(begin
+          
+          (define-imitation-simple-struct
+            (my-variant? my-variant-field ...)
+            my-variant
+            'my-variant (current-inspector) (auto-write) (auto-equal)
+            inhabitant-props ...
+            (#:prop prop:expressly-has-dynamic-type
+              (make-expressly-has-dynamic-type-impl /fn bindings self
+                (expect
+                  (known-value /gloss-ref-maybe-knowable bindings
+                    (dynamic-type-var-for-any-dynamic-type))
+                  (just any-dt)
+                  (raise-arguments-error 'get-dynamic-type
+                    "tried to get the dynamic type of a define-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
+                    "bindings" bindings
+                    "inhabitant" self)
+                ; TODO SMOOSH: This use of `my-variant-dynamic-type`
+                ; is a forward reference. See if we can untangle it.
+                /my-variant-dynamic-type any-dt))))
+          (ascribe-own-contract my-variant? (-> any/c boolean?))
+          
+          (define-imitation-simple-struct
+            (my-variant-dynamic-type?
+              my-variant-dynamic-type-get-any-dynamic-type)
+            my-variant-dynamic-type
+            (string->symbol /string-append
+              (symbol->string 'my-variant)
+              "-dynamic-type")
+            (current-inspector)
+            (auto-write)
+            
+            (#:prop
+              (make-expressly-smooshable-bundle-property-from-list-isomorphism
+                dynamic-type-impl-args ...
+                #:ignore-chaperones? #t
+                
+                #:self-get-any-dynamic-type
+                (dissectfn (my-variant-dynamic-type any-dt)
+                  any-dt)
+                
+                #:inhabitant? my-variant?
+                #:->->list
+                (fn a
+                  (dissectfn (my-variant my-variant-field ...)
+                    (list my-variant-field ...)))
+                
+                #:example-and-list->
+                (fn example lst
+                  (dissect lst (list my-variant-field ...)
+                  /my-variant my-variant-field ...))
+                
+                #:get-smoosh-of-zero-reports
+                (fn self
+                  (dissect self (my-variant-dynamic-type any-dt)
+                  /smoosh-reports-map
+                    (dynamic-type-get-smoosh-of-zero-reports any-dt)
+                    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+                    (fn kpmkp
+                      (promise-map kpmkp /fn kpmk
+                        (knowable-map kpmk /fn kpm
+                          (maybe-map kpm /fn kp
+                            (promise-map kp /fn k
+                              (knowable-map k /fn result
+                                (my-variant
+                                  result-for-field ...)))))))))
+                
+                )
+              (trivial))
+            
+            )
+          
+          )]))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for simple values that can be compared by a simple
@@ -7120,19 +7740,36 @@
 ;
 ;     - (Done) An inhabitant of any of various other variant types
 ;       created by
+;       `make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection`
+;       or by
 ;       `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
 ;       when its `#:eq-matters?` argument is `#f` or missing.
 ;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
 ;       between the `nothing-dynamic-type?`'s variant values and the
 ;       `just-dynamic-type?`'s variant values. (Actually, the latter
 ;       variant values don't exist yet.) These should be known to be
-;       distinct from each other.) (TODO SMOOSH: We haven't
-;       implemented proper smooshing behavior between the variant
-;       values of `base-mutable-readable-dynamic-type?`,
+;       distinct from each other.)
+;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
+;       between the variant values of
+;       `base-mutable-readable-dynamic-type?`,
 ;       `flvector-dynamic-type?`, `fxvector-dynamic-type?`,
 ;       `base-syntactic-atom-dynamic-type?`, `cons-dynamic-type?`, and
 ;       `base-literal-dynamic-type?`. These should be known to be
 ;       distinct from each other.)
+;       (TODO SMOOSH: When `#:ignore-chaperones?` is `#f` or omitted,
+;       the custom gloss key behavior of
+;       `make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection`
+;       and
+;       `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
+;       uses association lists to represent the bins of chaperone=
+;       values when doing a level 1 == smoosh. It's nice of us to have
+;       gone to all that effort, but actually, we shouldn't count on
+;       knowing that two `equal-always?` values aren't chaperones of
+;       each other; they may only fail to be chaperones of each other
+;       by virtue of an unstable implementation detail.)
+;       (TODO SMOOSH: Change what we do with `equal-always-gloss-key?`
+;       so that we don't consider two instances of it to be known
+;       distinct.)
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
@@ -7237,6 +7874,8 @@
 ;
 ;       - A dynamic type of an inhabitant of any of various other
 ;         variant types created by
+;         `make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection`
+;         or by
 ;         `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
 ;         when its `#:eq-matters?` argument is `#f` or missing.
 ;
@@ -7251,8 +7890,7 @@
 ; smooshable values.
 ;
 ; We've now made at least a first attempt at custom gloss key behavior
-; for all types except `knowable-dynamic-type?` and the ones that use
-; `make-expressly-smooshable-bundle-property-from-list-isomorphism`.
+; for all types except `knowable-dynamic-type?`.
 ;
 ; Curiously, we have been implementing smooshability as though values
 ; return unknown results when smooshed with values they don't
@@ -7295,6 +7933,7 @@
 ; involved types were known to be distinct. That's because these are
 ; hash codes meant for reasonable coexistence with Racket's `equal?`-
 ; and `equal-always?`-based hashes, where the notion that two values
-; may have an unknown comparison result doesn't really exist. We have
-; `gloss?` values as our recommended replacement for these when using
-; this system.
+; may have an unknown comparison result doesn't really exist. When a
+; user wants to work with the possibility that comparison results are
+; unknown, we offer `gloss?` values as our recommended replacement for
+; `hash?` values.
