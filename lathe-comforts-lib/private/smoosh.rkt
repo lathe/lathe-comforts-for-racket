@@ -3460,7 +3460,7 @@
     
     ))
 
-(define/own-contract (atom-chaperone-of=? a b)
+(define/own-contract (atom-chaperone=? a b)
   (-> any/c any/c boolean?)
   (and (chaperone-of? a b) (chaperone-of? b a)))
 
@@ -3568,7 +3568,7 @@
         (fn k a-bin-m b-bin-m
           (maybe-m-union-of-two-knowable a-bin-m b-bin-m
             (fn a-bin b-bin
-              (assoc-list-km-union-of-two-knowable atom-chaperone-of=?
+              (assoc-list-km-union-of-two-knowable atom-chaperone=?
                 a-bin
                 b-bin
                 (fn k a-v-m b-v-m
@@ -3581,7 +3581,7 @@
           gs-for-equal-always g k)
       /fn bin-m
         (maybe-bind bin-m /fn bin
-        /assoc-ref-maybe atom-chaperone-of=? bin k)))
+        /assoc-ref-maybe atom-chaperone=? bin k)))
     
     #:glossesque-set-maybe-knowable
     (fn gs g k m
@@ -3592,7 +3592,7 @@
       /w- bin
         (mat bin-m (just bin) bin
         /list)
-      /w- bin (assoc-set-maybe atom-chaperone-of=? bin m)
+      /w- bin (assoc-set-maybe atom-chaperone=? bin m)
       /w- bin-m (maybe-if (pair? bin) /fn bin)
       /glossesque-sys-glossesque-set-maybe-knowable
         gs-for-equal-always g k bin-m))
