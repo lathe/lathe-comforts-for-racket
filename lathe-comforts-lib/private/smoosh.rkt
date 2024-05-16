@@ -212,8 +212,8 @@
   assoc-set-maybe
   equal-always-atom-glossesque-sys
   equal-always-indistinct-atom-glossesque-sys
-  chaperone-of-atom-glossesque-sys
-  chaperone-of-indistinct-atom-glossesque-sys
+  chaperone=-atom-glossesque-sys
+  chaperone=-indistinct-atom-glossesque-sys
   eq-atom-glossesque-sys
   eq-indistinct-atom-glossesque-sys
   equal-always-from-list-injection-glossesque-sys
@@ -3557,7 +3557,7 @@
     ))
 
 (define/own-contract
-  (make-glossesque-sys-impl-for-chaperone-of-atom gs-for-equal-always)
+  (make-glossesque-sys-impl-for-chaperone=-atom gs-for-equal-always)
   (-> glossesque-sys? glossesque-sys-impl?)
   (make-glossesque-sys-impl
     
@@ -3645,29 +3645,29 @@
   (-> glossesque-sys?)
   (equal-always-indistinct-atom-glossesque-sys-unguarded))
 
-(define-imitation-simple-struct (chaperone-of-atom-glossesque-sys?)
-  chaperone-of-atom-glossesque-sys-unguarded
-  'chaperone-of-atom-glossesque-sys (current-inspector) (auto-write)
+(define-imitation-simple-struct (chaperone=-atom-glossesque-sys?)
+  chaperone=-atom-glossesque-sys-unguarded
+  'chaperone=-atom-glossesque-sys (current-inspector) (auto-write)
   (#:prop prop:glossesque-sys
-    (make-glossesque-sys-impl-for-chaperone-of-atom
+    (make-glossesque-sys-impl-for-chaperone=-atom
       (equal-always-atom-glossesque-sys))))
 
-(define/own-contract (chaperone-of-atom-glossesque-sys)
+(define/own-contract (chaperone=-atom-glossesque-sys)
   (-> glossesque-sys?)
-  (chaperone-of-atom-glossesque-sys-unguarded))
+  (chaperone=-atom-glossesque-sys-unguarded))
 
 (define-imitation-simple-struct
-  (chaperone-of-indistinct-atom-glossesque-sys?)
-  chaperone-of-indistinct-atom-glossesque-sys-unguarded
-  'chaperone-of-indistinct-atom-glossesque-sys (current-inspector)
+  (chaperone=-indistinct-atom-glossesque-sys?)
+  chaperone=-indistinct-atom-glossesque-sys-unguarded
+  'chaperone=-indistinct-atom-glossesque-sys (current-inspector)
   (auto-write)
   (#:prop prop:glossesque-sys
-    (make-glossesque-sys-impl-for-chaperone-of-atom
+    (make-glossesque-sys-impl-for-chaperone=-atom
       (equal-always-indistinct-atom-glossesque-sys))))
 
-(define/own-contract (chaperone-of-indistinct-atom-glossesque-sys)
+(define/own-contract (chaperone=-indistinct-atom-glossesque-sys)
   (-> glossesque-sys?)
-  (chaperone-of-indistinct-atom-glossesque-sys-unguarded))
+  (chaperone=-indistinct-atom-glossesque-sys-unguarded))
 
 (define-imitation-simple-struct (eq-atom-glossesque-sys?)
   eq-atom-glossesque-sys-unguarded
@@ -4774,7 +4774,7 @@
                       /if (acceptable-result? noncanonical-result)
                         (known noncanonical-result)
                       /unknown))))))))
-      /w- equivalent?-promise
+      /w- chaperone=?-promise
         (delay
           (and
             (inhabitant-shallowly-chaperone-of? b a)
@@ -4782,7 +4782,7 @@
       /w- ==-acceptable-result?
         (fn v
           (and
-            (force equivalent?-promise)
+            (force chaperone=?-promise)
             (inhabitant-shallowly-chaperone-of? v a)))
       /w- path-related-acceptable-result?
         (fn v
@@ -5471,14 +5471,14 @@
               /if (acceptable-result? b)
                 (known b)
               /unknown))))
-      /w- equivalent?-promise
+      /w- chaperone=?-promise
         (delay
           (and
             (inhabitant-chaperone-of? b a)
             (inhabitant-chaperone-of? a b)))
       /w- ==-acceptable-result?
         (fn v
-          (force equivalent?-promise))
+          (force chaperone=?-promise))
       /w- path-related-acceptable-result?
         (fn v
           #t)
@@ -5592,7 +5592,7 @@
           distinct-0-tgs-k
           (known /tagged-glossesque-sys
             (variant)
-            (chaperone-of-atom-glossesque-sys)))
+            (chaperone=-atom-glossesque-sys)))
       ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
       ; isn't quite right for this purpose. In fact, is it even right
       ; for its original purpose? We originally intended to have
@@ -5617,7 +5617,7 @@
           indistinct-0-tgs-k
           (known /tagged-glossesque-sys
             indistinct-tag
-            (chaperone-of-indistinct-atom-glossesque-sys)))
+            (chaperone=-indistinct-atom-glossesque-sys)))
       /if (and known-distinct? known-discrete?)
         (stream*
           (constant-custom-gloss-key-report
