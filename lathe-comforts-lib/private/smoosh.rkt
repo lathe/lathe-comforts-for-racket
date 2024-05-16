@@ -205,10 +205,6 @@
   equal-always-gloss-key-wrapper
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
-  make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-  make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-  make-expressly-smooshable-bundle-property-for-atom
   equal-always-atom-glossesque-sys
   eq-atom-glossesque-sys
   eq-indistinct-atom-glossesque-sys
@@ -218,6 +214,10 @@
   make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
   make-expressly-smooshable-bundle-property-from-list-isomorphism
+  make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+  make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
+  make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+  make-expressly-smooshable-bundle-property-for-atom
   non-nan-number-glossesque-sys
   nan-number?
   non-nan-number?
@@ -3374,678 +3374,6 @@
       )
     report-1+))
 
-; This is an appropriate `prop:expressly-smooshable-dynamic-type`
-; implementation for simple values that can be compared by a simple
-; equivalence comparison function.
-;
-; The given `known-distinct?` indicates whether a false result of
-; the underlying comparison means we positively know the values are
-; distinct (rather than just not knowing that they're equal). The
-; given `known-discrete?` indicates whether knowing that two values
-; are distinct means we positively know that they aren't related by
-; ordering either. (Otherwise, their results for those failed ordered
-; comparisons are unknown.) These situations only apply for failures
-; of shallow comparison; a known failure of comparison of elements
-; still results in a known failure of comparison overall.
-;
-; The given `==?` function (usually `equal-always?`) should be an
-; equivalence comparison at least as strong as `equal-always?`, in the
-; sense that when `==?` is true, `equal-always?` is true.
-;
-; Level 0:
-;   <=, >=, path-related, join, meet:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
-;     
-;     Otherwise, if the operands pass the given `==?` function, the
-;     first operand (or, for a check, `#t`).
-;     
-;     Otherwise, if (`known-distinct?` and `known-discrete?`) is true,
-;     a known nothing (or, for a check, `#f`).
-;     
-;     Otherwise, unknown.
-;   ==:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
-;     
-;     Otherwise, if the operands pass the given `==?` function, the
-;     first operand.
-;     
-;     Otherwise, if `known-distinct?` is true, a known nothing.
-;     
-;     Otherwise, unknown.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
-;   <=, >=:
-;     Same as the description of level 0 == as a check.
-;
-(define/own-contract
-  (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-    #:known-distinct? [known-distinct? #t]
-    #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?
-    #:==? [==? (fn a b /equal-always? a b)])
-  (->*
-    (#:inhabitant? (-> any/c boolean?))
-    (
-      #:known-distinct? boolean?
-      #:known-discrete? boolean?
-      #:==? (-> any/c any/c boolean?))
-    expressly-smooshable-dynamic-type-impl?)
-  (make-expressly-smooshable-dynamic-type-impl
-    
-    #:get-smoosh-of-zero-reports
-    (fn self
-      (uninformative-smoosh-reports))
-    
-    #:get-smoosh-of-one-reports
-    (fn self a
-      (constant-smoosh-reports /delay
-        (knowable-if (inhabitant? a) /fn
-          (just /delay/strict /known a))))
-    
-    #:get-smoosh-and-comparison-of-two-reports
-    (fn self a b
-      (smoosh-and-comparison-of-two-reports-censor
-        #:known-distinct? known-distinct?
-        #:known-discrete? known-discrete?
-        (constant-smoosh-and-comparison-of-two-reports /delay
-          (knowable-if (not /and (inhabitant? a) (inhabitant? b)) /fn
-            (maybe-if (==? a b) /fn /delay/strict /known a)))))
-    
-    ))
-
-; This is an appropriate `prop:expressly-smooshable-dynamic-type`
-; implementation for mutable tuple data structures and their
-; chaperones, information-ordered in a way that's consistent with
-; `chaperone-of?`.
-;
-; The given `known-distinct?` indicates whether a false result of
-; the underlying comparison means we positively know the values are
-; distinct (rather than just not knowing that they're equal). The
-; given `known-discrete?` indicates whether knowing that two values
-; are distinct means we positively know that they aren't related by
-; ordering either. (Otherwise, their results for those failed ordered
-; comparisons are unknown.)
-;
-; Level 0:
-;   <=, >=, path-related, join, meet:
-;     Same as the description of level 1 path-related (as a check when
-;     applicable), except that if `known-discrete?` is false, a result
-;     that would be a known nothing is instead unknown.
-;   ==:
-;     Same as the description of level 1 path-related.
-; Level 1:
-;   path-related, join, meet, ==:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
-;     
-;     Otherwise, if the operands are not `equal-always?` and
-;     `known-distinct?` is true, then a known nothing.
-;     
-;     Otherwise, if the operands are not `equal-always?`, then
-;     unknown.
-;     
-;     Otherwise, if any operand counts as an acceptable result, then
-;     the first such operand.
-;     
-;     Otherwise, unknown.
-;     
-;     Where "acceptable result" means:
-;       If we're doing path-related:
-;         Every result is acceptable.
-;       If we're doing join:
-;         Every result is acceptable if it's `chaperone-of?` every
-;         operand.
-;         
-;         (We'll allow for the possibility that Racket will introduce
-;         chaperone wrappers that are chaperone-of each of two
-;         preexisting chaperones, so we'll treat some results as
-;         unknown even though a more Racket-version-pinned design
-;         might treat them as known nothings.)
-;       If we're doing meet:
-;         Every operand is acceptable if each of the operands is
-;         `chaperone-of?` it.
-;         
-;         (Note that the meet is often an object the program can refer
-;         to, but unless an acceptable result is found among the
-;         operands, there's no way to obtain it from the operands, so
-;         the result will be unknown.)
-;       If we're doing ==:
-;         Every result is acceptable if it and the operands are all
-;         `chaperone-of?` each other.
-;   <=, >=:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
-;     
-;     Otherwise, if the operands are not `equal-always?` and
-;     `known-distinct?` is true, then a known `#f`.
-;     
-;     Otherwise, if the operands are not `equal-always?`, then
-;     unknown.
-;     
-;     Otherwise, if the element we're proposing to be greater is
-;     `chaperone-of?` the other one, then a known `#t`.
-;     
-;     Otherwise, unknown.
-;     
-;     (We'll allow for the possibility that values which differ only
-;     in the failure of a chaperone-of check could actually pass the
-;     chaperone-of check in the future when they're written to reuse
-;     chaperone-wrapped values more diligently. This kind of rewrite
-;     may be more feasible if and when Racket introduces
-;     chaperone-wrapping operations that create equivalent wrappers in
-;     some reliable way. As such, we'll treat some results as unknown
-;     even though a more Racket-version-pinned design might treat them
-;     as known nothings.)
-; Level 2+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 1 ==.
-;   <=, >=:
-;     Same as the description of level 1 == as a check.
-;
-(define/own-contract
-  (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-    #:known-distinct? [known-distinct? #t]
-    #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?)
-  (->*
-    (#:inhabitant? (-> any/c boolean?))
-    (#:known-distinct? boolean? #:known-discrete? boolean?)
-    expressly-smooshable-dynamic-type-impl?)
-  (make-expressly-smooshable-dynamic-type-impl
-    
-    #:get-smoosh-of-zero-reports
-    (fn self
-      (uninformative-smoosh-reports))
-    
-    #:get-smoosh-of-one-reports
-    (fn self a
-      (constant-smoosh-reports /delay
-        (knowable-if (inhabitant? a) /fn
-          (just /delay/strict /known a))))
-    
-    #:get-smoosh-and-comparison-of-two-reports
-    (fn self a b
-      (expect (inhabitant? a) #t
-        (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (inhabitant? b) #t
-        (uninformative-smoosh-and-comparison-of-two-reports)
-      /if (not /equal-always? a b)
-        (smoosh-and-comparison-of-two-reports-censor
-          #:known-distinct? known-distinct?
-          #:known-discrete? known-discrete?
-          (false-smoosh-and-comparison-of-two-reports))
-      /w- a-chaperone-of-b?-promise (delay /chaperone-of? a b)
-      /w- b-chaperone-of-a?-promise (delay /chaperone-of? b a)
-      ; Given two `equal-always?` inhabitants, this checks whether
-      ; they're `chaperone-of?`. Like `chaperone-of?`, this takes
-      ; constant time if the inhabitants are `eq?` themselves.
-      /w- inhabitant-chaperone-of?
-        (fn s t
-          (or (eq? s t)
-          /if (and (eq? s b) (eq? t a))
-            (force b-chaperone-of-a?-promise)
-          /if (and (eq? s a) (eq? t b))
-            (force a-chaperone-of-b?-promise)
-          /chaperone-of? s t))
-      /w- on-check-result-knowable-promise
-        (fn should-a-be-small? should-b-be-small?
-          (dissectfn (list)
-            (delay
-              (boolean-and-knowable-thunk-zip /list
-                (fn /boolean-or-knowable-thunk-zip /list
-                  (fn /known /not should-a-be-small?)
-                  (fn /falsable->uninformative-knowable
-                    (inhabitant-chaperone-of? b a)))
-                (fn /boolean-or-knowable-thunk-zip /list
-                  (fn /known /not should-b-be-small?)
-                  (fn /falsable->uninformative-knowable
-                    (inhabitant-chaperone-of? a b)))))))
-      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
-        (fn acceptable-result?
-          (dissectfn (list)
-            (delay/strict /known /just /delay
-              (if (acceptable-result? a)
-                (known a)
-              /if (acceptable-result? b)
-                (known b)
-              /unknown))))
-      /w- equivalent?-promise
-        (delay
-          (and
-            (inhabitant-chaperone-of? b a)
-            (inhabitant-chaperone-of? a b)))
-      /w- ==-acceptable-result?
-        (fn v
-          (force equivalent?-promise))
-      /w- path-related-acceptable-result?
-        (fn v
-          #t)
-      /stream*
-        (smoosh-and-comparison-of-two-report-zip-map (list)
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #f #f)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-report-zip-map (list)
-          #:on-<=?-knowable-promise
-          (on-check-result-knowable-promise #t #f)
-          #:on->=?-knowable-promise
-          (on-check-result-knowable-promise #f #t)
-          #:on-join-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn v
-              (and
-                (inhabitant-chaperone-of? v a)
-                (inhabitant-chaperone-of? v b))))
-          #:on-meet-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn v
-              (and
-                (inhabitant-chaperone-of? a v)
-                (inhabitant-chaperone-of? b v))))
-          #:on-==-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            ==-acceptable-result?)
-          #:on-path-related-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-reports-zip-map (list)
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #t #t)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            ==-acceptable-result?))))
-    
-    ))
-
-(define/own-contract
-  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-    #:hash-code [hash-code (fn a /equal-always-hash-code a)]
-    #:hash-code-0 [hash-code-0 hash-code]
-    #:hash-code-1+ [hash-code-1+ hash-code])
-  (->*
-    ()
-    (
-      #:hash-code (-> any/c fixnum?)
-      #:hash-code-0 (-> any/c fixnum?)
-      #:hash-code-1+ (-> any/c fixnum?))
-    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
-  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
-    
-    #:get-smoosh-equal-hash-code-support-reports
-    (fn self a
-      (stream*
-        (constant-smoosh-equal-hash-code-support-report
-          (delay /hash-code-0 a))
-        (constant-smoosh-equal-hash-code-support-reports
-          (delay /hash-code-1+ a))))
-    
-    ))
-
-(define/own-contract
-  (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
-    #:eq-matters? [eq-matters? #f]
-    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
-    #:known-distinct? [known-distinct? #t]
-    #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?)
-  (->*
-    (#:inhabitant? (-> any/c boolean?))
-    (
-      #:eq-matters? boolean?
-      #:ignore-chaperones? boolean?
-      #:known-distinct? boolean?
-      #:known-discrete? boolean?)
-    expressly-custom-gloss-key-dynamic-type-impl?)
-  ; TODO SMOOSH: These uses of `define-variant` are forward
-  ; references. See if we can untangle them.
-  ;
-  ; TODO SMOOSH: Add arguments to
-  ; `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
-  ; and `define-variant` that let us specify debug names for these
-  ; variants and their dynamic types.
-  ;
-  (define-variant variant)
-  (define-variant specific-variant specific-variant-value)
-  (make-expressly-custom-gloss-key-dynamic-type-impl
-    
-    #:get-custom-gloss-key-reports
-    (fn self a
-      (expect (inhabitant? a) #t
-        (uninformative-custom-gloss-key-reports)
-      ; TODO SMOOSH: These uses of `eq-atom-variant`,
-      ; `eq-atom-glossesque-sys`, `equal-always-atom-glossesque-sys`,
-      ; `chaperone-of-atom-glossesque-sys`,
-      ; `eq-indistinct-atom-variant`,
-      ; `eq-indistinct-atom-glossesque-sys`,
-      ; `equal-always-indistinct-atom-glossesque-sys`, and
-      ; `chaperone-of-indistinct-atom-glossesque-sys` are forward
-      ; references. See if we can untangle them.
-      /w- distinct-0-tgs-k
-        (if eq-matters?
-          (known /tagged-glossesque-sys
-            (eq-atom-variant)
-            (eq-atom-glossesque-sys))
-          (known /tagged-glossesque-sys
-            (variant)
-            (equal-always-atom-glossesque-sys)))
-      /w- distinct-1+-tgs-k
-        (if (or eq-matters? ignore-chaperones?)
-          distinct-0-tgs-k
-          (known /tagged-glossesque-sys
-            (variant)
-            (chaperone-of-atom-glossesque-sys)))
-      ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
-      ; isn't quite right for this purpose. In fact, is it even right
-      ; for its original purpose? We originally intended to have
-      ; variants be instances of it directly, but since we want most
-      ; pairs of distinct variants to be incomparable, while instances
-      ; of this are always distinguishable, it doesn't seem very
-      ; useful going forward. But we need some base case for gloss
-      ; keys, and right here we need a wrapper that compares its
-      ; wrapped value according to `equal-always?`.
-      /w- indistinct-tag
-        (specific-variant /equal-always-gloss-key-wrapper a)
-      /w- indistinct-0-tgs-k
-        (if eq-matters?
-          (known /tagged-glossesque-sys
-            (eq-indistinct-atom-variant)
-            (eq-indistinct-atom-glossesque-sys))
-          (known /tagged-glossesque-sys
-            indistinct-tag
-            (equal-always-indistinct-atom-glossesque-sys)))
-      /w- indistinct-1+-tgs-k
-        (if (or eq-matters? ignore-chaperones?)
-          indistinct-0-tgs-k
-          (known /tagged-glossesque-sys
-            indistinct-tag
-            (chaperone-of-indistinct-atom-glossesque-sys)))
-      /if (and known-distinct? known-discrete?)
-        (stream*
-          (constant-custom-gloss-key-report
-            #:tagged-glossesque-sys-knowable distinct-0-tgs-k)
-          (constant-custom-gloss-key-reports
-            #:tagged-glossesque-sys-knowable distinct-1+-tgs-k))
-      /if (not known-distinct?)
-        (stream*
-          (constant-custom-gloss-key-report
-            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
-          (constant-custom-gloss-key-reports
-            #:tagged-glossesque-sys-knowable indistinct-1+-tgs-k))
-      /stream*
-        (custom-gloss-key-report-map
-          (constant-custom-gloss-key-report
-            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
-          #:on-==-tagged-glossesque-sys-knowable
-          (fn tgs-k
-            distinct-0-tgs-k))
-        (constant-custom-gloss-key-reports
-          #:tagged-glossesque-sys-knowable distinct-1+-tgs-k)))
-    
-    ))
-
-(define/own-contract
-  (make-expressly-smooshable-bundle-property-for-atom
-    #:eq-matters? [eq-matters? #f]
-    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
-    #:known-distinct? [known-distinct? #t]
-    #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?
-    
-    #:==?
-    [ ==?
-      (if eq-matters?
-        (fn a b /eq? a b)
-        (fn a b /equal-always? a b))]
-    
-    #:hash-code
-    [ hash-code
-      (if eq-matters?
-        (fn a /eq-hash-code a)
-        (fn a /equal-always-hash-code a))]
-    
-    #:hash-code-0 [hash-code-0 hash-code]
-    #:hash-code-1+ [hash-code-1+ hash-code])
-  (->*
-    (#:inhabitant? (-> any/c boolean?))
-    (
-      #:eq-matters? boolean?
-      #:ignore-chaperones? boolean?
-      #:known-distinct? boolean?
-      #:known-discrete? boolean?
-      #:==? (-> any/c any/c boolean?)
-      #:hash-code (-> any/c fixnum?)
-      #:hash-code-0 (-> any/c fixnum?)
-      #:hash-code-1+ (-> any/c fixnum?))
-    (struct-type-property/c trivial?))
-  (define-values (prop:bundle bundle? bundle-ref)
-    (make-struct-type-property
-      'expressly-smooshable-bundle-property-for-atom
-      (fn value info
-        (expect value (trivial)
-          (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-atom
-            "expected the property value to be a trivial? value"
-            "value" value)
-          value))
-      (list
-        (cons
-          prop:expressly-smooshable-dynamic-type
-          (dissectfn (trivial)
-            (if ignore-chaperones?
-              (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-                #:known-distinct? known-distinct?
-                #:known-discrete? known-discrete?
-                #:inhabitant? inhabitant?
-                #:==? ==?)
-              (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
-                #:known-distinct? known-distinct?
-                #:known-discrete? known-discrete?
-                #:inhabitant? inhabitant?))))
-        (cons
-          prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-          (dissectfn (trivial)
-            (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
-              #:hash-code-0 hash-code-0
-              #:hash-code-1+ hash-code-1+)))
-        (cons
-          prop:expressly-custom-gloss-key-dynamic-type
-          (dissectfn (trivial)
-            (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
-              #:eq-matters? eq-matters?
-              #:ignore-chaperones? ignore-chaperones?
-              #:known-distinct? known-distinct?
-              #:known-discrete? known-discrete?
-              #:inhabitant? inhabitant?))))))
-  prop:bundle)
-
-; Level 0:
-;   <=, >=, path-related, join, meet:
-;     If the operands are not both `flvector?` values, then unknown.
-;     
-;     Otherwise, if the operands are `eq?`, then the first operand
-;     (or, for a check, `#t`).
-;     
-;     Otherwise, unknown.
-;   ==:
-;     If the operands are not both `flvector?` values, then unknown.
-;     
-;     Otherwise, if the operands are `eq?`, then the first operand.
-;     
-;     Otherwise, a known nothing.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
-;   <=, >=:
-;     Same as the description of level 0 == as a check.
-;
-(define-imitation-simple-struct (flvector-dynamic-type?)
-  flvector-dynamic-type
-  'flvector-dynamic-type (current-inspector) (auto-write)
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:eq-matters? #t
-      #:inhabitant? flvector?)
-    (trivial)))
-
-; Level 0:
-;   <=, >=, path-related, join, meet:
-;     If the operands are not both `fxvector?` values, then unknown.
-;     
-;     Otherwise, if the operands are `eq?`, then the first operand
-;     (or, for a check, `#t`).
-;     
-;     Otherwise, unknown.
-;   ==:
-;     If the operands are not both `fxvector?` values, then unknown.
-;     
-;     Otherwise, if the operands are `eq?`, then the first operand.
-;     
-;     Otherwise, a known nothing.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
-;   <=, >=:
-;     Same as the description of level 0 == as a check.
-;
-(define-imitation-simple-struct (fxvector-dynamic-type?)
-  fxvector-dynamic-type
-  'fxvector-dynamic-type (current-inspector) (auto-write)
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:eq-matters? #t
-      #:inhabitant? fxvector?)
-    (trivial)))
-
-(define/own-contract (base-syntactic-atom? v)
-  (-> any/c boolean?)
-  (or (symbol? v) (keyword? v) (null? v)))
-
-; Level 0:
-;   <=, >=, path-related, join, meet:
-;     If the operands are not both `base-syntactic-atom?` values, then
-;     unknown.
-;     
-;     If the operands are `equal-always?`, then the first operand (or,
-;     for a check, `#t`).
-;     
-;     Otherwise, unknown.
-;   ==:
-;     If the operands are not both `base-syntactic-atom?` values, then
-;     unknown.
-;     
-;     If the operands are `equal-always?`, then the first operand.
-;     
-;     Otherwise, a known nothing.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
-;   <=, >=:
-;     Same as the description of level 0 == as a check.
-;
-(define-imitation-simple-struct (base-syntactic-atom-dynamic-type?)
-  base-syntactic-atom-dynamic-type
-  'base-syntactic-atom-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
-      #:inhabitant? base-syntactic-atom?)
-    (trivial)))
-
-; Level 0:
-;   <=, >=, path-related, join, meet:
-;     If the operands are not both `boolean?` values, then unknown.
-;     
-;     If the operands are `equal-always?`, then the first operand (or,
-;     for a check, `#t`).
-;     
-;     Otherwise, unknown.
-;   ==:
-;     If the operands are not both `boolean?` values, then unknown.
-;     
-;     If the operands are `equal-always?`, then the first operand.
-;     
-;     Otherwise, a known nothing.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
-;   <=, >=:
-;     Same as the description of level 0 == as a check.
-;
-(define-imitation-simple-struct (boolean-dynamic-type?)
-  boolean-dynamic-type
-  'boolean-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
-      #:inhabitant? boolean?)
-    (trivial)))
-
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both characters, then unknown.
-;     
-;     If the operands are `equal-always?`, then the first operand (or,
-;     for a check, `#t`).
-;     
-;     Otherwise, unknown.
-;
-(define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
-  'char-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
-      #:known-distinct? #f
-      #:inhabitant? char?)
-    (trivial)))
-
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both immutable strings, then unknown.
-;     
-;     Otherwise, if the operands are `equal-always?`, then the first
-;     operand (or, for a check, `#t`).
-;     
-;     Otherwise, unknown.
-;
-(define-imitation-simple-struct (immutable-string-dynamic-type?)
-  immutable-string-dynamic-type
-  'immutable-string-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
-      #:known-distinct? #f
-      #:inhabitant? immutable-string?)
-    (trivial)))
-
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both immutable byte strings, then
-;     unknown.
-;     
-;     Otherwise, if the operands are `equal-always?`, then the first
-;     operand (or, for a check, `#t`).
-;     
-;     Otherwise, unknown.
-;
-(define-imitation-simple-struct (immutable-bytes-dynamic-type?)
-  immutable-bytes-dynamic-type
-  'immutable-bytes-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
-      #:known-distinct? #f
-      #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
-    (trivial)))
-
 (define/own-contract
   (make-glossesque-sys-impl-for-indistinct ==?)
   (-> (-> any/c any/c boolean?) glossesque-sys-impl?)
@@ -5282,12 +4610,672 @@
     
     ))
 
+; This is an appropriate `prop:expressly-smooshable-dynamic-type`
+; implementation for simple values that can be compared by a simple
+; equivalence comparison function.
+;
+; The given `known-distinct?` indicates whether a false result of
+; the underlying comparison means we positively know the values are
+; distinct (rather than just not knowing that they're equal). The
+; given `known-discrete?` indicates whether knowing that two values
+; are distinct means we positively know that they aren't related by
+; ordering either. (Otherwise, their results for those failed ordered
+; comparisons are unknown.) These situations only apply for failures
+; of shallow comparison; a known failure of comparison of elements
+; still results in a known failure of comparison overall.
+;
+; The given `==?` function (usually `equal-always?`) should be an
+; equivalence comparison at least as strong as `equal-always?`, in the
+; sense that when `==?` is true, `equal-always?` is true.
+;
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands pass the given `==?` function, the
+;     first operand (or, for a check, `#t`).
+;     
+;     Otherwise, if (`known-distinct?` and `known-discrete?`) is true,
+;     a known nothing (or, for a check, `#f`).
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands pass the given `==?` function, the
+;     first operand.
+;     
+;     Otherwise, if `known-distinct?` is true, a known nothing.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define/own-contract
+  (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
+    #:inhabitant? inhabitant?
+    #:==? [==? (fn a b /equal-always? a b)])
+  (->*
+    (#:inhabitant? (-> any/c boolean?))
+    (
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?
+      #:==? (-> any/c any/c boolean?))
+    expressly-smooshable-dynamic-type-impl?)
+  (make-expressly-smooshable-dynamic-type-impl
+    
+    #:get-smoosh-of-zero-reports
+    (fn self
+      (uninformative-smoosh-reports))
+    
+    #:get-smoosh-of-one-reports
+    (fn self a
+      (constant-smoosh-reports /delay
+        (knowable-if (inhabitant? a) /fn
+          (just /delay/strict /known a))))
+    
+    #:get-smoosh-and-comparison-of-two-reports
+    (fn self a b
+      (smoosh-and-comparison-of-two-reports-censor
+        #:known-distinct? known-distinct?
+        #:known-discrete? known-discrete?
+        (constant-smoosh-and-comparison-of-two-reports /delay
+          (knowable-if (not /and (inhabitant? a) (inhabitant? b)) /fn
+            (maybe-if (==? a b) /fn /delay/strict /known a)))))
+    
+    ))
+
+; This is an appropriate `prop:expressly-smooshable-dynamic-type`
+; implementation for mutable tuple data structures and their
+; chaperones, information-ordered in a way that's consistent with
+; `chaperone-of?`.
+;
+; The given `known-distinct?` indicates whether a false result of
+; the underlying comparison means we positively know the values are
+; distinct (rather than just not knowing that they're equal). The
+; given `known-discrete?` indicates whether knowing that two values
+; are distinct means we positively know that they aren't related by
+; ordering either. (Otherwise, their results for those failed ordered
+; comparisons are unknown.)
+;
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     Same as the description of level 1 path-related (as a check when
+;     applicable), except that if `known-discrete?` is false, a result
+;     that would be a known nothing is instead unknown.
+;   ==:
+;     Same as the description of level 1 path-related.
+; Level 1:
+;   path-related, join, meet, ==:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands are not `equal-always?` and
+;     `known-distinct?` is true, then a known nothing.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then
+;     unknown.
+;     
+;     Otherwise, if any operand counts as an acceptable result, then
+;     the first such operand.
+;     
+;     Otherwise, unknown.
+;     
+;     Where "acceptable result" means:
+;       If we're doing path-related:
+;         Every result is acceptable.
+;       If we're doing join:
+;         Every result is acceptable if it's `chaperone-of?` every
+;         operand.
+;         
+;         (We'll allow for the possibility that Racket will introduce
+;         chaperone wrappers that are chaperone-of each of two
+;         preexisting chaperones, so we'll treat some results as
+;         unknown even though a more Racket-version-pinned design
+;         might treat them as known nothings.)
+;       If we're doing meet:
+;         Every operand is acceptable if each of the operands is
+;         `chaperone-of?` it.
+;         
+;         (Note that the meet is often an object the program can refer
+;         to, but unless an acceptable result is found among the
+;         operands, there's no way to obtain it from the operands, so
+;         the result will be unknown.)
+;       If we're doing ==:
+;         Every result is acceptable if it and the operands are all
+;         `chaperone-of?` each other.
+;   <=, >=:
+;     If the operands do not both pass the given `inhabitant?`
+;     predicate, then unknown.
+;     
+;     Otherwise, if the operands are not `equal-always?` and
+;     `known-distinct?` is true, then a known `#f`.
+;     
+;     Otherwise, if the operands are not `equal-always?`, then
+;     unknown.
+;     
+;     Otherwise, if the element we're proposing to be greater is
+;     `chaperone-of?` the other one, then a known `#t`.
+;     
+;     Otherwise, unknown.
+;     
+;     (We'll allow for the possibility that values which differ only
+;     in the failure of a chaperone-of check could actually pass the
+;     chaperone-of check in the future when they're written to reuse
+;     chaperone-wrapped values more diligently. This kind of rewrite
+;     may be more feasible if and when Racket introduces
+;     chaperone-wrapping operations that create equivalent wrappers in
+;     some reliable way. As such, we'll treat some results as unknown
+;     even though a more Racket-version-pinned design might treat them
+;     as known nothings.)
+; Level 2+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 1 ==.
+;   <=, >=:
+;     Same as the description of level 1 == as a check.
+;
+(define/own-contract
+  (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
+    #:inhabitant? inhabitant?)
+  (->*
+    (#:inhabitant? (-> any/c boolean?))
+    (#:known-distinct? boolean? #:known-discrete? boolean?)
+    expressly-smooshable-dynamic-type-impl?)
+  (make-expressly-smooshable-dynamic-type-impl
+    
+    #:get-smoosh-of-zero-reports
+    (fn self
+      (uninformative-smoosh-reports))
+    
+    #:get-smoosh-of-one-reports
+    (fn self a
+      (constant-smoosh-reports /delay
+        (knowable-if (inhabitant? a) /fn
+          (just /delay/strict /known a))))
+    
+    #:get-smoosh-and-comparison-of-two-reports
+    (fn self a b
+      (expect (inhabitant? a) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (inhabitant? b) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /if (not /equal-always? a b)
+        (smoosh-and-comparison-of-two-reports-censor
+          #:known-distinct? known-distinct?
+          #:known-discrete? known-discrete?
+          (false-smoosh-and-comparison-of-two-reports))
+      /w- a-chaperone-of-b?-promise (delay /chaperone-of? a b)
+      /w- b-chaperone-of-a?-promise (delay /chaperone-of? b a)
+      ; Given two `equal-always?` inhabitants, this checks whether
+      ; they're `chaperone-of?`. Like `chaperone-of?`, this takes
+      ; constant time if the inhabitants are `eq?` themselves.
+      /w- inhabitant-chaperone-of?
+        (fn s t
+          (or (eq? s t)
+          /if (and (eq? s b) (eq? t a))
+            (force b-chaperone-of-a?-promise)
+          /if (and (eq? s a) (eq? t b))
+            (force a-chaperone-of-b?-promise)
+          /chaperone-of? s t))
+      /w- on-check-result-knowable-promise
+        (fn should-a-be-small? should-b-be-small?
+          (dissectfn (list)
+            (delay
+              (boolean-and-knowable-thunk-zip /list
+                (fn /boolean-or-knowable-thunk-zip /list
+                  (fn /known /not should-a-be-small?)
+                  (fn /falsable->uninformative-knowable
+                    (inhabitant-chaperone-of? b a)))
+                (fn /boolean-or-knowable-thunk-zip /list
+                  (fn /known /not should-b-be-small?)
+                  (fn /falsable->uninformative-knowable
+                    (inhabitant-chaperone-of? a b)))))))
+      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
+        (fn acceptable-result?
+          (dissectfn (list)
+            (delay/strict /known /just /delay
+              (if (acceptable-result? a)
+                (known a)
+              /if (acceptable-result? b)
+                (known b)
+              /unknown))))
+      /w- equivalent?-promise
+        (delay
+          (and
+            (inhabitant-chaperone-of? b a)
+            (inhabitant-chaperone-of? a b)))
+      /w- ==-acceptable-result?
+        (fn v
+          (force equivalent?-promise))
+      /w- path-related-acceptable-result?
+        (fn v
+          #t)
+      /stream*
+        (smoosh-and-comparison-of-two-report-zip-map (list)
+          #:on-check-result-knowable-promise
+          (on-check-result-knowable-promise #f #f)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            path-related-acceptable-result?))
+        (smoosh-and-comparison-of-two-report-zip-map (list)
+          #:on-<=?-knowable-promise
+          (on-check-result-knowable-promise #t #f)
+          #:on->=?-knowable-promise
+          (on-check-result-knowable-promise #f #t)
+          #:on-join-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn v
+              (and
+                (inhabitant-chaperone-of? v a)
+                (inhabitant-chaperone-of? v b))))
+          #:on-meet-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn v
+              (and
+                (inhabitant-chaperone-of? a v)
+                (inhabitant-chaperone-of? b v))))
+          #:on-==-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            ==-acceptable-result?)
+          #:on-path-related-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            path-related-acceptable-result?))
+        (smoosh-and-comparison-of-two-reports-zip-map (list)
+          #:on-check-result-knowable-promise
+          (on-check-result-knowable-promise #t #t)
+          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+            ==-acceptable-result?))))
+    
+    ))
+
+(define/own-contract
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+    #:hash-code [hash-code (fn a /equal-always-hash-code a)]
+    #:hash-code-0 [hash-code-0 hash-code]
+    #:hash-code-1+ [hash-code-1+ hash-code])
+  (->*
+    ()
+    (
+      #:hash-code (-> any/c fixnum?)
+      #:hash-code-0 (-> any/c fixnum?)
+      #:hash-code-1+ (-> any/c fixnum?))
+    expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
+  (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+    
+    #:get-smoosh-equal-hash-code-support-reports
+    (fn self a
+      (stream*
+        (constant-smoosh-equal-hash-code-support-report
+          (delay /hash-code-0 a))
+        (constant-smoosh-equal-hash-code-support-reports
+          (delay /hash-code-1+ a))))
+    
+    ))
+
 ; TODO SMOOSH: See if we should export these. We probably should, but
 ; do we need to export them as just constructor functions rather than
 ; having `match` capability? Do we need to export `eq-atom-variant?`
 ; and `eq-indistinct-atom-variant?` along with them?
 (define-variant eq-atom-variant)
 (define-variant eq-indistinct-atom-variant)
+
+(define/own-contract
+  (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+    #:eq-matters? [eq-matters? #f]
+    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
+    #:inhabitant? inhabitant?)
+  (->*
+    (#:inhabitant? (-> any/c boolean?))
+    (
+      #:eq-matters? boolean?
+      #:ignore-chaperones? boolean?
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?)
+    expressly-custom-gloss-key-dynamic-type-impl?)
+  ; TODO SMOOSH: Add arguments to
+  ; `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
+  ; and `define-variant` that let us specify debug names for these
+  ; variants and their dynamic types.
+  (define-variant variant)
+  (define-variant specific-variant specific-variant-value)
+  (make-expressly-custom-gloss-key-dynamic-type-impl
+    
+    #:get-custom-gloss-key-reports
+    (fn self a
+      (expect (inhabitant? a) #t
+        (uninformative-custom-gloss-key-reports)
+      /w- distinct-0-tgs-k
+        (if eq-matters?
+          (known /tagged-glossesque-sys
+            (eq-atom-variant)
+            (eq-atom-glossesque-sys))
+          (known /tagged-glossesque-sys
+            (variant)
+            (equal-always-atom-glossesque-sys)))
+      /w- distinct-1+-tgs-k
+        (if (or eq-matters? ignore-chaperones?)
+          distinct-0-tgs-k
+          (known /tagged-glossesque-sys
+            (variant)
+            (chaperone-of-atom-glossesque-sys)))
+      ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
+      ; isn't quite right for this purpose. In fact, is it even right
+      ; for its original purpose? We originally intended to have
+      ; variants be instances of it directly, but since we want most
+      ; pairs of distinct variants to be incomparable, while instances
+      ; of this are always distinguishable, it doesn't seem very
+      ; useful going forward. But we need some base case for gloss
+      ; keys, and right here we need a wrapper that compares its
+      ; wrapped value according to `equal-always?`.
+      /w- indistinct-tag
+        (specific-variant /equal-always-gloss-key-wrapper a)
+      /w- indistinct-0-tgs-k
+        (if eq-matters?
+          (known /tagged-glossesque-sys
+            (eq-indistinct-atom-variant)
+            (eq-indistinct-atom-glossesque-sys))
+          (known /tagged-glossesque-sys
+            indistinct-tag
+            (equal-always-indistinct-atom-glossesque-sys)))
+      /w- indistinct-1+-tgs-k
+        (if (or eq-matters? ignore-chaperones?)
+          indistinct-0-tgs-k
+          (known /tagged-glossesque-sys
+            indistinct-tag
+            (chaperone-of-indistinct-atom-glossesque-sys)))
+      /if (and known-distinct? known-discrete?)
+        (stream*
+          (constant-custom-gloss-key-report
+            #:tagged-glossesque-sys-knowable distinct-0-tgs-k)
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable distinct-1+-tgs-k))
+      /if (not known-distinct?)
+        (stream*
+          (constant-custom-gloss-key-report
+            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable indistinct-1+-tgs-k))
+      /stream*
+        (custom-gloss-key-report-map
+          (constant-custom-gloss-key-report
+            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
+          #:on-==-tagged-glossesque-sys-knowable
+          (fn tgs-k
+            distinct-0-tgs-k))
+        (constant-custom-gloss-key-reports
+          #:tagged-glossesque-sys-knowable distinct-1+-tgs-k)))
+    
+    ))
+
+(define/own-contract
+  (make-expressly-smooshable-bundle-property-for-atom
+    #:eq-matters? [eq-matters? #f]
+    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f]
+    #:inhabitant? inhabitant?
+    
+    #:==?
+    [ ==?
+      (if eq-matters?
+        (fn a b /eq? a b)
+        (fn a b /equal-always? a b))]
+    
+    #:hash-code
+    [ hash-code
+      (if eq-matters?
+        (fn a /eq-hash-code a)
+        (fn a /equal-always-hash-code a))]
+    
+    #:hash-code-0 [hash-code-0 hash-code]
+    #:hash-code-1+ [hash-code-1+ hash-code])
+  (->*
+    (#:inhabitant? (-> any/c boolean?))
+    (
+      #:eq-matters? boolean?
+      #:ignore-chaperones? boolean?
+      #:known-distinct? boolean?
+      #:known-discrete? boolean?
+      #:==? (-> any/c any/c boolean?)
+      #:hash-code (-> any/c fixnum?)
+      #:hash-code-0 (-> any/c fixnum?)
+      #:hash-code-1+ (-> any/c fixnum?))
+    (struct-type-property/c trivial?))
+  (define-values (prop:bundle bundle? bundle-ref)
+    (make-struct-type-property
+      'expressly-smooshable-bundle-property-for-atom
+      (fn value info
+        (expect value (trivial)
+          (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-atom
+            "expected the property value to be a trivial? value"
+            "value" value)
+          value))
+      (list
+        (cons
+          prop:expressly-smooshable-dynamic-type
+          (dissectfn (trivial)
+            (if ignore-chaperones?
+              (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
+                #:known-distinct? known-distinct?
+                #:known-discrete? known-discrete?
+                #:inhabitant? inhabitant?
+                #:==? ==?)
+              (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
+                #:known-distinct? known-distinct?
+                #:known-discrete? known-discrete?
+                #:inhabitant? inhabitant?))))
+        (cons
+          prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+          (dissectfn (trivial)
+            (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+              #:hash-code-0 hash-code-0
+              #:hash-code-1+ hash-code-1+)))
+        (cons
+          prop:expressly-custom-gloss-key-dynamic-type
+          (dissectfn (trivial)
+            (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+              #:eq-matters? eq-matters?
+              #:ignore-chaperones? ignore-chaperones?
+              #:known-distinct? known-distinct?
+              #:known-discrete? known-discrete?
+              #:inhabitant? inhabitant?))))))
+  prop:bundle)
+
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     If the operands are not both `flvector?` values, then unknown.
+;     
+;     Otherwise, if the operands are `eq?`, then the first operand
+;     (or, for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `flvector?` values, then unknown.
+;     
+;     Otherwise, if the operands are `eq?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define-imitation-simple-struct (flvector-dynamic-type?)
+  flvector-dynamic-type
+  'flvector-dynamic-type (current-inspector) (auto-write)
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:eq-matters? #t
+      #:inhabitant? flvector?)
+    (trivial)))
+
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     If the operands are not both `fxvector?` values, then unknown.
+;     
+;     Otherwise, if the operands are `eq?`, then the first operand
+;     (or, for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `fxvector?` values, then unknown.
+;     
+;     Otherwise, if the operands are `eq?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define-imitation-simple-struct (fxvector-dynamic-type?)
+  fxvector-dynamic-type
+  'fxvector-dynamic-type (current-inspector) (auto-write)
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:eq-matters? #t
+      #:inhabitant? fxvector?)
+    (trivial)))
+
+(define/own-contract (base-syntactic-atom? v)
+  (-> any/c boolean?)
+  (or (symbol? v) (keyword? v) (null? v)))
+
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     If the operands are not both `base-syntactic-atom?` values, then
+;     unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `base-syntactic-atom?` values, then
+;     unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define-imitation-simple-struct (base-syntactic-atom-dynamic-type?)
+  base-syntactic-atom-dynamic-type
+  'base-syntactic-atom-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? base-syntactic-atom?)
+    (trivial)))
+
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     If the operands are not both `boolean?` values, then unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `boolean?` values, then unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand.
+;     
+;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define-imitation-simple-struct (boolean-dynamic-type?)
+  boolean-dynamic-type
+  'boolean-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? boolean?)
+    (trivial)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both characters, then unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;
+(define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
+  'char-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:known-distinct? #f
+      #:inhabitant? char?)
+    (trivial)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both immutable strings, then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;
+(define-imitation-simple-struct (immutable-string-dynamic-type?)
+  immutable-string-dynamic-type
+  'immutable-string-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:known-distinct? #f
+      #:inhabitant? immutable-string?)
+    (trivial)))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both immutable byte strings, then
+;     unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;
+(define-imitation-simple-struct (immutable-bytes-dynamic-type?)
+  immutable-bytes-dynamic-type
+  'immutable-bytes-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:known-distinct? #f
+      #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
+    (trivial)))
 
 (define-variant non-nan-number-variant)
 (define-variant non-nan-real-number-variant)
