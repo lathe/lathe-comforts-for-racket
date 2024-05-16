@@ -205,7 +205,15 @@
   equal-always-gloss-key-wrapper
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
+  list-rev-append
+  list-rem-first-maybe
+  assoc-list-km-union-of-two-knowable
+  assoc-ref-maybe
+  assoc-set-maybe
   equal-always-atom-glossesque-sys
+  equal-always-indistinct-atom-glossesque-sys
+  chaperone-of-atom-glossesque-sys
+  chaperone-of-indistinct-atom-glossesque-sys
   eq-atom-glossesque-sys
   eq-indistinct-atom-glossesque-sys
   normalized-glossesque-sys
@@ -3456,13 +3464,11 @@
   (-> any/c any/c boolean?)
   (and (chaperone-of? a b) (chaperone-of? b a)))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (list-rev-append rev-past rest)
   (-> list? any/c any/c)
   (expect rev-past (cons elem rev-past) rest
   /list-rev-append rev-past (cons elem rest)))
 
-; TODO SMOOSH: Clean up this interface, and export this.
 (define/own-contract (list-rem-first-maybe lst check?)
   (-> list? (-> any/c boolean?) (maybe/c (list/c any/c list?)))
   (w-loop next rev-past (list) lst lst
@@ -3470,7 +3476,6 @@
     /if (check? elem) (just /list elem (list-rev-append rev-past lst))
     /next (cons elem rev-past) lst)))
 
-; TODO SMOOSH: Export this.
 (define/own-contract
   (assoc-list-km-union-of-two-knowable ==? a b km-union-knowable)
   (-> (-> any/c any/c boolean?) (listof pair?) (listof pair?)
@@ -3495,13 +3500,11 @@
     /dissect b-entry-and-b (list (cons b-k b-v) b)
     /entry-and-next a b rev-result a-k (just a-v) (just b-v))))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (assoc-ref-maybe ==? a k)
   (-> (-> any/c any/c boolean?) (listof pair?) any/c maybe?)
   (expect (assf (fn a-k /==? k a-k) a) (cons a-k v) (nothing)
   /just v))
 
-; TODO SMOOSH: Export this.
 (define/own-contract (assoc-set-maybe ==? a k m)
   (-> (-> any/c any/c boolean?) (listof pair?) any/c maybe?
     (listof pair?))
