@@ -202,17 +202,25 @@
   constant-smoosh-and-comparison-of-two-reports
   constant-smoosh-equal-hash-code-support-report
   constant-smoosh-equal-hash-code-support-reports
-  equal-always-gloss-key-wrapper
+  equal-always-wrapper?)
+(provide
+  equal-always-wrapper)
+(provide /own-contract-out
+  indistinct-wrapper?)
+(provide
+  indistinct-wrapper)
+(provide /own-contract-out
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
   list-rev-append
-  list-rem-first-maybe
+  list-rem-first-maybe-knowable
   assoc-list-km-union-of-two-knowable
-  assoc-ref-maybe
-  assoc-set-maybe
+  assoc-list-ref-maybe-knowable
+  assoc-list-set-maybe-knowable
   equality-check-atom-glossesque-sys
   equal-always-atom-glossesque-sys
   equality-check-indistinct-atom-glossesque-sys
+  indistinct-glossesque-sys
   equal-always-indistinct-atom-glossesque-sys
   chaperone=-atom-glossesque-sys
   chaperone=-indistinct-atom-glossesque-sys
@@ -220,6 +228,10 @@
   eq-indistinct-atom-glossesque-sys
   equal-always-from-list-injection-glossesque-sys
   equal-always-indistinct-from-list-injection-glossesque-sys
+  terminal-wrapper?)
+(provide
+  terminal-wrapper)
+(provide /own-contract-out
   chaperone=-copiable-glossesque-sys
   chaperone=-indistinct-copiable-glossesque-sys
   normalized-glossesque-sys
@@ -860,6 +872,7 @@
   (in-cycle /list /constant-custom-gloss-key-report
     #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable))
 
+; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper
@@ -903,6 +916,7 @@
     ))
 (ascribe-own-contract path-related-wrapper? (-> any/c boolean?))
 
+; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct (info-wrapper? info-wrapper-value)
   ; TODO SMOOSH: Stop using `auto-write` for this.
   info-wrapper 'info-wrapper (current-inspector) (auto-write)
@@ -1454,9 +1468,7 @@
   dynamic-type-var-for-any-dynamic-type
   'dynamic-type-var-for-any-dynamic-type (current-inspector)
   (auto-write)
-  (auto-equal)
-  (#:prop prop:equal-always-gloss-key
-    (make-equal-always-gloss-key-impl)))
+  (auto-equal))
 (ascribe-own-contract dynamic-type-var-for-any-dynamic-type?
   (-> any/c boolean?))
 
@@ -3277,36 +3289,35 @@
   (in-cycle /list /constant-smoosh-equal-hash-code-support-report
     hash-code-promise))
 
+; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct
-  (equal-always-gloss-key-wrapper?
-    equal-always-gloss-key-wrapper-value)
-  equal-always-gloss-key-wrapper-unguarded
-  'equal-always-gloss-key-wrapper (current-inspector) (auto-write)
+  (equal-always-wrapper? equal-always-wrapper-value)
+  equal-always-wrapper
+  'equal-always-wrapper (current-inspector) (auto-write)
   ; We use a comparison that consistently compares the value using
   ; `equal-always?`.
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (dissect a (equal-always-gloss-key-wrapper-unguarded a-value)
-      /dissect b (equal-always-gloss-key-wrapper-unguarded b-value)
+      (dissect a (equal-always-wrapper a-value)
+      /dissect b (equal-always-wrapper b-value)
       /equal-always? a-value b-value))
     
     (define (hash-mode-proc v recur now?)
-      (dissect v (equal-always-gloss-key-wrapper-unguarded v-value)
+      (dissect v (equal-always-wrapper v-value)
       /hash-code-combine
-        (equal-always-hash-code equal-always-gloss-key-wrapper?)
+        (equal-always-hash-code equal-always-wrapper?)
         (equal-always-hash-code v-value)))
     
-    )
-  (#:prop prop:equal-always-gloss-key
-    (make-equal-always-gloss-key-impl)))
+    ))
+(ascribe-own-contract equal-always-wrapper? (-> any/c boolean?))
 
-; TODO SMOOSH: Use this. It should generally come in handy to
-; construct the variant in a `tagged-glossesque-sys?` in an
-; implementation of `dynamic-type-get-custom-gloss-key-reports`.
-(define/own-contract (equal-always-gloss-key-wrapper v)
-  (-> any/c any/c)
-  (equal-always-gloss-key-wrapper-unguarded v))
+; TODO SMOOSH: Export more parts of this.
+(define-imitation-simple-struct
+  (indistinct-wrapper? indistinct-wrapper-value)
+  indistinct-wrapper
+  'indistinct-wrapper (current-inspector) (auto-write) (auto-equal))
+(ascribe-own-contract indistinct-wrapper? (-> any/c boolean?))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-report-join reports-list)
@@ -3347,13 +3358,45 @@
 ; TODO SMOOSH: Consider exporting this. If we do, find a better name
 ; for it.
 (define/own-contract
+  (smoosh-reports-censor reports
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f])
+  (->*
+    ((sequence/c smoosh-report?))
+    (#:known-distinct? boolean? #:known-discrete? boolean?)
+    (sequence/c smoosh-report?))
+  (if (and known-distinct? known-discrete?) reports
+  /w- kpmkp->known-true
+    (fn kpmkp
+      (promise-map kpmkp /fn kpmk
+        (knowable-bind kpmk /fn kpm
+        /knowable-if (just? kpm) /fn kpm)))
+  /if (not known-distinct?)
+    (smoosh-reports-map reports
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      kpmkp->known-true)
+  /dissect reports (app sequence->stream /stream* report-0 report-1+)
+  /stream*
+    (smoosh-report-map report-0
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      kpmkp->known-true
+      
+      #:on-==-knowable-promise-maybe-knowable-promise
+      (fn kpmkp
+        kpmkp)
+      
+      )
+    report-1+))
+
+; TODO SMOOSH: Consider exporting this. If we do, find a better name
+; for it.
+(define/own-contract
   (smoosh-and-comparison-of-two-reports-censor reports
-    #:known-distinct? known-distinct?
-    #:known-discrete? known-discrete?)
-  (->
-    (sequence/c smoosh-and-comparison-of-two-report?)
-    #:known-distinct? boolean?
-    #:known-discrete? boolean?
+    #:known-distinct? [known-distinct? #t]
+    #:known-discrete? [known-discrete? #f])
+  (->*
+    ((sequence/c smoosh-and-comparison-of-two-report?))
+    (#:known-distinct? boolean? #:known-discrete? boolean?)
     (sequence/c smoosh-and-comparison-of-two-report?))
   (if (and known-distinct? known-discrete?) reports
   /w- kp->known-true
@@ -3388,57 +3431,6 @@
       
       )
     report-1+))
-
-(define/own-contract
-  (make-glossesque-sys-impl-for-equality-check-indistinct get-==?)
-  (-> (-> glossesque-sys? (-> any/c any/c boolean?))
-    glossesque-sys-impl?)
-  (make-glossesque-sys-impl
-    
-    #:glossesque-union-of-zero-knowable
-    (fn gs
-      (known /nothing))
-    
-    #:glossesque-km-union-of-two-knowable
-    (fn gs a b km-union-knowable
-      (expect a (just a-entry) (unknown)
-      /dissect a-entry (cons a-k a-v)
-      /expect b (just b-entry) (unknown)
-      /dissect b-entry (cons b-k b-v)
-      /w- ==? (get-==? gs)
-      /expect (==? a-k b-k) #t (unknown)
-      /knowable-map (km-union-knowable a-k (just a-v) (just b-v))
-        (fn v-maybe
-          (maybe-map v-maybe /fn v /cons a-k v))))
-    
-    #:glossesque-ref-maybe-knowable
-    (fn gs g k
-      (expect g (just g-entry) (known /nothing)
-      /dissect g-entry (cons g-k g-v)
-      /w- ==? (get-==? gs)
-      /expect (==? k g-k) #t (unknown)
-      /known /just g-v))
-    
-    #:glossesque-set-maybe-knowable
-    (fn gs g k m
-      (expect g (just g-entry) (known /maybe-map m /fn v /cons k v)
-      /dissect g-entry (cons g-k g-v)
-      /w- ==? (get-==? gs)
-      /expect (==? k g-k) #t (unknown)
-      /known /just /maybe-map m /fn v /cons g-k v))
-    
-    #:glossesque-count
-    (fn gs g
-      (expect g (just g-entry) 0
-        1))
-    
-    #:glossesque-iteration-sequence
-    (fn gs g
-      (expect g (just g-entry) (list)
-      /dissect g-entry (cons k v)
-      /in-parallel (in-value k) (in-value v)))
-    
-    ))
 
 (define/own-contract
   (make-glossesque-sys-impl-for-hash make-empty-hash)
@@ -3480,16 +3472,24 @@
   (expect rev-past (cons elem rev-past) rest
   /list-rev-append rev-past (cons elem rest)))
 
-(define/own-contract (list-rem-first-maybe lst check?)
-  (-> list? (-> any/c boolean?) (maybe/c (list/c any/c list?)))
+(define/own-contract
+  (list-rem-first-maybe-knowable lst check?-knowable)
+  (-> list? (-> any/c (knowable/c boolean?))
+    (knowable/c (maybe/c (list/c any/c list?))))
   (w-loop next rev-past (list) lst lst
-    (expect lst (cons elem lst) (nothing)
-    /if (check? elem) (just /list elem (list-rev-append rev-past lst))
+    (expect lst (cons elem lst) (known /nothing)
+    /knowable-bind (check?-knowable elem) /fn succeeded?
+    /if succeeded?
+      (known /just /list elem (list-rev-append rev-past lst))
     /next (cons elem rev-past) lst)))
 
 (define/own-contract
-  (assoc-list-km-union-of-two-knowable ==? a b km-union-knowable)
-  (-> (-> any/c any/c boolean?) (listof pair?) (listof pair?)
+  (assoc-list-km-union-of-two-knowable
+    ==?-knowable a b km-union-knowable)
+  (->
+    (-> any/c any/c (knowable/c boolean?))
+    (listof pair?)
+    (listof pair?)
     (-> any/c maybe? maybe? (knowable/c maybe?))
     (knowable/c (listof pair?)))
   (w-loop next a a b b rev-result (list)
@@ -3505,33 +3505,52 @@
       /dissect b-entry (cons b-k b-v)
       /entry-and-next a b rev-result b-k (nothing) (just b-v))
     /dissect a-entry (cons a-k a-v)
-    /expect (list-rem-first-maybe b /dissectfn (cons b-k b-v) /==? a-k b-k)
-      (just b-entry-and-b)
+    /knowable-bind
+      (list-rem-first-maybe-knowable b /dissectfn (cons b-k b-v)
+        (==?-knowable a-k b-k))
+    /fn maybe-b-entry-and-b
+    /expect maybe-b-entry-and-b (just b-entry-and-b)
       (entry-and-next a b rev-result a-k (just a-v) (nothing))
     /dissect b-entry-and-b (list (cons b-k b-v) b)
     /entry-and-next a b rev-result a-k (just a-v) (just b-v))))
 
-(define/own-contract (assoc-ref-maybe ==? a k)
-  (-> (-> any/c any/c boolean?) (listof pair?) any/c maybe?)
-  (expect (assf (fn a-k /==? k a-k) a) (cons a-k v) (nothing)
-  /just v))
+(define/own-contract
+  (assoc-list-ref-maybe-knowable ==?-knowable a k)
+  (-> (-> any/c any/c (knowable/c boolean?)) (listof pair?) any/c
+    (knowable/c maybe?))
+  (w-loop next a a
+    (expect a (cons entry a) (known /nothing)
+    /dissect entry (cons a-k v)
+    /knowable-bind (==?-knowable k a-k) /fn succeeded?
+    /if succeeded? (known /just v)
+    /next a)))
 
-(define/own-contract (assoc-set-maybe ==? a k m)
-  (-> (-> any/c any/c boolean?) (listof pair?) any/c maybe?
-    (listof pair?))
-  (w- finish
-    (fn k a
-      (expect m (just v) a
-      /cons (cons k v) a))
-  /expect
-    (list-rem-first-maybe a /dissectfn (cons a-k a-v) /==? k a-k)
-    (just a-entry-and-a)
-    (finish k a)
-  /dissect a-entry-and-a (list (cons a-k a-v) a)
-  /finish a-k a))
+(define/own-contract
+  (assoc-list-set-maybe-knowable ==?-knowable a k m)
+  (->
+    (-> any/c any/c (knowable/c boolean?))
+    (listof pair?)
+    any/c
+    maybe?
+    (knowable/c (listof pair?)))
+  (knowable-map
+    (list-rem-first-maybe-knowable a /dissectfn (cons a-k a-v)
+      (==?-knowable k a-k))
+  /fn maybe-a-entry-and-a
+    (w- finish
+      (fn k a
+        (expect m (just v) a
+        /cons (cons k v) a))
+    /expect maybe-a-entry-and-a (just a-entry-and-a)
+      (finish k a)
+    /dissect a-entry-and-a (list (cons a-k a-v) a)
+    /finish a-k a)))
 
-(define/own-contract (make-glossesque-sys-impl-for-equality-check ==?)
-  (-> (-> any/c any/c boolean?) glossesque-sys-impl?)
+(define/own-contract
+  (make-glossesque-sys-impl-for-equality-check-knowable
+    get-==?-knowable)
+  (-> (-> glossesque-sys? (-> any/c any/c (knowable/c boolean?)))
+    glossesque-sys-impl?)
   (make-glossesque-sys-impl
     
     #:glossesque-union-of-zero-knowable
@@ -3540,16 +3559,20 @@
     
     #:glossesque-km-union-of-two-knowable
     (fn gs a b km-union-knowable
-      (assoc-list-km-union-of-two-knowable ==? a b /fn k a-v-m b-v-m
-        (km-union-knowable k a-v-m b-v-m)))
+      (w- ==?-knowable (get-==?-knowable gs)
+      /assoc-list-km-union-of-two-knowable ==?-knowable a b
+        (fn k a-v-m b-v-m
+          (km-union-knowable k a-v-m b-v-m))))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
-      (known /assoc-ref-maybe ==? g k))
+      (w- ==?-knowable (get-==?-knowable gs)
+      /assoc-list-ref-maybe-knowable ==?-knowable g k))
     
     #:glossesque-set-maybe-knowable
     (fn gs g k m
-      (known /assoc-set-maybe ==? g k m))
+      (w- ==?-knowable (get-==?-knowable gs)
+      /assoc-list-set-maybe-knowable ==?-knowable g k m))
     
     #:glossesque-count
     (fn gs g
@@ -3562,20 +3585,28 @@
     ))
 
 (define-imitation-simple-struct
-  (equality-check-atom-glossesque-sys?
-    equality-check-atom-glossesque-sys-get-==?)
-  equality-check-atom-glossesque-sys-unguarded
-  'equality-check-atom-glossesque-sys (current-inspector)
+  (equality-check-knowable-atom-glossesque-sys?
+    equality-check-knowable-atom-glossesque-sys-get-==?-knowable)
+  equality-check-knowable-atom-glossesque-sys-unguarded
+  'equality-check-knowable-atom-glossesque-sys (current-inspector)
   (auto-write)
   (#:prop prop:glossesque-sys
-    (make-glossesque-sys-impl-for-equality-check
-      (dissectfn (equality-check-atom-glossesque-sys-unguarded ==?)
-        ==?))))
+    (make-glossesque-sys-impl-for-equality-check-knowable
+      (dissectfn
+        (equality-check-knowable-atom-glossesque-sys-unguarded
+          ==?-knowable)
+        ==?-knowable))))
 
-; TODO SMOOSH: See if we'll use this. Well, we export it anyway.
+(define/own-contract
+  (equality-check-knowable-atom-glossesque-sys ==?-knowable)
+  (-> (-> any/c any/c (knowable/c boolean?)) glossesque-sys?)
+  (equality-check-knowable-atom-glossesque-sys-unguarded
+    ==?-knowable))
+
 (define/own-contract (equality-check-atom-glossesque-sys ==?)
   (-> (-> any/c any/c boolean?) glossesque-sys?)
-  (equality-check-atom-glossesque-sys-unguarded ==?))
+  (equality-check-knowable-atom-glossesque-sys /fn a b
+    (known /==? a b)))
 
 (define/own-contract
   (make-glossesque-sys-impl-for-chaperone=-atom
@@ -3672,22 +3703,26 @@
   (-> glossesque-sys?)
   (equal-always-atom-glossesque-sys-unguarded))
 
-(define-imitation-simple-struct
-  (equality-check-indistinct-atom-glossesque-sys?
-    equality-check-indistinct-atom-glossesque-sys-get-==?)
-  equality-check-indistinct-atom-glossesque-sys-unguarded
-  'equality-check-indistinct-atom-glossesque-sys (current-inspector)
-  (auto-write)
-  (#:prop prop:glossesque-sys
-    (make-glossesque-sys-impl-for-equality-check-indistinct
-      (dissectfn
-        (equality-check-indistinct-atom-glossesque-sys-unguarded ==?)
-        ==?))))
-
 (define/own-contract
   (equality-check-indistinct-atom-glossesque-sys ==?)
   (-> (-> any/c any/c boolean?) glossesque-sys?)
-  (equality-check-indistinct-atom-glossesque-sys-unguarded ==?))
+  (equality-check-knowable-atom-glossesque-sys /fn a b
+    (falsable->uninformative-knowable /==? a b)))
+
+(define/own-contract (indistinct-glossesque-sys original-gs)
+  (-> glossesque-sys? glossesque-sys?)
+  (equality-check-knowable-atom-glossesque-sys /fn a b
+    (knowable-bind
+      (glossesque-sys-glossesque-union-of-zero-knowable original-gs)
+    /fn g
+    /knowable-bind
+      (glossesque-sys-glossesque-set-maybe-knowable
+        original-gs g a (just /trivial))
+    /fn g
+    /knowable-bind
+      (glossesque-sys-glossesque-ref-maybe-knowable original-gs g b)
+    /fn v-m
+    /known /just? v-m)))
 
 (define/own-contract (equal-always-indistinct-atom-glossesque-sys)
   (-> glossesque-sys?)
@@ -4006,7 +4041,7 @@
   (-> (-> any/c any/c) any/c boolean?)
   (chaperone-of? (copy v) v))
 
-; TODO: See if we should export this.
+; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct
   (terminal-wrapper? terminal-wrapper-value)
   terminal-wrapper 'terminal-wrapper (current-inspector) (auto-write)
@@ -4020,6 +4055,7 @@
       (hash-code-combine /equal-always-hash-code terminal-wrapper?))
     
     ))
+(ascribe-own-contract terminal-wrapper? (-> any/c boolean?))
 
 (define/own-contract
   (make-glossesque-sys-impl-for-chaperone=-copiable
@@ -5042,52 +5078,10 @@
                 #:copy copy)))))))
   prop:bundle)
 
-; TODO: See if we should export this. If so, we should rewrite it to
-; use`syntax/parse`.
+; TODO: See if we should export this.
 (define-syntax (define-variant stx)
   (syntax-parse stx
-    #;
-    [ (define-variant my-variant)
-      #'(begin
-          
-          (define-imitation-simple-struct (my-variant?) my-variant
-            'my-variant (current-inspector) (auto-write) (auto-equal)
-            (#:prop prop:equal-always-gloss-key
-              (make-equal-always-gloss-key-impl))
-            (#:prop prop:expressly-has-dynamic-type
-              (make-expressly-has-dynamic-type-impl /fn bindings self
-                (expect
-                  (known-value /gloss-ref-maybe-knowable bindings
-                    (dynamic-type-var-for-any-dynamic-type))
-                  (just any-dt)
-                  (raise-arguments-error 'get-dynamic-type
-                    "tried to get the dynamic type of a define-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-                    "bindings" bindings
-                    "inhabitant" self)
-                ; TODO SMOOSH: This use of `my-variant-dynamic-type`
-                ; is a forward reference. See if we can untangle it.
-                /my-variant-dynamic-type))))
-          (ascribe-own-contract my-variant? (-> any/c boolean?))
-          
-          (define-imitation-simple-struct (my-variant-dynamic-type?)
-            my-variant-dynamic-type
-            (string->symbol /string-append
-              (symbol->string 'my-variant)
-              "-dynamic-type")
-            (current-inspector)
-            (auto-write)
-            
-            (#:prop
-              (make-expressly-smooshable-bundle-property-for-atom
-                #:omit-gloss-key-behavior? #t
-                #:ignore-chaperones? #t
-                #:inhabitant? my-variant?)
-              (trivial))
-            
-            )
-          
-          )]
-    [ (define-variant my-variant my-variant-field ...)
+    [ (define-variant my-variant:id my-variant-field:id ...)
       
       #:with (field ...) (generate-temporaries #'(my-variant-field ...))
       
@@ -5543,17 +5537,8 @@
           (known /tagged-glossesque-sys
             (variant)
             (chaperone=-atom-glossesque-sys)))
-      ; TODO SMOOSH: It's likely `equal-always-gloss-key-wrapper`
-      ; isn't quite right for this purpose. In fact, is it even right
-      ; for its original purpose? We originally intended to have
-      ; variants be instances of it directly, but since we want most
-      ; pairs of distinct variants to be incomparable, while instances
-      ; of this are always distinguishable, it doesn't seem very
-      ; useful going forward. But we need some base case for gloss
-      ; keys, and right here we need a wrapper that compares its
-      ; wrapped value according to `equal-always?`.
       /w- indistinct-tag
-        (specific-variant /equal-always-gloss-key-wrapper a)
+        (specific-variant /indistinct-wrapper /equal-always-wrapper a)
       /w- indistinct-0-tgs-k
         (if eq-matters?
           (known /tagged-glossesque-sys
@@ -6956,6 +6941,7 @@
             (tagged-glossesque-sys
               (path-related-wrapper-variant variant)
               (glossesque-sys-map gs
+                ; TODO SMOOSH: Make this preserve `eq?`.
                 #:granted-key-knowable
                 (fn k
                   (expect k (path-related-wrapper k) (unknown)
@@ -7147,6 +7133,7 @@
             (tagged-glossesque-sys
               (info-wrapper-variant variant)
               (glossesque-sys-map gs
+                ; TODO SMOOSH: Make this preserve `eq?`.
                 #:granted-key-knowable
                 (fn k
                   (expect k (info-wrapper k) (unknown)
@@ -7362,10 +7349,25 @@
       (list
         dynamic-type-var-for-any-dynamic-type?
         (fn any-dt
+          ; TODO SMOOSH: This use of
+          ; `dynamic-type-for-dynamic-type-var-for-any-dynamic-type`
+          ; is a forward reference. See if we can untangle it.
           (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
       (list
-        equal-always-gloss-key-wrapper?
-        (fn any-dt /equal-always-gloss-key-wrapper-dynamic-type)))))
+        equal-always-wrapper?
+        ; TODO SMOOSH: This use of `equal-always-wrapper-dynamic-type`
+        ; is a forward reference. See if we can untangle it.
+        (fn any-dt /equal-always-wrapper-dynamic-type))
+      (list
+        indistinct-wrapper?
+        ; TODO SMOOSH: This use of `indistinct-wrapper-dynamic-type`
+        ; is a forward reference. See if we can untangle it.
+        (fn any-dt /indistinct-wrapper-dynamic-type any-dt))
+      (list
+        terminal-wrapper?
+        ; TODO SMOOSH: This use of `terminal-wrapper-dynamic-type` is
+        ; a forward reference. See if we can untangle it.
+        (fn any-dt /terminal-wrapper-dynamic-type)))))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -7390,16 +7392,16 @@
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands are not both `equal-always-gloss-key-wrapper?`
-;     values, then unknown.
+;     If the operands are not both `equal-always-wrapper?` values,
+;     then unknown.
 ;     
 ;     Otherwise, if the operands are `equal-always?`, then the first
 ;     operand (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands are not both `equal-always-gloss-key-wrapper?`
-;     values, then unknown.
+;     If the operands are not both `equal-always-wrapper?` values,
+;     then unknown.
 ;     
 ;     Otherwise, if the operands are `equal-always?`, then the first
 ;     operand.
@@ -7411,16 +7413,196 @@
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
 ;
-(define-imitation-simple-struct
-  (equal-always-gloss-key-wrapper-dynamic-type?)
-  equal-always-gloss-key-wrapper-dynamic-type
-  'equal-always-gloss-key-wrapper-dynamic-type (current-inspector)
-  (auto-write)
+(define-imitation-simple-struct (equal-always-wrapper-dynamic-type?)
+  equal-always-wrapper-dynamic-type
+  'equal-always-wrapper-dynamic-type (current-inspector) (auto-write)
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? equal-always-gloss-key-wrapper?)
+      #:inhabitant? equal-always-wrapper?)
+    (trivial)))
+
+(define-variant indistinct-wrapper-variant
+  indistinct-wrapper-variant-get-value-variant)
+
+(define/own-contract
+  (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+    kpmkp)
+  (->
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
+    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
+  (promise-map kpmkp /fn kpmk
+    (knowable-map kpmk /fn kpm
+      (maybe-map kpm /fn kp
+        (promise-map kp /fn k
+          (knowable-map k /fn result-value
+            (indistinct-wrapper result-value)))))))
+
+(define/own-contract (on-indistinct-wrapper-hash-code-promise p)
+  (-> (promise/c fixnum?) (promise/c fixnum?))
+  (promise-map p /fn value-hash-code
+    (hash-code-combine
+      (equal-always-hash-code indistinct-wrapper?)
+      value-hash-code)))
+
+(define/own-contract
+  (indistinct-wrapper-smoosh-reports-from-value-reports value-reports)
+  (-> (sequence/c smoosh-report?) (sequence/c smoosh-report?))
+  (smoosh-reports-censor #:known-distinct? #f
+    (smoosh-reports-map value-reports
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)))
+
+(define/own-contract
+  (indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c smoosh-and-comparison-of-two-report?)
+    (sequence/c smoosh-and-comparison-of-two-report?))
+  (smoosh-and-comparison-of-two-reports-censor #:known-distinct? #f
+    (smoosh-and-comparison-of-two-reports-map value-reports
+      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)))
+
+(define/own-contract
+  (indistinct-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c smoosh-equal-hash-code-support-report?)
+    (sequence/c smoosh-equal-hash-code-support-report?))
+  (smoosh-equal-hash-code-support-reports-map value-reports
+    #:on-hash-code-promise on-indistinct-wrapper-hash-code-promise))
+
+(define/own-contract
+  (indistinct-wrapper-custom-gloss-key-reports-from-value-reports
+    value-reports)
+  (-> (sequence/c custom-gloss-key-report?)
+    (sequence/c custom-gloss-key-report?))
+  (custom-gloss-key-reports-map value-reports
+    #:on-tagged-glossesque-sys-knowable
+    (fn tgs-k
+      (knowable-map tgs-k
+        (dissectfn (tagged-glossesque-sys variant gs)
+          (tagged-glossesque-sys
+            (indistinct-wrapper-variant variant)
+            (indistinct-glossesque-sys /glossesque-sys-map gs
+              ; TODO SMOOSH: Make this preserve `eq?`.
+              #:granted-key-knowable
+              (fn k
+                (expect k (indistinct-wrapper k) (unknown)
+                /known k))
+              #:on-key
+              (fn k
+                (indistinct-wrapper k)))))))))
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `indistinct-wrapper?` values, then
+;     unknown.
+;     
+;     Otherwise, if the result of processing the unwrapped values with
+;     the same smoosh or check is a known success and any operand's
+;     unwrapped value is `eq?` to it, then that operand (or, for a
+;     check, `#t`).
+;     
+;     Otherwise, if it's a known success, that value wrapped up as an
+;     `indistinct-wrapper?` value (or, for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;
+(define-imitation-simple-struct
+  (indistinct-wrapper-dynamic-type?
+    indistinct-wrapper-dynamic-type-any-dynamic-type)
+  indistinct-wrapper-dynamic-type
+  'indistinct-wrapper-dynamic-type (current-inspector)
+  (auto-write)
+  (auto-equal)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-reports
+      (fn self
+        (dissect self (indistinct-wrapper-dynamic-type any-dt)
+        /indistinct-wrapper-smoosh-reports-from-value-reports
+          (dynamic-type-get-smoosh-of-zero-reports any-dt)))
+      
+      #:get-smoosh-of-one-reports
+      (fn self a
+        (dissect self (indistinct-wrapper-dynamic-type any-dt)
+        /expect a (indistinct-wrapper a-value)
+          (uninformative-smoosh-reports)
+        /indistinct-wrapper-smoosh-reports-from-value-reports
+          (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
+      
+      #:get-smoosh-and-comparison-of-two-reports
+      (fn self a b
+        (dissect self (indistinct-wrapper-dynamic-type any-dt)
+        /expect a (indistinct-wrapper a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (indistinct-wrapper b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports
+            any-dt a-value b-value)))
+      
+      #:get-smoosh-and-comparison-of-two-reports-via-second
+      (fn self a b
+        (dissect self (indistinct-wrapper-dynamic-type any-dt)
+        /expect a (indistinct-wrapper a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (indistinct-wrapper b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+            any-dt a-value b-value)))
+      
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+      
+      #:get-smoosh-equal-hash-code-support-reports
+      (fn self a
+        (dissect self (indistinct-wrapper-dynamic-type any-dt)
+        /expect a (indistinct-wrapper a-value)
+          (uninformative-smoosh-equal-hash-code-support-reports)
+        /indistinct-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+          (dynamic-type-get-smoosh-equal-hash-code-support-reports
+            any-dt a-value)))
+      
+      ))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (dissect self (indistinct-wrapper-dynamic-type any-dt)
+        /expect a (indistinct-wrapper a-value)
+          (uninformative-custom-gloss-key-reports)
+        /indistinct-wrapper-custom-gloss-key-reports-from-value-reports
+          (dynamic-type-get-custom-gloss-key-reports
+            any-dt a-value)))
+      
+      ))
+  
+  )
+
+; Level 0+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `terminal-wrapper?` values, then
+;     unknown.
+;     
+;     Otherwise, the first operand (or, for a check, `#t`).
+;
+(define-imitation-simple-struct (terminal-wrapper-dynamic-type?)
+  terminal-wrapper-dynamic-type
+  'terminal-wrapper-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? terminal-wrapper?)
     (trivial)))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
@@ -7662,7 +7844,17 @@
 ;
 ;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
 ;
-;     - (Done) `equal-always-gloss-key-wrapper?`
+;     - (Done) `equal-always-wrapper?` values, all equatable and
+;       distinguishable with each other according to the
+;       `equal-always?` behavior of their wrapped value.
+;
+;     - (Done) `indistinct-wrapper?` values, ordered and
+;       information-ordered in a way that's consistent with the
+;       ordering and information ordering on the wrapped value but
+;       treats known false results as though they were unknown
+;       results.
+;
+;     - (Done) `terminal-wrapper?` values, all equal to each other.
 ;
 ;     - (Done) `eq-atom-variant?` (a value constructed by
 ;       `eq-atom-variant`)
@@ -7800,7 +7992,11 @@
 ;
 ;       - `dynamic-type-for-dynamic-type-var-for-any-dynamic-type?`
 ;
-;       - `equal-always-gloss-key-wrapper-dynamic-type?`
+;       - `equal-always-wrapper-dynamic-type?`
+;
+;       - `indistinct-wrapper-dynamic-type?`
+;
+;       - `terminal-wrapper-dynamic-type?`
 ;
 ;       - `maybe-dynamic-type?` (a type used in an intermediate way in
 ;         the definition of
