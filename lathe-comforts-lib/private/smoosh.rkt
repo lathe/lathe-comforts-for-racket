@@ -69,6 +69,7 @@
   glossesque-sys-glossesque-km-union-of-two-knowable
   glossesque-sys-glossesque-ref-maybe-knowable
   glossesque-sys-glossesque-set-maybe-knowable
+  glossesque-sys-glossesque-empty?
   glossesque-sys-glossesque-count
   glossesque-sys-glossesque-iteration-sequence
   prop:glossesque-sys
@@ -131,8 +132,9 @@
   gloss-km-union-of-two-knowable
   gloss-iteration-sequence
   gloss-ref-maybe-knowable
-  gloss-set-maybe-knowable
   gloss-count
+  gloss-empty?
+  gloss-set-maybe-knowable
   make-gloss-glossesque-sys
   uninformative-dynamic-type
   dynamic-type-var-for-any-dynamic-type?)
@@ -392,6 +394,7 @@
     glossesque-sys-glossesque-ref-maybe-knowable (#:this) () ())
   (#:method
     glossesque-sys-glossesque-set-maybe-knowable (#:this) () () ())
+  (#:method glossesque-sys-glossesque-empty? (#:this) ())
   (#:method glossesque-sys-glossesque-count (#:this) ())
   (#:method glossesque-sys-glossesque-iteration-sequence (#:this) ())
   prop:glossesque-sys
@@ -410,6 +413,8 @@
   (-> glossesque-sys? any/c any/c (knowable/c maybe?)))
 (ascribe-own-contract glossesque-sys-glossesque-set-maybe-knowable
   (-> glossesque-sys? any/c any/c maybe? knowable?))
+(ascribe-own-contract glossesque-sys-glossesque-empty?
+  (-> glossesque-sys? any/c boolean?))
 (ascribe-own-contract glossesque-sys-glossesque-count
   (-> glossesque-sys? any/c natural?))
 (ascribe-own-contract glossesque-sys-glossesque-iteration-sequence
@@ -427,6 +432,7 @@
     
     #:glossesque-ref-maybe-knowable glossesque-ref-maybe-knowable
     #:glossesque-set-maybe-knowable glossesque-set-maybe-knowable
+    #:glossesque-empty? glossesque-empty?
     #:glossesque-count glossesque-count
     #:glossesque-iteration-sequence glossesque-iteration-sequence)
   (->
@@ -443,6 +449,7 @@
     #:glossesque-set-maybe-knowable
     (-> glossesque-sys? any/c any/c maybe? knowable?)
     
+    #:glossesque-empty? (-> glossesque-sys? any/c boolean?)
     #:glossesque-count (-> glossesque-sys? any/c natural?)
     
     #:glossesque-iteration-sequence
@@ -454,6 +461,7 @@
     glossesque-km-union-of-two-knowable
     glossesque-ref-maybe-knowable
     glossesque-set-maybe-knowable
+    glossesque-empty?
     glossesque-count
     glossesque-iteration-sequence))
 
@@ -493,6 +501,12 @@
         (mapped-glossesque-sys granted-key-knowable on-key original)
       /knowable-bind (granted-key-knowable k) /fn k
       /glossesque-sys-glossesque-set-maybe-knowable original g k m))
+    
+    #:glossesque-empty?
+    (fn gs g
+      (dissect gs
+        (mapped-glossesque-sys granted-key-knowable on-key original)
+      /glossesque-sys-glossesque-empty? original g))
     
     #:glossesque-count
     (fn gs g
@@ -1369,6 +1383,15 @@
   /dissect entry (list gs g)
   /glossesque-sys-glossesque-ref-maybe-knowable gs g k))
 
+(define/own-contract (gloss-count g)
+  (-> gloss? natural?)
+  (dissect g (gloss count _ _)
+    count))
+
+(define/own-contract (gloss-empty? g)
+  (-> gloss? boolean?)
+  (zero? /gloss-count g))
+
 (define/own-contract (gloss-set-maybe-knowable g k m)
   (-> gloss? any/c maybe? (knowable/c gloss?))
   (dissect g (gloss count atomic custom)
@@ -1414,12 +1437,7 @@
   /known /gloss
     (+ count (- new-glossesque-count old-glossesque-count))
     atomic
-    (maybe-if (not /zero? /gloss-count custom) /fn custom)))
-
-(define/own-contract (gloss-count g)
-  (-> gloss? natural?)
-  (dissect g (gloss count _ _)
-    count))
+    (maybe-if (not /gloss-empty? custom) /fn custom)))
 
 (define-imitation-simple-struct
   (gloss-glossesque-sys?)
@@ -1441,6 +1459,7 @@
     #:glossesque-set-maybe-knowable
     (fn gs g k m /gloss-set-maybe-knowable g k m)
     
+    #:glossesque-empty? (fn gs g /gloss-empty? g)
     #:glossesque-count (fn gs g /gloss-count g)
     
     #:glossesque-iteration-sequence
@@ -3453,6 +3472,10 @@
     (fn gs g k m
       (known /hash-set-maybe g k m))
     
+    #:glossesque-empty?
+    (fn gs g
+      (hash-empty? g))
+    
     #:glossesque-count
     (fn gs g
       (hash-count g))
@@ -3574,6 +3597,10 @@
       (w- ==?-knowable (get-==?-knowable gs)
       /assoc-list-set-maybe-knowable ==?-knowable g k m))
     
+    #:glossesque-empty?
+    (fn gs g
+      (null? g))
+    
     #:glossesque-count
     (fn gs g
       (length g))
@@ -3662,11 +3689,14 @@
         (glossesque-sys-glossesque-set-maybe-knowable bin-gs bin k m)
       /fn bin
       /w- bin-m
-        (maybe-if
-          (not /zero? /glossesque-sys-glossesque-count bin-gs bin)
+        (maybe-if (not /glossesque-sys-glossesque-empty? bin-gs bin)
           (fn bin))
       /glossesque-sys-glossesque-set-maybe-knowable
         gs-for-equal-always g k bin-m))
+    
+    #:glossesque-empty?
+    (fn gs g
+      (glossesque-sys-glossesque-empty? gs-for-equal-always g))
     
     #:glossesque-count
     (fn gs g
@@ -3961,6 +3991,10 @@
       /glossesque-from-list-injection
         (+ count (- new-trie-count old-trie-count))
         g))
+    
+    #:glossesque-empty?
+    (fn gs g
+      (zero? /glossesque-sys-glossesque-count gs g))
     
     #:glossesque-count
     (fn gs g
