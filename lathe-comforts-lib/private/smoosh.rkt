@@ -3975,10 +3975,101 @@
   glossesque-from-list-injection
   'glossesque-from-list-injection (current-inspector) (auto-write))
 
+(define (list-injection-trie-iteration-sequence trie)
+  (dissect trie (list nil-m cons-tries)
+  /apply in-sequences
+    (expect nil-m (just kv) (list)
+      (dissect kv (list k v)
+      /in-parallel (in-value k) (in-value v)))
+    (for/list
+      (
+        [ (elem trie)
+          (in-sequences
+            (gloss-iteration-sequence cons-tries))])
+      (list-injection-trie-iteration-sequence trie))))
+
+(define
+  (count-and-rider-and-list-injection-trie-update-maybe-knowable
+    crt current-k-as-list overall-k on-rider-and-m-knowable)
+  (dissect crt (list cr /list nil-m cons-tries)
+  /expect current-k-as-list (cons elem current-k-as-list)
+    (knowable-map
+      (count-and-rider-and-maybe-update-maybe-knowable
+        (list cr nil-m)
+        (fn rm
+          (dissect rm (list rider kv-m)
+          /w- overall-k
+            (expect kv-m (just old-kv) overall-k
+            /dissect old-kv (list old-k old-v)
+              old-k)
+          /knowable-map (on-rider-and-m-knowable rm)
+          /dissectfn (list rider m)
+            (list rider /maybe-map m /fn v /list overall-k v))))
+    /dissectfn (list cr nil-m)
+      (list cr /list nil-m cons-tries))
+  /knowable-map
+    (rider-and-gloss-update-maybe-knowable
+      (list cr cons-tries)
+      elem
+      (dissectfn (list cr trie-m)
+        (w- trie
+          (mat trie-m (just trie) trie
+          /list (nothing) (gloss-union-of-zero))
+        /knowable-map
+          (count-and-rider-and-list-injection-trie-update-maybe-knowable
+            crt current-k-as-list overall-k on-rider-and-m-knowable)
+        /dissectfn (list cr trie)
+          (list cr /just trie))))
+  /dissectfn (list cr cons-tries)
+    (list cr /list nil-m cons-tries)))
+
+(define
+  (count-and-rider-and-list-injection-trie-set-knowable
+    crt current-k-as-list overall-k v)
+  (count-and-rider-and-list-injection-trie-update-maybe-knowable
+    crt current-k-as-list overall-k
+    (dissectfn (list rider m)
+      (known /list rider /just v))))
+
+(define
+  (count-and-list-injection-trie-set-knowable
+    count-and-trie current-k-as-list overall-k v)
+  (dissect count-and-trie (list count /list nil-m cons-tries)
+  /expect current-k-as-list (list elem current-k-as-list)
+    (w- overall-k
+      (expect nil-m (just old-kv) overall-k
+      /dissect old-kv (list old-k old-v)
+        old-k)
+    /knowable-map
+      (count-and-rider-and-maybe-update-maybe-knowable
+        (list (list count (trivial)) nil-m)
+        (dissectfn (list (trivial) nil-m)
+          (just /list overall-k v)))
+    /dissectfn (list count nil-m)
+      (list count /list nil-m cons-tries))
+  /knowable-map
+    (rider-and-gloss-update-maybe-knowable
+      (list count cons-tries)
+      elem
+      (dissectfn (list count trie-m)
+        (w- trie
+          (mat trie-m (just trie) trie
+          /list (nothing) (gloss-union-of-zero))
+        /count-and-list-injection-trie-set-knowable
+          (list count trie)
+          current-k-as-list
+          overall-k
+          v)))
+  /dissectfn (list count cons-tries)
+    (list count /list nil-m cons-tries)))
+
 (define/own-contract
   (make-glossesque-sys-impl-from-list-injection
-    gs-for-shallow get-->->list)
-  (-> glossesque-sys? (-> glossesque-sys? (-> any/c (-> any/c list?)))
+    gs-for-shallow get-->->list-is-constant? get-->->list)
+  (->
+    glossesque-sys?
+    (-> glossesque-sys? boolean?)
+    (-> glossesque-sys? (-> any/c (-> any/c list?)))
     glossesque-sys-impl?)
   (make-glossesque-sys-impl
     
@@ -4010,8 +4101,92 @@
               (maybe-map b-->list-and-trie-m /dissectfn
                 (list b-->list b-trie)
                 b-trie)
+            /w- ->->list-is-constant? (get-->->list-is-constant? gs)
+            ; NOTE OPTIMIZATION: For things that have indeterminate
+            ; encodings as ordered lists (namely, `hash?` and `gloss?`
+            ; values), we have to use a more exhaustive method of
+            ; inserting each value of one trie into the other,
+            ; relistifying each key we insert in in terms of the other
+            ; trie's listifier. Technically, the asymptotic time
+            ; complexity of both this and the usual merging are
+            ; probably about O(n), but this "more exhaustive method"
+            ; makes O(n) invocations to `->list`, while the usual
+            ; method makes none.
             /knowable-bind
-              (w-loop next cs cs a-trie-m a-trie-m b-trie-m b-trie-m
+              (if
+                (and
+                  (just? a-trie-m)
+                  (just? b-trie-m)
+                  (not ->->list-is-constant?))
+                (dissect a-->list-and-trie-m
+                  (just /list a-->list a-trie)
+                /dissect b-->list-and-trie-m
+                  (just /list b-->list b-trie)
+                /knowable-bind
+                  (w-loop process-a-trie-knowable
+                    csb (list cs b-trie)
+                    result a-trie
+                    
+                    (dissect result (list nil-m cons-tries)
+                    /knowable-bind
+                      (expect nil-m (just kv)
+                        (known /list csb result)
+                      /dissect kv (list k a-v)
+                      /dissect csb (list cs b-trie)
+                      /knowable-bind
+                        (count-and-rider-and-list-injection-trie-update-maybe-knowable
+                          (list (list 1 /trivial) b-trie) (b-->list k) k
+                          (dissectfn (list (trivial) b-v-m)
+                            (known /list b-v-m /nothing)))
+                      /dissectfn (list (list _ b-v-m) b-trie)
+                      /count-and-rider-and-list-injection-trie-update-maybe-knowable
+                        (list (list cs b-trie) result)
+                        (list)
+                        k
+                        (dissectfn (list state a-v-m)
+                          (skm-union-knowable state k a-v-m b-v-m)))
+                    /dissectfn (list csb /list nil-m cons-tries)
+                    /w-loop process-a-trie-entries-knowable
+                      csb csb
+                      
+                      trie-entries
+                      (sequence->stream /in-values-sequence
+                        (gloss-iteration-sequence cons-tries))
+                      
+                      result result
+                      
+                      (expect trie-entries
+                        (stream* trie-entry trie-entries)
+                        (known /list csb result)
+                      /dissect trie-entry (cons elem trie)
+                      /knowable-bind
+                        (process-a-trie-knowable csb trie)
+                      /dissectfn (list csb trie)
+                      /process-a-trie-entries-knowable
+                        csb trie-entries trie)))
+                /dissectfn (list (list cs b-trie) result)
+                /w-loop next
+                  cs cs
+                  result result
+                  
+                  b
+                  (sequence->stream
+                    (list-injection-trie-iteration-sequence b-trie))
+                  
+                  (if (stream-empty? b) (known /list cs result)
+                  /let-values ([(k b-v) (stream-first b)])
+                  /w- b (stream-rest b)
+                  /knowable-bind
+                    (count-and-rider-and-list-injection-trie-update-maybe-knowable
+                      (list cs result)
+                      (->list k)
+                      k
+                      (dissectfn (list state a-v-m)
+                        (skm-union-knowable
+                          state k a-v-m (just b-v))))
+                  /dissectfn (list cs result)
+                  /next cs result b))
+              /w-loop next cs cs a-trie-m a-trie-m b-trie-m b-trie-m
                 (dissect
                   (mat a-trie-m (just a-trie) a-trie
                     (list (nothing) (gloss-union-of-zero)))
@@ -4042,8 +4217,8 @@
                     cs a-cons-tries b-cons-tries
                     (fn cs elem a-trie-m b-trie-m
                       (knowable-map (next cs a-trie-m b-trie-m)
-                      /fn cs-and-trie-m
-                        (just cs-and-trie-m))))
+                      /dissectfn (list cs trie)
+                        (list cs /just trie))))
                 /dissectfn (list cs cons-tries)
                 /known /list cs /just /list nil-m cons-tries))
             /dissectfn (list cs trie)
@@ -4089,26 +4264,12 @@
                   (list (nothing) (gloss-union-of-zero))))
               (list ->list trie)
             /knowable-bind
-              (w-loop next trie trie current-k (->list k)
-                (dissect trie (list nil-m cons-tries)
-                /expect current-k (cons elem current-k)
-                  (knowable-map
-                    (count-and-rider-and-maybe-update-maybe-knowable
-                      (list cr nil-m)
-                      (fn rm
-                        (on-rider-and-m-knowable rm)))
-                  /dissectfn (list cr nil-m)
-                    (list cr /list nil-m cons-tries))
-                /knowable-bind
-                  (rider-and-gloss-update-maybe-knowable
-                    (list cr cons-tries)
-                    (fn crm
-                      (count-and-rider-and-maybe-update-maybe-knowable
-                        crm
-                        (fn rm
-                          (on-rider-and-m-knowable rm)))))
-                /dissectfn (list cr cons-tries)
-                /known /list cr /list nil-m cons-tries))
+              (count-and-rider-and-list-injection-trie-update-maybe-knowable
+                (list cr trie)
+                (->list k)
+                k
+                (fn rider-and-m
+                  (on-rider-and-m-knowable rider-and-m)))
             /dissectfn (list cr trie)
             /dissect trie (list nil-m cons-tries)
             /known /list cr
@@ -4138,23 +4299,13 @@
                 (glossesque-sys-glossesque-iteration-sequence
                   gs-for-shallow g))])
           (dissect ->list-and-trie (list ->list trie)
-          /w-loop next trie trie
-            (dissect trie (list nil-m cons-tries)
-            /apply in-sequences
-              (expect nil-m (just kv) (list)
-                (dissect kv (list k v)
-                /in-parallel (in-value k) (in-value v)))
-              (for/list
-                (
-                  [ (elem trie)
-                    (in-sequences
-                      (gloss-iteration-sequence cons-tries))])
-                (next trie)))))))
+          /list-injection-trie-iteration-sequence trie))))
     
     ))
 
 (define-imitation-simple-struct
   (equal-always-from-list-injection-glossesque-sys?
+    equal-always-from-list-injection-glossesque-sys-->->list-is-constant?
     equal-always-from-list-injection-glossesque-sys-->->list)
   equal-always-from-list-injection-glossesque-sys-unguarded
   'equal-always-from-list-injection-glossesque-sys (current-inspector)
@@ -4164,18 +4315,38 @@
       (equal-always-atom-glossesque-sys)
       (dissectfn
         (equal-always-from-list-injection-glossesque-sys-unguarded
-          ->->list)
+          ->->list-is-constant? ->->list)
+        ->->list-is-constant?)
+      (dissectfn
+        (equal-always-from-list-injection-glossesque-sys-unguarded
+          ->->list-is-constant? ->->list)
         ->->list))))
 
 (define/own-contract
   (equal-always-from-list-injection-glossesque-sys
-    #:->->list ->->list)
-  (-> #:->->list (-> any/c (-> any/c list?)) glossesque-sys?)
+    #:->list [->list #f]
+    
+    #:->->list
+    [ ->->list
+      (if ->list
+        (dissectfn _ ->list)
+        (raise-arguments-error 'equal-always-from-list-injection-glossesque-sys
+          "expected either #:->list or #:->->list to be provided"))]
+    
+    )
+  (->*
+    ()
+    (
+      #:->list (or/c #f (-> any/c list?))
+      #:->->list (-> any/c (-> any/c list?)))
+    glossesque-sys?)
   (equal-always-from-list-injection-glossesque-sys-unguarded
+    (not /not ->list)
     ->->list))
 
 (define-imitation-simple-struct
   (equal-always-indistinct-from-list-injection-glossesque-sys?
+    equal-always-indistinct-from-list-injection-glossesque-sys-->->list-is-constant?
     equal-always-indistinct-from-list-injection-glossesque-sys-->->list)
   equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
   'equal-always-indistinct-from-list-injection-glossesque-sys
@@ -4185,15 +4356,34 @@
     (make-glossesque-sys-impl-from-list-injection
       (equal-always-indistinct-atom-glossesque-sys)
       (dissectfn
-        (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
-          ->->list)
+        (equal-always-from-list-injection-glossesque-sys-unguarded
+          ->->list-is-constant? ->->list)
+        ->->list-is-constant?)
+      (dissectfn
+        (equal-always-from-list-injection-glossesque-sys-unguarded
+          ->->list-is-constant? ->->list)
         ->->list))))
 
 (define/own-contract
   (equal-always-indistinct-from-list-injection-glossesque-sys
-    #:->->list ->->list)
-  (-> #:->->list (-> any/c (-> any/c list?)) glossesque-sys?)
+    #:->list [->list #f]
+    
+    #:->->list
+    [ ->->list
+      (if ->list
+        (dissectfn _ ->list)
+        (raise-arguments-error 'equal-always-indistinct-from-list-injection-glossesque-sys
+          "expected either #:->list or #:->->list to be provided"))]
+    
+    )
+  (->*
+    ()
+    (
+      #:->list (or/c #f (-> any/c list?))
+      #:->->list (-> any/c (-> any/c list?)))
+    glossesque-sys?)
   (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
+    (not /not ->list)
     ->->list))
 
 ; TODO: See if we should export this.
@@ -4423,7 +4613,15 @@
     #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
-    #:->->list ->->list
+    #:->list [->list #f]
+    
+    #:->->list
+    [ ->->list
+      (if ->list
+        (dissectfn _ ->list)
+        (raise-arguments-error 'make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
+          "expected either #:->list or #:->->list to be provided"))]
+    
     #:example-and-list-> example-and-list->
     
     #:inhabitant-shallowly-equal-always?-knowable
@@ -4438,11 +4636,12 @@
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
       #:inhabitant? (-> any/c boolean?)
-      #:->->list (-> any/c (-> any/c list?))
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:known-distinct? boolean?
       #:known-discrete? boolean?
+      #:->list (or/c #f (-> any/c list?))
+      #:->->list (-> any/c (-> any/c list?))
       
       #:inhabitant-shallowly-equal-always?-knowable
       (-> any/c any/c (knowable/c boolean?))
@@ -4706,7 +4905,15 @@
     #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
-    #:->->list ->->list
+    #:->list [->list #f]
+    
+    #:->->list
+    [ ->->list
+      (if ->list
+        (dissectfn _ ->list)
+        (raise-arguments-error 'make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
+          "expected either #:->list or #:->->list to be provided"))]
+    
     #:example-and-list-> example-and-list->
     
     #:inhabitant-shallowly-equal-always?-knowable
@@ -4723,11 +4930,12 @@
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
       #:inhabitant? (-> any/c boolean?)
-      #:->->list (-> any/c (-> any/c list?))
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:known-distinct? boolean?
       #:known-discrete? boolean?
+      #:->list (or/c #f (-> any/c list?))
+      #:->->list (-> any/c (-> any/c list?))
       
       #:inhabitant-shallowly-equal-always?-knowable
       (-> any/c any/c (knowable/c boolean?))
@@ -4979,7 +5187,14 @@
   (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
-    #:->->list ->->list
+    #:->list [->list #f]
+    
+    #:->->list
+    [ ->->list
+      (if ->list
+        (dissectfn _ ->list)
+        (raise-arguments-error 'make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
+          "expected either #:->list or #:->->list to be provided"))]
     
     #:combine-element-hash-codes
     [ combine-element-hash-codes
@@ -4990,9 +5205,11 @@
   (->*
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
-      #:inhabitant? (-> any/c boolean?)
-      #:->->list (-> any/c (-> any/c list?)))
-    (#:combine-element-hash-codes (-> (listof fixnum?) fixnum?))
+      #:inhabitant? (-> any/c boolean?))
+    (
+      #:->list (or/c #f (-> any/c list?))
+      #:->->list (-> any/c (-> any/c list?))
+      #:combine-element-hash-codes (-> (listof fixnum?) fixnum?))
     expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
   (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
     
@@ -5053,17 +5270,26 @@
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?
-    #:->->list ->->list
+    #:->list [->list #f]
+    
+    #:->->list
+    [ ->->list
+      (if ->list
+        (dissectfn _ ->list)
+        (raise-arguments-error 'make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
+          "expected either #:->list or #:->->list to be provided"))]
+    
     #:copy copy)
   (->*
     (
       #:inhabitant? (-> any/c boolean?)
-      #:->->list (-> any/c (-> any/c list?))
       #:copy (-> any/c any/c))
     (
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
-      #:known-discrete? boolean?)
+      #:known-discrete? boolean?
+      #:->list (or/c #f (-> any/c list?))
+      #:->->list (-> any/c (-> any/c list?)))
     expressly-custom-gloss-key-dynamic-type-impl?)
   ; TODO SMOOSH: Add arguments to
   ; `make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection`
@@ -5080,11 +5306,13 @@
         (known /tagged-glossesque-sys
           (variant)
           (equal-always-indistinct-from-list-injection-glossesque-sys
+            #:->list ->list
             #:->->list ->->list))
       /w- equal-always-distinct-tgs-k
         (known /tagged-glossesque-sys
           (variant)
           (equal-always-from-list-injection-glossesque-sys
+            #:->list ->list
             #:->->list ->->list))
       /w- equal-always-tgs-k
         (if known-distinct?
@@ -5137,7 +5365,15 @@
     #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
     #:inhabitant? inhabitant?
-    #:->->list ->->list
+    #:->list [->list #f]
+    
+    #:->->list
+    [ ->->list
+      (if ->list
+        (dissectfn _ ->list)
+        (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+          "expected either #:->list or #:->->list to be provided"))]
+    
     #:example-and-list-> example-and-list->
     
     #:combine-element-hash-codes
@@ -5159,12 +5395,13 @@
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
       #:inhabitant? (-> any/c boolean?)
-      #:->->list (-> any/c (-> any/c list?))
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
+      #:->list (or/c #f (-> any/c list?))
+      #:->->list (-> any/c (-> any/c list?))
       #:combine-element-hash-codes (-> (listof fixnum?) fixnum?)
       
       #:inhabitant-shallowly-equal-always?-knowable
@@ -5196,6 +5433,7 @@
                 #:known-discrete? known-discrete?
                 #:self-get-any-dynamic-type self-get-any-dynamic-type
                 #:inhabitant? inhabitant?
+                #:->list ->list
                 #:->->list ->->list
                 #:example-and-list-> example-and-list->
                 
@@ -5208,6 +5446,7 @@
                 #:known-discrete? known-discrete?
                 #:self-get-any-dynamic-type self-get-any-dynamic-type
                 #:inhabitant? inhabitant?
+                #:->list ->list
                 #:->->list ->->list
                 #:example-and-list-> example-and-list->
                 
@@ -5222,6 +5461,7 @@
             (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
               #:self-get-any-dynamic-type self-get-any-dynamic-type
               #:inhabitant? inhabitant?
+              #:->list ->list
               #:->->list ->->list
               #:combine-element-hash-codes combine-element-hash-codes)))
         (if omit-gloss-key-behavior?
@@ -5234,6 +5474,7 @@
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
                 #:inhabitant? inhabitant?
+                #:->list ->list
                 #:->->list ->->list
                 #:copy copy)))))))
   prop:bundle)
@@ -5305,10 +5546,9 @@
                   any-dt)
                 
                 #:inhabitant? my-variant?
-                #:->->list
-                (fn a
-                  (dissectfn (my-variant my-variant-field ...)
-                    (list my-variant-field ...)))
+                #:->list
+                (dissectfn (my-variant my-variant-field ...)
+                  (list my-variant-field ...))
                 
                 #:example-and-list->
                 (fn example lst
@@ -6371,7 +6611,7 @@
         any-dt)
       
       #:inhabitant? pair?
-      #:->->list (fn a /dissectfn (cons first rest) /list first rest)
+      #:->list (dissectfn (cons first rest) /list first rest)
       
       #:example-and-list->
       (fn example lst
@@ -6432,7 +6672,7 @@
         any-dt)
       
       #:inhabitant? (fn v /and (vector? v) (immutable? v))
-      #:->->list (fn a /fn b /vector->list b)
+      #:->list (fn v /vector->list v)
       
       #:example-and-list->
       (fn example lst
@@ -6491,7 +6731,7 @@
         any-dt)
       
       #:inhabitant? (fn v /and (box? v) (immutable? v))
-      #:->->list (fn a /fn b /list /unbox b)
+      #:->list (fn b /list /unbox b)
       
       #:example-and-list->
       (fn example lst
@@ -6540,7 +6780,7 @@
         any-dt)
       
       #:inhabitant? immutable-prefab-struct?
-      #:->->list (fn a /fn b /cdr /vector->list /struct->vector b)
+      #:->list (fn s /cdr /vector->list /struct->vector s)
       #:example-and-list->
       (fn example lst
         (apply make-prefab-struct (prefab-struct-key example) lst)))
@@ -6786,7 +7026,7 @@
         any-dt)
       
       #:inhabitant? just?
-      #:->->list (fn a /dissectfn (just e) /list e)
+      #:->list (dissectfn (just e) /list e)
       
       #:example-and-list->
       (fn example lst
