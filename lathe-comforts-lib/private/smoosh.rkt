@@ -98,11 +98,13 @@
   custom-gloss-key-reports-zip-map
   constant-custom-gloss-key-report
   constant-custom-gloss-key-reports
-  path-related-wrapper?)
+  path-related-wrapper?
+  path-related-wrapper-value)
 (provide
   path-related-wrapper)
 (provide /own-contract-out
-  info-wrapper?)
+  info-wrapper?
+  info-wrapper-value)
 (provide
   info-wrapper)
 (provide /own-contract-out
@@ -211,11 +213,13 @@
   constant-smoosh-and-comparison-of-two-reports
   constant-smoosh-equal-hash-code-support-report
   constant-smoosh-equal-hash-code-support-reports
-  equal-always-wrapper?)
+  equal-always-wrapper?
+  equal-always-wrapper-value)
 (provide
   equal-always-wrapper)
 (provide /own-contract-out
-  indistinct-wrapper?)
+  indistinct-wrapper?
+  indistinct-wrapper-value)
 (provide
   indistinct-wrapper)
 (provide /own-contract-out
@@ -238,7 +242,8 @@
   eq-indistinct-atom-glossesque-sys
   equal-always-from-list-injection-glossesque-sys
   equal-always-indistinct-from-list-injection-glossesque-sys
-  terminal-wrapper?)
+  terminal-wrapper?
+  terminal-wrapper-value)
 (provide
   terminal-wrapper)
 (provide /own-contract-out
@@ -947,7 +952,6 @@
   (in-cycle /list /constant-custom-gloss-key-report
     #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable))
 
-; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper
@@ -990,8 +994,9 @@
     
     ))
 (ascribe-own-contract path-related-wrapper? (-> any/c boolean?))
+(ascribe-own-contract path-related-wrapper-value
+  (-> path-related-wrapper? any/c))
 
-; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct (info-wrapper? info-wrapper-value)
   ; TODO SMOOSH: Stop using `auto-write` for this.
   info-wrapper 'info-wrapper (current-inspector) (auto-write)
@@ -1032,6 +1037,7 @@
     
     ))
 (ascribe-own-contract info-wrapper? (-> any/c boolean?))
+(ascribe-own-contract info-wrapper-value (-> info-wrapper? any/c))
 
 (define-imitation-simple-generics
   equal-always-gloss-key? equal-always-gloss-key-impl?
@@ -3443,7 +3449,6 @@
   (in-cycle /list /constant-smoosh-equal-hash-code-support-report
     hash-code-promise))
 
-; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct
   (equal-always-wrapper? equal-always-wrapper-value)
   equal-always-wrapper
@@ -3465,13 +3470,16 @@
     
     ))
 (ascribe-own-contract equal-always-wrapper? (-> any/c boolean?))
+(ascribe-own-contract equal-always-wrapper-value
+  (-> equal-always-wrapper? any/c))
 
-; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct
   (indistinct-wrapper? indistinct-wrapper-value)
   indistinct-wrapper
   'indistinct-wrapper (current-inspector) (auto-write) (auto-equal))
 (ascribe-own-contract indistinct-wrapper? (-> any/c boolean?))
+(ascribe-own-contract indistinct-wrapper-value
+  (-> indistinct-wrapper? any/c))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-report-join reports-list)
@@ -4014,8 +4022,8 @@
   (-> glossesque-sys?)
   (equality-check-indistinct-atom-glossesque-sys /fn a b /eq? a b))
 
-; TODO SMOOSH: See if we should export this.
-; TODO SMOOSH: See if we should give this a smoosh behavior.
+; NOTE: We don't export this. It's just an implementation detail of
+; `make-expressly-smooshable-bundle-property-from-list-isomorphism`.
 (define-imitation-simple-struct
   (shallow-wrapper? shallow-wrapper-value)
   shallow-wrapper 'shallow-wrapper (current-inspector) (auto-write)
@@ -4403,7 +4411,6 @@
   (-> (-> any/c any/c) any/c boolean?)
   (chaperone-of? (copy v) v))
 
-; TODO SMOOSH: Export more parts of this.
 (define-imitation-simple-struct
   (terminal-wrapper? terminal-wrapper-value)
   terminal-wrapper 'terminal-wrapper (current-inspector) (auto-write)
@@ -4418,6 +4425,8 @@
     
     ))
 (ascribe-own-contract terminal-wrapper? (-> any/c boolean?))
+(ascribe-own-contract terminal-wrapper-value
+  (-> terminal-wrapper? any/c))
 
 (define/own-contract
   (make-glossesque-sys-impl-for-chaperone=-copiable
