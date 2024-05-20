@@ -8061,15 +8061,11 @@
 (ascribe-own-contract any-dynamic-type? (-> any/c boolean?))
 
 
-; TODO SMOOSH: Implement the following parts of the API outlined in
-; the last part of notes/2024-03-20-squashable-object-system.txt:
-;
-; make-empty-immutable-total-order-<=-based-dict
-; make-empty-immutable-trie-dict
-;
-; We're not implementing the mutable dicts. (If we need them, we're
-; just going to model them as mutable boxes containing immutable
-; dicts, or tack on the mutable dict stuff as an afterthought.)
+; TODO SMOOSH: Implement a `glossesque-sys?` based on AVL trees, for
+; the sake of types which are hard to write hash code behavior for but
+; which do admit a total ordering. This would justify some of the
+; generality of the design here; without types like this, it's a
+; wonder we don't just hash everything.
 
 ; TODO SMOOSH: Implement smooshing, better `gen:equal-mode+hash`
 ; equality, and
