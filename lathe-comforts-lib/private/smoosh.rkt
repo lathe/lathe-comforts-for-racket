@@ -242,11 +242,6 @@
   eq-indistinct-atom-glossesque-sys
   equal-always-from-list-injection-glossesque-sys
   equal-always-indistinct-from-list-injection-glossesque-sys
-  terminal-wrapper?
-  terminal-wrapper-value)
-(provide
-  terminal-wrapper)
-(provide /own-contract-out
   chaperone=-copiable-glossesque-sys
   chaperone=-indistinct-copiable-glossesque-sys
   normalized-glossesque-sys
@@ -505,7 +500,6 @@
     mapped-glossesque-sys-granted-glossesque
     mapped-glossesque-sys-on-glossesque
     mapped-glossesque-sys-granted-key-knowable
-    mapped-glossesque-sys-on-key
     mapped-glossesque-sys-original)
   mapped-glossesque-sys
   'mapped-glossesque-sys (current-inspector) (auto-write)
@@ -513,62 +507,89 @@
   (#:prop prop:glossesque-sys /make-glossesque-sys-impl
     
     #:glossesque-union-of-zero
-    (dissectfn
-      (mapped-glossesque-sys >g< <g> >k<-knowable <k> original)
+    (dissectfn (mapped-glossesque-sys >g< <g> >k<-knowable original)
       (<g> /glossesque-sys-glossesque-union-of-zero original))
     
     #:glossesque-skm-union-of-two-knowable
     (fn gs state a b skm-union-knowable
       (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable <k> original)
+        (mapped-glossesque-sys >g< <g> >k<-knowable original)
       /knowable-bind
         (glossesque-sys-glossesque-skm-union-of-two-knowable
           original state (>g< a) (>g< b)
-          (fn state k a b
-            (skm-union-knowable state (<k> k) a b)))
+          (fn state internal-k a-entry-m b-entry-m
+            (w- k
+              (mat a-entry-m (just a-entry)
+                (dissect a-entry (list k v)
+                  k)
+              /dissect b-entry-m (just b-entry)
+                (dissect b-entry (list k v)
+                  k))
+            /dissect a (list k a-v)
+            /dissect b (list _ b-v)
+            /knowable-map
+              (skm-union-knowable state k
+                (maybe-map a-entry-m /dissectfn (list k v) v)
+                (maybe-map b-entry-m /dissectfn (list k v) v))
+            /dissectfn (list state m)
+              (list state /maybe-map m /fn v /list k v))))
       /fn result
         (<g> result)))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
       (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable <k> original)
+        (mapped-glossesque-sys >g< <g> >k<-knowable original)
       /w- g (>g< g)
-      /knowable-bind (>k<-knowable k) /fn k
-      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+      /knowable-bind (>k<-knowable k) /fn internal-k
+      /knowable-bind
+        (glossesque-sys-glossesque-ref-maybe-knowable
+          original g internal-k)
+      /fn entry-m
+      /known /maybe-map entry-m /dissectfn (list k v) v))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
       (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable <k> original)
+        (mapped-glossesque-sys >g< <g> >k<-knowable original)
       /dissect rider-and-g (list rider g)
       /w- rider-and-g (list rider />g< g)
-      /knowable-bind (>k<-knowable k) /fn k
+      /knowable-bind (>k<-knowable k) /fn internal-k
       /knowable-bind
         (glossesque-sys-rider-and-glossesque-update-maybe-knowable
-          original rider-and-g k on-rider-and-m-knowable)
+          original rider-and-g internal-k
+          (dissectfn (list rider entry-m)
+            (w- k
+              (expect entry-m (just entry) k
+              /dissect entry (list k v)
+                k)
+            /w- v-m (maybe-map entry-m /dissectfn (list k v) v)
+            /knowable-map (on-rider-and-m-knowable /list rider v-m)
+            /dissectfn (list rider v-m)
+              (list rider /maybe-map v-m /fn v /list k v))))
       /dissectfn (list rider g)
       /known /list rider /<g> g))
     
     #:glossesque-empty?
     (fn gs g
       (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable <k> original)
+        (mapped-glossesque-sys >g< <g> >k<-knowable original)
       /glossesque-sys-glossesque-empty? original />g< g))
     
     #:glossesque-count
     (fn gs g
       (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable <k> original)
+        (mapped-glossesque-sys >g< <g> >k<-knowable original)
       /glossesque-sys-glossesque-count original />g< g))
     
     #:glossesque-iteration-sequence
     (fn gs g
       (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable <k> original)
+        (mapped-glossesque-sys >g< <g> >k<-knowable original)
       /sequence-map
-        (fn k v
-          (values (<k> k) v))
+        (fn internal-k entry
+          (dissect entry (list k v)
+          /values k v))
         (glossesque-sys-glossesque-iteration-sequence original
           (>g< g))))
     
@@ -580,18 +601,22 @@
   (glossesque-sys-map gs
     #:granted-glossesque [granted-glossesque (fn g g)]
     #:on-glossesque [on-glossesque (fn g g)]
-    #:granted-key-knowable [granted-key-knowable (fn k /known k)]
-    #:on-key [on-key (fn k k)])
+    #:granted-key [granted-key (fn k k)]
+    
+    #:granted-key-knowable
+    [granted-key-knowable (fn k /known /granted-key k)]
+    
+    )
   (->*
     (glossesque-sys?)
     (
       #:granted-glossesque (-> any/c any/c)
       #:on-glossesque (-> any/c any/c)
-      #:granted-key-knowable (-> any/c knowable?)
-      #:on-key (-> any/c any/c))
+      #:granted-key (-> any/c any/c)
+      #:granted-key-knowable (-> any/c knowable?))
     glossesque-sys?)
   (mapped-glossesque-sys
-    granted-glossesque on-glossesque granted-key-knowable on-key gs))
+    granted-glossesque on-glossesque granted-key-knowable gs))
 
 (define/own-contract (maybe-nonempty-glossesque-sys original)
   (-> glossesque-sys? glossesque-sys?)
@@ -4409,23 +4434,6 @@
   (-> (-> any/c any/c) any/c boolean?)
   (chaperone-of? (copy v) v))
 
-(define-imitation-simple-struct
-  (terminal-wrapper? terminal-wrapper-value)
-  terminal-wrapper 'terminal-wrapper (current-inspector) (auto-write)
-  
-  (#:gen gen:equal-mode+hash
-    
-    (define (equal-mode-proc a b recur now?)
-      #t)
-    
-    (define (hash-mode-proc v recur now?)
-      (hash-code-combine /equal-always-hash-code terminal-wrapper?))
-    
-    ))
-(ascribe-own-contract terminal-wrapper? (-> any/c boolean?))
-(ascribe-own-contract terminal-wrapper-value
-  (-> terminal-wrapper? any/c))
-
 (define/own-contract
   (make-glossesque-sys-impl-for-chaperone=-copiable
     gs-for-equal-always
@@ -4441,12 +4449,10 @@
     (fn gs
       (w- copy (get-copy gs)
       /glossesque-sys-map
-        #:granted-key-knowable
+        #:granted-key
         (fn k
-          (known /list
-            (maybe-if (not /shallowly-unchaperoned? copy k) /fn k)
-            (terminal-wrapper k)))
-        #:on-key (dissectfn (list _ (terminal-wrapper k)) k)
+          (maybe-if (not /shallowly-unchaperoned? copy k) /fn k))
+        
         (make-gs-for-wrapped-chaperone=-assuming-equal-always /fn a b
           (match (list a b)
             [(list (list (nothing) _) (list (nothing) _)) #t]
@@ -4496,16 +4502,10 @@
   (counted-glossesque-sys
     (chaperone=-indistinct-copiable-glossesque-sys-unguarded copy)))
 
-(define/own-contract (normalized-glossesque-sys normalize)
+(define/own-contract (normalized-glossesque-sys granted-key)
   (-> (-> any/c any/c) glossesque-sys?)
   (glossesque-sys-map (equal-always-atom-glossesque-sys)
-    #:granted-key-knowable
-    (fn k
-      (known /list (normalize k) (terminal-wrapper k)))
-    #:on-key
-    (fn k
-      (dissect k (list normalized (terminal-wrapper original))
-        original))))
+    #:granted-key (fn k /granted-key k)))
 
 (define/own-contract (terminal-glossesque-sys)
   (-> glossesque-sys?)
@@ -7523,15 +7523,9 @@
           (dissectfn (tagged-glossesque-sys variant gs)
             (tagged-glossesque-sys
               (path-related-wrapper-variant variant)
-              (glossesque-sys-map gs
-                ; TODO SMOOSH: Make this preserve `eq?`.
-                #:granted-key-knowable
-                (fn k
-                  (expect k (path-related-wrapper k) (unknown)
-                  /known k))
-                #:on-key
-                (fn k
-                  (path-related-wrapper k))))))))
+              (glossesque-sys-map gs #:granted-key-knowable /fn k
+                (expect k (path-related-wrapper k) (unknown)
+                /known k)))))))
     (app sequence->stream /stream* report-0 report-1+)
   /stream*
     (constant-custom-gloss-key-report
@@ -7723,15 +7717,9 @@
           (dissectfn (tagged-glossesque-sys variant gs)
             (tagged-glossesque-sys
               (info-wrapper-variant variant)
-              (glossesque-sys-map gs
-                ; TODO SMOOSH: Make this preserve `eq?`.
-                #:granted-key-knowable
-                (fn k
-                  (expect k (info-wrapper k) (unknown)
-                  /known k))
-                #:on-key
-                (fn k
-                  (info-wrapper k))))))))
+              (glossesque-sys-map gs #:granted-key-knowable /fn k
+                (expect k (info-wrapper k) (unknown)
+                /known k)))))))
     (app sequence->stream /stream* report-0 report-1+)
     report-1+))
 
@@ -8042,15 +8030,10 @@
         (dissectfn (tagged-glossesque-sys variant gs)
           (tagged-glossesque-sys
             (indistinct-wrapper-variant variant)
-            (indistinct-glossesque-sys /glossesque-sys-map gs
-              ; TODO SMOOSH: Make this preserve `eq?`.
-              #:granted-key-knowable
-              (fn k
+            (indistinct-glossesque-sys
+              (glossesque-sys-map gs #:granted-key-knowable /fn k
                 (expect k (indistinct-wrapper k) (unknown)
-                /known k))
-              #:on-key
-              (fn k
-                (indistinct-wrapper k)))))))))
+                /known k)))))))))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -8146,24 +8129,6 @@
   
   )
 
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both `terminal-wrapper?` values, then
-;     unknown.
-;     
-;     Otherwise, the first operand (or, for a check, `#t`).
-;
-(define-imitation-simple-struct (terminal-wrapper-dynamic-type?)
-  terminal-wrapper-dynamic-type
-  'terminal-wrapper-dynamic-type (current-inspector) (auto-write)
-  
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'terminal-wrapper-variant
-      #:ignore-chaperones? #t
-      #:inhabitant? terminal-wrapper?)
-    (trivial)))
-
 (match-define
   (list
     known-to-lathe-comforts-data?
@@ -8194,10 +8159,7 @@
         (fn any-dt /equal-always-wrapper-dynamic-type))
       (list
         indistinct-wrapper?
-        (fn any-dt /indistinct-wrapper-dynamic-type any-dt))
-      (list
-        terminal-wrapper?
-        (fn any-dt /terminal-wrapper-dynamic-type)))))
+        (fn any-dt /indistinct-wrapper-dynamic-type any-dt)))))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
@@ -8448,8 +8410,6 @@
 ;       treats known false results as though they were unknown
 ;       results.
 ;
-;     - (Done) `terminal-wrapper?` values, all equal to each other.
-;
 ;     - (Done) `eq-atom-variant?` (a value constructed by
 ;       `eq-atom-variant`)
 ;
@@ -8589,8 +8549,6 @@
 ;       - `equal-always-wrapper-dynamic-type?`
 ;
 ;       - `indistinct-wrapper-dynamic-type?`
-;
-;       - `terminal-wrapper-dynamic-type?`
 ;
 ;       - `maybe-dynamic-type?` (a type used in an intermediate way in
 ;         the definition of
