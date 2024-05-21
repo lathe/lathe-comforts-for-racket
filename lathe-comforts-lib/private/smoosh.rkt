@@ -80,7 +80,8 @@
   ; TODO: When we document this, make sure we document its keyword
   ; arguments.
   make-glossesque-sys-impl
-  glossesque-sys-map
+  glossesque-sys-map-glossesque
+  glossesque-sys-map-key
   tagged-glossesque-sys?
   tagged-glossesque-sys-get-inhabitant?
   tagged-glossesque-sys-get-glossesque-sys)
@@ -546,51 +547,113 @@
     glossesque-iteration-sequence))
 
 (define-imitation-simple-struct
-  (mapped-glossesque-sys?
-    mapped-glossesque-sys-granted-glossesque
-    mapped-glossesque-sys-on-glossesque
-    mapped-glossesque-sys-granted-key-knowable
-    mapped-glossesque-sys-original)
-  mapped-glossesque-sys
-  'mapped-glossesque-sys (current-inspector) (auto-write)
+  (mapped-glossesque-glossesque-sys?
+    mapped-glossesque-glossesque-sys-granted-glossesque
+    mapped-glossesque-glossesque-sys-on-glossesque
+    mapped-glossesque-glossesque-sys-original)
+  mapped-glossesque-glossesque-sys
+  'mapped-glossesque-glossesque-sys (current-inspector) (auto-write)
   
   (#:prop prop:glossesque-sys /make-glossesque-sys-impl
     
     #:glossesque-union-of-zero
-    (dissectfn (mapped-glossesque-sys >g< <g> >k<-knowable original)
+    (dissectfn (mapped-glossesque-glossesque-sys >g< <g> original)
       (<g> /glossesque-sys-glossesque-union-of-zero original))
     
     #:glossesque-skm-union-of-two-knowable
     (fn gs state a b skm-union-knowable
-      (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable original)
-      /knowable-bind
+      (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
+      /knowable-map
         (glossesque-sys-glossesque-skm-union-of-two-knowable
-          original state (>g< a) (>g< b)
-          (fn state internal-k a-entry-m b-entry-m
-            (w- k
-              (mat a-entry-m (just a-entry)
-                (dissect a-entry (list k v)
-                  k)
-              /dissect b-entry-m (just b-entry)
-                (dissect b-entry (list k v)
-                  k))
-            /dissect a (list k a-v)
-            /dissect b (list _ b-v)
-            /knowable-map
-              (skm-union-knowable state k
-                (maybe-map a-entry-m /dissectfn (list k v) v)
-                (maybe-map b-entry-m /dissectfn (list k v) v))
-            /dissectfn (list state m)
-              (list state /maybe-map m /fn v /list k v))))
+          original state (>g< a) (>g< b) skm-union-knowable)
       /fn result
         (<g> result)))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
-      (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable original)
+      (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
       /w- g (>g< g)
+      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+    
+    #:rider-and-glossesque-update-maybe-knowable
+    (fn gs rider-and-g k on-rider-and-m-knowable
+      (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
+      /dissect rider-and-g (list rider g)
+      /w- rider-and-g (list rider />g< g)
+      /knowable-map
+        (glossesque-sys-rider-and-glossesque-update-maybe-knowable
+          original rider-and-g k on-rider-and-m-knowable)
+      /dissectfn (list rider g)
+        (list rider /<g> g)))
+    
+    #:glossesque-empty?
+    (fn gs g
+      (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
+      /glossesque-sys-glossesque-empty? original />g< g))
+    
+    #:glossesque-count
+    (fn gs g
+      (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
+      /glossesque-sys-glossesque-count original />g< g))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
+      /glossesque-sys-glossesque-iteration-sequence original />g< g))
+    
+    )
+  
+  )
+
+(define/own-contract
+  (glossesque-sys-map-glossesque gs
+    #:granted-glossesque [granted-glossesque (fn g g)]
+    #:on-glossesque [on-glossesque (fn g g)])
+  (->*
+    (glossesque-sys?)
+    (
+      #:granted-glossesque (-> any/c any/c)
+      #:on-glossesque (-> any/c any/c))
+    glossesque-sys?)
+  (mapped-glossesque-glossesque-sys
+    granted-glossesque on-glossesque gs))
+
+(define-imitation-simple-struct
+  (mapped-key-glossesque-sys?
+    mapped-key-glossesque-sys-granted-key-knowable
+    mapped-key-glossesque-sys-original)
+  mapped-key-glossesque-sys
+  'mapped-key-glossesque-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl
+    
+    #:glossesque-union-of-zero
+    (dissectfn (mapped-key-glossesque-sys >k<-knowable original)
+      (glossesque-sys-glossesque-union-of-zero original))
+    
+    #:glossesque-skm-union-of-two-knowable
+    (fn gs state a b skm-union-knowable
+      (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
+      /glossesque-sys-glossesque-skm-union-of-two-knowable
+        original state a b
+      /fn state internal-k a-entry-m b-entry-m
+        (w- k
+          (mat a-entry-m (just a-entry)
+            (dissect a-entry (list k v)
+              k)
+          /dissect b-entry-m (just b-entry)
+            (dissect b-entry (list k v)
+              k))
+        /knowable-map
+          (skm-union-knowable state k
+            (maybe-map a-entry-m /dissectfn (list k v) v)
+            (maybe-map b-entry-m /dissectfn (list k v) v))
+        /dissectfn (list state m)
+          (list state /maybe-map m /fn v /list k v))))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
       /knowable-bind (>k<-knowable k) /fn internal-k
       /knowable-bind
         (glossesque-sys-glossesque-ref-maybe-knowable
@@ -600,57 +663,45 @@
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
-      (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable original)
-      /dissect rider-and-g (list rider g)
-      /w- rider-and-g (list rider />g< g)
+      (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
       /knowable-bind (>k<-knowable k) /fn internal-k
-      /knowable-bind
-        (glossesque-sys-rider-and-glossesque-update-maybe-knowable
-          original rider-and-g internal-k
-          (dissectfn (list rider entry-m)
-            (w- k
-              (expect entry-m (just entry) k
-              /dissect entry (list k v)
-                k)
-            /w- v-m (maybe-map entry-m /dissectfn (list k v) v)
-            /knowable-map (on-rider-and-m-knowable /list rider v-m)
-            /dissectfn (list rider v-m)
-              (list rider /maybe-map v-m /fn v /list k v))))
-      /dissectfn (list rider g)
-      /known /list rider /<g> g))
+      /glossesque-sys-rider-and-glossesque-update-maybe-knowable
+        original rider-and-g internal-k
+      /dissectfn (list rider entry-m)
+        (w- k
+          (expect entry-m (just entry) k
+          /dissect entry (list k v)
+            k)
+        /w- v-m (maybe-map entry-m /dissectfn (list k v) v)
+        /knowable-map (on-rider-and-m-knowable /list rider v-m)
+        /dissectfn (list rider v-m)
+          (list rider /maybe-map v-m /fn v /list k v))))
     
     #:glossesque-empty?
     (fn gs g
-      (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable original)
-      /glossesque-sys-glossesque-empty? original />g< g))
+      (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
+      /glossesque-sys-glossesque-empty? original g))
     
     #:glossesque-count
     (fn gs g
-      (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable original)
-      /glossesque-sys-glossesque-count original />g< g))
+      (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
+      /glossesque-sys-glossesque-count original g))
     
     #:glossesque-iteration-sequence
     (fn gs g
-      (dissect gs
-        (mapped-glossesque-sys >g< <g> >k<-knowable original)
+      (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
       /sequence-map
         (fn internal-k entry
           (dissect entry (list k v)
           /values k v))
-        (glossesque-sys-glossesque-iteration-sequence original
-          (>g< g))))
+        (glossesque-sys-glossesque-iteration-sequence original g)))
     
     )
   
   )
 
 (define/own-contract
-  (glossesque-sys-map gs
-    #:granted-glossesque [granted-glossesque (fn g g)]
-    #:on-glossesque [on-glossesque (fn g g)]
+  (glossesque-sys-map-key gs
     #:granted-key [granted-key (fn k k)]
     
     #:granted-key-knowable
@@ -660,17 +711,14 @@
   (->*
     (glossesque-sys?)
     (
-      #:granted-glossesque (-> any/c any/c)
-      #:on-glossesque (-> any/c any/c)
       #:granted-key (-> any/c any/c)
       #:granted-key-knowable (-> any/c knowable?))
     glossesque-sys?)
-  (mapped-glossesque-sys
-    granted-glossesque on-glossesque granted-key-knowable gs))
+  (mapped-key-glossesque-sys granted-key-knowable gs))
 
 (define/own-contract (maybe-nonempty-glossesque-sys original)
   (-> glossesque-sys? glossesque-sys?)
-  (glossesque-sys-map original
+  (glossesque-sys-map-glossesque original
     #:granted-glossesque
     (fn g-m
       (mat g-m (just g) g
@@ -4421,7 +4469,7 @@
     gs-for-equal-always
     (fn gs
       (w- copy (get-copy gs)
-      /glossesque-sys-map
+      /glossesque-sys-map-key
         #:granted-key
         (fn k
           (maybe-if (not /shallowly-unchaperoned? copy k) /fn k))
@@ -4477,7 +4525,7 @@
 
 (define/own-contract (normalized-glossesque-sys granted-key)
   (-> (-> any/c any/c) glossesque-sys?)
-  (glossesque-sys-map (equal-always-atom-glossesque-sys)
+  (glossesque-sys-map-key (equal-always-atom-glossesque-sys)
     #:granted-key (fn k /granted-key k)))
 
 (define/own-contract (terminal-glossesque-sys)
@@ -7366,7 +7414,7 @@
               (makeshift-knowable-predicate /fn v
                 (expect v (path-related-wrapper v) (unknown)
                 /call-knowable inhabitant? v))
-              (glossesque-sys-map gs #:granted-key-knowable /fn k
+              (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                 (expect k (path-related-wrapper k) (unknown)
                 /known k)))))))
     (app sequence->stream /stream* report-0 report-1+)
@@ -7551,7 +7599,7 @@
               (makeshift-knowable-predicate /fn v
                 (expect v (info-wrapper v) (unknown)
                 /call-knowable inhabitant? v))
-              (glossesque-sys-map gs #:granted-key-knowable /fn k
+              (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                 (expect k (info-wrapper k) (unknown)
                 /known k)))))))
     (app sequence->stream /stream* report-0 report-1+)
@@ -7855,7 +7903,7 @@
               (expect v (indistinct-wrapper v) (unknown)
               /call-knowable inhabitant? v))
             (indistinct-glossesque-sys
-              (glossesque-sys-map gs #:granted-key-knowable /fn k
+              (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                 (expect k (indistinct-wrapper k) (unknown)
                 /known k)))))))))
 
