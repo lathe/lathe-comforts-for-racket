@@ -83,6 +83,7 @@
   glossesque-sys-map
   tagged-glossesque-sys?
   tagged-glossesque-sys-variant
+  tagged-glossesque-sys-get-inhabitant?
   tagged-glossesque-sys-get-glossesque-sys)
 (provide
   tagged-glossesque-sys)
@@ -688,12 +689,15 @@
 (define-imitation-simple-struct
   (tagged-glossesque-sys?
     tagged-glossesque-sys-variant
+    tagged-glossesque-sys-get-inhabitant?
     tagged-glossesque-sys-get-glossesque-sys)
   tagged-glossesque-sys
   'tagged-glossesque-sys (current-inspector) (auto-write) (auto-equal))
 (ascribe-own-contract tagged-glossesque-sys? (-> any/c boolean?))
 (ascribe-own-contract tagged-glossesque-sys-variant
   (-> tagged-glossesque-sys? any/c))
+(ascribe-own-contract tagged-glossesque-sys-get-inhabitant?
+  (-> tagged-glossesque-sys? (-> any/c boolean?)))
 (ascribe-own-contract tagged-glossesque-sys-get-glossesque-sys
   (-> tagged-glossesque-sys? glossesque-sys?))
 
@@ -1589,7 +1593,7 @@
       (stream-first
         (dynamic-type-get-custom-gloss-key-reports (any-dynamic-type)
           k)))
-  /dissectfn (tagged-glossesque-sys variant _)
+  /dissectfn (tagged-glossesque-sys variant _ _)
   /knowable-bind (gloss-ref-maybe-knowable custom variant)
   /fn entry-maybe
   /expect entry-maybe (just entry) (known /nothing)
@@ -1628,7 +1632,7 @@
       (stream-first
         (dynamic-type-get-custom-gloss-key-reports (any-dynamic-type)
           k)))
-  /dissectfn (tagged-glossesque-sys variant new-gs)
+  /dissectfn (tagged-glossesque-sys variant _ new-gs)
   /knowable-map
     (glossesque-sys-rider-and-glossesque-update-maybe-knowable
       (maybe-nonempty-glossesque-sys /gloss-glossesque-sys)
@@ -5422,12 +5426,14 @@
       /w- equal-always-indistinct-tgs-k
         (known /tagged-glossesque-sys
           (variant)
+          inhabitant?
           (equal-always-indistinct-from-list-injection-glossesque-sys
             #:->list ->list
             #:->->list ->->list))
       /w- equal-always-distinct-tgs-k
         (known /tagged-glossesque-sys
           (variant)
+          inhabitant?
           (equal-always-from-list-injection-glossesque-sys
             #:->list ->list
             #:->->list ->->list))
@@ -5438,10 +5444,12 @@
       /w- chaperone=-indistinct-tgs-k
         (known /tagged-glossesque-sys
           (variant)
+          inhabitant?
           (chaperone=-indistinct-copiable-glossesque-sys #:copy copy))
       /w- chaperone=-distinct-tgs-k
         (known /tagged-glossesque-sys
           (variant)
+          inhabitant?
           (chaperone=-copiable-glossesque-sys #:copy copy))
       /w- chaperone=-tgs-k
         (if known-distinct?
@@ -6204,15 +6212,20 @@
         (if eq-matters?
           (known /tagged-glossesque-sys
             (eq-atom-variant)
+            ; TODO SMOOSH: See if we can encompass a wider range of
+            ; inhabitants with this.
+            inhabitant?
             (eq-atom-glossesque-sys))
           (known /tagged-glossesque-sys
             (variant)
+            inhabitant?
             (equal-always-atom-glossesque-sys)))
       /w- distinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           distinct-0-tgs-k
           (known /tagged-glossesque-sys
             (variant)
+            inhabitant?
             (chaperone=-atom-glossesque-sys)))
       /w- indistinct-tag
         (fn
@@ -6222,15 +6235,18 @@
         (if eq-matters?
           (known /tagged-glossesque-sys
             (eq-indistinct-atom-variant)
+            inhabitant?
             (eq-indistinct-atom-glossesque-sys))
           (known /tagged-glossesque-sys
             (indistinct-tag)
+            inhabitant?
             (equal-always-indistinct-atom-glossesque-sys)))
       /w- indistinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           indistinct-0-tgs-k
           (known /tagged-glossesque-sys
             (indistinct-tag)
+            inhabitant?
             (chaperone=-indistinct-atom-glossesque-sys)))
       /if (and known-distinct? known-discrete?)
         (stream*
@@ -6809,23 +6825,30 @@
           (custom-gloss-key-report-zip-map (list)
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
-              (tagged-glossesque-sys
+              (known /tagged-glossesque-sys
                 (non-nan-number-variant)
+                non-nan-number?
                 (non-nan-number-glossesque-sys)))
             #:on-path-related-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (if (zero? /imag-part a)
-                (tagged-glossesque-sys
+                (known /tagged-glossesque-sys
                   (non-nan-real-number-variant)
+                  (makeshift-knowable-predicate /fn v
+                    (knowable-if (non-nan-number? v) /fn
+                      (zero? /imag-part v)))
                   (terminal-glossesque-sys))
-                (tagged-glossesque-sys
+                (known /tagged-glossesque-sys
                   (non-nan-non-real-number-variant
                     (normalize-non-nan-number a))
+                  (makeshift-knowable-predicate /fn v
+                    (knowable-if (non-nan-number? v) /fn /= a v))
                   (terminal-glossesque-sys)))))
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
             (known /tagged-glossesque-sys
               (non-nan-number-variant)
+              non-nan-number?
               (equal-always-atom-glossesque-sys)))))
       
       ))
@@ -6967,6 +6990,7 @@
           #:tagged-glossesque-sys-knowable
           (known /tagged-glossesque-sys
             (non-nan-extflonum-variant)
+            non-nan-extflonum?
             (equal-always-atom-glossesque-sys))))
       
       ))
@@ -7808,9 +7832,12 @@
       #:on-tagged-glossesque-sys-knowable
       (fn tgs-k
         (knowable-map tgs-k
-          (dissectfn (tagged-glossesque-sys variant gs)
+          (dissectfn (tagged-glossesque-sys variant inhabitant? gs)
             (tagged-glossesque-sys
               (path-related-wrapper-variant variant)
+              (makeshift-knowable-predicate /fn v
+                (expect v (path-related-wrapper v) (unknown)
+                /call-knowable inhabitant? v))
               (glossesque-sys-map gs #:granted-key-knowable /fn k
                 (expect k (path-related-wrapper k) (unknown)
                 /known k)))))))
@@ -8002,9 +8029,12 @@
       #:on-tagged-glossesque-sys-knowable
       (fn tgs-k
         (knowable-map tgs-k
-          (dissectfn (tagged-glossesque-sys variant gs)
+          (dissectfn (tagged-glossesque-sys variant inhabitant? gs)
             (tagged-glossesque-sys
               (info-wrapper-variant variant)
+              (makeshift-knowable-predicate /fn v
+                (expect v (info-wrapper v) (unknown)
+                /call-knowable inhabitant? v))
               (glossesque-sys-map gs #:granted-key-knowable /fn k
                 (expect k (info-wrapper k) (unknown)
                 /known k)))))))
@@ -8320,9 +8350,12 @@
     #:on-tagged-glossesque-sys-knowable
     (fn tgs-k
       (knowable-map tgs-k
-        (dissectfn (tagged-glossesque-sys variant gs)
+        (dissectfn (tagged-glossesque-sys variant inhabitant? gs)
           (tagged-glossesque-sys
             (indistinct-wrapper-variant variant)
+            (makeshift-knowable-predicate /fn v
+              (expect v (indistinct-wrapper v) (unknown)
+              /call-knowable inhabitant? v))
             (indistinct-glossesque-sys
               (glossesque-sys-map gs #:granted-key-knowable /fn k
                 (expect k (indistinct-wrapper k) (unknown)
@@ -8918,3 +8951,8 @@
 ; user wants to work with the possibility that comparison results are
 ; unknown, we offer `gloss?` values as our recommended replacement for
 ; `hash?` values.
+
+; TODO SMOOSH: Rewrite `gloss?` to use the
+; `tagged-glossesque-sys-get-inhabitant?` field instead of the
+; `tagged-glossesque-sys-variant` field. Then get rid of the latter
+; field.
