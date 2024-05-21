@@ -82,7 +82,6 @@
   make-glossesque-sys-impl
   glossesque-sys-map
   tagged-glossesque-sys?
-  tagged-glossesque-sys-variant
   tagged-glossesque-sys-get-inhabitant?
   tagged-glossesque-sys-get-glossesque-sys)
 (provide
@@ -688,14 +687,11 @@
 
 (define-imitation-simple-struct
   (tagged-glossesque-sys?
-    tagged-glossesque-sys-variant
     tagged-glossesque-sys-get-inhabitant?
     tagged-glossesque-sys-get-glossesque-sys)
   tagged-glossesque-sys
   'tagged-glossesque-sys (current-inspector) (auto-write) (auto-equal))
 (ascribe-own-contract tagged-glossesque-sys? (-> any/c boolean?))
-(ascribe-own-contract tagged-glossesque-sys-variant
-  (-> tagged-glossesque-sys? any/c))
 (ascribe-own-contract tagged-glossesque-sys-get-inhabitant?
   (-> tagged-glossesque-sys? (-> any/c boolean?)))
 (ascribe-own-contract tagged-glossesque-sys-get-glossesque-sys
@@ -1476,7 +1472,7 @@
   /mat rep (gloss-rep-equal-always-gloss-key k v)
     (in-parallel (in-value k) (in-value v))
   /dissect rep
-    (gloss-rep-glossesque (tagged-glossesque-sys _ _ gs) then else)
+    (gloss-rep-glossesque (tagged-glossesque-sys _ gs) then else)
   /in-sequences
     (glossesque-sys-glossesque-iteration-sequence gs then)
     (gloss-iteration-sequence else)))
@@ -1538,7 +1534,7 @@
       /fn
         v))
   /dissect rep (gloss-rep-glossesque tgs then else)
-  /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
+  /dissect tgs (tagged-glossesque-sys inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
   /if k-inhabits?
     (glossesque-sys-glossesque-ref-maybe-knowable gs then k)
@@ -1551,7 +1547,7 @@
   /mat rep (gloss-rep-empty) 0
   /mat rep (gloss-rep-equal-always-gloss-key g-k v) 1
   /dissect rep
-    (gloss-rep-glossesque (tagged-glossesque-sys _ _ gs) then else)
+    (gloss-rep-glossesque (tagged-glossesque-sys _ gs) then else)
   /+
     (glossesque-sys-glossesque-count gs then)
     (gloss-count else)))
@@ -1582,7 +1578,7 @@
             (any-dynamic-type)
             k)))
     /fn tgs
-    /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
+    /dissect tgs (tagged-glossesque-sys inhabitant? gs)
     /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
     /expect k-inhabits? #t (unknown)
     /w- then (glossesque-sys-glossesque-union-of-zero gs)
@@ -1602,7 +1598,7 @@
         (expect m (just v) (gloss /gloss-rep-empty)
         /gloss /gloss-rep-equal-always-gloss-key k v)))
   /dissect rep (gloss-rep-glossesque tgs then else)
-  /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
+  /dissect tgs (tagged-glossesque-sys inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
   /if k-inhabits?
     (knowable-map
@@ -5339,13 +5335,6 @@
 ;
 (define/own-contract
   (make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
-    #:variant-name variant-name
-    
-    #:variant-dynamic-type-name
-    [ variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" variant-name)]
-    
-    #:inspector inspector
     #:ignore-chaperones? [ignore-chaperones? #f]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
@@ -5362,24 +5351,15 @@
     #:copy copy)
   (->*
     (
-      #:variant-name symbol?
-      #:inspector inspector?
       #:inhabitant? (-> any/c boolean?)
       #:copy (-> any/c any/c))
     (
-      #:variant-dynamic-type-name symbol?
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
       #:->list (or/c #f (-> any/c list?))
       #:->->list (-> any/c (-> any/c list?)))
     expressly-custom-gloss-key-dynamic-type-impl?)
-  ; TODO FORWARD: This use of `define-variant` is a forward reference.
-  ; See if we can untangle it.
-  (define-variant variant
-    #:name variant-name
-    #:dynamic-type-name variant-dynamic-type-name
-    #:inspector inspector)
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
     #:get-custom-gloss-key-reports
@@ -5388,14 +5368,12 @@
         (uninformative-custom-gloss-key-reports)
       /w- equal-always-indistinct-tgs-k
         (known /tagged-glossesque-sys
-          (variant)
           inhabitant?
           (equal-always-indistinct-from-list-injection-glossesque-sys
             #:->list ->list
             #:->->list ->->list))
       /w- equal-always-distinct-tgs-k
         (known /tagged-glossesque-sys
-          (variant)
           inhabitant?
           (equal-always-from-list-injection-glossesque-sys
             #:->list ->list
@@ -5406,12 +5384,10 @@
           equal-always-indistinct-tgs-k)
       /w- chaperone=-indistinct-tgs-k
         (known /tagged-glossesque-sys
-          (variant)
           inhabitant?
           (chaperone=-indistinct-copiable-glossesque-sys #:copy copy))
       /w- chaperone=-distinct-tgs-k
         (known /tagged-glossesque-sys
-          (variant)
           inhabitant?
           (chaperone=-copiable-glossesque-sys #:copy copy))
       /w- chaperone=-tgs-k
@@ -5447,26 +5423,6 @@
 
 (define/own-contract
   (make-expressly-smooshable-bundle-property-from-list-isomorphism
-    #:omit-gloss-key-behavior? [omit-gloss-key-behavior? #f]
-    
-    #:variant-name
-    [ variant-name
-      (if omit-gloss-key-behavior?
-        'omitted-variant
-        (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
-          "expected a #:variant-name unless #:omit-gloss-key-behavior was true"))]
-    
-    #:variant-dynamic-type-name
-    [ variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" variant-name)]
-    
-    #:inspector
-    [ inspector
-      (if omit-gloss-key-behavior?
-        #f
-        (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
-          "expected an #:inspector unless #:omit-gloss-key-behavior was true"))]
-    
     #:ignore-chaperones? [ignore-chaperones? #f]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
@@ -5504,10 +5460,6 @@
       #:inhabitant? (-> any/c boolean?)
       #:example-and-list-> (-> any/c list? any/c))
     (
-      #:omit-gloss-key-behavior? boolean?
-      #:variant-name symbol?
-      #:variant-dynamic-type-name symbol?
-      #:inspector inspector?
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
@@ -5534,8 +5486,8 @@
             "expected the property value to be a trivial? value"
             "value" value)
           value))
-      (append
-        (list /cons
+      (list
+        (cons
           prop:expressly-smooshable-dynamic-type
           (dissectfn (trivial)
             (if ignore-chaperones?
@@ -5566,7 +5518,7 @@
                 
                 #:copy copy
                 #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports))))
-        (list /cons
+        (cons
           prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
           (dissectfn (trivial)
             (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
@@ -5575,151 +5527,18 @@
               #:->list ->list
               #:->->list ->->list
               #:combine-element-hash-codes combine-element-hash-codes)))
-        (if omit-gloss-key-behavior?
-          (list)
-          (list /cons
-            prop:expressly-custom-gloss-key-dynamic-type
-            (dissectfn (trivial)
-              (make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
-                #:variant-name variant-name
-                #:variant-dynamic-type-name variant-dynamic-type-name
-                #:inspector inspector
-                #:ignore-chaperones? ignore-chaperones?
-                #:known-distinct? known-distinct?
-                #:known-discrete? known-discrete?
-                #:inhabitant? inhabitant?
-                #:->list ->list
-                #:->->list ->->list
-                #:copy copy)))))))
+        (cons
+          prop:expressly-custom-gloss-key-dynamic-type
+          (dissectfn (trivial)
+            (make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
+              #:ignore-chaperones? ignore-chaperones?
+              #:known-distinct? known-distinct?
+              #:known-discrete? known-discrete?
+              #:inhabitant? inhabitant?
+              #:->list ->list
+              #:->->list ->->list
+              #:copy copy))))))
   prop:bundle)
-
-; TODO: See if we should export this.
-(define-syntax (define-variant stx)
-  (syntax-parse stx
-    [
-      {~or*
-        (_ my-variant:id my-variant-field:id ...+
-          #:name name:expr
-          #:dynamic-type-name dynamic-type-name:expr
-          #:specific-variant-name specific-variant-name:expr
-          
-          #:specific-variant-dynamic-type-name
-          specific-variant-dynamic-type-name:expr
-          
-          #:inspector inspector:expr)
-        {~and
-          (_ my-variant:id
-            #:name name:expr
-            #:dynamic-type-name dynamic-type-name:expr
-            #:inspector inspector:expr)
-          {~bind
-            [(my-variant-field 1) (list)]
-            [specific-variant-name #''specific-variant-variant]
-            [ specific-variant-dynamic-type-name
-              #''specific-variant-variant-dynamic-type]}}}
-      
-      #:with (field ...) (generate-temporaries #'(my-variant-field ...))
-      
-      #:with (result-for-field ...)
-      (for/list ([field (syntax->list #'(my-variant-field ...))])
-        #'result)
-      
-      #:with (inhabitant-props ...)
-      (syntax->list
-        (if (null? /syntax->list #'(my-variant-field ...))
-          #'(
-              (#:prop prop:equal-always-gloss-key
-                (make-equal-always-gloss-key-impl)))
-          #'()))
-      
-      #:with (dynamic-type-impl-args ...)
-      (syntax->list
-        (if (null? /syntax->list #'(my-variant-field ...))
-          #'(#:omit-gloss-key-behavior? #t)
-          #'(
-              #:variant-name specific-variant-name-result
-              
-              #:variant-dynamic-type-name
-              specific-variant-dynamic-type-name-result
-              
-              )))
-      
-      #'(begin
-          
-          (define name-result name)
-          (define dynamic-type-name-result dynamic-type-name)
-          (define specific-variant-name-result specific-variant-name)
-          (define specific-variant-dynamic-type-name-result
-            specific-variant-dynamic-type-name)
-          (define inspector-result inspector)
-          
-          (define-imitation-simple-struct
-            (my-variant? my-variant-field ...)
-            my-variant
-            name-result inspector-result (auto-write) (auto-equal)
-            inhabitant-props ...
-            (#:prop prop:expressly-has-dynamic-type
-              (make-expressly-has-dynamic-type-impl /fn bindings self
-                (expect
-                  (known-value /gloss-ref-maybe-knowable bindings
-                    (dynamic-type-var-for-any-dynamic-type))
-                  (just any-dt)
-                  (raise-arguments-error 'get-dynamic-type
-                    "tried to get the dynamic type of a define-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-                    "bindings" bindings
-                    "inhabitant" self)
-                ; TODO FORWARD: This use of `my-variant-dynamic-type`
-                ; is a forward reference. See if we can untangle it.
-                /my-variant-dynamic-type any-dt))))
-          (ascribe-own-contract my-variant? (-> any/c boolean?))
-          
-          (define-imitation-simple-struct
-            (my-variant-dynamic-type?
-              my-variant-dynamic-type-get-any-dynamic-type)
-            my-variant-dynamic-type
-            dynamic-type-name-result inspector-result (auto-write)
-            
-            (#:prop
-              (make-expressly-smooshable-bundle-property-from-list-isomorphism
-                dynamic-type-impl-args ...
-                #:inspector inspector
-                #:ignore-chaperones? #t
-                
-                #:self-get-any-dynamic-type
-                (dissectfn (my-variant-dynamic-type any-dt)
-                  any-dt)
-                
-                #:inhabitant? my-variant?
-                #:->list
-                (dissectfn (my-variant my-variant-field ...)
-                  (list my-variant-field ...))
-                
-                #:example-and-list->
-                (fn example lst
-                  (dissect lst (list my-variant-field ...)
-                  /my-variant my-variant-field ...))
-                
-                #:get-smoosh-of-zero-reports
-                (fn self
-                  (dissect self (my-variant-dynamic-type any-dt)
-                  /smoosh-reports-map
-                    (dynamic-type-get-smoosh-of-zero-reports any-dt)
-                    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-                    (fn kpmkp
-                      (promise-map kpmkp /fn kpmk
-                        (knowable-map kpmk /fn kpm
-                          (maybe-map kpm /fn kp
-                            (promise-map kp /fn k
-                              (knowable-map k /fn result
-                                (my-variant
-                                  result-for-field ...)))))))))
-                
-                )
-              (trivial))
-            
-            )
-          
-          )]))
 
 ; This is an appropriate `prop:expressly-smooshable-dynamic-type`
 ; implementation for simple values that can be compared by a simple
@@ -6070,101 +5889,20 @@
     
     ))
 
-; TODO SMOOSH: See if we should export these. We probably should, but
-; do we need to export them as just constructor functions rather than
-; having `match` capability? Do we need to export `eq-atom-variant?`
-; and `eq-indistinct-atom-variant?` along with them?
-(define-variant eq-atom-variant
-  #:name 'eq-atom-variant
-  #:dynamic-type-name 'eq-atom-variant-dynamic-type
-  #:inspector (current-inspector))
-(define-variant eq-indistinct-atom-variant
-  #:name 'eq-indistinct-atom-variant
-  #:dynamic-type-name 'eq-indistinct-atom-variant-dynamic-type
-  #:inspector (current-inspector))
-
 (define/own-contract
   (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
     #:eq-matters? [eq-matters? #f]
-    
-    #:variant-name
-    [ variant-name
-      (if eq-matters?
-        'unneeded-variant
-        (raise-arguments-error 'make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
-          "expected a #:variant-name unless #:eq-matters? was true"))]
-    
-    #:variant-dynamic-type-name
-    [ variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" variant-name)]
-    
-    #:specific-variant-name
-    [specific-variant-name (format-symbol "specific-~a" variant-name)]
-    
-    #:specific-variant-dynamic-type-name
-    [ specific-variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" specific-variant-name)]
-    
-    #:specific-variant-variant-name
-    [ specific-variant-variant-name
-      (format-symbol "~a-variant" specific-variant-name)]
-    
-    #:specific-variant-variant-dynamic-type-name
-    [ specific-variant-variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" specific-variant-variant-name)]
-    
-    #:inspector
-    [ inspector
-      (if eq-matters?
-        #f
-        (raise-arguments-error 'make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
-          "expected an #:inspector unless #:eq-matters? was true"))]
-    
     #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?)
   (->*
+    (#:inhabitant? (-> any/c boolean?))
     (
-      #:inhabitant? (-> any/c boolean?))
-    (
-      #:eq-matters? boolean?
-      #:variant-name symbol?
-      #:variant-dynamic-type-name symbol?
-      #:specific-variant-name symbol?
-      #:specific-variant-dynamic-type-name symbol?
-      #:specific-variant-variant-name symbol?
-      #:specific-variant-variant-dynamic-type-name symbol?
-      #:inspector inspector?
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?)
     expressly-custom-gloss-key-dynamic-type-impl?)
-  (define variant
-    (if eq-matters?
-      (fn
-        (error "internal error"))
-    /let ()
-      (define-variant variant
-        #:name variant-name
-        #:dynamic-type-name variant-dynamic-type-name
-        #:inspector inspector)
-      variant))
-  (define specific-variant
-    (if eq-matters?
-      (fn v
-        (error "internal error"))
-    /let ()
-      (define-variant specific-variant specific-variant-value
-        #:name specific-variant-name
-        #:dynamic-type-name specific-variant-dynamic-type-name
-        #:specific-variant-name specific-variant-variant-name
-        
-        #:specific-variant-dynamic-type-name
-        specific-variant-variant-dynamic-type-name
-        
-        #:inspector inspector)
-      specific-variant))
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
     #:get-custom-gloss-key-reports
@@ -6174,41 +5912,29 @@
       /w- distinct-0-tgs-k
         (if eq-matters?
           (known /tagged-glossesque-sys
-            (eq-atom-variant)
             ; TODO SMOOSH: See if we can encompass a wider range of
             ; inhabitants with this, as an optimization.
             inhabitant?
             (eq-atom-glossesque-sys))
           (known /tagged-glossesque-sys
-            (variant)
             inhabitant?
             (equal-always-atom-glossesque-sys)))
       /w- distinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           distinct-0-tgs-k
           (known /tagged-glossesque-sys
-            (variant)
             inhabitant?
             (chaperone=-atom-glossesque-sys)))
-      /w- indistinct-tag
-        (fn
-          (specific-variant
-            (indistinct-wrapper /equal-always-wrapper a)))
       /w- indistinct-0-tgs-k
-        (if eq-matters?
-          (known /tagged-glossesque-sys
-            (eq-indistinct-atom-variant)
-            inhabitant?
-            (eq-indistinct-atom-glossesque-sys))
-          (known /tagged-glossesque-sys
-            (indistinct-tag)
-            inhabitant?
+        (known /tagged-glossesque-sys
+          inhabitant?
+          (if eq-matters?
+            (eq-indistinct-atom-glossesque-sys)
             (equal-always-indistinct-atom-glossesque-sys)))
       /w- indistinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           indistinct-0-tgs-k
           (known /tagged-glossesque-sys
-            (indistinct-tag)
             inhabitant?
             (chaperone=-indistinct-atom-glossesque-sys)))
       /if (and known-distinct? known-discrete?)
@@ -6238,40 +5964,6 @@
 (define/own-contract
   (make-expressly-smooshable-bundle-property-for-atom
     #:eq-matters? [eq-matters? #f]
-    
-    #:variant-name
-    [ variant-name
-      (if eq-matters?
-        'unneeded-variant
-        (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-atom
-          "expected a #:variant-name unless #:eq-matters? was true"))]
-    
-    #:variant-dynamic-type-name
-    [ variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" variant-name)]
-    
-    #:specific-variant-name
-    [specific-variant-name (format-symbol "specific-~a" variant-name)]
-    
-    #:specific-variant-dynamic-type-name
-    [ specific-variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" specific-variant-name)]
-    
-    #:specific-variant-variant-name
-    [ specific-variant-variant-name
-      (format-symbol "~a-variant" specific-variant-name)]
-    
-    #:specific-variant-variant-dynamic-type-name
-    [ specific-variant-variant-dynamic-type-name
-      (format-symbol "~a-dynamic-type" specific-variant-variant-name)]
-    
-    #:inspector
-    [ inspector
-      (if eq-matters?
-        #f
-        (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-atom
-          "expected an #:inspector unless #:eq-matters? was true"))]
-    
     #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
@@ -6295,13 +5987,6 @@
     (#:inhabitant? (-> any/c boolean?))
     (
       #:eq-matters? boolean?
-      #:variant-name symbol?
-      #:variant-dynamic-type-name symbol?
-      #:specific-variant-name symbol?
-      #:specific-variant-dynamic-type-name symbol?
-      #:specific-variant-variant-name symbol?
-      #:specific-variant-variant-dynamic-type-name symbol?
-      #:inspector (or/c #f inspector?)
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
@@ -6344,21 +6029,6 @@
           (dissectfn (trivial)
             (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
               #:eq-matters? eq-matters?
-              #:variant-name variant-name
-              #:variant-dynamic-type-name variant-dynamic-type-name
-              
-              #:specific-variant-name specific-variant-name
-              
-              #:specific-variant-dynamic-type-name
-              specific-variant-dynamic-type-name
-              
-              #:specific-variant-variant-name
-              specific-variant-variant-name
-              
-              #:specific-variant-variant-dynamic-type-name
-              specific-variant-variant-dynamic-type-name
-              
-              #:inspector inspector
               #:ignore-chaperones? ignore-chaperones?
               #:known-distinct? known-distinct?
               #:known-discrete? known-discrete?
@@ -6492,8 +6162,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'base-syntactic-atom-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:inhabitant?
@@ -6529,8 +6197,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'boolean-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? boolean?)
     (trivial)))
@@ -6549,8 +6215,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'char-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:known-distinct? #f
       #:inhabitant? char?)
@@ -6571,8 +6235,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'immutable-string-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:known-distinct? #f
       #:inhabitant? immutable-string?)
@@ -6594,33 +6256,10 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'immutable-bytes-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:known-distinct? #f
       #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
     (trivial)))
-
-(define-variant non-nan-number-variant
-  #:name 'non-nan-number-variant
-  #:dynamic-type-name 'non-nan-number-variant-dynamic-type
-  #:inspector (current-inspector))
-(define-variant non-nan-real-number-variant
-  #:name 'non-nan-real-number-variant
-  #:dynamic-type-name 'non-nan-real-number-variant-dynamic-type
-  #:inspector (current-inspector))
-(define-variant non-nan-non-real-number-variant
-  non-nan-non-real-number-variant-value
-  #:name 'non-nan-non-real-number-variant
-  #:dynamic-type-name 'non-nan-non-real-number-variant-dynamic-type
-  
-  #:specific-variant-name
-  'specific-non-nan-non-real-number-variant-variant
-  
-  #:specific-variant-dynamic-type-name
-  'specific-non-nan-non-real-number-variant-variant-dynamic-type
-  
-  #:inspector (current-inspector))
 
 (define (normalize-non-nan-number a)
   (define (normalize-real a)
@@ -6789,39 +6428,29 @@
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (known /tagged-glossesque-sys
-                (non-nan-number-variant)
                 non-nan-number?
                 (non-nan-number-glossesque-sys)))
             #:on-path-related-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (if (zero? /imag-part a)
                 (known /tagged-glossesque-sys
-                  (non-nan-real-number-variant)
                   (makeshift-knowable-predicate /fn v
                     (knowable-if (non-nan-number? v) /fn
                       (zero? /imag-part v)))
                   (terminal-glossesque-sys))
                 (known /tagged-glossesque-sys
-                  (non-nan-non-real-number-variant
-                    (normalize-non-nan-number a))
                   (makeshift-knowable-predicate /fn v
                     (knowable-if (non-nan-number? v) /fn /= a v))
                   (terminal-glossesque-sys)))))
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
             (known /tagged-glossesque-sys
-              (non-nan-number-variant)
               non-nan-number?
               (equal-always-atom-glossesque-sys)))))
       
       ))
   
   )
-
-(define-variant non-nan-extflonum-variant
-  #:name 'non-nan-extflonum-variant
-  #:dynamic-type-name 'non-nan-extflonum-variant-dynamic-type
-  #:inspector (current-inspector))
 
 (define/own-contract (non-nan-extflonum? v)
   (-> any/c boolean?)
@@ -6952,7 +6581,6 @@
         /constant-custom-gloss-key-reports
           #:tagged-glossesque-sys-knowable
           (known /tagged-glossesque-sys
-            (non-nan-extflonum-variant)
             non-nan-extflonum?
             (equal-always-atom-glossesque-sys))))
       
@@ -6997,8 +6625,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
-      #:variant-name 'cons-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
@@ -7064,8 +6690,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
-      #:variant-name 'immutable-vector-variant
-      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-vector-dynamic-type any-dt)
@@ -7115,8 +6739,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'base-mutable-readable-variant
-      #:inspector (current-inspector)
       
       #:inhabitant?
       (makeshift-knowable-predicate /fn v
@@ -7139,8 +6761,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
-      #:variant-name 'immutable-box-variant
-      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-box-dynamic-type any-dt)
@@ -7190,8 +6810,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
-      #:variant-name 'immutable-prefab-struct-variant
-      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
@@ -7220,8 +6838,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
-      #:variant-name 'immutable-hash-variant
-      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-hash-dynamic-type any-dt)
@@ -7432,8 +7048,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'nothing-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:inhabitant?
@@ -7460,8 +7074,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
-      #:variant-name 'just-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
@@ -7509,8 +7121,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'trivial-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? trivial?)
     (trivial)))
@@ -7704,19 +7314,6 @@
   
   )
 
-(define-variant path-related-wrapper-variant
-  path-related-wrapper-variant-get-value-variant
-  #:name 'path-related-wrapper-variant
-  #:dynamic-type-name 'path-related-wrapper-variant-dynamic-type
-  
-  #:specific-variant-name
-  'specific-path-related-wrapper-variant-variant
-  
-  #:specific-variant-dynamic-type-name
-  'specific-path-related-wrapper-variant-variant-dynamic-type
-  
-  #:inspector (current-inspector))
-
 (define/own-contract
   (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
     kpmkp)
@@ -7795,9 +7392,8 @@
       #:on-tagged-glossesque-sys-knowable
       (fn tgs-k
         (knowable-map tgs-k
-          (dissectfn (tagged-glossesque-sys variant inhabitant? gs)
+          (dissectfn (tagged-glossesque-sys inhabitant? gs)
             (tagged-glossesque-sys
-              (path-related-wrapper-variant variant)
               (makeshift-knowable-predicate /fn v
                 (expect v (path-related-wrapper v) (unknown)
                 /call-knowable inhabitant? v))
@@ -7918,17 +7514,6 @@
   
   )
 
-(define-variant info-wrapper-variant
-  info-wrapper-variant-get-value-variant
-  #:name 'info-wrapper-variant
-  #:dynamic-type-name 'info-wrapper-variant-dynamic-type
-  #:specific-variant-name 'specific-info-wrapper-variant-variant
-  
-  #:specific-variant-dynamic-type-name
-  'specific-info-wrapper-variant-variant-dynamic-type
-  
-  #:inspector (current-inspector))
-
 (define/own-contract
   (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
     kpmkp)
@@ -7992,9 +7577,8 @@
       #:on-tagged-glossesque-sys-knowable
       (fn tgs-k
         (knowable-map tgs-k
-          (dissectfn (tagged-glossesque-sys variant inhabitant? gs)
+          (dissectfn (tagged-glossesque-sys inhabitant? gs)
             (tagged-glossesque-sys
-              (info-wrapper-variant variant)
               (makeshift-knowable-predicate /fn v
                 (expect v (info-wrapper v) (unknown)
                 /call-knowable inhabitant? v))
@@ -8147,8 +7731,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
-      #:variant-name 'gloss-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
@@ -8204,8 +7786,6 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'dynamic-type-var-for-any-dynamic-type-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? dynamic-type-var-for-any-dynamic-type?)
     (trivial)))
@@ -8239,22 +7819,9 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'equal-always-wrapper-variant
-      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? equal-always-wrapper?)
     (trivial)))
-
-(define-variant indistinct-wrapper-variant
-  indistinct-wrapper-variant-get-value-variant
-  #:name 'indistinct-wrapper-variant
-  #:dynamic-type-name 'indistinct-wrapper-variant-dynamic-type
-  #:specific-variant-name 'specific-indistinct-wrapper-variant-variant
-  
-  #:specific-variant-dynamic-type-name
-  'specific-indistinct-wrapper-variant-variant-dynamic-type
-  
-  #:inspector (current-inspector))
 
 (define/own-contract
   (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -8313,9 +7880,8 @@
     #:on-tagged-glossesque-sys-knowable
     (fn tgs-k
       (knowable-map tgs-k
-        (dissectfn (tagged-glossesque-sys variant inhabitant? gs)
+        (dissectfn (tagged-glossesque-sys inhabitant? gs)
           (tagged-glossesque-sys
-            (indistinct-wrapper-variant variant)
             (makeshift-knowable-predicate /fn v
               (expect v (indistinct-wrapper v) (unknown)
               /call-knowable inhabitant? v))
@@ -8690,37 +8256,6 @@
 ;       treats known false results as though they were unknown
 ;       results.
 ;
-;     - (Done) `eq-atom-variant?` (a value constructed by
-;       `eq-atom-variant`)
-;
-;     - (Done) `eq-indistinct-atom-variant?` (a value constructed by
-;       `eq-indistinct-atom-variant`)
-;
-;     - (Done) `non-nan-number-variant?` (a value constructed by
-;       `non-nan-number-variant`)
-;
-;     - (Done) `non-nan-real-number-variant?` (a value constructed by
-;       `non-nan-real-number-variant`)
-;
-;     - (Done) `non-nan-non-real-number-variant?` (a value constructed
-;       constructed by `non-nan-non-real-number-variant`)
-;
-;     - (Done) `non-nan-extflonum-variant?` (a value constructed by
-;       `non-nan-extflonum-variant`)
-;
-;     - (Done) `path-related-wrapper-variant?` (a value constructed by
-;       `path-related-wrapper-variant`)
-;
-;     - (Done) `info-wrapper-variant?` (a value constructed by
-;       `info-wrapper-variant`)
-;
-;     - (Done) An inhabitant of any of various other variant types
-;       created by
-;       `make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection`
-;       or by
-;       `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
-;       when its `#:eq-matters?` argument is `#f` or missing.
-;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
 ;       when they don't have identities with meaningful details
@@ -8745,30 +8280,7 @@
 ;
 ;       - `immutable-bytes-dynamic-type?`
 ;
-;       - `eq-atom-variant-dynamic-type?` (the dynamic type obtained
-;         from a value constructed by `eq-atom-variant`)
-;
-;       - `eq-indistinct-atom-variant-dynamic-type?` (the dynamic type
-;         obtained from a value constructed by
-;         `eq-indistinct-atom-variant`)
-;
-;       - `non-nan-number-variant-dynamic-type?` (the dynamic type
-;         obtained from a value constructed by
-;         `non-nan-number-variant`)
-;
-;       - `non-nan-real-number-variant-dynamic-type?` (the dynamic
-;         type obtained from a value constructed by
-;         `non-nan-real-number-variant`)
-;
-;       - `non-nan-non-real-number-variant-dynamic-type?` (the dynamic
-;         type obtained from a value constructed by
-;         `non-nan-non-real-number-variant`)
-;
 ;       - `non-nan-number-dynamic-type?`
-;
-;       - `non-nan-extflonum-variant-dynamic-type?` (the dynamic type
-;         obtained from a value constructed by
-;         `non-nan-extflonum-variant`)
 ;
 ;       - `non-nan-extflonum-dynamic-type?`
 ;
@@ -8796,14 +8308,7 @@
 ;
 ;       - `knowable-dynamic-type?`
 ;
-;       - `path-related-wrapper-variant-dynamic-type?` (the dynamic
-;         type obtained from a value constructed by
-;         `path-related-wrapper-variant`)
-;
 ;       - `path-related-wrapper-dynamic-type?`
-;
-;       - `info-wrapper-variant-dynamic-type?` (the dynamic type
-;         obtained from a value constructed by `info-wrapper-variant`)
 ;
 ;       - `info-wrapper-dynamic-type?`
 ;
@@ -8823,13 +8328,6 @@
 ;         constructed by `known-to-lathe-comforts-data-dynamic-type`)
 ;
 ;       - `any-dynamic-type?`
-;
-;       - A dynamic type of an inhabitant of any of various other
-;         variant types created by
-;         `make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection`
-;         or by
-;         `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
-;         when its `#:eq-matters?` argument is `#f` or missing.
 ;
 ;   - Types defined by Lathe Comforts even if this smooshing framework
 ;     doesn't use them. The following are indistinct from each other
@@ -8890,8 +8388,7 @@
 ; unknown, we offer `gloss?` values as our recommended replacement for
 ; `hash?` values.
 
-; TODO SMOOSH: Get rid of the `tagged-glossesque-sys-variant` field
-; now that it's unused. Consider getting rid of the
-; `glossesque-sys-glossesque-skm-union-of-two-knowable` method as well
-; because it doesn't seem like it would help make merging glosses more
+; TODO SMOOSH: Consider getting rid of the
+; `glossesque-sys-glossesque-skm-union-of-two-knowable` method because
+; it doesn't seem like it would help make merging glosses more
 ; efficient.
