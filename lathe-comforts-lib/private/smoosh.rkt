@@ -225,6 +225,8 @@
 (provide /own-contract-out
   smoosh-and-comparison-of-two-report-join
   smoosh-and-comparison-of-two-reports-join
+  smoosh-reports-with-hesitation-at-discrepancies
+  smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
   list-rev-append
   list-rem-first-maybe-knowable
   assoc-list-skm-union-of-two-knowable
@@ -3540,10 +3542,8 @@
   (sequence-zip-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
-; TODO SMOOSH: Consider exporting this. If we do, find a better name
-; for it.
 (define/own-contract
-  (smoosh-reports-censor reports
+  (smoosh-reports-with-hesitation-at-discrepancies reports
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f])
   (->*
@@ -3573,10 +3573,9 @@
       )
     report-1+))
 
-; TODO SMOOSH: Consider exporting this. If we do, find a better name
-; for it.
 (define/own-contract
-  (smoosh-and-comparison-of-two-reports-censor reports
+  (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+    reports
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f])
   (->*
@@ -4708,7 +4707,7 @@
       ; adjusted to an unknown result according to `known-distinct?`
       ; and `known-discrete?`.
       /if (not a-shallowly-equal-always-b?)
-        (smoosh-and-comparison-of-two-reports-censor
+        (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
           #:known-distinct? known-distinct?
           #:known-discrete? known-discrete?
           (false-smoosh-and-comparison-of-two-reports))
@@ -5056,7 +5055,7 @@
       ; adjusted to an unknown result according to `known-distinct?`
       ; and `known-discrete?`.
       /if (not a-shallowly-equal-always-b?)
-        (smoosh-and-comparison-of-two-reports-censor
+        (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
           #:known-distinct? known-distinct?
           #:known-discrete? known-discrete?
           (false-smoosh-and-comparison-of-two-reports))
@@ -5711,7 +5710,7 @@
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (smoosh-and-comparison-of-two-reports-censor
+      (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
         #:known-distinct? known-distinct?
         #:known-discrete? known-discrete?
         (constant-smoosh-and-comparison-of-two-reports /delay
@@ -5837,7 +5836,7 @@
       /expect (inhabitant? b) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
       /if (not /equal-always? a b)
-        (smoosh-and-comparison-of-two-reports-censor
+        (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
           #:known-distinct? known-distinct?
           #:known-discrete? known-discrete?
           (false-smoosh-and-comparison-of-two-reports))
@@ -7018,7 +7017,7 @@
     (#:known-distinct? boolean? #:known-discrete? boolean?)
     (list/c (-> any/c boolean?) (-> any/c any/c)))
   (define distinct-cases-smoosh-and-comparison-of-two-reports
-    (smoosh-and-comparison-of-two-reports-censor
+    (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
       #:known-distinct? known-distinct?
       #:known-discrete? known-discrete?
       (false-smoosh-and-comparison-of-two-reports)))
@@ -7995,7 +7994,8 @@
 (define/own-contract
   (indistinct-wrapper-smoosh-reports-from-value-reports value-reports)
   (-> (sequence/c smoosh-report?) (sequence/c smoosh-report?))
-  (smoosh-reports-censor #:known-distinct? #f
+  (smoosh-reports-with-hesitation-at-discrepancies
+    #:known-distinct? #f
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)))
@@ -8005,7 +8005,8 @@
     value-reports)
   (-> (sequence/c smoosh-and-comparison-of-two-report?)
     (sequence/c smoosh-and-comparison-of-two-report?))
-  (smoosh-and-comparison-of-two-reports-censor #:known-distinct? #f
+  (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+    #:known-distinct? #f
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)))
