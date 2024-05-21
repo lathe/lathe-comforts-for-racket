@@ -7746,51 +7746,6 @@
   
   )
 
-(match-define
-  (list
-    known-to-lathe-comforts-data?
-    known-to-lathe-comforts-data-dynamic-type)
-  (dynamic-type-case-by-cases
-    'known-to-lathe-comforts-data-dynamic-type
-    #:known-distinct? #f
-    (list
-      base-readable-dynamic-type-case
-      (dynamic-type-case-by-cases 'maybe-dynamic-type /list
-        (list nothing? (fn any-dt /nothing-dynamic-type))
-        (list just? (fn any-dt /just-dynamic-type any-dt)))
-      (list trivial? (fn any-dt /trivial-dynamic-type))
-      (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
-      (list
-        path-related-wrapper?
-        (fn any-dt /path-related-wrapper-dynamic-type any-dt))
-      (list
-        info-wrapper?
-        (fn any-dt /info-wrapper-dynamic-type any-dt))
-      (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
-      (list
-        dynamic-type-var-for-any-dynamic-type?
-        (fn any-dt
-          ; TODO FORWARD: This use of
-          ; `dynamic-type-for-dynamic-type-var-for-any-dynamic-type`
-          ; is a forward reference. See if we can untangle it.
-          (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
-      (list
-        equal-always-wrapper?
-        ; TODO FORWARD: This use of
-        ; `equal-always-wrapper-dynamic-type` is a forward reference.
-        ; See if we can untangle it.
-        (fn any-dt /equal-always-wrapper-dynamic-type))
-      (list
-        indistinct-wrapper?
-        ; TODO FORWARD: This use of `indistinct-wrapper-dynamic-type`
-        ; is a forward reference. See if we can untangle it.
-        (fn any-dt /indistinct-wrapper-dynamic-type any-dt))
-      (list
-        terminal-wrapper?
-        ; TODO FORWARD: This use of `terminal-wrapper-dynamic-type` is
-        ; a forward reference. See if we can untangle it.
-        (fn any-dt /terminal-wrapper-dynamic-type)))))
-
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
 ;     If the operands are not both
@@ -8026,6 +7981,41 @@
       #:ignore-chaperones? #t
       #:inhabitant? terminal-wrapper?)
     (trivial)))
+
+(match-define
+  (list
+    known-to-lathe-comforts-data?
+    known-to-lathe-comforts-data-dynamic-type)
+  (dynamic-type-case-by-cases
+    'known-to-lathe-comforts-data-dynamic-type
+    #:known-distinct? #f
+    (list
+      base-readable-dynamic-type-case
+      (dynamic-type-case-by-cases 'maybe-dynamic-type /list
+        (list nothing? (fn any-dt /nothing-dynamic-type))
+        (list just? (fn any-dt /just-dynamic-type any-dt)))
+      (list trivial? (fn any-dt /trivial-dynamic-type))
+      (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
+      (list
+        path-related-wrapper?
+        (fn any-dt /path-related-wrapper-dynamic-type any-dt))
+      (list
+        info-wrapper?
+        (fn any-dt /info-wrapper-dynamic-type any-dt))
+      (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
+      (list
+        dynamic-type-var-for-any-dynamic-type?
+        (fn any-dt
+          (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
+      (list
+        equal-always-wrapper?
+        (fn any-dt /equal-always-wrapper-dynamic-type))
+      (list
+        indistinct-wrapper?
+        (fn any-dt /indistinct-wrapper-dynamic-type any-dt))
+      (list
+        terminal-wrapper?
+        (fn any-dt /terminal-wrapper-dynamic-type)))))
 
 (define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
   'any-dynamic-type (current-inspector) (auto-write)
