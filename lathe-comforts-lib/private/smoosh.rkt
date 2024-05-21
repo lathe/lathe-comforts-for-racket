@@ -955,14 +955,13 @@
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper
-  ; TODO SMOOSH: Stop using `auto-write` for this.
   'path-related-wrapper (current-inspector) (auto-write)
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
       (knowable->falsable /knowable-map
         (force
-          ; TODO SMOOSH: These uses of
+          ; TODO FORWARD: These uses of
           ; `smoosh-report-==-knowable-promise-maybe-knowable-promise`,
           ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
           ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
@@ -979,7 +978,7 @@
           (just? kpm))))
     
     (define (hash-mode-proc v recur now?)
-      ; TODO SMOOSH: These uses of
+      ; TODO FORWARD: These uses of
       ; `smoosh-equal-hash-code-support-report-==-hash-code-promise`,
       ; `dynamic-type-get-smoosh-equal-hash-code-support-reports`, and
       ; `any-dynamic-type` are forward references. See if we can
@@ -998,14 +997,13 @@
   (-> path-related-wrapper? any/c))
 
 (define-imitation-simple-struct (info-wrapper? info-wrapper-value)
-  ; TODO SMOOSH: Stop using `auto-write` for this.
   info-wrapper 'info-wrapper (current-inspector) (auto-write)
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
       (knowable->falsable /knowable-map
         (force
-          ; TODO SMOOSH: These uses of
+          ; TODO FORWARD: These uses of
           ; `smoosh-report-==-knowable-promise-maybe-knowable-promise`,
           ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
           ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
@@ -1022,7 +1020,7 @@
           (just? kpm))))
     
     (define (hash-mode-proc v recur now?)
-      ; TODO SMOOSH: These uses of
+      ; TODO FORWARD: These uses of
       ; `smoosh-equal-hash-code-support-report-==-hash-code-promise`,
       ; `dynamic-type-get-smoosh-equal-hash-code-support-reports`, and
       ; `any-dynamic-type` are forward references. See if we can
@@ -1096,7 +1094,7 @@
 ; partly on what orphan instances are in scope?
 (define/own-contract (get-dynamic-type-with-default-bindings v)
   (-> any/c any/c)
-  ; TODO SMOOSH: These uses of `known-to-lathe-comforts-data?`,
+  ; TODO FORWARD: These uses of `known-to-lathe-comforts-data?`,
   ; `known-to-lathe-comforts-data-dynamic-type`, `any-dynamic-type`,
   ; `get-dynamic-type`, `make-gloss`, and
   ; `dynamic-type-var-for-any-dynamic-type` are forward references.
@@ -1302,8 +1300,8 @@
         (fn self 'make-gloss)
         (fn self
           (for/list
-            ; TODO SMOOSH: This use of `gloss-iteration-sequence` is a
-            ; forward reference. See if we can untangle it.
+            ; TODO FORWARD: This use of `gloss-iteration-sequence` is
+            ; a forward reference. See if we can untangle it.
             ([(k v) (in-sequences /gloss-iteration-sequence self)])
             (cons k v))))))
   
@@ -1323,7 +1321,7 @@
             #f)))
       (hash-code-combine (equal-always-hash-code gloss?)
         (hash-code-combine-unordered* /for/list
-          ; TODO SMOOSH: This use of `gloss-iteration-sequence` is a
+          ; TODO FORWARD: This use of `gloss-iteration-sequence` is a
           ; forward reference. See if we can untangle it.
           ([(k v) (in-sequences /gloss-iteration-sequence v)])
           (hash-code-combine (hash-code-smooshable k) (recur v)))))
@@ -5544,7 +5542,7 @@
                     "tried to get the dynamic type of a define-variant variant without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
                     "bindings" bindings
                     "inhabitant" self)
-                ; TODO SMOOSH: This use of `my-variant-dynamic-type`
+                ; TODO FORWARD: This use of `my-variant-dynamic-type`
                 ; is a forward reference. See if we can untangle it.
                 /my-variant-dynamic-type any-dt))))
           (ascribe-own-contract my-variant? (-> any/c boolean?))
@@ -7772,23 +7770,24 @@
       (list
         dynamic-type-var-for-any-dynamic-type?
         (fn any-dt
-          ; TODO SMOOSH: This use of
+          ; TODO FORWARD: This use of
           ; `dynamic-type-for-dynamic-type-var-for-any-dynamic-type`
           ; is a forward reference. See if we can untangle it.
           (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
       (list
         equal-always-wrapper?
-        ; TODO SMOOSH: This use of `equal-always-wrapper-dynamic-type`
-        ; is a forward reference. See if we can untangle it.
+        ; TODO FORWARD: This use of
+        ; `equal-always-wrapper-dynamic-type` is a forward reference.
+        ; See if we can untangle it.
         (fn any-dt /equal-always-wrapper-dynamic-type))
       (list
         indistinct-wrapper?
-        ; TODO SMOOSH: This use of `indistinct-wrapper-dynamic-type`
+        ; TODO FORWARD: This use of `indistinct-wrapper-dynamic-type`
         ; is a forward reference. See if we can untangle it.
         (fn any-dt /indistinct-wrapper-dynamic-type any-dt))
       (list
         terminal-wrapper?
-        ; TODO SMOOSH: This use of `terminal-wrapper-dynamic-type` is
+        ; TODO FORWARD: This use of `terminal-wrapper-dynamic-type` is
         ; a forward reference. See if we can untangle it.
         (fn any-dt /terminal-wrapper-dynamic-type)))))
 
@@ -8170,8 +8169,12 @@
 ;         themselves.
 ;
 ;       - (Done) Non-NaN extflonums, ordered in a way consistent with
-;         `extfl<=` and `extfl=`. (TODO SMOOSH: Make the information
-;         ordering distinguish `-0.0t0` and `0.0t0`.)
+;         `extfl<=` and `extfl=`, and information-ordered in a way
+;         consistent with `chaperone-of?` (which, perhaps bizarrely,
+;         is consistent with `extfl=` and thus does not distinguish
+;         between `-0.0t0` and `0.0t0` on the extflonum-supporting BC
+;         platform, if the documentation is to be believed). (TODO:
+;         investigate this.)
 ;
 ;       - (Done) Characters, immutable strings, and immutable byte
 ;         strings, which are known to be equal to themselves when
