@@ -125,7 +125,7 @@
   maybe-min-zip
   promise-zip-map
   knowable-promise-zip-map
-  boolean-and-knowable-promise-zip-map
+  boolean-and-knowable-promise-zip
   boolean-and-knowable-thunk-zip
   boolean-or-knowable-thunk-zip
   maybe-min-knowable-promise-zip-map
@@ -1215,23 +1215,20 @@
     (knowable-if (list-all kp-list /fn kp /known? /force kp) /fn
       (on-value /list-map kp-list /fn kp /known-value /force kp))))
 
-(define/own-contract
-  (boolean-and-knowable-promise-zip-map kp-list on-true)
-  (-> (listof (promise/c (knowable/c boolean?))) (-> boolean?)
+(define/own-contract (boolean-and-knowable-promise-zip kp-list)
+  (-> (listof (promise/c (knowable/c boolean?)))
     (promise/c (knowable/c boolean?)))
   (delay
     (if
       (list-any kp-list /fn kp
         (mat (force kp) (known #f) #t #f))
       (known #f)
-    /knowable-if (list-all kp-list /fn kp /known? /force kp) /fn
-      (on-true))))
+    /knowable-if (list-all kp-list /fn kp /known? /force kp) /fn #t)))
 
 (define/own-contract (boolean-and-knowable-thunk-zip kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (boolean-and-knowable-promise-zip-map
-    (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)
-    (fn #t)))
+  (boolean-and-knowable-promise-zip
+    (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)))
 
 (define/own-contract (boolean-or-knowable-thunk-zip kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
@@ -1272,108 +1269,31 @@
   (gloss-equal-always?-knowable a b value-equal-always?-knowable)
   (-> any/c any/c (-> any/c any/c (knowable/c boolean?))
     (knowable/c boolean?))
-  (define (glossesque=?-knowable gs a b value=?-knowable)
-    (boolean-and-knowable-thunk-zip /list
-      (fn /known /equal-always?
-        (glossesque-sys-glossesque-count gs a)
-        (glossesque-sys-glossesque-count gs b))
-    /fn
-    /w- a-entries
-      (sequence->list /in-values-sequence
-        (glossesque-sys-glossesque-iteration-sequence gs a))
-    /w- b-value-maybe-knowable-list
-      (list-map a-entries /dissectfn (list k a)
-        (glossesque-sys-glossesque-ref-maybe-knowable gs b k))
-    /knowable-bind (knowable-zip b-value-maybe-knowable-list)
-    /fn b-value-maybe-list
-    /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
-      (known #f)
-    /w-loop next a-entries a-entries b-value-list b-value-list
-      (expect a-entries (cons a-entry a-entries) (known #t)
-      /dissect a-entry (list k a)
-      /dissect b-value-list (cons b b-value-list)
-      /boolean-and-knowable-thunk-zip /list
-        (fn /value=?-knowable a b)
-        (fn /next a-entries b-value-list))))
-  (define (immutable-hashalw=?-knowable a b value=?-knowable)
-    (boolean-and-knowable-thunk-zip /list
-      (fn /known /equal-always? (hash-count a) (hash-count b))
-    /fn
-    /w- a-entries (sequence->list /in-values-sequence /in-hash a)
-    /w- b-value-maybe-list
-      (list-map a-entries /dissectfn (list k a)
-        (hash-ref-maybe b k))
-    /expect (maybe-min-zip b-value-maybe-list) (just b-value-list)
-      (known #f)
-    /w-loop next a-entries a-entries b-value-list b-value-list
-      (expect a-entries (cons a-entry a-entries) (known #t)
-      /dissect a-entry (list k a)
-      /dissect b-value-list (cons b b-value-list)
-      /boolean-and-knowable-thunk-zip /list
-        (fn /value=?-knowable a b)
-        (fn /next a-entries b-value-list))))
-  (define (maybe=?-knowable a b value=?-knowable)
-    (expect a (just a-value) (known /nothing? b)
-    /expect b (just b-value) (known #f)
-    /value=?-knowable a-value b-value))
-  (define (list=?-knowable a b element=?-knowable-list)
-    (w- n (length element=?-knowable-list)
-    /boolean-and-knowable-thunk-zip /list
-      (fn /known /and (list-length=nat? a n) (list-length=nat? b n))
-    /fn
-    /w-loop next
-      a a
-      b b
-      element=?-knowable-list element=?-knowable-list
-      
-      (expect a (cons a-elem a) (known #t)
-      /dissect b (cons b-elem b)
-      /dissect element=?-knowable-list
-        (cons element=?-knowable element=?-knowable-list)
-      /boolean-and-knowable-thunk-zip /list
-        (fn /element=?-knowable a-elem b-elem)
-        (fn /next a b element=?-knowable-list))))
-  (define (gloss=?-knowable a b value=?-knowable)
-    (dissect a (gloss a-atomic a-custom)
-    /dissect b (gloss b-atomic b-custom)
-    /boolean-and-knowable-thunk-zip /list
-      (fn /immutable-hashalw=?-knowable a-atomic b-atomic
-        value=?-knowable)
-      (fn /maybe=?-knowable a-custom b-custom /fn a b
-        (gloss=?-knowable a b /fn a b
-          (immutable-hashalw=?-knowable a b /fn a b
-            (dissect a (list gs _)
-            /list=?-knowable a b /list (fn a b #t) /fn a b
-              (immutable-hashalw=?-knowable a b /fn a b
-                (glossesque=?-knowable gs a b value=?-knowable))))))))
-  (gloss=?-knowable a b value-equal-always?-knowable))
+  (if (not /equal-always? (gloss-count a) (gloss-count b)) (known #f)
+  /knowable-bind
+    (knowable-zip
+      (list-map
+        (sequence->list
+          (in-values-sequence /gloss-iteration-sequence a))
+      /dissectfn (list k a-v)
+        (knowable-map (gloss-ref-maybe-knowable b k) /fn b-v-m
+          (maybe-map b-v-m /fn b-v
+            (delay /value-equal-always?-knowable a-v b-v)))))
+  /fn v=?-kpm-list
+  /expect (maybe-min-zip v=?-kpm-list) (just v=?-kp-list) (known #f)
+  /force /boolean-and-knowable-promise-zip v=?-kp-list))
 
 (define-imitation-simple-struct
   (gloss?
     
-    ; An `equal-always?`-based `hash?` containing all the key-value
-    ; entries in the gloss for which the key is an
-    ; `equal-always-gloss-key?`.
+    ; A `maybe?` possibly containing a heterogenous list containing a
+    ; `tagged-glossesque-sys?`, a glossesque of that system containing
+    ; entries with a known true result for its `inhabitant?`
+    ; predicate, and a gloss of entries with a known false result.
     ;
-    gloss-atomic-entries
+    gloss-frame-maybe
     
-    ; A `maybe?` possibly containing another `gloss?` that maps a
-    ; variant from `dynamic-type-get-custom-gloss-key-reports` to a
-    ; two-element list containing a `glossesque-sys?` and a glossesque
-    ; of that `glossesque-sys?` that maps an unwrapped key to a value.
-    ; In code, that's rougly:
-    ;
-    ; (maybe/c
-    ;   (gloss/c any/c
-    ;     (and/c (list/c glossesque-sys? any/c)
-    ;     /by-own-method/c (list gs _)
-    ;     /list/c any/c
-    ;       (glossesque/c gs any/c any/c))))
-    ;
-    ; Here, `gloss/c` and `glossesque/c` are hypothetical contracts
-    ; that are analogous to `hash/c`.
-    ;
-    gloss-custom-entries)
+    )
   gloss
   'gloss (current-inspector)
   
@@ -1533,85 +1453,89 @@
 
 (define/own-contract (gloss-union-of-zero)
   (-> gloss?)
-  (gloss (hashalw) (nothing)))
+  (gloss /nothing))
 
 (define/own-contract (gloss-iteration-sequence g)
   (-> gloss? (sequence/c any/c any/c))
-  (dissect g (gloss atomic custom)
-  /apply in-sequences (in-hash atomic)
-    (expect custom (just custom) (list)
-    /for/list
-      (
-        [ (variant custom-entry)
-          (in-sequences /gloss-iteration-sequence custom)])
-      (dissect custom-entry (list gs g)
-      /glossesque-sys-glossesque-iteration-sequence gs g))))
+  (dissect g (gloss frame-m)
+  /expect frame-m (just frame) (list)
+  /dissect frame (list (tagged-glossesque-sys _ _ gs) then else)
+  /in-sequences
+    (glossesque-sys-glossesque-iteration-sequence gs then)
+    (gloss-iteration-sequence else)))
 
 (define/own-contract
   (gloss-skm-union-of-two-knowable state a b skm-union-knowable)
   (-> any/c gloss? gloss?
     (-> any/c any/c maybe? maybe? (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c gloss?)))
-  (dissect a (gloss a-atomic a-custom)
-  /dissect b (gloss b-atomic b-custom)
-  /knowable-bind
-    (hash-skm-union-of-two-knowable state a-atomic b-atomic
-      (fn state k a-v-m b-v-m
-        (skm-union-knowable state k a-v-m b-v-m)))
-  /dissectfn (list state atomic)
-  /knowable-bind
-    (glossesque-sys-glossesque-skm-union-of-two-knowable
-      (maybe-nonempty-glossesque-sys /gloss-glossesque-sys)
-      state a b
-      (fn state k a-entry-m b-entry-m
-        (w- gs
-          (mat a-entry-m (just /list gs _) gs
-          /dissect b-entry-m (just /list gs _) gs)
-        /w- a
-          (mat a-entry-m (just /list _ a) (known a)
-            (glossesque-sys-glossesque-union-of-zero gs))
-        /w- b
-          (mat b-entry-m (just /list _ b) (known b)
-            (glossesque-sys-glossesque-union-of-zero gs))
+  ; Without loss of generality, we suppose `a` is at least `b`'s size.
+  (dissect
+    (if (< (gloss-count a) (gloss-count b)) (list b a) (list a b))
+    (list a b)
+  /w- as
+    (sequence->stream /in-values-sequence /gloss-iteration-sequence a)
+  /w-loop next state state as as b b result (gloss-union-of-zero)
+    (expect as (stream* a-entry as)
+      (w- bs
+        (sequence->stream
+          (in-values-sequence /gloss-iteration-sequence b))
+      /w-loop next state state bs bs result result
+        (expect bs (stream* b-entry bs)
+          (known /list state result)
+        /dissect b-entry (list k b-v)
         /knowable-bind
-          (glossesque-sys-glossesque-skm-union-of-two-knowable
-            gs state a b
-            (fn state k a b
-              (skm-union-knowable state k a b)))
-        /dissectfn (list state result)
-        /known /list state /just /list gs result)))
-  /dissectfn (list state custom)
-  /known /list state /gloss atomic custom))
+          (skm-union-knowable state k (nothing) (just b-v))
+        /dissectfn (list state m)
+        ; TODO FORWARD: This use of `gloss-set-maybe-knowable` is a
+        ; forward reference. See if we can untangle it.
+        /knowable-bind (gloss-set-maybe-knowable result k m)
+        /fn result
+        /next state bs result))
+    /dissect a-entry (list k a-v)
+    ; TODO FORWARD: This use of
+    ; `rider-and-gloss-update-maybe-knowable` is a forward reference.
+    ; See if we can untangle it.
+    /knowable-bind
+      (rider-and-gloss-update-maybe-knowable
+        (list (trivial) b)
+        k
+        (dissectfn (list (trivial) b-v-m)
+          (known /list b-v-m /nothing)))
+    /dissectfn (list b-v-m b)
+    /knowable-bind (skm-union-knowable state k (just a-v) b-v-m)
+    /dissectfn (list state m)
+    ; TODO FORWARD: This use of `gloss-set-maybe-knowable` is a
+    ; forward reference. See if we can untangle it.
+    /knowable-bind (gloss-set-maybe-knowable result k m) /fn result
+    /next state as b result)))
 
 (define/own-contract (gloss-ref-maybe-knowable g k)
   (-> gloss? any/c (knowable/c maybe?))
-  (dissect g (gloss atomic custom)
-  /if (equal-always-gloss-key? k) (known /hash-ref-maybe atomic k)
-  /expect custom (just custom) (known /nothing)
-  /knowable-bind
-    (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
-      (stream-first
-        (dynamic-type-get-custom-gloss-key-reports (any-dynamic-type)
-          k)))
-  /dissectfn (tagged-glossesque-sys variant _ _)
-  /knowable-bind (gloss-ref-maybe-knowable custom variant)
-  /fn entry-maybe
-  /expect entry-maybe (just entry) (known /nothing)
-  /dissect entry (list gs g)
-  /glossesque-sys-glossesque-ref-maybe-knowable gs g k))
+  (dissect g (gloss frame-m)
+  /expect frame-m (just frame) (known /nothing)
+  /dissect frame
+    (list (tagged-glossesque-sys _ inhabitant? gs) then else)
+  /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
+  /if k-inhabits?
+    (glossesque-sys-glossesque-ref-maybe-knowable gs then k)
+    (gloss-ref-maybe-knowable else k)))
 
 (define/own-contract (gloss-count g)
   (-> gloss? natural?)
-  (dissect g (gloss atomic custom)
+  ; TODO SMOOSH: Memoize the count, as an optimization.
+  (dissect g (gloss frame-m)
+  /expect frame-m (just frame) 0
+  /dissect frame
+    (list (tagged-glossesque-sys _ inhabitant? gs) then else)
   /+
-    (hash-count atomic)
-    (glossesque-sys-glossesque-count
-      (maybe-nonempty-glossesque-sys /gloss-glossesque-sys)
-      custom)))
+    (glossesque-sys-glossesque-count gs then)
+    (gloss-count else)))
 
 (define/own-contract (gloss-empty? g)
   (-> gloss? boolean?)
-  (zero? /gloss-count g))
+  (dissect g (gloss frame-m)
+  /nothing? frame-m))
 
 (define/own-contract
   (rider-and-gloss-update-maybe-knowable
@@ -1619,41 +1543,43 @@
   (-> (list/c any/c gloss?) any/c
     (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
     (knowable/c (and/c any/c gloss?)))
-  (dissect rider-and-g (list rider (gloss atomic custom))
-  /if (equal-always-gloss-key? k)
+  (dissect rider-and-g (list rider (gloss frame-m))
+  /expect frame-m (just frame)
+    (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
+    /dissectfn (list rider m)
+    /expect m (just v) (known /list rider /gloss /nothing)
+    /knowable-bind
+      (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+        (stream-first
+          (dynamic-type-get-custom-gloss-key-reports (any-dynamic-type)
+            k)))
+    /fn tgs
+    /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
+    /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
+    /expect k-inhabits? #t (unknown)
+    /w- then (glossesque-sys-glossesque-union-of-zero gs)
+    ; TODO FORWARD: This use of `gloss-set-maybe-knowable` is a
+    ; forward reference. See if we can untangle it.
+    /knowable-bind (gloss-set-maybe-knowable gs then k /just v)
+    /fn then
+    /known
+      (list rider /gloss /just /list tgs then (gloss-union-of-zero)))
+  /dissect frame (list tgs then else)
+  /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
+  /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
+  /if k-inhabits?
     (knowable-map
-      (rider-and-hash-update-maybe-knowable (list rider atomic) k
-        (fn rider-and-m
-          (on-rider-and-m-knowable rider-and-m)))
-    /dissectfn (list rider atomic)
-      (list rider /gloss atomic custom))
-  /knowable-bind
-    (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
-      (stream-first
-        (dynamic-type-get-custom-gloss-key-reports (any-dynamic-type)
-          k)))
-  /dissectfn (tagged-glossesque-sys variant _ new-gs)
-  /knowable-map
-    (glossesque-sys-rider-and-glossesque-update-maybe-knowable
-      (maybe-nonempty-glossesque-sys /gloss-glossesque-sys)
-      (list rider custom)
-      variant
-      (dissectfn (list rider entry-m)
-        (dissect
-          (mat entry-m (just entry) entry
-            (list new-gs
-              (glossesque-sys-glossesque-union-of-zero new-gs)))
-          (list gs glossesque)
-        /knowable-map
-          (glossesque-sys-rider-and-glossesque-update-maybe-knowable
-            gs
-            (list rider glossesque)
-            (fn rider-and-m
-              (on-rider-and-m-knowable rider-and-m)))
-        /dissectfn (list rider glossesque)
-          (list rider /just /list gs glossesque))))
-  /dissectfn (list rider custom)
-    (list rider /gloss atomic custom)))
+      (glossesque-sys-rider-and-glossesque-update-maybe-knowable
+        gs (list rider then) k on-rider-and-m-knowable)
+    /dissectfn (list rider then)
+      (if (glossesque-sys-glossesque-empty? gs then)
+        (list rider else)
+        (list rider /gloss /just /list tgs then else)))
+    (knowable-map
+      (rider-and-gloss-update-maybe-knowable
+        gs (list rider else) k on-rider-and-m-knowable)
+    /dissectfn (list rider else)
+      (list rider /gloss /just /list tgs then else))))
 
 (define-imitation-simple-struct
   (gloss-glossesque-sys?)
@@ -4797,7 +4723,7 @@
             any-dt a-elem b-elem))
         #:on-check-result-knowable-promise
         (fn kp-list
-          (boolean-and-knowable-promise-zip-map kp-list /fn #t))
+          (boolean-and-knowable-promise-zip kp-list))
         #:on-smoosh-result-knowable-promise-maybe-knowable-promise
         (fn kpmkp-list
           (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
@@ -5163,7 +5089,7 @@
               any-dt a-elem b-elem))
           #:on-check-result-knowable-promise
           (fn kp-list
-            (boolean-and-knowable-promise-zip-map kp-list /fn #t))
+            (boolean-and-knowable-promise-zip kp-list))
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
           (fn kpmkp-list
             (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
@@ -6213,7 +6139,7 @@
           (known /tagged-glossesque-sys
             (eq-atom-variant)
             ; TODO SMOOSH: See if we can encompass a wider range of
-            ; inhabitants with this.
+            ; inhabitants with this, as an optimization.
             inhabitant?
             (eq-atom-glossesque-sys))
           (known /tagged-glossesque-sys
@@ -8578,18 +8504,7 @@
 ;       Racket 8.12 [cs], the implementation of `equal-always?` for
 ;       flvectors and fxvectors is incorrect. Once we're on 8.13 or
 ;       so, simplify the design by grouping these with the other
-;       mutable data structures.) (TODO SMOOSH: Currently these use
-;       the same variant for their custom gloss key behavior, and as a
-;       result, they'll be distinguishable keys of the same `gloss?`.
-;       This is intended, and even consistent with their smoosh
-;       behavior, but it uses a rather inverted conceptual framework
-;       compared to how the smoosh behavior works (a system of
-;       file-path-like self-attested variants to achieve hierarchy, vs
-;       a system of type composition operations like
-;       `dynamic-type-case-by-cases` where the hierarchy is
-;       represented in the use of multiple composition operations).
-;       See if this will cause problems for us in trying to keep one
-;       system's results consistent with the other's.)
+;       mutable data structures.)
 ;
 ;     - (Done) Symbols and keywords, which are all known to be
 ;       distinct from each other. They're not known to be ordered, not
@@ -8768,20 +8683,6 @@
 ;       or by
 ;       `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
 ;       when its `#:eq-matters?` argument is `#f` or missing.
-;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
-;       between the `nothing-dynamic-type?`'s variant values and the
-;       `just-dynamic-type?`'s variant values. These should be known
-;       to be distinct from each other.)
-;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
-;       between the variant values of
-;       `base-mutable-readable-dynamic-type?`,
-;       `flvector-dynamic-type?`, `fxvector-dynamic-type?`,
-;       `base-syntactic-atom-dynamic-type?`, `cons-dynamic-type?`, and
-;       `base-literal-dynamic-type?`. These should be known to be
-;       distinct from each other.)
-;       (TODO SMOOSH: Change what we do with `equal-always-gloss-key?`
-;       so that we don't consider two instances of it to be known
-;       distinct.)
 ;
 ;     - Perhaps the types of types, ideally allowing an expressive
 ;       subset of types of types to be related by subtyping, namely
@@ -8952,7 +8853,8 @@
 ; unknown, we offer `gloss?` values as our recommended replacement for
 ; `hash?` values.
 
-; TODO SMOOSH: Rewrite `gloss?` to use the
-; `tagged-glossesque-sys-get-inhabitant?` field instead of the
-; `tagged-glossesque-sys-variant` field. Then get rid of the latter
-; field.
+; TODO SMOOSH: Get rid of `equal-always-gloss-key?` and the
+; `tagged-glossesque-sys-variant` field now that they're unused.
+; Consider getting rid of the
+; `glossesque-sys-glossesque-skm-union-of-two-knowable` method as well
+; because it doesn't help make merging glosses more efficient.
