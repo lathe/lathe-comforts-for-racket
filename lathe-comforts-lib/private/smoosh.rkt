@@ -6032,6 +6032,8 @@
       
       #:inhabitant?
       (makeshift-knowable-predicate /fn v
+        ; TODO FORWARD: This use of `base-readable?` is a forward
+        ; reference. See if we can untangle it.
         (knowable-if (base-readable? v) /fn /flvector? v))
       
       )
@@ -6075,6 +6077,8 @@
       
       #:inhabitant?
       (makeshift-knowable-predicate /fn v
+        ; TODO FORWARD: This use of `base-readable?` is a forward
+        ; reference. See if we can untangle it.
         (knowable-if (base-readable? v) /fn /fxvector? v))
       
       )
@@ -6125,6 +6129,8 @@
       
       #:inhabitant?
       (makeshift-knowable-predicate /fn v
+        ; TODO FORWARD: This use of `base-readable?` is a forward
+        ; reference. See if we can untangle it.
         (knowable-if (base-readable? v) /fn /base-syntactic-atom? v))
       
       )
@@ -6592,6 +6598,8 @@
       
       #:inhabitant?
       (makeshift-knowable-predicate /fn v
+        ; TODO FORWARD: This use of `base-readable?` is a forward
+        ; reference. See if we can untangle it.
         (knowable-if (base-readable? v) /fn /pair? v))
       
       #:->list (dissectfn (cons first rest) /list first rest)
@@ -6701,6 +6709,8 @@
       
       #:inhabitant?
       (makeshift-knowable-predicate /fn v
+        ; TODO FORWARD: This use of `base-readable?` is a forward
+        ; reference. See if we can untangle it.
         (knowable-if (base-readable? v) /fn /base-mutable-readable? v))
       
       )
@@ -8040,9 +8050,10 @@
 ; wonder we don't just hash everything.
 
 ; TODO SMOOSH: Implement smooshing, better `gen:equal-mode+hash`
-; equality, and
+; equality,
 ; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`
-; hashing for these types:
+; hashing, and `prop:expressly-custom-gloss-key-dynamic-type` behavior
+; for these types:
 ;
 ;   - Various types that can result from the default Racket reader, as
 ;     well as their corresponding mutable types where these exist.
@@ -8189,6 +8200,9 @@
 ;       information ordering, any `known?` value is considered greater
 ;       than any `unknown?` value, and any `example-unknown?` value is
 ;       considered equal to any `unknown?` value.
+;       (TODO SMOOSH: Actually, this one is not quite done; we don't
+;       have a `prop:expressly-custom-gloss-key-dynamic-type` behavior
+;       in place yet.)
 ;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
 ;       whether elements are path-related according to the "any"
@@ -8295,57 +8309,39 @@
 ;     - `obstinacy?`, for instance. Potentially others; we haven't
 ;       made a comprehensive list here yet.
 
-; TODO SMOOSH: Implement usability as a `gloss?` key for all our
-; smooshable values.
+; NOTE:
 ;
-; We've now made at least a first attempt at custom gloss key behavior
-; for all types except `knowable-dynamic-type?`.
+; We have been implementing smooshability as though values return
+; unknown results when smooshed with values they don't recognize.
 ;
-; Curiously, we have been implementing smooshability as though values
-; return unknown results when smooshed with values they don't
-; recognize, but `gloss?` keys rely on values knowing how to identify
-; themselves by a dynamic type tag that can be distinguished from
-; other tags. We may have some contradictory thoughts to iron out
-; here.
-;
-; It turns out this is rather similar to what we're doing with
-; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`.
-; That one basically requires specifying hash code results associated
+; The
+; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`
+; interface basically requires specifying hash code results associated
 ; with `==` and `path-related` smooshes at all information-ordering
 ; levels of a smoosh report sequence, all just so that `gloss?` values
 ; can have useful `equal-always-hash-code` results.
 ;
-; Since we're planning to let a lot of values have unknown equality
-; with each other, the way we expect to treat these hash codes is that
-; they'll only try to distinguish values from other values their
-; author knows them to be distinct from. If the user extends this
-; knowledge with the additional knowledge that certain values from
-; different authors are actually equal after all, then the user will
-; have to *opt out* of those authors' supplied hash code behaviors.
+; Since a lot of values have unknown equality with each other as far
+; as smooshability is concerned, the way we expect to treat these hash
+; codes is that they'll only try to distinguish values from other
+; values their author knows them to be distinct from. If the user
+; extends this knowledge with the additional knowledge that certain
+; values from different authors are actually equal after all, then the
+; user will have to *opt out* of those authors' supplied hash code
+; behaviors, or the user will have to carefully keep their hash table
+; entries separated across multiple hash tables depending on details
+; about the key's provenance, which the user might prefer to forget.
 ;
-; Another idea, possibly usable in combination with that one, is that
-; instead of having data structures do a first lookup by a value's
-; hash code or its `dynamic-type-get-custom-gloss-key-reports`
-; `tagged-glossesque-sys?` variant, they first check *what system(s)
-; of hash codes or variants* the value declares its hash code or
-; variant with respect to. This is basically a second variant tag, but
-; this tag must be more or less consistent across all the keys in a
-; `gloss?`. Users may extend the system with knowledge that certain
-; hash code or variant systems have known interactions with each
-; other, or by extending a value to declare hash codes or variants for
-; additional systems.
-;
-; We don't actually go to any of that trouble with opt-outs or
-; tag-system tags for
+; We don't go to the trouble to allow users to opt out of the
 ; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`
-; yet; we just implement those hash codes the same way we would if all
-; involved types were known to be distinct. That's because these are
-; hash codes meant for reasonable coexistence with Racket's `equal?`-
-; and `equal-always?`-based hashes, where the notion that two values
-; may have an unknown comparison result doesn't really exist. When a
-; user wants to work with the possibility that comparison results are
-; unknown, we offer `gloss?` values as our recommended replacement for
-; `hash?` values.
+; hash codes we specify yet; we just implement those hash codes the
+; same way we would if all involved types were known to be distinct.
+; That's because these are hash codes meant for reasonable coexistence
+; with Racket's `equal?`- and `equal-always?`-based hashes, where the
+; notion that two values may have an unknown comparison result doesn't
+; really exist. When a user wants to work with the possibility that
+; comparison results are unknown, we offer `gloss?` values as our
+; recommended replacement for `hash?` values.
 
 ; TODO SMOOSH: Consider getting rid of the
 ; `glossesque-sys-glossesque-skm-union-of-two-knowable` method because
