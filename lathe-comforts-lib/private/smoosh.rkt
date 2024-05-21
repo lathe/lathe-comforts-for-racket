@@ -111,10 +111,6 @@
 (provide
   info-wrapper)
 (provide /own-contract-out
-  equal-always-gloss-key?
-  equal-always-gloss-key-impl?
-  prop:equal-always-gloss-key
-  make-equal-always-gloss-key-impl
   expressly-custom-gloss-key-dynamic-type-impl?
   prop:expressly-custom-gloss-key-dynamic-type
   make-expressly-custom-gloss-key-dynamic-type-impl
@@ -1117,18 +1113,6 @@
 (ascribe-own-contract info-wrapper-value (-> info-wrapper? any/c))
 
 (define-imitation-simple-generics
-  equal-always-gloss-key? equal-always-gloss-key-impl?
-  prop:equal-always-gloss-key make-equal-always-gloss-key-impl
-  'equal-always-gloss-key 'equal-always-gloss-key-impl (list))
-(ascribe-own-contract equal-always-gloss-key? (-> any/c boolean?))
-(ascribe-own-contract equal-always-gloss-key-impl?
-  (-> any/c boolean?))
-(ascribe-own-contract prop:equal-always-gloss-key
-  (struct-type-property/c equal-always-gloss-key-impl?))
-(ascribe-own-contract make-equal-always-gloss-key-impl
-  (-> equal-always-gloss-key-impl?))
-
-(define-imitation-simple-generics
   expressly-custom-gloss-key-dynamic-type?
   expressly-custom-gloss-key-dynamic-type-impl?
   (#:method expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports
@@ -1298,12 +1282,6 @@
   gloss-rep-glossesque
   'gloss-rep-glossesque (current-inspector) (auto-write))
 (define-imitation-simple-struct
-  (gloss-rep-equal-always-gloss-key?
-    gloss-rep-equal-always-gloss-key-key
-    gloss-rep-equal-always-gloss-key-value)
-  gloss-rep-equal-always-gloss-key
-  'gloss-rep-equal-always-gloss-key (current-inspector) (auto-write))
-(define-imitation-simple-struct
   (gloss? gloss-rep)
   gloss 'gloss (current-inspector)
   
@@ -1469,8 +1447,6 @@
   (-> gloss? (sequence/c any/c any/c))
   (dissect g (gloss rep)
   /mat rep (gloss-rep-empty) (list)
-  /mat rep (gloss-rep-equal-always-gloss-key k v)
-    (in-parallel (in-value k) (in-value v))
   /dissect rep
     (gloss-rep-glossesque (tagged-glossesque-sys _ gs) then else)
   /in-sequences
@@ -1527,12 +1503,6 @@
   (-> gloss? any/c (knowable/c maybe?))
   (dissect g (gloss rep)
   /mat rep (gloss-rep-empty) (known /nothing)
-  /mat rep (gloss-rep-equal-always-gloss-key g-k v)
-    (known
-      (maybe-if
-        (and (equal-always-gloss-key? k) (equal-always? k g-k))
-      /fn
-        v))
   /dissect rep (gloss-rep-glossesque tgs then else)
   /dissect tgs (tagged-glossesque-sys inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
@@ -1545,7 +1515,6 @@
   ; TODO SMOOSH: Memoize the count, as an optimization.
   (dissect g (gloss rep)
   /mat rep (gloss-rep-empty) 0
-  /mat rep (gloss-rep-equal-always-gloss-key g-k v) 1
   /dissect rep
     (gloss-rep-glossesque (tagged-glossesque-sys _ gs) then else)
   /+
@@ -1569,8 +1538,6 @@
     (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
     /dissectfn (list rider m)
     /expect m (just v) (known /list rider /gloss /gloss-rep-empty)
-    /if (equal-always-gloss-key? k)
-      (known /list rider /gloss /gloss-rep-equal-always-gloss-key k v)
     /knowable-bind
       (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
         (stream-first
@@ -1589,14 +1556,6 @@
     /known
       (list rider
         (gloss /gloss-rep-glossesque tgs then (gloss-union-of-zero))))
-  /mat rep (gloss-rep-equal-always-gloss-key g-k v)
-    (if (not /and (equal-always-gloss-key? k) (equal-always? k g-k))
-      (unknown)
-    /knowable-map (on-rider-and-m-knowable /list rider /just v)
-    /dissectfn (list rider m)
-      (list rider
-        (expect m (just v) (gloss /gloss-rep-empty)
-        /gloss /gloss-rep-equal-always-gloss-key k v)))
   /dissect rep (gloss-rep-glossesque tgs then else)
   /dissect tgs (tagged-glossesque-sys inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
