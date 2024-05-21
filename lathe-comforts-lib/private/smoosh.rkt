@@ -58,11 +58,14 @@
   knowable-if
   knowable->falsable
   falsable->uninformative-knowable
-  knowable-predicate-impl?
-  prop:knowable-predicate
-  make-knowable-predicate-impl
+  expressly-knowable-predicate-impl?
+  prop:expressly-knowable-predicate
+  make-expressly-knowable-predicate-impl
   call-knowable
-  make-knowable-predicate-procedure-impl
+  make-procedure-impl-for-knowable-predicate
+  int+arity
+  make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
+  makeshift-knowable-predicate
   glossesque-sys?
   glossesque-sys-impl?
   glossesque-sys-glossesque-union-of-zero
@@ -340,56 +343,105 @@
 
 
 (define-imitation-simple-generics
-  knowable-predicate? knowable-predicate-impl?
-  (#:method knowable-predicate-get-accepts?-knowable (#:this))
-  prop:knowable-predicate make-knowable-predicate-impl
-  'knowable-predicate 'knowable-predicate-impl (list))
-(ascribe-own-contract knowable-predicate-impl? (-> any/c boolean?))
-(ascribe-own-contract prop:knowable-predicate
-  (struct-type-property/c knowable-predicate-impl?))
-(ascribe-own-contract make-knowable-predicate-impl
-  (-> (-> knowable-predicate? (unconstrained-domain-> knowable?))
-    knowable-predicate-impl?))
+  expressly-knowable-predicate? expressly-knowable-predicate-impl?
+  (#:method expressly-knowable-predicate-get-accepts?-knowable
+    (#:this))
+  prop:expressly-knowable-predicate
+  make-expressly-knowable-predicate-impl
+  'expressly-knowable-predicate
+  'expressly-knowable-predicate-impl (list))
+(ascribe-own-contract expressly-knowable-predicate-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract prop:expressly-knowable-predicate
+  (struct-type-property/c expressly-knowable-predicate-impl?))
+(ascribe-own-contract make-expressly-knowable-predicate-impl
+  (->
+    (-> expressly-knowable-predicate?
+      (unconstrained-domain-> knowable?))
+    expressly-knowable-predicate-impl?))
 
 (define/own-contract call-knowable
   (unconstrained-domain-> knowable?)
   (procedure-reduce-arity
     (make-keyword-procedure
       (lambda (ks vs f . positional-args)
-        (if (knowable-predicate? f)
+        (if (expressly-knowable-predicate? f)
           (w- accepts?-knowable
-            (knowable-predicate-get-accepts?-knowable f)
+            (expressly-knowable-predicate-get-accepts?-knowable f)
           /keyword-apply accepts?-knowable ks vs positional-args)
         /if (procedure? f)
           (falsable->uninformative-knowable
             (keyword-apply f ks vs positional-args))
           (raise-arguments-error 'call-knowable
-            "expected the called value to be prop:knowable-predicate instance or a procedure"
+            "expected the called value to be a prop:expressly-knowable-predicate instance or a procedure"
             "f" f)))
       (lambda (f . positional-args)
-        (if (knowable-predicate? f)
+        (if (expressly-knowable-predicate? f)
           (w- accepts?-knowable
-            (knowable-predicate-get-accepts?-knowable f)
+            (expressly-knowable-predicate-get-accepts?-knowable f)
           /apply accepts?-knowable positional-args)
         /if (procedure? f)
           (falsable->uninformative-knowable /apply f positional-args)
           (raise-arguments-error 'call-knowable
-            "expected the called value to be prop:knowable-predicate instance or a procedure"
+            "expected the called value to be a prop:expressly-knowable-predicate instance or a procedure"
             "f" f))))
     (arity-at-least 1)))
 
 ; Returns a value that makes an appropriate `prop:procedure`
 ; implementation for a structure type that implements
-; `prop:knowable-predicate`. It will often be preferable to pass this
-; result through `procedure-reduce-arity`.
+; `prop:expressly-knowable-predicate`. It will often be preferable to
+; pass this result through `procedure-reduce-arity`.
 ;
-(define/own-contract (make-knowable-predicate-procedure-impl)
+(define/own-contract (make-procedure-impl-for-knowable-predicate)
   (-> (unconstrained-domain-> any/c))
   (compose knowable->falsable call-knowable))
 
-; TODO SMOOSH: Define at least a couple of examples of
-; `knowable-predicate?` values, so that we know if we need another
-; utility.
+(define/own-contract (int+arity n a)
+  (-> exact-integer? procedure-arity? procedure-arity?)
+  (w- original-a a
+  /w-loop next a a
+    (if (natural? a)
+      (w- a (+ n a)
+      /begin0 a
+        (when (< a 0)
+          (raise-arguments-error 'int+arity
+            "expected an integer and an arity that would sum to a nonnegative arity"
+            "integer" n
+            "arity" original-a)))
+    /mat a (arity-at-least a) (arity-at-least /next a)
+    /list-map a /fn a /next a)))
+
+(define/own-contract
+  (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure p)
+  (-> procedure? (unconstrained-domain-> any/c))
+  (define-values (required-kws allowed-kws) (procedure-keywords p))
+  (procedure-reduce-keyword-arity
+    (make-procedure-impl-for-knowable-predicate)
+    (int+arity 1 /procedure-arity p)
+    required-kws
+    allowed-kws))
+
+(define makeshift-knowable-predicate-inspector (current-inspector))
+
+(define/own-contract (makeshift-knowable-predicate accepts?-knowable)
+  (-> (unconstrained-domain-> knowable?)
+    (unconstrained-domain-> any/c))
+  (define-imitation-simple-struct
+    (makeshift-knowable-predicate?
+      makeshift-knowable-predicate-get-accepts?-direct)
+    makeshift-knowable-predicate
+    'makeshift-knowable-predicate
+    makeshift-knowable-predicate-inspector
+    (auto-write)
+    (auto-equal)
+    (#:prop prop:procedure
+      (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
+        accepts?-knowable))
+    (#:prop prop:expressly-knowable-predicate
+      (make-expressly-knowable-predicate-impl
+        (dissectfn (makeshift-knowable-predicate accepts?-knowable)
+          accepts?-knowable))))
+  (makeshift-knowable-predicate accepts?-knowable))
 
 
 (define-imitation-simple-generics
@@ -4567,8 +4619,14 @@
 ;     Same as the description of level 1 path-related.
 ; Level 1:
 ;   path-related, join, meet, ==:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known nothing.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -4596,8 +4654,14 @@
 ;     `example-and-list->` function using the first operand as the
 ;     example) whose elements are those recursive results.
 ;   <=, >=:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known `#f`.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -4693,10 +4757,15 @@
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (inhabitant? a) #t
+      /expect (call-knowable inhabitant? a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (inhabitant? b) #t
+      /expect (call-knowable inhabitant? b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (or a-inhabits? b-inhabits?) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (and a-inhabits? b-inhabits?) #t
+        (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+          (false-smoosh-and-comparison-of-two-reports))
       ; If the comparing the operands without comparing their elements
       ; has an unknown result, we return an unknown result as well.
       /expect (inhabitant-shallowly-equal-always?-knowable a b)
@@ -4789,8 +4858,14 @@
 ;     Same as the description of level 1 path-related.
 ; Level 1:
 ;   path-related, join, meet, ==:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known nothing.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -4857,8 +4932,14 @@
 ;         all be shallowly chaperone-of each other but our result will
 ;         still have to be unknown.)
 ;   <=, >=:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known `#f`.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -5040,10 +5121,15 @@
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (inhabitant? a) #t
+      /expect (call-knowable inhabitant? a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (inhabitant? b) #t
+      /expect (call-knowable inhabitant? b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (or a-inhabits? b-inhabits?) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (and a-inhabits? b-inhabits?) #t
+        (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+          (false-smoosh-and-comparison-of-two-reports))
       ; If the comparing the operands without comparing their
       ; impersonator or chaperone wrappers or their elements has an
       ; unknown result, we return an unknown result as well.
@@ -5292,6 +5378,7 @@
     [ variant-dynamic-type-name
       (format-symbol "~a-dynamic-type" variant-name)]
     
+    #:inspector inspector
     #:ignore-chaperones? [ignore-chaperones? #f]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
@@ -5309,6 +5396,7 @@
   (->*
     (
       #:variant-name symbol?
+      #:inspector inspector?
       #:inhabitant? (-> any/c boolean?)
       #:copy (-> any/c any/c))
     (
@@ -5323,7 +5411,8 @@
   ; See if we can untangle it.
   (define-variant variant
     #:name variant-name
-    #:dynamic-type-name variant-dynamic-type-name)
+    #:dynamic-type-name variant-dynamic-type-name
+    #:inspector inspector)
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
     #:get-custom-gloss-key-reports
@@ -5388,6 +5477,7 @@
 (define/own-contract
   (make-expressly-smooshable-bundle-property-from-list-isomorphism
     #:omit-gloss-key-behavior? [omit-gloss-key-behavior? #f]
+    
     #:variant-name
     [ variant-name
       (if omit-gloss-key-behavior?
@@ -5398,6 +5488,14 @@
     #:variant-dynamic-type-name
     [ variant-dynamic-type-name
       (format-symbol "~a-dynamic-type" variant-name)]
+    
+    #:inspector
+    [ inspector
+      (if omit-gloss-key-behavior?
+        #f
+        (raise-arguments-error 'make-expressly-smooshable-bundle-property-from-list-isomorphism
+          "expected an #:inspector unless #:omit-gloss-key-behavior was true"))]
+    
     #:ignore-chaperones? [ignore-chaperones? #f]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
@@ -5438,6 +5536,7 @@
       #:omit-gloss-key-behavior? boolean?
       #:variant-name symbol?
       #:variant-dynamic-type-name symbol?
+      #:inspector inspector?
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
@@ -5513,6 +5612,7 @@
               (make-expressly-custom-gloss-key-dynamic-type-impl-from-list-injection
                 #:variant-name variant-name
                 #:variant-dynamic-type-name variant-dynamic-type-name
+                #:inspector inspector
                 #:ignore-chaperones? ignore-chaperones?
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
@@ -5535,12 +5635,17 @@
           #:specific-variant-dynamic-type-name
           specific-variant-dynamic-type-name:expr
           
-          )
+          #:inspector inspector:expr)
         {~and
           (_ my-variant:id
             #:name name:expr
-            #:dynamic-type-name dynamic-type-name:expr)
-          {~bind [(my-variant-field 1) (list)]}}}
+            #:dynamic-type-name dynamic-type-name:expr
+            #:inspector inspector:expr)
+          {~bind
+            [(my-variant-field 1) (list)]
+            [specific-variant-name #''specific-variant-variant]
+            [ specific-variant-dynamic-type-name
+              #''specific-variant-variant-dynamic-type]}}}
       
       #:with (field ...) (generate-temporaries #'(my-variant-field ...))
       
@@ -5561,19 +5666,26 @@
         (if (null? /syntax->list #'(my-variant-field ...))
           #'(#:omit-gloss-key-behavior? #t)
           #'(
-              #:variant-name specific-variant-name
+              #:variant-name specific-variant-name-result
               
               #:variant-dynamic-type-name
-              specific-variant-dynamic-type-name
+              specific-variant-dynamic-type-name-result
               
               )))
       
       #'(begin
           
+          (define name-result name)
+          (define dynamic-type-name-result dynamic-type-name)
+          (define specific-variant-name-result specific-variant-name)
+          (define specific-variant-dynamic-type-name-result
+            specific-variant-dynamic-type-name)
+          (define inspector-result inspector)
+          
           (define-imitation-simple-struct
             (my-variant? my-variant-field ...)
             my-variant
-            name (current-inspector) (auto-write) (auto-equal)
+            name-result inspector-result (auto-write) (auto-equal)
             inhabitant-props ...
             (#:prop prop:expressly-has-dynamic-type
               (make-expressly-has-dynamic-type-impl /fn bindings self
@@ -5594,11 +5706,12 @@
             (my-variant-dynamic-type?
               my-variant-dynamic-type-get-any-dynamic-type)
             my-variant-dynamic-type
-            dynamic-type-name (current-inspector) (auto-write)
+            dynamic-type-name-result inspector-result (auto-write)
             
             (#:prop
               (make-expressly-smooshable-bundle-property-from-list-isomorphism
                 dynamic-type-impl-args ...
+                #:inspector inspector
                 #:ignore-chaperones? #t
                 
                 #:self-get-any-dynamic-type
@@ -5657,8 +5770,14 @@
 ;
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known nothing (or, for a check, `#f`).
 ;     
 ;     Otherwise, if the operands pass the given `==?` function, the
 ;     first operand (or, for a check, `#t`).
@@ -5668,8 +5787,14 @@
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known nothing.
 ;     
 ;     Otherwise, if the operands pass the given `==?` function, the
 ;     first operand.
@@ -5710,12 +5835,20 @@
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+      (expect (call-knowable inhabitant? a) (known a-inhabits?)
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (call-knowable inhabitant? b) (known b-inhabits?)
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (or a-inhabits? b-inhabits?) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (and a-inhabits? b-inhabits?) #t
+        (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+          (false-smoosh-and-comparison-of-two-reports))
+      /smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
         #:known-distinct? known-distinct?
         #:known-discrete? known-discrete?
         (constant-smoosh-and-comparison-of-two-reports /delay
-          (knowable-if (not /and (inhabitant? a) (inhabitant? b)) /fn
-            (maybe-if (==? a b) /fn /delay/strict /known a)))))
+          (known /maybe-if (==? a b) /fn /delay/strict /known a))))
     
     ))
 
@@ -5741,8 +5874,14 @@
 ;     Same as the description of level 1 path-related.
 ; Level 1:
 ;   path-related, join, meet, ==:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known nothing.
 ;     
 ;     Otherwise, if the operands are not `equal-always?` and
 ;     `known-distinct?` is true, then a known nothing.
@@ -5779,8 +5918,14 @@
 ;         Every result is acceptable if it and the operands are all
 ;         `chaperone-of?` each other.
 ;   <=, >=:
-;     If the operands do not both pass the given `inhabitant?`
-;     predicate, then unknown.
+;     If the operands do not both have known results for the given
+;     `inhabitant?` predicate, which may be an instance of
+;     `prop:expressly-knowable-predicate?`, or if neither of them has
+;     a known true result for it, then unknown.
+;     
+;     Otherwise, if at least one operand has a known true result for
+;     `inhabitant?` and at least one has a known false result for it,
+;     then a known `#f`.
 ;     
 ;     Otherwise, if the operands are not `equal-always?` and
 ;     `known-distinct?` is true, then a known `#f`.
@@ -5831,10 +5976,15 @@
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (expect (inhabitant? a) #t
+      (expect (call-knowable inhabitant? a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (inhabitant? b) #t
+      /expect (call-knowable inhabitant? b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (or a-inhabits? b-inhabits?) #t
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /expect (and a-inhabits? b-inhabits?) #t
+        (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+          (false-smoosh-and-comparison-of-two-reports))
       /if (not /equal-always? a b)
         (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
           #:known-distinct? known-distinct?
@@ -5955,10 +6105,12 @@
 ; and `eq-indistinct-atom-variant?` along with them?
 (define-variant eq-atom-variant
   #:name 'eq-atom-variant
-  #:dynamic-type-name 'eq-atom-variant-dynamic-type)
+  #:dynamic-type-name 'eq-atom-variant-dynamic-type
+  #:inspector (current-inspector))
 (define-variant eq-indistinct-atom-variant
   #:name 'eq-indistinct-atom-variant
-  #:dynamic-type-name 'eq-indistinct-atom-variant-dynamic-type)
+  #:dynamic-type-name 'eq-indistinct-atom-variant-dynamic-type
+  #:inspector (current-inspector))
 
 (define/own-contract
   (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
@@ -5983,6 +6135,7 @@
     [ specific-variant-variant-dynamic-type-name
       (format-symbol "~a-dynamic-type" specific-variant-variant-name)]
     
+    #:inspector inspector
     #:eq-matters? [eq-matters? #f]
     #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
@@ -5991,6 +6144,7 @@
   (->*
     (
       #:variant-name symbol?
+      #:inspector inspector?
       #:inhabitant? (-> any/c boolean?))
     (
       #:variant-dynamic-type-name symbol?
@@ -6005,7 +6159,8 @@
     expressly-custom-gloss-key-dynamic-type-impl?)
   (define-variant variant
     #:name variant-name
-    #:dynamic-type-name variant-dynamic-type-name)
+    #:dynamic-type-name variant-dynamic-type-name
+    #:inspector inspector)
   (define-variant specific-variant specific-variant-value
     #:name specific-variant-name
     #:dynamic-type-name specific-variant-dynamic-type-name
@@ -6014,7 +6169,7 @@
     #:specific-variant-dynamic-type-name
     specific-variant-variant-dynamic-type-name
     
-    )
+    #:inspector inspector)
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
     #:get-custom-gloss-key-reports
@@ -6078,6 +6233,7 @@
 (define/own-contract
   (make-expressly-smooshable-bundle-property-for-atom
     #:variant-name variant-name
+    #:inspector inspector
     
     #:variant-dynamic-type-name
     [ variant-dynamic-type-name
@@ -6121,6 +6277,7 @@
   (->*
     (
       #:variant-name symbol?
+      #:inspector inspector?
       #:inhabitant? (-> any/c boolean?))
     (
       #:variant-dynamic-type-name symbol?
@@ -6184,6 +6341,7 @@
               #:specific-variant-variant-dynamic-type-name
               specific-variant-variant-dynamic-type-name
               
+              #:inspector inspector
               #:eq-matters? eq-matters?
               #:ignore-chaperones? ignore-chaperones?
               #:known-distinct? known-distinct?
@@ -6217,6 +6375,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'flvector-variant
+      #:inspector (current-inspector)
       #:eq-matters? #t
       #:inhabitant? flvector?)
     (trivial)))
@@ -6247,6 +6406,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'fxvector-variant
+      #:inspector (current-inspector)
       #:eq-matters? #t
       #:inhabitant? fxvector?)
     (trivial)))
@@ -6284,6 +6444,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'base-syntactic-atom-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? base-syntactic-atom?)
     (trivial)))
@@ -6315,6 +6476,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'boolean-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? boolean?)
     (trivial)))
@@ -6334,6 +6496,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'char-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:known-distinct? #f
       #:inhabitant? char?)
@@ -6355,6 +6518,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'immutable-string-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:known-distinct? #f
       #:inhabitant? immutable-string?)
@@ -6377,6 +6541,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'immutable-bytes-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:known-distinct? #f
       #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
@@ -6384,10 +6549,12 @@
 
 (define-variant non-nan-number-variant
   #:name 'non-nan-number-variant
-  #:dynamic-type-name 'non-nan-number-variant-dynamic-type)
+  #:dynamic-type-name 'non-nan-number-variant-dynamic-type
+  #:inspector (current-inspector))
 (define-variant non-nan-real-number-variant
   #:name 'non-nan-real-number-variant
-  #:dynamic-type-name 'non-nan-real-number-variant-dynamic-type)
+  #:dynamic-type-name 'non-nan-real-number-variant-dynamic-type
+  #:inspector (current-inspector))
 (define-variant non-nan-non-real-number-variant
   non-nan-non-real-number-variant-value
   #:name 'non-nan-non-real-number-variant
@@ -6399,7 +6566,7 @@
   #:specific-variant-dynamic-type-name
   'specific-non-nan-non-real-number-variant-variant-dynamic-type
   
-  )
+  #:inspector (current-inspector))
 
 (define (normalize-non-nan-number a)
   (define (normalize-real a)
@@ -6592,7 +6759,8 @@
 
 (define-variant non-nan-extflonum-variant
   #:name 'non-nan-extflonum-variant
-  #:dynamic-type-name 'non-nan-extflonum-variant-dynamic-type)
+  #:dynamic-type-name 'non-nan-extflonum-variant-dynamic-type
+  #:inspector (current-inspector))
 
 (define/own-contract (non-nan-extflonum? v)
   (-> any/c boolean?)
@@ -6768,6 +6936,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
       #:variant-name 'cons-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
@@ -6831,6 +7000,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
       #:variant-name 'immutable-vector-variant
+      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-vector-dynamic-type any-dt)
@@ -6874,6 +7044,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'base-mutable-variant
+      #:inspector (current-inspector)
       #:inhabitant? base-mutable-readable?)
     (trivial)))
 
@@ -6892,6 +7063,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
       #:variant-name 'immutable-box-variant
+      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-box-dynamic-type any-dt)
@@ -6942,6 +7114,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
       #:variant-name 'immutable-prefab-struct-variant
+      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
@@ -6971,6 +7144,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
       #:variant-name 'immutable-hash-variant
+      #:inspector (current-inspector)
       
       #:self-get-any-dynamic-type
       (dissectfn (immutable-hash-dynamic-type any-dt)
@@ -7167,7 +7341,11 @@
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both `nothing?` values, then unknown.
+;     If one operand is a `nothing?` value and another is a `just?`
+;     value, then a known nothing (or, for a check, `#f`).
+;     
+;     Otherwise, if the operands are not both `nothing?` values, then
+;     unknown.
 ;     
 ;     Otherwise, the first operand (or, for a check, `#t`).
 ;
@@ -7178,10 +7356,27 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'nothing-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
-      #:inhabitant? nothing?)
+      
+      #:inhabitant?
+      (makeshift-knowable-predicate /fn v
+        (knowable-if (maybe? v) /fn /nothing? v))
+      
+      )
     (trivial)))
 
+; This is an appropriate dynamic type of `just?` values. This is an
+; instance of
+; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`.
+;
+; Note that while most such instances return known results only when
+; all the operands pass their `#:inhabitant?` predicate, this one
+; considers `just?` values to be known inhabitants and `nothing?`
+; values to be known non-inhabitants, and it accordingly reports a
+; known result that a `just?` value and a `nothing?` value are
+; distinct.
+;
 (define-imitation-simple-struct
   (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
   just-dynamic-type
@@ -7190,13 +7385,17 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
       #:variant-name 'just-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
       (dissectfn (just-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? just?
+      #:inhabitant?
+      (makeshift-knowable-predicate /fn v
+        (knowable-if (maybe? v) /fn /just? v))
+      
       #:->list (dissectfn (just e) /list e)
       
       #:example-and-list->
@@ -7235,6 +7434,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'trivial-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? trivial?)
     (trivial)))
@@ -7439,7 +7639,7 @@
   #:specific-variant-dynamic-type-name
   'specific-path-related-wrapper-variant-variant-dynamic-type
   
-  )
+  #:inspector (current-inspector))
 
 (define/own-contract
   (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -7648,7 +7848,7 @@
   #:specific-variant-dynamic-type-name
   'specific-info-wrapper-variant-variant-dynamic-type
   
-  )
+  #:inspector (current-inspector))
 
 (define/own-contract
   (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -7866,6 +8066,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-from-list-isomorphism
       #:variant-name 'gloss-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       
       #:self-get-any-dynamic-type
@@ -7922,6 +8123,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'dynamic-type-var-for-any-dynamic-type-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? dynamic-type-var-for-any-dynamic-type?)
     (trivial)))
@@ -7956,6 +8158,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:variant-name 'equal-always-wrapper-variant
+      #:inspector (current-inspector)
       #:ignore-chaperones? #t
       #:inhabitant? equal-always-wrapper?)
     (trivial)))
@@ -7969,7 +8172,7 @@
   #:specific-variant-dynamic-type-name
   'specific-indistinct-wrapper-variant-variant-dynamic-type
   
-  )
+  #:inspector (current-inspector))
 
 (define/own-contract
   (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -8441,11 +8644,6 @@
 ;       or by
 ;       `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
 ;       when its `#:eq-matters?` argument is `#f` or missing.
-;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
-;       between the `nothing-dynamic-type?`'s variant values and the
-;       `just-dynamic-type?`'s variant values. (Actually, the latter
-;       variant values don't exist yet.) These should be known to be
-;       distinct from each other.)
 ;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
 ;       between the variant values of
 ;       `base-mutable-readable-dynamic-type?`,
