@@ -1283,19 +1283,33 @@
   /expect (maybe-min-zip v=?-kpm-list) (just v=?-kp-list) (known #f)
   /force /boolean-and-knowable-promise-zip v=?-kp-list))
 
+(define-imitation-simple-struct (gloss-rep-empty?) gloss-rep-empty
+  'gloss-rep-empty (current-inspector) (auto-write))
 (define-imitation-simple-struct
-  (gloss?
+  (gloss-rep-glossesque?
     
-    ; A `maybe?` possibly containing a heterogenous list containing a
-    ; `tagged-glossesque-sys?`, a glossesque of that system containing
-    ; entries with a known true result for its `inhabitant?`
-    ; predicate, and a gloss of entries with a known false result.
-    ;
-    gloss-frame-maybe
+    ; A `tagged-glossesque-sys?`.
+    gloss-rep-glossesque-tagged-glossesque-sys
+    
+    ; A glossesque of that system containing entries with a known true
+    ; result for its `inhabitant?` predicate.
+    gloss-rep-glossesque-then
+    
+    ; A gloss of entries with a known false result.
+    gloss-rep-glossesque-else
     
     )
-  gloss
-  'gloss (current-inspector)
+  gloss-rep-glossesque
+  'gloss-rep-glossesque (current-inspector) (auto-write))
+(define-imitation-simple-struct
+  (gloss-rep-equal-always-gloss-key?
+    gloss-rep-equal-always-gloss-key-key
+    gloss-rep-equal-always-gloss-key-value)
+  gloss-rep-equal-always-gloss-key
+  'gloss-rep-equal-always-gloss-key (current-inspector) (auto-write))
+(define-imitation-simple-struct
+  (gloss? gloss-rep)
+  gloss 'gloss (current-inspector)
   
   (#:gen gen:custom-write
     (define write-proc
@@ -1453,13 +1467,16 @@
 
 (define/own-contract (gloss-union-of-zero)
   (-> gloss?)
-  (gloss /nothing))
+  (gloss /gloss-rep-empty))
 
 (define/own-contract (gloss-iteration-sequence g)
   (-> gloss? (sequence/c any/c any/c))
-  (dissect g (gloss frame-m)
-  /expect frame-m (just frame) (list)
-  /dissect frame (list (tagged-glossesque-sys _ _ gs) then else)
+  (dissect g (gloss rep)
+  /mat rep (gloss-rep-empty) (list)
+  /mat rep (gloss-rep-equal-always-gloss-key k v)
+    (in-parallel (in-value k) (in-value v))
+  /dissect rep
+    (gloss-rep-glossesque (tagged-glossesque-sys _ _ gs) then else)
   /in-sequences
     (glossesque-sys-glossesque-iteration-sequence gs then)
     (gloss-iteration-sequence else)))
@@ -1512,10 +1529,16 @@
 
 (define/own-contract (gloss-ref-maybe-knowable g k)
   (-> gloss? any/c (knowable/c maybe?))
-  (dissect g (gloss frame-m)
-  /expect frame-m (just frame) (known /nothing)
-  /dissect frame
-    (list (tagged-glossesque-sys _ inhabitant? gs) then else)
+  (dissect g (gloss rep)
+  /mat rep (gloss-rep-empty) (known /nothing)
+  /mat rep (gloss-rep-equal-always-gloss-key g-k v)
+    (known
+      (maybe-if
+        (and (equal-always-gloss-key? k) (equal-always? k g-k))
+      /fn
+        v))
+  /dissect rep (gloss-rep-glossesque tgs then else)
+  /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
   /if k-inhabits?
     (glossesque-sys-glossesque-ref-maybe-knowable gs then k)
@@ -1524,18 +1547,20 @@
 (define/own-contract (gloss-count g)
   (-> gloss? natural?)
   ; TODO SMOOSH: Memoize the count, as an optimization.
-  (dissect g (gloss frame-m)
-  /expect frame-m (just frame) 0
-  /dissect frame
-    (list (tagged-glossesque-sys _ inhabitant? gs) then else)
+  (dissect g (gloss rep)
+  /mat rep (gloss-rep-empty) 0
+  /mat rep (gloss-rep-equal-always-gloss-key g-k v) 1
+  /dissect rep
+    (gloss-rep-glossesque (tagged-glossesque-sys _ _ gs) then else)
   /+
     (glossesque-sys-glossesque-count gs then)
     (gloss-count else)))
 
 (define/own-contract (gloss-empty? g)
   (-> gloss? boolean?)
-  (dissect g (gloss frame-m)
-  /nothing? frame-m))
+  (dissect g (gloss rep)
+  /mat rep (gloss-rep-empty) #t
+    #f))
 
 (define/own-contract
   (rider-and-gloss-update-maybe-knowable
@@ -1543,15 +1568,18 @@
   (-> (list/c any/c gloss?) any/c
     (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
     (knowable/c (and/c any/c gloss?)))
-  (dissect rider-and-g (list rider (gloss frame-m))
-  /expect frame-m (just frame)
+  (dissect rider-and-g (list rider (gloss rep))
+  /mat rep (gloss-rep-empty)
     (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
     /dissectfn (list rider m)
-    /expect m (just v) (known /list rider /gloss /nothing)
+    /expect m (just v) (known /list rider /gloss /gloss-rep-empty)
+    /if (equal-always-gloss-key? k)
+      (known /list rider /gloss /gloss-rep-equal-always-gloss-key k v)
     /knowable-bind
       (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
         (stream-first
-          (dynamic-type-get-custom-gloss-key-reports (any-dynamic-type)
+          (dynamic-type-get-custom-gloss-key-reports
+            (any-dynamic-type)
             k)))
     /fn tgs
     /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
@@ -1563,8 +1591,17 @@
     /knowable-bind (gloss-set-maybe-knowable gs then k /just v)
     /fn then
     /known
-      (list rider /gloss /just /list tgs then (gloss-union-of-zero)))
-  /dissect frame (list tgs then else)
+      (list rider
+        (gloss /gloss-rep-glossesque tgs then (gloss-union-of-zero))))
+  /mat rep (gloss-rep-equal-always-gloss-key g-k v)
+    (if (not /and (equal-always-gloss-key? k) (equal-always? k g-k))
+      (unknown)
+    /knowable-map (on-rider-and-m-knowable /list rider /just v)
+    /dissectfn (list rider m)
+      (list rider
+        (expect m (just v) (gloss /gloss-rep-empty)
+        /gloss /gloss-rep-equal-always-gloss-key k v)))
+  /dissect rep (gloss-rep-glossesque tgs then else)
   /dissect tgs (tagged-glossesque-sys _ inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
   /if k-inhabits?
@@ -1574,12 +1611,12 @@
     /dissectfn (list rider then)
       (if (glossesque-sys-glossesque-empty? gs then)
         (list rider else)
-        (list rider /gloss /just /list tgs then else)))
+        (list rider /gloss /gloss-rep-glossesque tgs then else)))
     (knowable-map
       (rider-and-gloss-update-maybe-knowable
         gs (list rider else) k on-rider-and-m-knowable)
     /dissectfn (list rider else)
-      (list rider /gloss /just /list tgs then else))))
+      (list rider /gloss /gloss-rep-glossesque tgs then else))))
 
 (define-imitation-simple-struct
   (gloss-glossesque-sys?)
@@ -8853,8 +8890,8 @@
 ; unknown, we offer `gloss?` values as our recommended replacement for
 ; `hash?` values.
 
-; TODO SMOOSH: Get rid of `equal-always-gloss-key?` and the
-; `tagged-glossesque-sys-variant` field now that they're unused.
-; Consider getting rid of the
+; TODO SMOOSH: Get rid of the `tagged-glossesque-sys-variant` field
+; now that it's unused. Consider getting rid of the
 ; `glossesque-sys-glossesque-skm-union-of-two-knowable` method as well
-; because it doesn't help make merging glosses more efficient.
+; because it doesn't seem like it would help make merging glosses more
+; efficient.
