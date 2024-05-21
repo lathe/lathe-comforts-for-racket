@@ -6388,14 +6388,23 @@
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands are not both `flvector?` values, then unknown.
+;     If the operands are not both `base-readable?` values, or if
+;     neither of them is an `flvector?` value, then unknown.
+;     
+;     Otherwise, if at least one operand is an `flvector?` value and
+;     at least one isn't, then a known nothing (or, for a check,
+;     `#f`).
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand
 ;     (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands are not both `flvector?` values, then unknown.
+;     If the operands are not both `base-readable?` values, or if
+;     neither of them is an `flvector?` value, then unknown.
+;     
+;     Otherwise, if at least one operand is an `flvector?` value and
+;     at least one isn't, then a known nothing.
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand.
 ;     
@@ -6412,19 +6421,33 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:eq-matters? #t
-      #:inhabitant? flvector?)
+      
+      #:inhabitant?
+      (makeshift-knowable-predicate /fn v
+        (knowable-if (base-readable? v) /fn /flvector? v))
+      
+      )
     (trivial)))
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands are not both `fxvector?` values, then unknown.
+;     If the operands are not both `base-readable?` values, or if
+;     neither of them is an `fxvector?` value, then unknown.
+;     
+;     Otherwise, if at least one operand is an `fxvector?` value and
+;     at least one isn't, then a known nothing (or, for a check,
+;     `#f`).
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand
 ;     (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands are not both `fxvector?` values, then unknown.
+;     If the operands are not both `base-readable?` values, or if
+;     neither of them is an `fxvector?` value, then unknown.
+;     
+;     Otherwise, if at least one operand is an `fxvector?` value and
+;     at least one isn't, then a known nothing.
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand.
 ;     
@@ -6441,7 +6464,12 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:eq-matters? #t
-      #:inhabitant? fxvector?)
+      
+      #:inhabitant?
+      (makeshift-knowable-predicate /fn v
+        (knowable-if (base-readable? v) /fn /fxvector? v))
+      
+      )
     (trivial)))
 
 (define/own-contract (base-syntactic-atom? v)
@@ -6450,16 +6478,25 @@
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands are not both `base-syntactic-atom?` values, then
+;     If the operands are not both `base-readable?` values, or if
+;     neither of them is a `base-syntactic-atom?` value, then
 ;     unknown.
+;     
+;     Otherwise, if at least one operand is a `base-syntactic-atom?`
+;     value and at least one isn't, then a known nothing (or, for a
+;     check, `#f`).
 ;     
 ;     If the operands are `equal-always?`, then the first operand (or,
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands are not both `base-syntactic-atom?` values, then
+;     If the operands are not both `base-readable?` values, or if
+;     neither of them is a `base-syntactic-atom?` value, then
 ;     unknown.
+;     
+;     Otherwise, if at least one operand is a `base-syntactic-atom?`
+;     value and at least one isn't, then a known nothing.
 ;     
 ;     If the operands are `equal-always?`, then the first operand.
 ;     
@@ -6479,7 +6516,12 @@
       #:variant-name 'base-syntactic-atom-variant
       #:inspector (current-inspector)
       #:ignore-chaperones? #t
-      #:inhabitant? base-syntactic-atom?)
+      
+      #:inhabitant?
+      (makeshift-knowable-predicate /fn v
+        (knowable-if (base-readable? v) /fn /base-syntactic-atom? v))
+      
+      )
     (trivial)))
 
 ; Level 0:
@@ -6976,7 +7018,10 @@
       (dissectfn (cons-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? pair?
+      #:inhabitant?
+      (makeshift-knowable-predicate /fn v
+        (knowable-if (base-readable? v) /fn /pair? v))
+      
       #:->list (dissectfn (cons first rest) /list first rest)
       
       #:example-and-list->
@@ -7070,15 +7115,27 @@
 ; with `chaperone-of?`. This is an instance of
 ; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
+; Note that while most such instances return known results only when
+; all the operands pass their `#:inhabitant?` predicate, this one
+; considers `base-mutable-readable?` values to be known inhabitants
+; and other `base-readable?` values to be known non-inhabitants, and
+; it reports a known inhabitant and a known non-inhabitant as being
+; known to be distinct.
+;
 (define-imitation-simple-struct (base-mutable-readable-dynamic-type?)
   base-mutable-readable-dynamic-type
   'base-mutable-readable-dynamic-type (current-inspector) (auto-write)
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'base-mutable-variant
+      #:variant-name 'base-mutable-readable-variant
       #:inspector (current-inspector)
-      #:inhabitant? base-mutable-readable?)
+      
+      #:inhabitant?
+      (makeshift-knowable-predicate /fn v
+        (knowable-if (base-readable? v) /fn /base-mutable-readable? v))
+      
+      )
     (trivial)))
 
 ; This is an appropriate dynamic type of immutable boxes and their
@@ -7359,7 +7416,7 @@
         (fn v /and (hash? v) (immutable? v))
         (fn any-dt /immutable-hash-dynamic-type any-dt)))))
 
-(define base-readable-dynamic-type-case
+(match-define (list base-readable? base-readable-dynamic-type)
   (dynamic-type-case-by-cases 'base-readable-dynamic-type /list
     (list
       base-mutable-readable?
@@ -7406,9 +7463,8 @@
 ; Note that while most such instances return known results only when
 ; all the operands pass their `#:inhabitant?` predicate, this one
 ; considers `just?` values to be known inhabitants and `nothing?`
-; values to be known non-inhabitants, and it accordingly reports a
-; known result that a `just?` value and a `nothing?` value are
-; distinct.
+; values to be known non-inhabitants, and it reports a known
+; inhabitant and a known non-inhabitant as being known to be distinct.
 ;
 (define-imitation-simple-struct
   (just-dynamic-type? just-dynamic-type-get-any-dynamic-type)
@@ -8374,7 +8430,9 @@
     'known-to-lathe-comforts-data-dynamic-type
     #:known-distinct? #f
     (list
-      base-readable-dynamic-type-case
+      (list
+        base-readable?
+        (fn any-dt /base-readable-dynamic-type any-dt))
       (dynamic-type-case-by-cases 'maybe-dynamic-type /list
         (list nothing? (fn any-dt /nothing-dynamic-type))
         (list just? (fn any-dt /just-dynamic-type any-dt)))
@@ -8678,6 +8736,10 @@
 ;       `make-expressly-custom-gloss-key-dynamic-type-impl-for-atom`
 ;       when its `#:eq-matters?` argument is `#f` or missing.
 ;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
+;       between the `nothing-dynamic-type?`'s variant values and the
+;       `just-dynamic-type?`'s variant values. These should be known
+;       to be distinct from each other.)
+;       (TODO SMOOSH: We haven't implemented proper smooshing behavior
 ;       between the variant values of
 ;       `base-mutable-readable-dynamic-type?`,
 ;       `flvector-dynamic-type?`, `fxvector-dynamic-type?`,
@@ -8754,8 +8816,8 @@
 ;       - `base-literal-dynamic-type?` (the type belonging to
 ;         `base-literal-dynamic-type-case`)
 ;
-;       - `base-readable-dynamic-type?` (the type belonging to
-;         `base-readable-dynamic-type-case`)
+;       - `base-readable-dynamic-type?` (the type constructed by
+;         `base-readable-dynamic-type`)
 ;
 ;       - `nothing-dynamic-type?`
 ;
