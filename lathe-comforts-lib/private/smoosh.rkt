@@ -6114,7 +6114,14 @@
 
 (define/own-contract
   (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
-    #:variant-name variant-name
+    #:eq-matters? [eq-matters? #f]
+    
+    #:variant-name
+    [ variant-name
+      (if eq-matters?
+        'unneeded-variant
+        (raise-arguments-error 'make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+          "expected a #:variant-name unless #:eq-matters? was true"))]
     
     #:variant-dynamic-type-name
     [ variant-dynamic-type-name
@@ -6135,41 +6142,58 @@
     [ specific-variant-variant-dynamic-type-name
       (format-symbol "~a-dynamic-type" specific-variant-variant-name)]
     
-    #:inspector inspector
-    #:eq-matters? [eq-matters? #f]
+    #:inspector
+    [ inspector
+      (if eq-matters?
+        #f
+        (raise-arguments-error 'make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+          "expected an #:inspector unless #:eq-matters? was true"))]
+    
     #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?)
   (->*
     (
-      #:variant-name symbol?
-      #:inspector inspector?
       #:inhabitant? (-> any/c boolean?))
     (
+      #:eq-matters? boolean?
+      #:variant-name symbol?
       #:variant-dynamic-type-name symbol?
       #:specific-variant-name symbol?
       #:specific-variant-dynamic-type-name symbol?
       #:specific-variant-variant-name symbol?
       #:specific-variant-variant-dynamic-type-name symbol?
-      #:eq-matters? boolean?
+      #:inspector inspector?
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?)
     expressly-custom-gloss-key-dynamic-type-impl?)
-  (define-variant variant
-    #:name variant-name
-    #:dynamic-type-name variant-dynamic-type-name
-    #:inspector inspector)
-  (define-variant specific-variant specific-variant-value
-    #:name specific-variant-name
-    #:dynamic-type-name specific-variant-dynamic-type-name
-    #:specific-variant-name specific-variant-variant-name
-    
-    #:specific-variant-dynamic-type-name
-    specific-variant-variant-dynamic-type-name
-    
-    #:inspector inspector)
+  (define variant
+    (if eq-matters?
+      (fn
+        (error "internal error"))
+    /let ()
+      (define-variant variant
+        #:name variant-name
+        #:dynamic-type-name variant-dynamic-type-name
+        #:inspector inspector)
+      variant))
+  (define specific-variant
+    (if eq-matters?
+      (fn v
+        (error "internal error"))
+    /let ()
+      (define-variant specific-variant specific-variant-value
+        #:name specific-variant-name
+        #:dynamic-type-name specific-variant-dynamic-type-name
+        #:specific-variant-name specific-variant-variant-name
+        
+        #:specific-variant-dynamic-type-name
+        specific-variant-variant-dynamic-type-name
+        
+        #:inspector inspector)
+      specific-variant))
   (make-expressly-custom-gloss-key-dynamic-type-impl
     
     #:get-custom-gloss-key-reports
@@ -6191,20 +6215,22 @@
             (variant)
             (chaperone=-atom-glossesque-sys)))
       /w- indistinct-tag
-        (specific-variant /indistinct-wrapper /equal-always-wrapper a)
+        (fn
+          (specific-variant
+            (indistinct-wrapper /equal-always-wrapper a)))
       /w- indistinct-0-tgs-k
         (if eq-matters?
           (known /tagged-glossesque-sys
             (eq-indistinct-atom-variant)
             (eq-indistinct-atom-glossesque-sys))
           (known /tagged-glossesque-sys
-            indistinct-tag
+            (indistinct-tag)
             (equal-always-indistinct-atom-glossesque-sys)))
       /w- indistinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           indistinct-0-tgs-k
           (known /tagged-glossesque-sys
-            indistinct-tag
+            (indistinct-tag)
             (chaperone=-indistinct-atom-glossesque-sys)))
       /if (and known-distinct? known-discrete?)
         (stream*
@@ -6232,8 +6258,14 @@
 
 (define/own-contract
   (make-expressly-smooshable-bundle-property-for-atom
-    #:variant-name variant-name
-    #:inspector inspector
+    #:eq-matters? [eq-matters? #f]
+    
+    #:variant-name
+    [ variant-name
+      (if eq-matters?
+        'unneeded-variant
+        (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-atom
+          "expected a #:variant-name unless #:eq-matters? was true"))]
     
     #:variant-dynamic-type-name
     [ variant-dynamic-type-name
@@ -6254,7 +6286,13 @@
     [ specific-variant-variant-dynamic-type-name
       (format-symbol "~a-dynamic-type" specific-variant-variant-name)]
     
-    #:eq-matters? [eq-matters? #f]
+    #:inspector
+    [ inspector
+      (if eq-matters?
+        #f
+        (raise-arguments-error 'make-expressly-smooshable-bundle-property-for-atom
+          "expected an #:inspector unless #:eq-matters? was true"))]
+    
     #:ignore-chaperones? [ignore-chaperones? eq-matters?]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
@@ -6275,17 +6313,16 @@
     #:hash-code-0 [hash-code-0 hash-code]
     #:hash-code-1+ [hash-code-1+ hash-code])
   (->*
+    (#:inhabitant? (-> any/c boolean?))
     (
+      #:eq-matters? boolean?
       #:variant-name symbol?
-      #:inspector inspector?
-      #:inhabitant? (-> any/c boolean?))
-    (
       #:variant-dynamic-type-name symbol?
       #:specific-variant-name symbol?
       #:specific-variant-dynamic-type-name symbol?
       #:specific-variant-variant-name symbol?
       #:specific-variant-variant-dynamic-type-name symbol?
-      #:eq-matters? boolean?
+      #:inspector (or/c #f inspector?)
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
@@ -6327,6 +6364,7 @@
           prop:expressly-custom-gloss-key-dynamic-type
           (dissectfn (trivial)
             (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+              #:eq-matters? eq-matters?
               #:variant-name variant-name
               #:variant-dynamic-type-name variant-dynamic-type-name
               
@@ -6342,7 +6380,6 @@
               specific-variant-variant-dynamic-type-name
               
               #:inspector inspector
-              #:eq-matters? eq-matters?
               #:ignore-chaperones? ignore-chaperones?
               #:known-distinct? known-distinct?
               #:known-discrete? known-discrete?
@@ -6374,8 +6411,6 @@
   'flvector-dynamic-type (current-inspector) (auto-write)
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'flvector-variant
-      #:inspector (current-inspector)
       #:eq-matters? #t
       #:inhabitant? flvector?)
     (trivial)))
@@ -6405,8 +6440,6 @@
   'fxvector-dynamic-type (current-inspector) (auto-write)
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
-      #:variant-name 'fxvector-variant
-      #:inspector (current-inspector)
       #:eq-matters? #t
       #:inhabitant? fxvector?)
     (trivial)))
