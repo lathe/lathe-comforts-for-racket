@@ -54,6 +54,7 @@
   in-slice sequence/c sequence-length sequence->list sequence-map sequence-ref)
 (only-in racket/stream stream* stream-empty? stream-first stream-rest)
 (only-in racket/struct make-constructor-style-printer)
+(only-in racket/syntax format-symbol)
 (only-in racket/vector vector-copy vector-count)
 (only-in syntax/parse/define
   define-syntax-parser define-syntax-parse-rule)
