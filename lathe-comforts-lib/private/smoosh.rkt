@@ -98,8 +98,8 @@
   uninformative-custom-gloss-key-reports
   custom-gloss-key-report-map
   custom-gloss-key-reports-map
-  custom-gloss-key-report-zip-map
-  custom-gloss-key-reports-zip-map
+  custom-gloss-key-report-zip*-map
+  custom-gloss-key-reports-zip*-map
   constant-custom-gloss-key-report
   constant-custom-gloss-key-reports
   path-related-wrapper?
@@ -117,15 +117,15 @@
   make-expressly-custom-gloss-key-dynamic-type-impl
   dynamic-type-get-custom-gloss-key-reports
   get-dynamic-type-with-default-bindings
-  knowable-zip
-  maybe-min-zip
-  promise-zip-map
-  knowable-promise-zip-map
-  boolean-and-knowable-promise-zip
-  boolean-and-knowable-thunk-zip
-  boolean-or-knowable-thunk-zip
-  maybe-min-knowable-promise-zip-map
-  sequence-zip-map
+  knowable-zip*
+  maybe-min-zip*
+  promise-zip*-map
+  knowable-promise-zip*-map
+  boolean-and-knowable-promise-zip*
+  boolean-and-knowable-thunk-zip*
+  boolean-or-knowable-thunk-zip*
+  maybe-min-knowable-promise-zip*-map
+  sequence-zip*-map
   knowable-promise-or
   gloss?
   list-map-foldl-knowable
@@ -195,16 +195,16 @@
   dynamic-type-get-smoosh-equal-hash-code-support-reports
   smoosh-report-map
   smoosh-reports-map
-  smoosh-report-zip-map
-  smoosh-reports-zip-map
+  smoosh-report-zip*-map
+  smoosh-reports-zip*-map
   smoosh-and-comparison-of-two-report-map
   smoosh-and-comparison-of-two-reports-map
-  smoosh-and-comparison-of-two-report-zip-map
-  smoosh-and-comparison-of-two-reports-zip-map
+  smoosh-and-comparison-of-two-report-zip*-map
+  smoosh-and-comparison-of-two-reports-zip*-map
   smoosh-equal-hash-code-support-report-map
   smoosh-equal-hash-code-support-reports-map
-  smoosh-equal-hash-code-support-report-zip-map
-  smoosh-equal-hash-code-support-reports-zip-map
+  smoosh-equal-hash-code-support-report-zip*-map
+  smoosh-equal-hash-code-support-reports-zip*-map
   false-smoosh-and-comparison-of-two-reports
   constant-smoosh-report
   constant-smoosh-reports
@@ -932,18 +932,19 @@
     reports))
 
 (define-imitation-simple-struct
-  (zip-mapped-custom-gloss-key-report?
-    zip-mapped-custom-gloss-key-report-on-==-tagged-glossesque-sys-knowable
-    zip-mapped-custom-gloss-key-report-on-path-related-tagged-glossesque-sys-knowable
-    zip-mapped-custom-gloss-key-report-original-list)
-  zip-mapped-custom-gloss-key-report
-  'zip-mapped-custom-gloss-key-report (current-inspector) (auto-write)
+  (zip*-mapped-custom-gloss-key-report?
+    zip*-mapped-custom-gloss-key-report-on-==-tagged-glossesque-sys-knowable
+    zip*-mapped-custom-gloss-key-report-on-path-related-tagged-glossesque-sys-knowable
+    zip*-mapped-custom-gloss-key-report-original-list)
+  zip*-mapped-custom-gloss-key-report
+  'zip*-mapped-custom-gloss-key-report (current-inspector)
+  (auto-write)
   (#:prop prop:custom-gloss-key-report
     (make-custom-gloss-key-report-impl
       
       #:get-==-tagged-glossesque-sys-knowable
       (dissectfn
-        (zip-mapped-custom-gloss-key-report
+        (zip*-mapped-custom-gloss-key-report
           on-==-tagged-glossesque-sys-knowable
           on-path-related-tagged-glossesque-sys-knowable
           original-list)
@@ -954,7 +955,7 @@
       
       #:get-path-related-tagged-glossesque-sys-knowable
       (dissectfn
-        (zip-mapped-custom-gloss-key-report
+        (zip*-mapped-custom-gloss-key-report
           on-==-tagged-glossesque-sys-knowable
           on-path-related-tagged-glossesque-sys-knowable
           original-list)
@@ -966,12 +967,12 @@
       )))
 
 (define/own-contract
-  (custom-gloss-key-report-zip-map report-list
+  (custom-gloss-key-report-zip*-map report-list
     
     #:on-tagged-glossesque-sys-knowable
     [ on-tagged-glossesque-sys-knowable
       (fn tgs-k-list
-        (raise-arguments-error 'custom-gloss-key-report-zip-map
+        (raise-arguments-error 'custom-gloss-key-report-zip*-map
           "tried to retrieve a glossesque system from a custom gloss key report when its mapping behavior was undefined"
           "tagged-glossesque-sys-knowable-list" tgs-k-list))]
     
@@ -1001,18 +1002,18 @@
       
       )
     custom-gloss-key-report?)
-  (zip-mapped-custom-gloss-key-report
+  (zip*-mapped-custom-gloss-key-report
     on-==-tagged-glossesque-sys-knowable
     on-path-related-tagged-glossesque-sys-knowable
     report-list))
 
 (define/own-contract
-  (custom-gloss-key-reports-zip-map reports-list
+  (custom-gloss-key-reports-zip*-map reports-list
     
     #:on-tagged-glossesque-sys-knowable
     [ on-tagged-glossesque-sys-knowable
       (fn tgs-k-list
-        (raise-arguments-error 'custom-gloss-key-reports-zip-map
+        (raise-arguments-error 'custom-gloss-key-reports-zip*-map
           "tried to retrieve a glossesque system from a custom gloss key report when its mapping behavior was undefined"
           "tagged-glossesque-sys-knowable-list" tgs-k-list))]
     
@@ -1042,8 +1043,8 @@
       
       )
     (sequence/c custom-gloss-key-report?))
-  (sequence-zip-map reports-list /fn report-list
-    (custom-gloss-key-report-zip-map report-list
+  (sequence-zip*-map reports-list /fn report-list
+    (custom-gloss-key-report-zip*-map report-list
       
       #:on-==-tagged-glossesque-sys-knowable
       on-==-tagged-glossesque-sys-knowable
@@ -1059,7 +1060,7 @@
     (knowable/c tagged-glossesque-sys?)
     
     custom-gloss-key-report?)
-  (custom-gloss-key-report-zip-map (list)
+  (custom-gloss-key-report-zip*-map (list)
     #:on-tagged-glossesque-sys-knowable
     (dissectfn (list)
       tagged-glossesque-sys-knowable)))
@@ -1218,32 +1219,32 @@
       (just /any-dynamic-type))
     v))
 
-(define (knowable-zip knowable-list)
+(define (knowable-zip* knowable-list)
   (-> (listof knowable?) (knowable/c list?))
   (expect knowable-list (cons knowable knowable-list) (known /list)
   /knowable-bind knowable /fn element
-  /knowable-map (knowable-zip knowable-list) /fn element-list
+  /knowable-map (knowable-zip* knowable-list) /fn element-list
     (cons element element-list)))
 
-(define (maybe-min-zip maybe-list)
+(define (maybe-min-zip* maybe-list)
   (-> (listof maybe?) (maybe/c list?))
   (expect maybe-list (cons maybe maybe-list) (list)
   /maybe-bind maybe /fn element
-  /maybe-map (maybe-min-zip maybe-list) /fn element-list
+  /maybe-map (maybe-min-zip* maybe-list) /fn element-list
     (cons element element-list)))
 
-(define/own-contract (promise-zip-map p-list on-value)
+(define/own-contract (promise-zip*-map p-list on-value)
   (-> (listof promise?) (-> any/c any/c) promise?)
   (delay /on-value /list-map p-list /fn p /force p))
 
-(define/own-contract (knowable-promise-zip-map kp-list on-value)
+(define/own-contract (knowable-promise-zip*-map kp-list on-value)
   (-> (listof (promise/c knowable?)) (-> any/c any/c)
     (promise/c knowable?))
   (delay
     (knowable-if (list-all kp-list /fn kp /known? /force kp) /fn
       (on-value /list-map kp-list /fn kp /known-value /force kp))))
 
-(define/own-contract (boolean-and-knowable-promise-zip kp-list)
+(define/own-contract (boolean-and-knowable-promise-zip* kp-list)
   (-> (listof (promise/c (knowable/c boolean?)))
     (promise/c (knowable/c boolean?)))
   (delay
@@ -1253,18 +1254,18 @@
       (known #f)
     /knowable-if (list-all kp-list /fn kp /known? /force kp) /fn #t)))
 
-(define/own-contract (boolean-and-knowable-thunk-zip kble-thunk-list)
+(define/own-contract (boolean-and-knowable-thunk-zip* kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (boolean-and-knowable-promise-zip
+  (boolean-and-knowable-promise-zip*
     (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)))
 
-(define/own-contract (boolean-or-knowable-thunk-zip kble-thunk-list)
+(define/own-contract (boolean-or-knowable-thunk-zip* kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (not /boolean-and-knowable-thunk-zip
+  (not /boolean-and-knowable-thunk-zip*
     (list-map kble-thunk-list /fn kble-thunk /fn /not /kble-thunk)))
 
 (define/own-contract
-  (maybe-min-knowable-promise-zip-map mkp-list on-value)
+  (maybe-min-knowable-promise-zip*-map mkp-list on-value)
   (-> (listof (promise/c (knowable/c maybe?))) (-> list? any/c)
     (promise/c (knowable/c maybe?)))
   (delay
@@ -1272,10 +1273,10 @@
       (list-any mkp-list /fn mkp
         (mat (force mkp) (known /nothing) #t #f))
       (known /nothing)
-    /force /knowable-promise-zip-map mkp-list /fn m-list
+    /force /knowable-promise-zip*-map mkp-list /fn m-list
       (just /on-value /list-map m-list /fn m /just-value m))))
 
-(define/own-contract (sequence-zip-map sequences on-element)
+(define/own-contract (sequence-zip*-map sequences on-element)
   (->
     (non-empty-listof (sequence/c any/c))
     (-> (non-empty-listof any/c) any/c)
@@ -1299,7 +1300,7 @@
     (knowable/c boolean?))
   (if (not /equal-always? (gloss-count a) (gloss-count b)) (known #f)
   /knowable-bind
-    (knowable-zip
+    (knowable-zip*
       (list-map
         (sequence->list
           (in-values-sequence /gloss-iteration-sequence a))
@@ -1308,8 +1309,8 @@
           (maybe-map b-v-m /fn b-v
             (delay /value-equal-always?-knowable a-v b-v)))))
   /fn v=?-kpm-list
-  /expect (maybe-min-zip v=?-kpm-list) (just v=?-kp-list) (known #f)
-  /force /boolean-and-knowable-promise-zip v=?-kp-list))
+  /expect (maybe-min-zip* v=?-kpm-list) (just v=?-kp-list) (known #f)
+  /force /boolean-and-knowable-promise-zip* v=?-kp-list))
 
 (define-imitation-simple-struct (gloss-rep-empty?) gloss-rep-empty
   'gloss-rep-empty (current-inspector) (auto-write))
@@ -1404,7 +1405,7 @@
     (-> any/c any/c any/c (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c (and/c hash? immutable?))))
   (knowable-map
-    (knowable-zip
+    (knowable-zip*
       (list-map-foldl-knowable state (hash->list h)
         (fn state-and-entry
           (dissect state-and-entry (list state /cons k v)
@@ -2374,20 +2375,20 @@
     reports))
 
 (define-imitation-simple-struct
-  (zip-mapped-smoosh-report?
-    zip-mapped-smoosh-report-on-join-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-report-on-meet-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-report-on-==-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-report-on-path-related-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-report-original-list)
-  zip-mapped-smoosh-report
-  'zip-mapped-smoosh-report (current-inspector)
+  (zip*-mapped-smoosh-report?
+    zip*-mapped-smoosh-report-on-join-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-report-on-meet-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-report-on-==-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-report-on-path-related-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-report-original-list)
+  zip*-mapped-smoosh-report
+  'zip*-mapped-smoosh-report (current-inspector)
   (auto-write)
   (#:prop prop:smoosh-report /make-smoosh-report-impl
     
     #:join-knowable-promise-maybe-knowable-promise
     (dissectfn
-      (zip-mapped-smoosh-report
+      (zip*-mapped-smoosh-report
         on-join-knowable-promise-maybe-knowable-promise
         on-meet-knowable-promise-maybe-knowable-promise
         on-==-knowable-promise-maybe-knowable-promise
@@ -2400,7 +2401,7 @@
     
     #:meet-knowable-promise-maybe-knowable-promise
     (dissectfn
-      (zip-mapped-smoosh-report
+      (zip*-mapped-smoosh-report
         on-join-knowable-promise-maybe-knowable-promise
         on-meet-knowable-promise-maybe-knowable-promise
         on-==-knowable-promise-maybe-knowable-promise
@@ -2413,7 +2414,7 @@
     
     #:==-knowable-promise-maybe-knowable-promise
     (dissectfn
-      (zip-mapped-smoosh-report
+      (zip*-mapped-smoosh-report
         on-join-knowable-promise-maybe-knowable-promise
         on-meet-knowable-promise-maybe-knowable-promise
         on-==-knowable-promise-maybe-knowable-promise
@@ -2426,7 +2427,7 @@
     
     #:path-related-knowable-promise-maybe-knowable-promise
     (dissectfn
-      (zip-mapped-smoosh-report
+      (zip*-mapped-smoosh-report
         on-join-knowable-promise-maybe-knowable-promise
         on-meet-knowable-promise-maybe-knowable-promise
         on-==-knowable-promise-maybe-knowable-promise
@@ -2440,12 +2441,12 @@
     ))
 
 (define/own-contract
-  (smoosh-report-zip-map report-list
+  (smoosh-report-zip*-map report-list
     
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
       (fn kpmkp-list
-        (raise-arguments-error 'smoosh-report-zip-map
+        (raise-arguments-error 'smoosh-report-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
           
           "smoosh-result-knowable-promise-maybe-knowable-promise-list"
@@ -2505,7 +2506,7 @@
       
       )
     smoosh-report?)
-  (zip-mapped-smoosh-report
+  (zip*-mapped-smoosh-report
     on-join-knowable-promise-maybe-knowable-promise
     on-meet-knowable-promise-maybe-knowable-promise
     on-==-knowable-promise-maybe-knowable-promise
@@ -2513,12 +2514,12 @@
     report-list))
 
 (define/own-contract
-  (smoosh-reports-zip-map reports-list
+  (smoosh-reports-zip*-map reports-list
     
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
       (fn kpmkp-list
-        (raise-arguments-error 'smoosh-reports-zip-map
+        (raise-arguments-error 'smoosh-reports-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
           
           "smoosh-result-knowable-promise-maybe-knowable-promise-list"
@@ -2578,8 +2579,8 @@
       
       )
     (sequence/c smoosh-report?))
-  (sequence-zip-map reports-list /fn report-list
-    (smoosh-report-zip-map report-list
+  (sequence-zip*-map reports-list /fn report-list
+    (smoosh-report-zip*-map report-list
       
       #:on-join-knowable-promise-maybe-knowable-promise
       on-join-knowable-promise-maybe-knowable-promise
@@ -2843,23 +2844,23 @@
     reports))
 
 (define-imitation-simple-struct
-  (zip-mapped-smoosh-and-comparison-of-two-report?
-    zip-mapped-smoosh-and-comparison-of-two-report-on-<=?-knowable-promise
-    zip-mapped-smoosh-and-comparison-of-two-report-on->=?-knowable-promise
-    zip-mapped-smoosh-and-comparison-of-two-report-on-join-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-and-comparison-of-two-report-on-meet-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-and-comparison-of-two-report-on-==-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-and-comparison-of-two-report-on-path-related-knowable-promise-maybe-knowable-promise
-    zip-mapped-smoosh-and-comparison-of-two-report-original-list)
-  zip-mapped-smoosh-and-comparison-of-two-report
-  'zip-mapped-smoosh-and-comparison-of-two-report (current-inspector)
+  (zip*-mapped-smoosh-and-comparison-of-two-report?
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-<=?-knowable-promise
+    zip*-mapped-smoosh-and-comparison-of-two-report-on->=?-knowable-promise
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-join-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-meet-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-==-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-path-related-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-and-comparison-of-two-report-original-list)
+  zip*-mapped-smoosh-and-comparison-of-two-report
+  'zip*-mapped-smoosh-and-comparison-of-two-report (current-inspector)
   (auto-write)
   (#:prop prop:smoosh-and-comparison-of-two-report
     (make-smoosh-and-comparison-of-two-report-impl
       
       #:<=?-knowable-promise
       (dissectfn
-        (zip-mapped-smoosh-and-comparison-of-two-report
+        (zip*-mapped-smoosh-and-comparison-of-two-report
           on-<=?-knowable-promise
           on->=?-knowable-promise
           on-join-knowable-promise-maybe-knowable-promise
@@ -2874,7 +2875,7 @@
       
       #:>=?-knowable-promise
       (dissectfn
-        (zip-mapped-smoosh-and-comparison-of-two-report
+        (zip*-mapped-smoosh-and-comparison-of-two-report
           on-<=?-knowable-promise
           on->=?-knowable-promise
           on-join-knowable-promise-maybe-knowable-promise
@@ -2889,7 +2890,7 @@
       
       #:get-smoosh-report
       (dissectfn
-        (zip-mapped-smoosh-and-comparison-of-two-report
+        (zip*-mapped-smoosh-and-comparison-of-two-report
           on-<=?-knowable-promise
           on->=?-knowable-promise
           on-join-knowable-promise-maybe-knowable-promise
@@ -2897,7 +2898,7 @@
           on-==-knowable-promise-maybe-knowable-promise
           on-path-related-knowable-promise-maybe-knowable-promise
           original-list)
-        (smoosh-report-zip-map
+        (smoosh-report-zip*-map
           (list-map original-list /fn original
             (smoosh-and-comparison-of-two-report-get-smoosh-report
               original))
@@ -2919,12 +2920,12 @@
       )))
 
 (define/own-contract
-  (smoosh-and-comparison-of-two-report-zip-map report-list
+  (smoosh-and-comparison-of-two-report-zip*-map report-list
     
     #:on-check-result-knowable-promise
     [ on-check-result-knowable-promise
       (fn kp-list
-        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a check result when its mapping behavior was undefined"
           "check-result-knowable-promise-list" kp-list))]
     
@@ -2937,7 +2938,7 @@
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
       (fn kpmkp-list
-        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
           
           "smoosh-result-knowable-promise-maybe-knowable-promise-list"
@@ -3009,7 +3010,7 @@
       
       )
     smoosh-and-comparison-of-two-report?)
-  (zip-mapped-smoosh-and-comparison-of-two-report
+  (zip*-mapped-smoosh-and-comparison-of-two-report
     on-<=?-knowable-promise
     on->=?-knowable-promise
     on-join-knowable-promise-maybe-knowable-promise
@@ -3019,12 +3020,12 @@
     report-list))
 
 (define/own-contract
-  (smoosh-and-comparison-of-two-reports-zip-map reports-list
+  (smoosh-and-comparison-of-two-reports-zip*-map reports-list
     
     #:on-check-result-knowable-promise
     [ on-check-result-knowable-promise
       (fn kp-list
-        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a check result when its mapping behavior was undefined"
           "check-result-knowable-promise-list" kp-list))]
     
@@ -3039,7 +3040,7 @@
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     [ on-smoosh-result-knowable-promise-maybe-knowable-promise
       (fn kpmkp-list
-        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip-map
+        (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
           
           "smoosh-result-knowable-promise-maybe-knowable-promise-list"
@@ -3111,8 +3112,8 @@
       
       )
     (sequence/c smoosh-and-comparison-of-two-report?))
-  (sequence-zip-map reports-list /fn report-list
-    (smoosh-and-comparison-of-two-report-zip-map report-list
+  (sequence-zip*-map reports-list /fn report-list
+    (smoosh-and-comparison-of-two-report-zip*-map report-list
       #:on-<=?-knowable-promise on-<=?-knowable-promise
       #:on->=?-knowable-promise on->=?-knowable-promise
       
@@ -3238,12 +3239,12 @@
     reports))
 
 (define-imitation-simple-struct
-  (zip-mapped-smoosh-equal-hash-code-support-report?
-    zip-mapped-smoosh-equal-hash-code-support-report-on-==-hash-code-promise
-    zip-mapped-smoosh-equal-hash-code-support-report-on-path-related-hash-code-promise
-    zip-mapped-smoosh-equal-hash-code-support-report-original-list)
-  zip-mapped-smoosh-equal-hash-code-support-report
-  'zip-mapped-smoosh-equal-hash-code-support-report (current-inspector)
+  (zip*-mapped-smoosh-equal-hash-code-support-report?
+    zip*-mapped-smoosh-equal-hash-code-support-report-on-==-hash-code-promise
+    zip*-mapped-smoosh-equal-hash-code-support-report-on-path-related-hash-code-promise
+    zip*-mapped-smoosh-equal-hash-code-support-report-original-list)
+  zip*-mapped-smoosh-equal-hash-code-support-report
+  'zip*-mapped-smoosh-equal-hash-code-support-report (current-inspector)
   (auto-write)
   (#:prop prop:smoosh-equal-hash-code-support-report
     (make-smoosh-equal-hash-code-support-report-impl
@@ -3251,7 +3252,7 @@
       #:==-hash-code-promise
       (fn self a now?
         (dissect self
-          (zip-mapped-smoosh-equal-hash-code-support-report
+          (zip*-mapped-smoosh-equal-hash-code-support-report
             on-==-hash-code-promise
             on-path-related-hash-code-promise
             original-list)
@@ -3263,7 +3264,7 @@
       #:path-related-hash-code-promise
       (fn self a now?
         (dissect self
-          (zip-mapped-smoosh-equal-hash-code-support-report
+          (zip*-mapped-smoosh-equal-hash-code-support-report
             on-==-hash-code-promise
             on-path-related-hash-code-promise
             original-list)
@@ -3275,12 +3276,12 @@
       )))
 
 (define/own-contract
-  (smoosh-equal-hash-code-support-report-zip-map report-list
+  (smoosh-equal-hash-code-support-report-zip*-map report-list
     
     #:on-hash-code-promise
     [ on-hash-code-promise
       (fn p-list
-        (raise-arguments-error 'smoosh-equal-hash-code-support-report-zip-map
+        (raise-arguments-error 'smoosh-equal-hash-code-support-report-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
           "hash-code-promise-list" p-list))]
     
@@ -3305,18 +3306,18 @@
       
       )
     smoosh-equal-hash-code-support-report?)
-  (zip-mapped-smoosh-equal-hash-code-support-report
+  (zip*-mapped-smoosh-equal-hash-code-support-report
     on-==-hash-code-promise
     on-path-related-hash-code-promise
     report-list))
 
 (define/own-contract
-  (smoosh-equal-hash-code-support-reports-zip-map reports-list
+  (smoosh-equal-hash-code-support-reports-zip*-map reports-list
     
     #:on-hash-code-promise
     [ on-hash-code-promise
       (fn p-list
-        (raise-arguments-error 'smoosh-equal-hash-code-support-reports-zip-map
+        (raise-arguments-error 'smoosh-equal-hash-code-support-reports-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
           "hash-code-promise-list" p-list))]
     
@@ -3341,8 +3342,8 @@
       
       )
     (sequence/c smoosh-equal-hash-code-support-report?))
-  (sequence-zip-map reports-list /fn report-list
-    (smoosh-equal-hash-code-support-report-zip-map report-list
+  (sequence-zip*-map reports-list /fn report-list
+    (smoosh-equal-hash-code-support-report-zip*-map report-list
       #:on-==-hash-code-promise on-==-hash-code-promise
       
       #:on-path-related-hash-code-promise
@@ -3350,7 +3351,7 @@
 
 (define/own-contract (false-smoosh-and-comparison-of-two-reports)
   (-> (sequence/c smoosh-and-comparison-of-two-report?))
-  (smoosh-and-comparison-of-two-reports-zip-map (list)
+  (smoosh-and-comparison-of-two-reports-zip*-map (list)
     #:on-check-result-knowable-promise
     (dissectfn (list)
       (delay/strict /known #f))
@@ -3569,7 +3570,7 @@
   (smoosh-and-comparison-of-two-reports-join reports-list)
   (-> (listof (sequence/c smoosh-report?))
     (sequence/c smoosh-report?))
-  (sequence-zip-map reports-list /fn report-list
+  (sequence-zip*-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
 (define/own-contract
@@ -4722,13 +4723,13 @@
       /expect (inhabitant? a) #t (uninformative-smoosh-reports)
       /w- ->list (->->list a)
       /w- a-list (->list a)
-      /smoosh-reports-zip-map
+      /smoosh-reports-zip*-map
         (list-map a-list /fn a-elem
           (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
         #:on-result-knowable-promise-maybe-knowable-promise
         (fn kpmkp-list
-          (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-            (knowable-promise-zip-map kp-list /fn result-list
+          (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
+            (knowable-promise-zip*-map kp-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /example-and-list-> a result-list))))))
     
@@ -4761,21 +4762,17 @@
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /w- b-list (->list b)
-      /smoosh-and-comparison-of-two-reports-zip-map
-        ; TODO SMOOSH: It's embarrassing that we're calling the rest
-        ; of these things `...-zip-map` when they take lists and
-        ; list-receiving functions, while `list-zip-map` here takes
-        ; two values and a two-value-receiving function.
+      /smoosh-and-comparison-of-two-reports-zip*-map
         (list-zip-map a-list b-list /fn a-elem b-elem
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             any-dt a-elem b-elem))
         #:on-check-result-knowable-promise
         (fn kp-list
-          (boolean-and-knowable-promise-zip kp-list))
+          (boolean-and-knowable-promise-zip* kp-list))
         #:on-smoosh-result-knowable-promise-maybe-knowable-promise
         (fn kpmkp-list
-          (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-            (knowable-promise-zip-map kp-list /fn result-list
+          (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
+            (knowable-promise-zip*-map kp-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /if (list-elements-eq? result-list b-list) b
               /example-and-list-> a result-list))))))
@@ -5039,13 +5036,13 @@
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /dissect
-        (smoosh-reports-zip-map
+        (smoosh-reports-zip*-map
           (list-map a-list /fn a-elem
             (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
           #:on-result-knowable-promise-maybe-knowable-promise
           (fn kpmkp-list
-            (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-              (knowable-promise-zip-map kp-list /fn result-list
+            (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
+              (knowable-promise-zip*-map kp-list /fn result-list
                 result-list))))
         (stream* report-0 report-1 report-2+)
       /w- a-shallowly-unchaperoned?-promise
@@ -5127,21 +5124,17 @@
       /w- a-list (->list a)
       /w- b-list (->list b)
       /dissect
-        (smoosh-and-comparison-of-two-reports-zip-map
-          ; TODO SMOOSH: It's embarrassing that we're calling the rest
-          ; of these things `...-zip-map` when they take lists and
-          ; list-receiving functions, while `list-zip-map` here takes
-          ; two values and a two-value-receiving function.
+        (smoosh-and-comparison-of-two-reports-zip*-map
           (list-zip-map a-list b-list /fn a-elem b-elem
             (dynamic-type-get-smoosh-and-comparison-of-two-reports
               any-dt a-elem b-elem))
           #:on-check-result-knowable-promise
           (fn kp-list
-            (boolean-and-knowable-promise-zip kp-list))
+            (boolean-and-knowable-promise-zip* kp-list))
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
           (fn kpmkp-list
-            (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-              (knowable-promise-zip-map kp-list /fn result-list
+            (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
+              (knowable-promise-zip*-map kp-list /fn result-list
                 result-list))))
         (app sequence->stream /stream* report-0 report-1 report-2+)
       /w- a-shallowly-unchaperoned?-promise
@@ -5181,13 +5174,13 @@
           (fn kp
             (promise-map kp /fn k
               (knowable-bind k /fn result
-                (boolean-and-knowable-thunk-zip /list
+                (boolean-and-knowable-thunk-zip* /list
                   (fn /known result)
-                  (fn /boolean-or-knowable-thunk-zip /list
+                  (fn /boolean-or-knowable-thunk-zip* /list
                     (fn /known /not should-a-be-small?)
                     (fn /falsable->uninformative-knowable
                       (inhabitant-shallowly-chaperone-of? b a)))
-                  (fn /boolean-or-knowable-thunk-zip /list
+                  (fn /boolean-or-knowable-thunk-zip* /list
                     (fn /known /not should-b-be-small?)
                     (fn /falsable->uninformative-knowable
                       (inhabitant-shallowly-chaperone-of? a b))))))))
@@ -5304,13 +5297,13 @@
         /w- any-dt (self-get-any-dynamic-type self)
         /w- ->list (->->list a)
         /w- a-list (->list a)
-        /smoosh-equal-hash-code-support-reports-zip-map
+        /smoosh-equal-hash-code-support-reports-zip*-map
           (list-map a-list /fn a-elem
             (dynamic-type-get-smoosh-equal-hash-code-support-reports
               any-dt a-elem))
           #:on-hash-code-promise
           (fn p-list
-            (promise-zip-map p-list /fn hash-code-list
+            (promise-zip*-map p-list /fn hash-code-list
               (hash-code-combine
                 (equal-always-hash-code inhabitant?)
                 (equal-always-hash-code/recur a /fn a-elem
@@ -5414,7 +5407,7 @@
           equal-always-tgs-k
           chaperone=-tgs-k)
       /stream*
-        (custom-gloss-key-report-zip-map (list)
+        (custom-gloss-key-report-zip*-map (list)
           #:on-path-related-glossesque-sys-knowable
           (dissectfn (list)
             (if (and known-distinct? known-discrete?)
@@ -5423,7 +5416,7 @@
           #:on-==-tagged-glossesque-sys-knowable
           (dissectfn (list)
             equal-always-tgs-k))
-        (custom-gloss-key-report-zip-map (list)
+        (custom-gloss-key-report-zip*-map (list)
           #:on-path-related-glossesque-sys-knowable
           (dissectfn (list)
             equal-always-tgs-k)
@@ -5812,12 +5805,12 @@
         (fn should-a-be-small? should-b-be-small?
           (dissectfn (list)
             (delay
-              (boolean-and-knowable-thunk-zip /list
-                (fn /boolean-or-knowable-thunk-zip /list
+              (boolean-and-knowable-thunk-zip* /list
+                (fn /boolean-or-knowable-thunk-zip* /list
                   (fn /known /not should-a-be-small?)
                   (fn /falsable->uninformative-knowable
                     (inhabitant-chaperone-of? b a)))
-                (fn /boolean-or-knowable-thunk-zip /list
+                (fn /boolean-or-knowable-thunk-zip* /list
                   (fn /known /not should-b-be-small?)
                   (fn /falsable->uninformative-knowable
                     (inhabitant-chaperone-of? a b)))))))
@@ -5842,13 +5835,13 @@
         (fn v
           #t)
       /stream*
-        (smoosh-and-comparison-of-two-report-zip-map (list)
+        (smoosh-and-comparison-of-two-report-zip*-map (list)
           #:on-check-result-knowable-promise
           (on-check-result-knowable-promise #f #f)
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-report-zip-map (list)
+        (smoosh-and-comparison-of-two-report-zip*-map (list)
           #:on-<=?-knowable-promise
           (on-check-result-knowable-promise #t #f)
           #:on->=?-knowable-promise
@@ -5871,7 +5864,7 @@
           #:on-path-related-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
             path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-reports-zip-map (list)
+        (smoosh-and-comparison-of-two-reports-zip*-map (list)
           #:on-check-result-knowable-promise
           (on-check-result-knowable-promise #t #t)
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -6404,7 +6397,7 @@
             (knowable-map knowable /fn result
               (just /delay/strict /known /if result a b)))
         /stream*
-          (smoosh-and-comparison-of-two-reports-zip-map (list)
+          (smoosh-and-comparison-of-two-reports-zip*-map (list)
             #:on-<=?-knowable-promise
             (dissectfn (list)
               <=?-knowable-promise)
@@ -6445,7 +6438,7 @@
         (expect (non-nan-number? a) #t
           (uninformative-custom-gloss-key-reports)
         /stream*
-          (custom-gloss-key-report-zip-map (list)
+          (custom-gloss-key-report-zip*-map (list)
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (known /tagged-glossesque-sys
@@ -6561,7 +6554,7 @@
             (knowable-map knowable /fn <=?
               (just /delay/strict /known /if <=? a b)))
         /stream*
-          (smoosh-and-comparison-of-two-reports-zip-map (list)
+          (smoosh-and-comparison-of-two-reports-zip*-map (list)
             #:on-<=?-knowable-promise
             (dissectfn (list)
               <=?-knowable-promise)
@@ -6619,8 +6612,8 @@
       (promise/c
         (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (maybe-min-knowable-promise-zip-map kpmkp-list /fn kp-list
-    (knowable-promise-zip-map kp-list /dissectfn
+  (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
+    (knowable-promise-zip*-map kp-list /dissectfn
       (list result-car result-cdr)
       (cons result-car result-cdr))))
 
@@ -7283,7 +7276,7 @@
             #:on-result-knowable-promise-maybe-knowable-promise
             on-known-smoosh-result-knowable-promise-maybe-knowable-promise)
         /stream* (uninformative-smoosh-and-comparison-of-two-report)
-          (smoosh-and-comparison-of-two-report-zip-map (list)
+          (smoosh-and-comparison-of-two-report-zip*-map (list)
             
             #:on-<=?-knowable-promise
             (w- result (unknown? a)
@@ -7355,7 +7348,7 @@
         /if (example-unknown? a)
           (stream*
             (uninformative-custom-gloss-key-report)
-            (custom-gloss-key-report-zip-map (list)
+            (custom-gloss-key-report-zip*-map (list)
               
               #:on-path-related-tagged-glossesque-sys-knowable
               (dissectfn (list)
