@@ -7143,7 +7143,7 @@
     (trivial)))
 
 (define/own-contract
-  (on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise
+  (on-known-smoosh-result-knowable-promise-maybe-knowable-promise
     kpmkp)
   (->
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
@@ -7168,49 +7168,64 @@
 ;     Otherwise, the result of performing the same smoosh on their
 ;     values, then wrapping the result in a `known?` if it's
 ;     successful.
-;  <=, >=:
+;   <=, >=:
 ;     If the operands are not both `known?` values, then unknown.
 ;     
 ;     Otherwise, the result of performing the same check on their
 ;     values.
-; Level 1+:
-;   path-related, join, meet, ==:
-;     If there are zero operands, then unknown.
+; Level 1:
+;   path-related:
+;     If none of the operands is a `known?` value or an
+;     `example-unknown?` value, then unknown.
 ;     
-;     If the operands are not both `knowable?` values, then unknown.
+;     Otherwise, if the operands are not both `knowable?` values, then
+;     unknown.
+;     
+;     Otherwise, the first operand (which, if it's an `unknown?`
+;     value, is a known unknown).
+;   join, meet, ==:
+;     If none of the operands is a `known?` value or an
+;     `example-unknown?` value, then unknown. (This means this type
+;     won't smoosh zero operands, and it won't smoosh
+;     non-`example-unknown?` `unknown?` values with each other. The
+;     result of smooshing other `unknown?` values should be another
+;     `unknown?` value, but which one it is is unknown as far as this
+;     type is concerned (an unknown unknown).)
+;     
+;     Otherwise, if the operands are not both `knowable?` values, then
+;     unknown.
 ;     
 ;     Otherwise, if the operands are both `example-unknown?` values,
 ;     then the first operand (a known unknown).
 ;     
-;     Otherwise, if either operand is an `example-unknown?` value,
-;     then the other operand (a known unknown).
-;     
-;     Otherwise, if the operands are both `unknown?` values, then
-;     unknown. (This is an unknown unknown; any two `unknown?` values
-;     should smoosh into another `unknown?` value, but we don't know
-;     which unknown value these smoosh into.)
+;     Otherwise, if the operands are both `unknown?` values, then the
+;     non-`example-unknown?` operand (a known unknown).
 ;     
 ;     Otherwise, if the operands are both `known?` values, then the
 ;     result of performing the same smoosh on their values, then
 ;     wrapping the result in a `known?` if it's successful.
 ;     
 ;     Otherwise, for:
-;       path-related:
-;         The first operand.
 ;       join:
 ;         The `known?` operand.
 ;       meet:
 ;         The `unknown?` operand.
 ;       ==:
 ;         A known nothing.
-;  <=, >=:
-;     If the operands are not both `knowable?` values, then unknown.
+;   <=, >=:
+;     If none of the operands is a `known?` value or an
+;     `example-unknown?` value, then unknown.
 ;     
 ;     Otherwise, if the operands are both `known?` values, then the
 ;     result of performing the same check on their values.
 ;     
 ;     Otherwise, a boolean indicating whether the element we're
 ;     proposing to be lesser is `unknown?`.
+; Level 2+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 1 ==.
+;   <=, >=:
+;     Same as the description of level 1 == as a check.
 ;
 (define-imitation-simple-struct
   (knowable-dynamic-type? knowable-dynamic-type-get-any-dynamic-type)
@@ -7222,24 +7237,18 @@
       
       #:get-smoosh-of-zero-reports
       (fn self
-        (dissect self (knowable-dynamic-type any-dt)
-        /dissect
-          (smoosh-reports-map
-            (dynamic-type-get-smoosh-of-zero-reports any-dt)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
-          (app sequence->stream /stream* report-0 report-1+)
-        /stream* report-0 /uninformative-smoosh-reports))
+        (uninformative-smoosh-reports))
       
       #:get-smoosh-of-one-reports
       (fn self a
         (dissect self (knowable-dynamic-type any-dt)
-        /expect (knowable? a) #t (uninformative-smoosh-reports)
+        /expect (or (known? a) (example-unknown? a)) #t
+          (uninformative-smoosh-reports)
         /mat a (known a-value)
           (smoosh-reports-map
             (dynamic-type-get-smoosh-of-one-reports any-dt a-value)
             #:on-result-knowable-promise-maybe-knowable-promise
-            on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
+            on-known-smoosh-result-knowable-promise-maybe-knowable-promise)
         /stream* (uninformative-smoosh-report)
           (constant-smoosh-reports
             (delay/strict /known /just /delay/strict /known a))))
@@ -7264,9 +7273,9 @@
             (dynamic-type-get-smoosh-and-comparison-of-two-reports
               any-dt a-value b-value)
             #:on-result-knowable-promise-maybe-knowable-promise
-            on-knowable-smoosh-result-knowable-promise-maybe-knowable-promise)
+            on-known-smoosh-result-knowable-promise-maybe-knowable-promise)
         /stream* (uninformative-smoosh-and-comparison-of-two-report)
-          (smoosh-reports-zip-map (list)
+          (smoosh-and-comparison-of-two-report-zip-map (list)
             
             #:on-<=?-knowable-promise
             (w- result (unknown? a)
@@ -7287,7 +7296,8 @@
             #:on-meet-knowable-promise-maybe-knowable-promise
             (w- result (if (known? a) b a)
               (dissectfn (list)
-                (delay/strict /known /just /delay/strict /known b)))
+                (delay/strict /known /just /delay/strict /known
+                  result)))
             
             #:on-==-knowable-promise-maybe-knowable-promise
             (dissectfn (list)
@@ -7297,7 +7307,8 @@
             (dissectfn (list)
               (delay/strict /known /just /delay/strict /known a))
             
-            )))
+            )
+          (false-smoosh-and-comparison-of-two-reports)))
       
       ))
   
@@ -7307,7 +7318,7 @@
       #:get-smoosh-equal-hash-code-support-reports
       (fn self a
         (dissect self (knowable-dynamic-type any-dt)
-        /expect (knowable? a) #t
+        /expect (or (known? a) (example-unknown? a)) #t
           (uninformative-smoosh-equal-hash-code-support-reports)
         /mat a (known a-value)
           (smoosh-equal-hash-code-support-reports-map
@@ -7322,10 +7333,93 @@
         /stream* (uninformative-smoosh-equal-hash-code-support-report)
           (constant-smoosh-equal-hash-code-support-reports
             (delay
-              (mat a (example-unknown)
-                (hash-code-combine
-                  (equal-always-hash-code example-unknown?))
-              /uninformative-hash-code)))))
+              (hash-code-combine
+                (equal-always-hash-code example-unknown?))))))
+      
+      ))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (dissect self (path-related-wrapper-dynamic-type any-dt)
+        /if (example-unknown? a)
+          (stream*
+            (uninformative-custom-gloss-key-report)
+            (custom-gloss-key-report-zip-map (list)
+              
+              #:on-path-related-tagged-glossesque-sys-knowable
+              (dissectfn (list)
+                ; NOTE PATH-RELATED KNOWABLE: This case is shared with
+                ; the other PATH-RELATED KNOWABLE case. Whichever one
+                ; of these glossesques is used in a gloss first will
+                ; take care of the other case.
+                (known /tagged-glossesque-sys
+                  knowable?
+                  (terminal-glossesque-sys)))
+              
+              #:on-==-tagged-glossesque-sys-knowable
+              (dissectfn (list)
+                (known /tagged-glossesque-sys
+                  (makeshift-knowable-predicate /fn v
+                    (knowable-if (knowable? v) /fn /unknown? v))
+                  (terminal-glossesque-sys)))
+              
+              )
+            (constant-custom-gloss-key-reports
+              #:tagged-glossesque-sys-knowable
+              (known /tagged-glossesque-sys
+                (makeshift-knowable-predicate /fn v
+                  (knowable-if (knowable? v) /fn /unknown? v))
+                (terminal-glossesque-sys))))
+        /expect a (known a-value)
+          (uninformative-custom-gloss-key-reports)
+        /dissect
+          (custom-gloss-key-reports-map
+            (dynamic-type-get-custom-gloss-key-reports any-dt a-value)
+            #:on-tagged-glossesque-sys-knowable
+            (fn tgs-k
+              (knowable-map tgs-k
+                (dissectfn (tagged-glossesque-sys inhabitant? gs)
+                  (tagged-glossesque-sys
+                    (makeshift-knowable-predicate /fn v
+                      (expect v (path-related-wrapper v) (unknown)
+                      /call-knowable inhabitant? v))
+                    (glossesque-sys-map-key gs #:granted-key-knowable /fn k
+                      (expect k (path-related-wrapper k) (unknown)
+                      /known k)))))))
+          (app sequence->stream /stream* report-0 report-1 report-2+)
+        /w- tgs-k-uninhabited-by-unknown
+          (fn tgs-k
+            (knowable-map tgs-k
+              (dissectfn (tagged-glossesque-sys inhabitant? gs)
+                (tagged-glossesque-sys
+                  (makeshift-knowable-predicate /fn v
+                    (if (unknown? v) (known #f)
+                    /call-knowable inhabitant? v))
+                  gs))))
+        /stream*
+          report-0
+          (custom-gloss-key-report-map report-1
+            
+            #:on-path-related-tagged-glossesque-sys-knowable
+            (fn tgs-k
+              ; NOTE PATH-RELATED KNOWABLE: This case is shared with
+              ; the other PATH-RELATED KNOWABLE case. Whichever one of
+              ; these glossesques is used in a gloss first will take
+              ; care of the other case.
+              (known /tagged-glossesque-sys
+                knowable?
+                (terminal-glossesque-sys)))
+            
+            #:on-==-tagged-glossesque-sys-knowable
+            tgs-k-uninhabited-by-unknown
+            
+            )
+          (custom-gloss-key-reports-map report-1
+            #:on-tagged-glossesque-sys-knowable
+            tgs-k-uninhabited-by-unknown)))
       
       ))
   
@@ -7439,7 +7533,7 @@
 ;     Otherwise, the result of performing a level-0 path-related
 ;     smoosh on their values, then wrapping the result in a
 ;     `path-related-wrapper?` if it's successful.
-;  <=, >=:
+;   <=, >=:
 ;     If the operands are not both `path-related-wrapper?` values,
 ;     then unknown.
 ;     
@@ -8016,7 +8110,9 @@
         (list nothing? (fn any-dt /nothing-dynamic-type))
         (list just? (fn any-dt /just-dynamic-type any-dt)))
       (list trivial? (fn any-dt /trivial-dynamic-type))
-      (list knowable? (fn any-dt /knowable-dynamic-type any-dt))
+      (list
+        (fn v /or (known? v) (example-unknown? v))
+        (fn any-dt /knowable-dynamic-type any-dt))
       (list
         path-related-wrapper?
         (fn any-dt /path-related-wrapper-dynamic-type any-dt))
@@ -8248,9 +8344,6 @@
 ;       information ordering, any `known?` value is considered greater
 ;       than any `unknown?` value, and any `example-unknown?` value is
 ;       considered equal to any `unknown?` value.
-;       (TODO SMOOSH: Actually, this one is not quite done; we don't
-;       have a `prop:expressly-custom-gloss-key-dynamic-type` behavior
-;       in place yet.)
 ;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
 ;       whether elements are path-related according to the "any"
