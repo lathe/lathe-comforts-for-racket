@@ -63,7 +63,6 @@
   make-expressly-knowable-predicate-impl
   call-knowable
   make-procedure-impl-for-knowable-predicate
-  int+arity
   make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
   makeshift-knowable-predicate
   glossesque-sys?
@@ -393,28 +392,13 @@
   (-> (unconstrained-domain-> any/c))
   (compose knowable->falsable call-knowable))
 
-(define/own-contract (int+arity n a)
-  (-> exact-integer? procedure-arity? procedure-arity?)
-  (w- original-a a
-  /w-loop next a a
-    (if (natural? a)
-      (w- a (+ n a)
-      /begin0 a
-        (when (< a 0)
-          (raise-arguments-error 'int+arity
-            "expected an integer and an arity that would sum to a nonnegative arity"
-            "integer" n
-            "arity" original-a)))
-    /mat a (arity-at-least a) (arity-at-least /next a)
-    /list-map a /fn a /next a)))
-
 (define/own-contract
   (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure p)
   (-> procedure? (unconstrained-domain-> any/c))
   (define-values (required-kws allowed-kws) (procedure-keywords p))
-  (procedure-reduce-keyword-arity
+  (procedure-reduce-keyword-arity-mask
     (make-procedure-impl-for-knowable-predicate)
-    (int+arity 1 /procedure-arity p)
+    (arithmetic-shift (procedure-arity-mask p) 1)
     required-kws
     allowed-kws))
 
