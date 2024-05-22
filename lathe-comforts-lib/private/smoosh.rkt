@@ -1316,6 +1316,11 @@
 (define-imitation-simple-struct
   (gloss-rep-glossesque?
     
+    ; A `natural?` summarizing the combined size of the
+    ; `gloss-rep-glossesque-then` glossesque and the
+    ; `gloss-rep-glossesque-else` gloss.
+    gloss-rep-glossesque-count
+    
     ; A `tagged-glossesque-sys?`.
     gloss-rep-glossesque-tagged-glossesque-sys
     
@@ -1496,7 +1501,7 @@
   (dissect g (gloss rep)
   /mat rep (gloss-rep-empty) (list)
   /dissect rep
-    (gloss-rep-glossesque (tagged-glossesque-sys _ gs) then else)
+    (gloss-rep-glossesque _ (tagged-glossesque-sys _ gs) then else)
   /in-sequences
     (glossesque-sys-glossesque-iteration-sequence gs then)
     (gloss-iteration-sequence else)))
@@ -1551,7 +1556,7 @@
   (-> gloss? any/c (knowable/c maybe?))
   (dissect g (gloss rep)
   /mat rep (gloss-rep-empty) (known /nothing)
-  /dissect rep (gloss-rep-glossesque tgs then else)
+  /dissect rep (gloss-rep-glossesque _ tgs then else)
   /dissect tgs (tagged-glossesque-sys inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
   /if k-inhabits?
@@ -1560,20 +1565,22 @@
 
 (define/own-contract (gloss-count g)
   (-> gloss? natural?)
-  ; TODO SMOOSH: Memoize the count, as an optimization.
   (dissect g (gloss rep)
   /mat rep (gloss-rep-empty) 0
-  /dissect rep
-    (gloss-rep-glossesque (tagged-glossesque-sys _ gs) then else)
-  /+
-    (glossesque-sys-glossesque-count gs then)
-    (gloss-count else)))
+  /dissect rep (gloss-rep-glossesque count tgs then else)
+    count))
 
 (define/own-contract (gloss-empty? g)
   (-> gloss? boolean?)
   (dissect g (gloss rep)
   /mat rep (gloss-rep-empty) #t
     #f))
+
+(define (build-gloss tgs then else)
+  (dissect tgs (tagged-glossesque-sys inhabitant? gs)
+  /w- count
+    (+ (glossesque-sys-glossesque-count gs then) (gloss-count else))
+  /gloss /gloss-rep-glossesque count tgs then else))
 
 (define/own-contract
   (rider-and-gloss-update-maybe-knowable
@@ -1603,8 +1610,9 @@
     /fn then
     /known
       (list rider
-        (gloss /gloss-rep-glossesque tgs then (gloss-union-of-zero))))
-  /dissect rep (gloss-rep-glossesque tgs then else)
+        (gloss
+          (gloss-rep-glossesque 1 tgs then (gloss-union-of-zero)))))
+  /dissect rep (gloss-rep-glossesque _ tgs then else)
   /dissect tgs (tagged-glossesque-sys inhabitant? gs)
   /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
   /if k-inhabits?
@@ -1614,12 +1622,12 @@
     /dissectfn (list rider then)
       (if (glossesque-sys-glossesque-empty? gs then)
         (list rider else)
-        (list rider /gloss /gloss-rep-glossesque tgs then else)))
+        (list rider /build-gloss tgs then else)))
     (knowable-map
       (rider-and-gloss-update-maybe-knowable
         gs (list rider else) k on-rider-and-m-knowable)
     /dissectfn (list rider else)
-      (list rider /gloss /gloss-rep-glossesque tgs then else))))
+      (list rider /build-gloss tgs then else))))
 
 (define-imitation-simple-struct
   (gloss-glossesque-sys?)
