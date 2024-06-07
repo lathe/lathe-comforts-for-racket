@@ -41,9 +41,9 @@
 
 
 (provide /own-contract-out
-  possibly-unknown-impl?
-  prop:possibly-unknown
-  make-possibly-unknown-impl
+  expressly-possibly-unknown-impl?
+  prop:expressly-possibly-unknown
+  make-expressly-possibly-unknown-impl
   unknown?
   unknown
   known?
@@ -101,6 +101,7 @@
   custom-gloss-key-reports-zip*-map
   constant-custom-gloss-key-report
   constant-custom-gloss-key-reports
+  sequence-first
   path-related-wrapper?
   path-related-wrapper-value)
 (provide
@@ -272,23 +273,29 @@
 
 
 (define-imitation-simple-generics
-  possibly-unknown? possibly-unknown-impl?
-  (#:method possibly-unknown-is-indeed? (#:this))
-  prop:possibly-unknown make-possibly-unknown-impl
-  'possibly-unknown 'possibly-unknown-impl (list))
-(ascribe-own-contract possibly-unknown-impl? (-> any/c boolean?))
-(ascribe-own-contract prop:possibly-unknown
-  (struct-type-property/c possibly-unknown-impl?))
-(ascribe-own-contract make-possibly-unknown-impl
-  (-> (-> any/c boolean?) possibly-unknown-impl?))
+  expressly-possibly-unknown? expressly-possibly-unknown-impl?
+  (#:method expressly-possibly-unknown-is-indeed? (#:this))
+  prop:expressly-possibly-unknown make-expressly-possibly-unknown-impl
+  'expressly-possibly-unknown 'expressly-possibly-unknown-impl (list))
+(ascribe-own-contract expressly-possibly-unknown-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract prop:expressly-possibly-unknown
+  (struct-type-property/c expressly-possibly-unknown-impl?))
+(ascribe-own-contract make-expressly-possibly-unknown-impl
+  (-> (-> any/c boolean?) expressly-possibly-unknown-impl?))
 
 
 (define/own-contract (unknown? v)
   (-> any/c boolean?)
-  (and (possibly-unknown? v) (possibly-unknown-is-indeed? v)))
+  (and
+    (expressly-possibly-unknown? v)
+    (expressly-possibly-unknown-is-indeed? v)))
 
 (define-imitation-simple-struct (example-unknown?) example-unknown
-  'unknown (current-inspector) (auto-write))
+  'unknown (current-inspector) (auto-write)
+  (#:prop prop:expressly-possibly-unknown
+    (make-expressly-possibly-unknown-impl /fn self
+      #t)))
 
 (define/own-contract (unknown)
   (-> unknown?)
@@ -1060,6 +1067,10 @@
   (in-cycle /list /constant-custom-gloss-key-report
     #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable))
 
+(define/own-contract (sequence-first s)
+  (-> sequence? any)
+  (sequence-ref s 0))
+
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper
@@ -1077,7 +1088,7 @@
           ; untangle them.
           (smoosh-report-==-knowable-promise-maybe-knowable-promise
             (smoosh-and-comparison-of-two-report-get-smoosh-report
-              (stream-first
+              (sequence-first
                 (dynamic-type-get-smoosh-and-comparison-of-two-reports
                   (any-dynamic-type)
                   a
@@ -1093,7 +1104,7 @@
       ; untangle them.
       (force
         (smoosh-equal-hash-code-support-report-==-hash-code-promise
-          (stream-first
+          (sequence-first
             (dynamic-type-get-smoosh-equal-hash-code-support-reports
               (any-dynamic-type)
               v))
@@ -1119,7 +1130,7 @@
           ; untangle them.
           (smoosh-report-==-knowable-promise-maybe-knowable-promise
             (smoosh-and-comparison-of-two-report-get-smoosh-report
-              (stream-first
+              (sequence-first
                 (dynamic-type-get-smoosh-and-comparison-of-two-reports
                   (any-dynamic-type)
                   a
@@ -1135,7 +1146,7 @@
       ; untangle them.
       (force
         (smoosh-equal-hash-code-support-report-==-hash-code-promise
-          (stream-first
+          (sequence-first
             (dynamic-type-get-smoosh-equal-hash-code-support-reports
               (any-dynamic-type)
               v))
@@ -1343,7 +1354,7 @@
       (define (hash-code-smooshable v)
         (force
           (smoosh-equal-hash-code-support-report-==-hash-code-promise
-            (stream-first
+            (sequence-first
               (dynamic-type-get-smoosh-equal-hash-code-support-reports
                 (any-dynamic-type)
                 v))
@@ -1580,7 +1591,7 @@
     /expect m (just v) (known /list rider /gloss /gloss-rep-empty)
     /knowable-bind
       (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
-        (stream-first
+        (sequence-first
           (dynamic-type-get-custom-gloss-key-reports
             (any-dynamic-type)
             k)))
@@ -2018,7 +2029,7 @@
     ; not only whether they smoosh along that one's == but also, only
     ; if they do, how their information ordering representatives
     ; smoosh along their information ordering.
-    (sequence/c smoosh-report?))
+    (sequence/c smoosh-and-comparison-of-two-report?))
   (if (expressly-smooshable-dynamic-type? dt)
     (expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports
       dt a b)
@@ -3524,7 +3535,7 @@
 (define/own-contract
   (smoosh-and-comparison-of-two-report-join reports-list)
   (-> (listof smoosh-report?) smoosh-report?)
-  (smoosh-and-comparison-of-two-report-map
+  (smoosh-and-comparison-of-two-report-zip*-map reports-list
     #:on-check-result-knowable-promise
     (fn kp-list
       (knowable-promise-or kp-list))
@@ -6716,7 +6727,7 @@
     (and (bytes? v) (not /immutable? v))
     (and (box? v) (not /immutable? v))
     (and (vector? v) (not /immutable? v))
-    mutable-prefab-struct?
+    (mutable-prefab-struct? v)
     (and (hash? v) (not /immutable? v))))
 
 ; This is an appropriate dynamic type of mutable strings, mutable byte
@@ -8132,7 +8143,7 @@
         /dynamic-type-get-smoosh-of-one-reports a-dt a))
       
       #:get-smoosh-and-comparison-of-two-reports
-      (fn self b-dt a b
+      (fn self a b
         (w- a-dt (get-dynamic-type-with-default-bindings a)
         /smoosh-and-comparison-of-two-reports-join /list
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
