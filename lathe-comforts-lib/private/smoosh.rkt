@@ -19,6 +19,11 @@
 ;   language governing permissions and limitations under the License.
 
 
+(require /for-syntax lathe-comforts/private/shim)
+(begin-for-syntax /init-shim)
+
+(require /for-syntax /only-in syntax/parse syntax-parser)
+
 (require lathe-comforts/private/shim)
 (init-shim)
 
@@ -40,6 +45,8 @@
 (require /only-in lathe-comforts/trivial trivial trivial?)
 
 
+(provide
+  sequence*)
 (provide /own-contract-out
   expressly-possibly-unknown-impl?
   prop:expressly-possibly-unknown
@@ -270,6 +277,15 @@
   any-dynamic-type?)
 (provide
   any-dynamic-type)
+
+
+(define-match-expander sequence*
+  ; TODO: Use a syntax class for match patterns rather than `expr`
+  ; here, if one ever exists.
+  (syntax-parser / (_ elem:expr ... rest:expr)
+    #'(app sequence->stream /stream* elem ... rest))
+  (syntax-parser / (_ elem:expr ... rest:expr)
+    #'(stream* elem ... /sequence->stream rest)))
 
 
 (define-imitation-simple-generics
@@ -1511,15 +1527,12 @@
   (dissect
     (if (< (gloss-count a) (gloss-count b)) (list b a) (list a b))
     (list a b)
-  /w- as
-    (sequence->stream /in-values-sequence /gloss-iteration-sequence a)
+  /w- as (in-values-sequence /gloss-iteration-sequence a)
   /w-loop next state state as as b b result (gloss-union-of-zero)
-    (expect as (stream* a-entry as)
-      (w- bs
-        (sequence->stream
-          (in-values-sequence /gloss-iteration-sequence b))
+    (expect as (sequence* a-entry as)
+      (w- bs (in-values-sequence /gloss-iteration-sequence b)
       /w-loop next state state bs bs result result
-        (expect bs (stream* b-entry bs)
+        (expect bs (sequence* b-entry bs)
           (known /list state result)
         /dissect b-entry (list k b-v)
         /knowable-bind
@@ -3534,7 +3547,8 @@
 
 (define/own-contract
   (smoosh-and-comparison-of-two-report-join reports-list)
-  (-> (listof smoosh-report?) smoosh-report?)
+  (-> (listof smoosh-and-comparison-of-two-report?)
+    smoosh-and-comparison-of-two-report?)
   (smoosh-and-comparison-of-two-report-zip*-map reports-list
     #:on-check-result-knowable-promise
     (fn kp-list
@@ -3563,8 +3577,8 @@
 
 (define/own-contract
   (smoosh-and-comparison-of-two-reports-join reports-list)
-  (-> (listof (sequence/c smoosh-report?))
-    (sequence/c smoosh-report?))
+  (-> (listof (sequence/c smoosh-and-comparison-of-two-report?))
+    (sequence/c smoosh-and-comparison-of-two-report?))
   (sequence-zip*-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-join report-list)))
 
@@ -3586,8 +3600,8 @@
     (smoosh-reports-map reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       kpmkp->known-true)
-  /dissect reports (app sequence->stream /stream* report-0 report-1+)
-  /stream*
+  /dissect reports (sequence* report-0 report-1+)
+  /sequence*
     (smoosh-report-map report-0
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       kpmkp->known-true
@@ -3627,8 +3641,8 @@
       kpmkp->known-true
       
       )
-  /dissect reports (app sequence->stream /stream* report-0 report-1+)
-  /stream*
+  /dissect reports (sequence* report-0 report-1+)
+  /sequence*
     (smoosh-and-comparison-of-two-report-map report-0
       #:on-check-result-knowable-promise kp->known-true
       
@@ -4222,13 +4236,13 @@
                     state-and-b state-and-b
                     
                     trie-entries
-                    (sequence->stream /in-values-sequence
+                    (in-values-sequence
                       (gloss-iteration-sequence cons-tries))
                     
                     result result
                     
                     (expect trie-entries
-                      (stream* trie-entry trie-entries)
+                      (sequence* trie-entry trie-entries)
                       (known /list state-and-b result)
                     /dissect trie-entry (cons elem trie)
                     /knowable-bind
@@ -5039,7 +5053,7 @@
             (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
               (knowable-promise-zip*-map kp-list /fn result-list
                 result-list))))
-        (stream* report-0 report-1 report-2+)
+        (sequence* report-0 report-1 report-2+)
       /w- a-shallowly-unchaperoned?-promise
         (delay /inhabitant-shallowly-unchaperoned? a)
       /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5065,7 +5079,7 @@
                             a-shallowly-unchaperoned?-promise))
                         (known noncanonical-result)
                       /unknown))))))))
-      /stream*
+      /sequence*
         (smoosh-report-map report-0
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
           (on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5131,7 +5145,7 @@
             (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
               (knowable-promise-zip*-map kp-list /fn result-list
                 result-list))))
-        (app sequence->stream /stream* report-0 report-1 report-2+)
+        (sequence* report-0 report-1 report-2+)
       /w- a-shallowly-unchaperoned?-promise
         (delay /inhabitant-shallowly-unchaperoned? a)
       /w- b-shallowly-unchaperoned?-promise
@@ -5215,7 +5229,7 @@
       /w- path-related-acceptable-result?
         (fn v
           #t)
-      /stream*
+      /sequence*
         (smoosh-and-comparison-of-two-report-map report-0
           #:on-check-result-knowable-promise
           (on-check-result-knowable-promise #f #f)
@@ -5401,7 +5415,7 @@
         (if ignore-chaperones?
           equal-always-tgs-k
           chaperone=-tgs-k)
-      /stream*
+      /sequence*
         (custom-gloss-key-report-zip*-map (list)
           #:on-path-related-glossesque-sys-knowable
           (dissectfn (list)
@@ -5829,7 +5843,7 @@
       /w- path-related-acceptable-result?
         (fn v
           #t)
-      /stream*
+      /sequence*
         (smoosh-and-comparison-of-two-report-zip*-map (list)
           #:on-check-result-knowable-promise
           (on-check-result-knowable-promise #f #f)
@@ -5884,7 +5898,7 @@
     
     #:get-smoosh-equal-hash-code-support-reports
     (fn self a
-      (stream*
+      (sequence*
         (constant-smoosh-equal-hash-code-support-report
           (delay /hash-code-0 a))
         (constant-smoosh-equal-hash-code-support-reports
@@ -5941,18 +5955,18 @@
             inhabitant?
             (chaperone=-indistinct-atom-glossesque-sys)))
       /if (and known-distinct? known-discrete?)
-        (stream*
+        (sequence*
           (constant-custom-gloss-key-report
             #:tagged-glossesque-sys-knowable distinct-0-tgs-k)
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable distinct-1+-tgs-k))
       /if (not known-distinct?)
-        (stream*
+        (sequence*
           (constant-custom-gloss-key-report
             #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable indistinct-1+-tgs-k))
-      /stream*
+      /sequence*
         (custom-gloss-key-report-map
           (constant-custom-gloss-key-report
             #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
@@ -6371,7 +6385,7 @@
           (constant-smoosh-and-comparison-of-two-reports /delay /known
             (maybe-if (equal-always? a b) /fn /delay/strict /known a))
         /if (= a b)
-          (stream*
+          (sequence*
             (constant-smoosh-and-comparison-of-two-report
               (delay/strict /known /just /delay/strict /known a))
             report-1+)
@@ -6391,8 +6405,11 @@
           (promise-map <=?-knowable-promise /fn knowable
             (knowable-map knowable /fn result
               (just /delay/strict /known /if result a b)))
-        /stream*
-          (smoosh-and-comparison-of-two-reports-zip*-map (list)
+        /w- path-related-knowable-promise-maybe-knowable-promise
+          (promise-map real?-promise /fn real?
+            (knowable-if real? /fn /just /delay/strict /known a))
+        /sequence*
+          (smoosh-and-comparison-of-two-report-zip*-map (list)
             #:on-<=?-knowable-promise
             (dissectfn (list)
               <=?-knowable-promise)
@@ -6410,7 +6427,7 @@
               (delay/strict /known /nothing))
             #:on-path-related-knowable-promise-maybe-knowable-promise
             (dissectfn (list)
-              (delay/strict /known /just /delay/strict /known a)))
+              path-related-knowable-promise-maybe-knowable-promise))
           report-1+))
       
       ))
@@ -6432,7 +6449,7 @@
       (fn self a
         (expect (non-nan-number? a) #t
           (uninformative-custom-gloss-key-reports)
-        /stream*
+        /sequence*
           (custom-gloss-key-report-zip*-map (list)
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
@@ -6534,7 +6551,7 @@
           (constant-smoosh-and-comparison-of-two-reports /delay /known
             (maybe-if (equal-always? a b) /fn /delay/strict /known a))
         /if (extfl= a b)
-          (stream*
+          (sequence*
             (constant-smoosh-and-comparison-of-two-report
               (delay/strict /known /just /delay/strict /known a))
             report-1+)
@@ -6548,8 +6565,8 @@
           (promise-map <=?-knowable-promise /fn knowable
             (knowable-map knowable /fn <=?
               (just /delay/strict /known /if <=? a b)))
-        /stream*
-          (smoosh-and-comparison-of-two-reports-zip*-map (list)
+        /sequence*
+          (smoosh-and-comparison-of-two-report-zip*-map (list)
             #:on-<=?-knowable-promise
             (dissectfn (list)
               <=?-knowable-promise)
@@ -7245,7 +7262,7 @@
             (dynamic-type-get-smoosh-of-one-reports any-dt a-value)
             #:on-result-knowable-promise-maybe-knowable-promise
             on-known-smoosh-result-knowable-promise-maybe-knowable-promise)
-        /stream* (uninformative-smoosh-report)
+        /sequence* (uninformative-smoosh-report)
           (constant-smoosh-reports
             (delay/strict /known /just /delay/strict /known a))))
       
@@ -7270,7 +7287,7 @@
               any-dt a-value b-value)
             #:on-result-knowable-promise-maybe-knowable-promise
             on-known-smoosh-result-knowable-promise-maybe-knowable-promise)
-        /stream* (uninformative-smoosh-and-comparison-of-two-report)
+        /sequence* (uninformative-smoosh-and-comparison-of-two-report)
           (smoosh-and-comparison-of-two-report-zip*-map (list)
             
             #:on-<=?-knowable-promise
@@ -7326,7 +7343,8 @@
                 (hash-code-combine
                   (equal-always-hash-code known?)
                   a-value-hash-code))))
-        /stream* (uninformative-smoosh-equal-hash-code-support-report)
+        /sequence*
+          (uninformative-smoosh-equal-hash-code-support-report)
           (constant-smoosh-equal-hash-code-support-reports
             (delay
               (hash-code-combine
@@ -7341,7 +7359,7 @@
       (fn self a
         (dissect self (path-related-wrapper-dynamic-type any-dt)
         /if (example-unknown? a)
-          (stream*
+          (sequence*
             (uninformative-custom-gloss-key-report)
             (custom-gloss-key-report-zip*-map (list)
               
@@ -7385,7 +7403,7 @@
                     (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                       (expect k (path-related-wrapper k) (unknown)
                       /known k)))))))
-          (app sequence->stream /stream* report-0 report-1 report-2+)
+          (sequence* report-0 report-1 report-2+)
         /w- tgs-k-uninhabited-by-unknown
           (fn tgs-k
             (knowable-map tgs-k
@@ -7395,7 +7413,7 @@
                     (if (unknown? v) (known #f)
                     /call-knowable inhabitant? v))
                   gs))))
-        /stream*
+        /sequence*
           report-0
           (custom-gloss-key-report-map report-1
             
@@ -7449,8 +7467,8 @@
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (app sequence->stream /stream* report-0 report-1+)
-  /stream*
+    (sequence* report-0 report-1+)
+  /sequence*
     (constant-smoosh-report
       (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
         report-0))
@@ -7465,8 +7483,8 @@
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (app sequence->stream /stream* report-0 report-1+)
-  /stream*
+    (sequence* report-0 report-1+)
+  /sequence*
     (constant-smoosh-and-comparison-of-two-report
       (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
         (smoosh-and-comparison-of-two-report-get-smoosh-report
@@ -7482,8 +7500,8 @@
     (smoosh-equal-hash-code-support-reports-map value-reports
       #:on-hash-code-promise
       on-path-related-wrapper-hash-code-promise)
-    (app sequence->stream /stream* report-0 report-1+)
-  /stream*
+    (sequence* report-0 report-1+)
+  /sequence*
     (constant-smoosh-equal-hash-code-support-report
       (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
         report-0))
@@ -7507,8 +7525,8 @@
               (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                 (expect k (path-related-wrapper k) (unknown)
                 /known k)))))))
-    (app sequence->stream /stream* report-0 report-1+)
-  /stream*
+    (sequence* report-0 report-1+)
+  /sequence*
     (constant-custom-gloss-key-report
       (custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
         report-0))
@@ -7648,7 +7666,7 @@
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (app sequence->stream /stream* report-0 report-1+)
+    (sequence* report-0 report-1+)
     report-1+))
 
 (define/own-contract
@@ -7660,7 +7678,7 @@
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
-    (app sequence->stream /stream* report-0 report-1+)
+    (sequence* report-0 report-1+)
     report-1+))
 
 (define/own-contract
@@ -7671,7 +7689,7 @@
   (dissect
     (smoosh-equal-hash-code-support-reports-map value-reports
       #:on-hash-code-promise on-info-wrapper-hash-code-promise)
-    (app sequence->stream /stream* report-0 report-1+)
+    (sequence* report-0 report-1+)
     report-1+))
 
 (define/own-contract
@@ -7692,7 +7710,7 @@
               (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                 (expect k (info-wrapper k) (unknown)
                 /known k)))))))
-    (app sequence->stream /stream* report-0 report-1+)
+    (sequence* report-0 report-1+)
     report-1+))
 
 ; This is an appropriate dynamic type of `info-wrapper` values,

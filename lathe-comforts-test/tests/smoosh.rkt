@@ -910,3 +910,225 @@
   unknown?
   (s= (pw /iw bts1) (pw /iw bts2))
   "Path-related info smoosh is unknown on unequal immutable byte strings")
+
+
+(check-pred
+  unknown?
+  (s= +nan.0 +nan.0)
+  "Smoosh is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (s= 0+nan.0i 0+nan.0i)
+  "Smoosh is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (s= +nan.0 0+nan.0i)
+  "Smoosh is unknown on distinct NaNs")
+
+(check-pred
+  unknown?
+  (sj +nan.0 +nan.0)
+  "Smoosh join is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (sj 0+nan.0i 0+nan.0i)
+  "Smoosh join is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (sj +nan.0 0+nan.0i)
+  "Smoosh join is unknown on distinct NaNs")
+
+(check-pred
+  unknown?
+  (sm +nan.0 +nan.0)
+  "Smoosh meet is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (sm 0+nan.0i 0+nan.0i)
+  "Smoosh meet is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (sm +nan.0 0+nan.0i)
+  "Smoosh meet is unknown on distinct NaNs")
+
+(check-pred
+  unknown?
+  (s= (pw +nan.0) (pw +nan.0))
+  "Path-related smoosh is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (s= (pw 0+nan.0i) (pw 0+nan.0i))
+  "Path-related smoosh is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (s= (pw +nan.0) (pw 0+nan.0i))
+  "Path-related smoosh is unknown on distinct NaNs")
+
+(check-pred
+  unknown?
+  (s= (iw +nan.0) (iw +nan.0))
+  "Info smoosh is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (s= (iw 0+nan.0i) (iw 0+nan.0i))
+  "Info smoosh is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (s= (iw +nan.0) (iw 0+nan.0i))
+  "Info smoosh is unknown on distinct NaNs")
+
+(check-pred
+  unknown?
+  (sj (iw +nan.0) (iw +nan.0))
+  "Info smoosh join is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (sj (iw 0+nan.0i) (iw 0+nan.0i))
+  "Info smoosh join is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (sj (iw +nan.0) (iw 0+nan.0i))
+  "Info smoosh join is unknown on distinct NaNs")
+
+(check-pred
+  unknown?
+  (sm (iw +nan.0) (iw +nan.0))
+  "Info smoosh meet is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (sm (iw 0+nan.0i) (iw 0+nan.0i))
+  "Info smoosh meet is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (sm (iw +nan.0) (iw 0+nan.0i))
+  "Info smoosh meet is unknown on distinct NaNs")
+
+(check-pred
+  unknown?
+  (s= (pw /iw +nan.0) (pw /iw +nan.0))
+  "Path-related info smoosh is unknown on real NaNs")
+
+(check-pred
+  unknown?
+  (s= (pw /iw 0+nan.0i) (pw /iw 0+nan.0i))
+  "Path-related info smoosh is unknown on imaginary NaNs")
+
+(check-pred
+  unknown?
+  (s= (pw /iw +nan.0) (pw /iw 0+nan.0i))
+  "Path-related info smoosh is unknown on distinct NaNs")
+
+
+(check-equal?
+  (s= 0 0.0)
+  (known /just /known 0)
+  "Smoosh works on equal numbers")
+
+(check-equal?
+  (s= 0 1)
+  (known /nothing)
+  "Smoosh is fails on unequal numbers")
+
+(check-equal?
+  (sj 0 0.0)
+  (known /just /known 0)
+  "Smoosh join works on equal numbers")
+
+(check-equal?
+  (sj 0 1+0.0i)
+  (known /just /known 1+0.0i)
+  "Smoosh join works on unequal, comparable numbers")
+
+(check-pred
+  unknown?
+  (sj 0+i 1+i)
+  "Smoosh join is unknown on unequal, uncomparable numbers")
+
+(check-equal?
+  (sm 0 0.0)
+  (known /just /known 0)
+  "Smoosh meet works on equal numbers")
+
+(check-equal?
+  (sm 0 1+0.0i)
+  (known /just /known 0)
+  "Smoosh meet works on unequal, comparable numbers")
+
+(check-pred
+  unknown?
+  (sm 0+i 1+i)
+  "Smoosh meet is unknown on unequal, uncomparable numbers")
+
+(check-equal?
+  (s= (pw 0) (pw 0.0))
+  (known /just /known /pw 0)
+  "Path-related smoosh works on equal, zero-imaginary-part numbers")
+
+(check-equal?
+  (s= (pw 0) (pw 1+0.0i))
+  (known /just /known /pw 0)
+  "Path-related smoosh works on unequal, zero-imaginary-part numbers")
+
+(check-equal?
+  (s= (pw 0+i) (pw 0.0+1.0i))
+  (known /just /known /pw 0+i)
+  "Path-related smoosh works on equal, nonzero-imaginary-part numbers")
+
+(check-pred
+  unknown?
+  (s= (pw 0+i) (pw 1+i))
+  "Path-related smoosh is unknown on unequal, nonzero-imaginary-part numbers")
+
+(check-equal?
+  (s= (iw 0) (iw 0))
+  (known /just /known /iw 0)
+  "Info smoosh works on `equal-always?` numbers")
+
+(check-equal?
+  (s= (iw 0) (iw 0.0))
+  (known /nothing)
+  "Info smoosh fails on non-`equal-always?` numbers")
+
+(check-equal?
+  (sj (iw 0) (iw 0))
+  (known /just /known /iw 0)
+  "Info smoosh join works on `equal-always?` numbers")
+
+(check-equal?
+  (sj (iw 0) (iw 0.0))
+  (known /nothing)
+  "Info smoosh join fails on non-`equal-always?` numbers")
+
+(check-equal?
+  (sm (iw 0) (iw 0))
+  (known /just /known /iw 0)
+  "Info smoosh meet works on `equal-always?` numbers")
+
+(check-equal?
+  (sm (iw 0) (iw 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on non-`equal-always?` numbers")
+
+(check-equal?
+  (s= (pw /iw 0) (pw /iw 0))
+  (known /just /known /pw /iw 0)
+  "Path-related info smoosh works on `equal-always?` numbers")
+
+(check-equal?
+  (s= (pw /iw 0) (pw /iw 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`equal-always?` numbers")
