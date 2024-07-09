@@ -19,14 +19,19 @@
 ;   language governing permissions and limitations under the License.
 
 
+(require /only-in racket/fixnum fxvector)
+(require /only-in racket/flonum flvector)
+(require /only-in rackunit check-equal? check-pred)
+
 (require lathe-comforts/private/shim)
 (init-shim)
 
 (require lathe-comforts)
 (require lathe-comforts/maybe)
 (require lathe-comforts/private/smoosh)
-
-(require /only-in rackunit check-equal?)
+(require /only-in lathe-comforts/private/smoosh
+  [info-wrapper iw]
+  [path-related-wrapper pw])
 
 ; (We provide nothing from this module.)
 
@@ -125,28 +130,783 @@
     reports))
 
 
-(define (smooshable==-exercise-knowable-maybe-knowable a b)
-  (knowable-map
-    (force
-      (smoosh-report-==-knowable-promise-maybe-knowable-promise
-        (smoosh-and-comparison-of-two-report-get-smoosh-report
-          (smoosh-and-comparison-of-two-report-exercise
-            (sequence-first
-              (dynamic-type-get-smoosh-and-comparison-of-two-reports
-                (any-dynamic-type)
-                a
-                b))))))
-    (fn kpm
-      (maybe-map kpm /fn kp
-        (force kp)))))
+(define (kpmkp->kmk kpmkp)
+  (knowable-map (force kpmkp) /fn kpm
+    (maybe-map kpm /fn kp
+      (force kp))))
+
+(define
+  (smooshable-exercise-first-smoosh-and-comparison-of-two-report a b)
+  (smoosh-and-comparison-of-two-report-get-smoosh-report
+    (smoosh-and-comparison-of-two-report-exercise
+      (sequence-first
+        (dynamic-type-get-smoosh-and-comparison-of-two-reports
+          (any-dynamic-type)
+          a
+          b)))))
+
+(define (smooshable-==-exercise-knowable-maybe-knowable a b)
+  (kpmkp->kmk
+    (smoosh-report-==-knowable-promise-maybe-knowable-promise
+      (smooshable-exercise-first-smoosh-and-comparison-of-two-report
+        a
+        b))))
+
+(define (smooshable-join-exercise-knowable-maybe-knowable a b)
+  (kpmkp->kmk
+    (smoosh-report-join-knowable-promise-maybe-knowable-promise
+      (smooshable-exercise-first-smoosh-and-comparison-of-two-report
+        a
+        b))))
+
+(define (smooshable-meet-exercise-knowable-maybe-knowable a b)
+  (kpmkp->kmk
+    (smoosh-report-meet-knowable-promise-maybe-knowable-promise
+      (smooshable-exercise-first-smoosh-and-comparison-of-two-report
+        a
+        b))))
+
+
+(define s= smooshable-==-exercise-knowable-maybe-knowable)
+(define sj smooshable-join-exercise-knowable-maybe-knowable)
+(define sm smooshable-meet-exercise-knowable-maybe-knowable)
+
+
+(define flv1 (flvector 0.0))
+(define flv2 (flvector 0.0))
+(define fxv1 (fxvector 0))
+(define fxv2 (fxvector 0))
+(define str1 "a")
+(define str2 "b")
+(define bts1 #"a")
+(define bts2 #"b")
 
 
 (check-equal?
-  (smooshable==-exercise-knowable-maybe-knowable 'a 'a)
+  (s= flv1 flv1)
+  (known /just /known flv1)
+  "Smoosh works on `eq?` flvectors")
+
+(check-equal?
+  (s= flv1 flv2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` flvectors")
+
+(check-equal?
+  (sj flv1 flv1)
+  (known /just /known flv1)
+  "Smoosh join works on `eq?` flvectors")
+
+(check-pred
+  unknown?
+  (sj flv1 flv2)
+  "Smoosh join is unknown on non-`eq?` flvectors")
+
+(check-equal?
+  (sm flv1 flv1)
+  (known /just /known flv1)
+  "Smoosh meet works on `eq?` flvectors")
+
+(check-pred
+  unknown?
+  (sm flv1 flv2)
+  "Smoosh meet is unknown on non-`eq?` flvectors")
+
+(check-equal?
+  (s= (pw flv1) (pw flv1))
+  (known /just /known /pw flv1)
+  "Path-related smoosh works on `eq?` flvectors")
+
+(check-pred
+  unknown?
+  (s= (pw flv1) (pw flv2))
+  "Path-related smoosh is unknown on non-`eq?` flvectors")
+
+(check-equal?
+  (s= (iw flv1) (iw flv1))
+  (known /just /known /iw flv1)
+  "Info smoosh works on `eq?` flvectors")
+
+(check-equal?
+  (s= (iw flv1) (iw flv2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` flvectors")
+
+(check-equal?
+  (sj (iw flv1) (iw flv1))
+  (known /just /known /iw flv1)
+  "Info smoosh join works on `eq?` flvectors")
+
+(check-equal?
+  (sj (iw flv1) (iw flv2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` flvectors")
+
+(check-equal?
+  (sm (iw flv1) (iw flv1))
+  (known /just /known /iw flv1)
+  "Info smoosh meet works on `eq?` flvectors")
+
+(check-equal?
+  (sm (iw flv1) (iw flv2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` flvectors")
+
+(check-equal?
+  (s= (pw /iw flv1) (pw /iw flv1))
+  (known /just /known /pw /iw flv1)
+  "Path-related info smoosh works on `eq?` flvectors")
+
+(check-equal?
+  (s= (pw /iw flv1) (pw /iw flv2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` flvectors")
+
+
+(check-equal?
+  (s= fxv1 fxv1)
+  (known /just /known fxv1)
+  "Smoosh works on `eq?` fxvectors")
+
+(check-equal?
+  (s= fxv1 fxv2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` fxvectors")
+
+(check-equal?
+  (sj fxv1 fxv1)
+  (known /just /known fxv1)
+  "Smoosh join works on `eq?` fxvectors")
+
+(check-pred
+  unknown?
+  (sj fxv1 fxv2)
+  "Smoosh join is unknown on non-`eq?` fxvectors")
+
+(check-equal?
+  (sm fxv1 fxv1)
+  (known /just /known fxv1)
+  "Smoosh meet works on `eq?` fxvectors")
+
+(check-pred
+  unknown?
+  (sm fxv1 fxv2)
+  "Smoosh meet is unknown on non-`eq?` fxvectors")
+
+(check-equal?
+  (s= (pw fxv1) (pw fxv1))
+  (known /just /known /pw fxv1)
+  "Path-related smoosh works on `eq?` fxvectors")
+
+(check-pred
+  unknown?
+  (s= (pw fxv1) (pw fxv2))
+  "Path-related smoosh is unknown on non-`eq?` fxvectors")
+
+(check-equal?
+  (s= (iw fxv1) (iw fxv1))
+  (known /just /known /iw fxv1)
+  "Info smoosh works on `eq?` fxvectors")
+
+(check-equal?
+  (s= (iw fxv1) (iw fxv2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` fxvectors")
+
+(check-equal?
+  (sj (iw fxv1) (iw fxv1))
+  (known /just /known /iw fxv1)
+  "Info smoosh join works on `eq?` fxvectors")
+
+(check-equal?
+  (sj (iw fxv1) (iw fxv2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` fxvectors")
+
+(check-equal?
+  (sm (iw fxv1) (iw fxv1))
+  (known /just /known /iw fxv1)
+  "Info smoosh meet works on `eq?` fxvectors")
+
+(check-equal?
+  (sm (iw fxv1) (iw fxv2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` fxvectors")
+
+(check-equal?
+  (s= (pw /iw fxv1) (pw /iw fxv1))
+  (known /just /known /pw /iw fxv1)
+  "Path-related info smoosh works on `eq?` fxvectors")
+
+(check-equal?
+  (s= (pw /iw fxv1) (pw /iw fxv2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` fxvectors")
+
+
+(check-equal?
+  (s= 'a 'a)
   (known /just /known 'a)
   "Smoosh works on equal symbols")
 
 (check-equal?
-  (smooshable==-exercise-knowable-maybe-knowable 'a 'b)
+  (s= 'a 'b)
   (known /nothing)
   "Smoosh fails on unequal symbols")
+
+(check-equal?
+  (sj 'a 'a)
+  (known /just /known 'a)
+  "Smoosh join works on equal symbols")
+
+(check-pred
+  unknown?
+  (sj 'a 'b)
+  "Smoosh join is unknown on unequal symbols")
+
+(check-equal?
+  (sm 'a 'a)
+  (known /just /known 'a)
+  "Smoosh meet works on equal symbols")
+
+(check-pred
+  unknown?
+  (sm 'a 'b)
+  "Smoosh meet is unknown on unequal symbols")
+
+(check-equal?
+  (s= (pw 'a) (pw 'a))
+  (known /just /known /pw 'a)
+  "Path-related smoosh works on equal symbols")
+
+(check-pred
+  unknown?
+  (s= (pw 'a) (pw 'b))
+  "Path-related smoosh is unknown on unequal symbols")
+
+(check-equal?
+  (s= (iw 'a) (iw 'a))
+  (known /just /known /iw 'a)
+  "Info smoosh works on equal symbols")
+
+(check-equal?
+  (s= (iw 'a) (iw 'b))
+  (known /nothing)
+  "Info smoosh fails on unequal symbols")
+
+(check-equal?
+  (sj (iw 'a) (iw 'a))
+  (known /just /known /iw 'a)
+  "Info smoosh join works on equal symbols")
+
+(check-equal?
+  (sj (iw 'a) (iw 'b))
+  (known /nothing)
+  "Info smoosh join fails on unequal symbols")
+
+(check-equal?
+  (sm (iw 'a) (iw 'a))
+  (known /just /known /iw 'a)
+  "Info smoosh meet works on equal symbols")
+
+(check-equal?
+  (sm (iw 'a) (iw 'b))
+  (known /nothing)
+  "Info smoosh meet fails on unequal symbols")
+
+(check-equal?
+  (s= (pw /iw 'a) (pw /iw 'a))
+  (known /just /known /pw /iw 'a)
+  "Path-related info smoosh works on equal symbols")
+
+(check-equal?
+  (s= (pw /iw 'a) (pw /iw 'b))
+  (known /nothing)
+  "Path-related info smoosh fails on unequal symbols")
+
+
+(check-equal?
+  (s= '#:a '#:a)
+  (known /just /known '#:a)
+  "Smoosh works on equal keywords")
+
+(check-equal?
+  (s= '#:a '#:b)
+  (known /nothing)
+  "Smoosh fails on unequal keywords")
+
+(check-equal?
+  (sj '#:a '#:a)
+  (known /just /known '#:a)
+  "Smoosh join works on equal keywords")
+
+(check-pred
+  unknown?
+  (sj '#:a '#:b)
+  "Smoosh join is unknown on unequal keywords")
+
+(check-equal?
+  (sm '#:a '#:a)
+  (known /just /known '#:a)
+  "Smoosh meet works on equal keywords")
+
+(check-pred
+  unknown?
+  (sm '#:a '#:b)
+  "Smoosh meet is unknown on unequal keywords")
+
+(check-equal?
+  (s= (pw '#:a) (pw '#:a))
+  (known /just /known /pw '#:a)
+  "Path-related smoosh works on equal keywords")
+
+(check-pred
+  unknown?
+  (s= (pw '#:a) (pw '#:b))
+  "Path-related smoosh is unknown on unequal keywords")
+
+(check-equal?
+  (s= (iw '#:a) (iw '#:a))
+  (known /just /known /iw '#:a)
+  "Info smoosh works on equal keywords")
+
+(check-equal?
+  (s= (iw '#:a) (iw '#:b))
+  (known /nothing)
+  "Info smoosh fails on unequal keywords")
+
+(check-equal?
+  (sj (iw '#:a) (iw '#:a))
+  (known /just /known /iw '#:a)
+  "Info smoosh join works on equal keywords")
+
+(check-equal?
+  (sj (iw '#:a) (iw '#:b))
+  (known /nothing)
+  "Info smoosh join fails on unequal keywords")
+
+(check-equal?
+  (sm (iw '#:a) (iw '#:a))
+  (known /just /known /iw '#:a)
+  "Info smoosh meet works on equal keywords")
+
+(check-equal?
+  (sm (iw '#:a) (iw '#:b))
+  (known /nothing)
+  "Info smoosh meet fails on unequal keywords")
+
+(check-equal?
+  (s= (pw /iw '#:a) (pw /iw '#:a))
+  (known /just /known /pw /iw '#:a)
+  "Path-related info smoosh works on equal keywords")
+
+(check-equal?
+  (s= (pw /iw '#:a) (pw /iw '#:b))
+  (known /nothing)
+  "Path-related info smoosh fails on unequal keywords")
+
+
+(check-equal?
+  (s= (list) (list))
+  (known /just /known /list)
+  "Smoosh works on empty lists")
+
+(check-equal?
+  (sj (list) (list))
+  (known /just /known /list)
+  "Smoosh join works on empty lists")
+
+(check-equal?
+  (sm (list) (list))
+  (known /just /known /list)
+  "Smoosh meet works on empty lists")
+
+(check-equal?
+  (s= (pw /list) (pw /list))
+  (known /just /known /pw /list)
+  "Path-related smoosh works on empty lists")
+
+(check-equal?
+  (s= (iw /list) (iw /list))
+  (known /just /known /iw /list)
+  "Info smoosh works on empty lists")
+
+(check-equal?
+  (sj (iw /list) (iw /list))
+  (known /just /known /iw /list)
+  "Info smoosh join works on empty lists")
+
+(check-equal?
+  (sm (iw /list) (iw /list))
+  (known /just /known /iw /list)
+  "Info smoosh meet works on empty lists")
+
+(check-equal?
+  (s= (pw /iw /list) (pw /iw /list))
+  (known /just /known /pw /iw /list)
+  "Path-related info smoosh works on empty lists")
+
+
+(check-equal?
+  (s= 'a '#:b)
+  (known /nothing)
+  "Smoosh fails on interactions between different types of base syntactic atom")
+
+(check-pred
+  unknown?
+  (sj 'a '#:b)
+  "Smoosh join is unknown on interactions between different types of base syntactic atom")
+
+(check-pred
+  unknown?
+  (sm 'a '#:b)
+  "Smoosh meet is unknown on interactions between different types of base syntactic atom")
+
+(check-pred
+  unknown?
+  (s= (pw 'a) (pw '#:b))
+  "Path-related smoosh is unknown on interactions between different types of base syntactic atom")
+
+(check-equal?
+  (s= (iw 'a) (iw '#:b))
+  (known /nothing)
+  "Info smoosh fails on interactions between different types of base syntactic atom")
+
+(check-equal?
+  (sj (iw 'a) (iw '#:b))
+  (known /nothing)
+  "Info smoosh join fails on interactions between different types of base syntactic atom")
+
+(check-equal?
+  (sm (iw 'a) (iw '#:b))
+  (known /nothing)
+  "Info smoosh meet fails on interactions between different types of base syntactic atom")
+
+(check-equal?
+  (s= (pw /iw 'a) (pw /iw '#:b))
+  (known /nothing)
+  "Path-related info smoosh fails on interactions between different types of base syntactic atom")
+
+
+(check-equal?
+  (s= #f #f)
+  (known /just /known #f)
+  "Smoosh works on equal booleans")
+
+(check-equal?
+  (s= #f #t)
+  (known /nothing)
+  "Smoosh fails on unequal booleans")
+
+(check-equal?
+  (sj #f #f)
+  (known /just /known #f)
+  "Smoosh join works on equal booleans")
+
+(check-pred
+  unknown?
+  (sj #f #t)
+  "Smoosh join is unknown on unequal booleans")
+
+(check-equal?
+  (sm #f #f)
+  (known /just /known #f)
+  "Smoosh meet works on equal booleans")
+
+(check-pred
+  unknown?
+  (sm #f #t)
+  "Smoosh meet is unknown on unequal booleans")
+
+(check-equal?
+  (s= (pw #f) (pw #f))
+  (known /just /known /pw #f)
+  "Path-related smoosh works on equal booleans")
+
+(check-pred
+  unknown?
+  (s= (pw #f) (pw #t))
+  "Path-related smoosh is unknown on unequal booleans")
+
+(check-equal?
+  (s= (iw #f) (iw #f))
+  (known /just /known /iw #f)
+  "Info smoosh works on equal booleans")
+
+(check-equal?
+  (s= (iw #f) (iw #t))
+  (known /nothing)
+  "Info smoosh fails on unequal booleans")
+
+(check-equal?
+  (sj (iw #f) (iw #f))
+  (known /just /known /iw #f)
+  "Info smoosh join works on equal booleans")
+
+(check-equal?
+  (sj (iw #f) (iw #t))
+  (known /nothing)
+  "Info smoosh join fails on unequal booleans")
+
+(check-equal?
+  (sm (iw #f) (iw #f))
+  (known /just /known /iw #f)
+  "Info smoosh meet works on equal booleans")
+
+(check-equal?
+  (sm (iw #f) (iw #t))
+  (known /nothing)
+  "Info smoosh meet fails on unequal booleans")
+
+(check-equal?
+  (s= (pw /iw #f) (pw /iw #f))
+  (known /just /known /pw /iw #f)
+  "Path-related info smoosh works on equal booleans")
+
+(check-equal?
+  (s= (pw /iw #f) (pw /iw #t))
+  (known /nothing)
+  "Path-related info smoosh fails on unequal booleans")
+
+
+(check-equal?
+  (s= #\a #\a)
+  (known /just /known #\a)
+  "Smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= #\a #\b)
+  "Smoosh is unknown on unequal characters")
+
+(check-equal?
+  (sj #\a #\a)
+  (known /just /known #\a)
+  "Smoosh join works on equal characters")
+
+(check-pred
+  unknown?
+  (sj #\a #\b)
+  "Smoosh join is unknown on unequal characters")
+
+(check-equal?
+  (sm #\a #\a)
+  (known /just /known #\a)
+  "Smoosh meet works on equal characters")
+
+(check-pred
+  unknown?
+  (sm #\a #\b)
+  "Smoosh meet is unknown on unequal characters")
+
+(check-equal?
+  (s= (pw #\a) (pw #\a))
+  (known /just /known /pw #\a)
+  "Path-related smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= (pw #\a) (pw #\b))
+  "Path-related smoosh is unknown on unequal characters")
+
+(check-equal?
+  (s= (iw #\a) (iw #\a))
+  (known /just /known /iw #\a)
+  "Info smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= (iw #\a) (iw #\b))
+  "Info smoosh is unknown on unequal characters")
+
+(check-equal?
+  (sj (iw #\a) (iw #\a))
+  (known /just /known /iw #\a)
+  "Info smoosh join works on equal characters")
+
+(check-pred
+  unknown?
+  (sj (iw #\a) (iw #\b))
+  "Info smoosh join is unknown on unequal characters")
+
+(check-equal?
+  (sm (iw #\a) (iw #\a))
+  (known /just /known /iw #\a)
+  "Info smoosh meet works on equal characters")
+
+(check-pred
+  unknown?
+  (sm (iw #\a) (iw #\b))
+  "Info smoosh meet is unknown on unequal characters")
+
+(check-equal?
+  (s= (pw /iw #\a) (pw /iw #\a))
+  (known /just /known /pw /iw #\a)
+  "Path-related info smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= (pw /iw #\a) (pw /iw #\b))
+  "Path-related info smoosh is unknown on unequal characters")
+
+
+(check-equal?
+  (s= str1 str1)
+  (known /just /known str1)
+  "Smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= str1 str2)
+  "Smoosh is unknown on unequal immutable strings")
+
+(check-equal?
+  (sj str1 str1)
+  (known /just /known str1)
+  "Smoosh join works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sj str1 str2)
+  "Smoosh join is unknown on unequal immutable strings")
+
+(check-equal?
+  (sm str1 str1)
+  (known /just /known str1)
+  "Smoosh meet works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sm str1 str2)
+  "Smoosh meet is unknown on unequal immutable strings")
+
+(check-equal?
+  (s= (pw str1) (pw str1))
+  (known /just /known /pw str1)
+  "Path-related smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= (pw str1) (pw str2))
+  "Path-related smoosh is unknown on unequal immutable strings")
+
+(check-equal?
+  (s= (iw str1) (iw str1))
+  (known /just /known /iw str1)
+  "Info smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= (iw str1) (iw str2))
+  "Info smoosh is unknown on unequal immutable strings")
+
+(check-equal?
+  (sj (iw str1) (iw str1))
+  (known /just /known /iw str1)
+  "Info smoosh join works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sj (iw str1) (iw str2))
+  "Info smoosh join is unknown on unequal immutable strings")
+
+(check-equal?
+  (sm (iw str1) (iw str1))
+  (known /just /known /iw str1)
+  "Info smoosh meet works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sm (iw str1) (iw str2))
+  "Info smoosh meet is unknown on unequal immutable strings")
+
+(check-equal?
+  (s= (pw /iw str1) (pw /iw str1))
+  (known /just /known /pw /iw str1)
+  "Path-related info smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= (pw /iw str1) (pw /iw str2))
+  "Path-related info smoosh is unknown on unequal immutable strings")
+
+
+(check-equal?
+  (s= bts1 bts1)
+  (known /just /known bts1)
+  "Smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= bts1 bts2)
+  "Smoosh is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sj bts1 bts1)
+  (known /just /known bts1)
+  "Smoosh join works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sj bts1 bts2)
+  "Smoosh join is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sm bts1 bts1)
+  (known /just /known bts1)
+  "Smoosh meet works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sm bts1 bts2)
+  "Smoosh meet is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (s= (pw bts1) (pw bts1))
+  (known /just /known /pw bts1)
+  "Path-related smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= (pw bts1) (pw bts2))
+  "Path-related smoosh is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (s= (iw bts1) (iw bts1))
+  (known /just /known /iw bts1)
+  "Info smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= (iw bts1) (iw bts2))
+  "Info smoosh is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sj (iw bts1) (iw bts1))
+  (known /just /known /iw bts1)
+  "Info smoosh join works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sj (iw bts1) (iw bts2))
+  "Info smoosh join is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sm (iw bts1) (iw bts1))
+  (known /just /known /iw bts1)
+  "Info smoosh meet works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sm (iw bts1) (iw bts2))
+  "Info smoosh meet is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (s= (pw /iw bts1) (pw /iw bts1))
+  (known /just /known /pw /iw bts1)
+  "Path-related info smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= (pw /iw bts1) (pw /iw bts2))
+  "Path-related info smoosh is unknown on unequal immutable byte strings")

@@ -7467,7 +7467,7 @@
       on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
     (app sequence->stream /stream* report-0 report-1+)
   /stream*
-    (constant-smoosh-report
+    (constant-smoosh-and-comparison-of-two-report
       (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
         (smoosh-and-comparison-of-two-report-get-smoosh-report
           report-0)))
