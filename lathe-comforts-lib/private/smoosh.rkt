@@ -8372,7 +8372,7 @@
 ;       known-different sets of keys according to smoosh-ordering are
 ;       known to be distinct from each other.
 ;
-;     - (Done) `dynamic-type-var-for-any-dynamic-type?`
+;     - (Done) `dynamic-type-var-for-any-dynamic-type?` values.
 ;
 ;     - (Done) `equal-always-wrapper?` values, all equatable and
 ;       distinguishable with each other according to the

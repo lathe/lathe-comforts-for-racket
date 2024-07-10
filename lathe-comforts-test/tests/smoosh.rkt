@@ -1289,3 +1289,57 @@
     (known /nothing))
   (known /nothing)
   "Path-related info smoosh fails on unequal extflonums")
+
+
+; TODO SMOOSH: Implement smooshing tests for values of the following
+; types:
+;
+;   - Mutable strings, mutable byte strings, mutable boxes, mutable
+;     vectors, prefab structs with mutable fields, and mutable hash
+;     tables.
+;
+;   - (Done) Flvectors and fxvectors.
+;
+;   - (Done) Symbols and keywords.
+;
+;   - (Done) Empty lists.
+;
+;   - Cons cells.
+;
+;   - (Done) Booleans.
+;
+;   - (Done) Numbers with NaN parts.
+;
+;   - (Done) Numbers with no NaN parts.
+;
+;   - (Done) NaN extflonums.
+;
+;   - (Done) Non-NaN extflonums.
+;
+;   - (Done) Characters, immutable strings, and immutable byte
+;     strings.
+;
+;   - Regular expressions (`regexp?`) and compiled code expressions
+;     (`compiled-expression?`).
+;
+;   - Immutable boxes.
+;
+;   - Immutable vectors.
+;
+;   - Prefab structs with no mutable fields.
+;
+;   - Immutable hash tables.
+;
+;   - `maybe?` values.
+;
+;   - `trivial?` values.
+;
+;   - `known?` values and `example-unknown?` values.
+;
+;   - `gloss?` values.
+;
+;   - `dynamic-type-var-for-any-dynamic-type?` values.
+;
+;   - `equal-always-wrapper?` values.
+;
+;   - `indistinct-wrapper?` values.
