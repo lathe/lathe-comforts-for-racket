@@ -6478,6 +6478,11 @@
   
   )
 
+(define (normalize-non-nan-extflonum a)
+  (if (equal-always? a -0t0)
+    0t0
+    a))
+
 (define/own-contract (non-nan-extflonum? v)
   (-> any/c boolean?)
   (and (extflonum? v) (extfl= v v)))
@@ -6590,12 +6595,14 @@
       ))
   
   (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
-    ; TODO: According to the `extflonum?` documentation, the
-    ; `equal-always-hash-code` we're using here should actually work
-    ; properly for `extflonum?` values, even -0.0t0. Make sure it
-    ; does. If it doesn't, normalizing -0.0t0 seems to be the only
-    ; thing we'll need to worry about.
-    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom))
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
+      
+      #:hash-code-0
+      (fn a
+        (expect (non-nan-extflonum? a) #t (uninformative-hash-code)
+        /equal-always-hash-code /normalize-non-nan-extflonum a))
+      
+      #:hash-code-1+ (fn a /equal-always-hash-code a)))
   
   (#:prop prop:expressly-custom-gloss-key-dynamic-type
     (make-expressly-custom-gloss-key-dynamic-type-impl
@@ -8278,11 +8285,14 @@
 ;
 ;       - (Done) Non-NaN extflonums, ordered in a way consistent with
 ;         `extfl<=` and `extfl=`, and information-ordered in a way
-;         consistent with `chaperone-of?` (which, perhaps bizarrely,
-;         is consistent with `extfl=` and thus does not distinguish
-;         between `-0.0t0` and `0.0t0` on the extflonum-supporting BC
-;         platform, if the documentation is to be believed). (TODO:
-;         Investigate this.)
+;         consistent with `chaperone-of?`. (TODO SMOOSH: The
+;         documentation indicates extflonums are `equal?` if (but not
+;         necessarily only if) they are `extfl=`, but this is
+;         inconsistent with observed behavior
+;         (https://github.com/racket/racket/issues/5039). We're
+;         programming against the observed behavior right now. If it
+;         turns out the assumptions we're making are incorrect, revise
+;         our approach accordingly.)
 ;
 ;       - (Done) Characters, immutable strings, and immutable byte
 ;         strings, which are known to be equal to themselves when

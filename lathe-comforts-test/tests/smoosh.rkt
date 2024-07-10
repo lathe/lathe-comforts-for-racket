@@ -892,14 +892,6 @@
   "Path-related info smoosh fails on non-`equal-always?` numbers")
 
 
-; TODO: Actually run the extflonum tests on a platform for which
-; `(extflonum-available?)` is `#t`.
-;
-; TODO: When an extflonum appears in a test's expected result, compare
-; it using a pickier check than `check-equal?`, since `equal?` is
-; consistent with `extfl=` and considers `-0t0` to be equal to `0t0`.
-
-
 (check-pred
   unknown?
   (if (extflonum-available?)
@@ -1000,52 +992,52 @@
   "Path-related smoosh works on unequal extflonums")
 
 (check-equal?
-  (and (extflonum-available?) (s= (iw -0t0) (iw 0t0)))
-  (and (extflonum-available?) (known /just /known /iw -0t0))
-  "Info smoosh works on equal extflonums")
+  (and (extflonum-available?) (s= (iw 0t0) (iw 0t0)))
+  (and (extflonum-available?) (known /just /known /iw 0t0))
+  "Info smoosh works on `equal-always?` extflonums")
 
 (check-equal?
   (if (extflonum-available?)
-    (s= (iw 0t0) (iw 1t0))
+    (s= (iw -0t0) (iw 0t0))
     (known /nothing))
   (known /nothing)
-  "Info smoosh fails on unequal extflonums")
+  "Info smoosh fails on non-`equal-always?` extflonums")
 
 (check-equal?
-  (and (extflonum-available?) (sj (iw -0t0) (iw 0t0)))
-  (and (extflonum-available?) (known /just /known /iw -0t0))
-  "Info smoosh join works on equal extflonums")
+  (and (extflonum-available?) (sj (iw 0t0) (iw 0t0)))
+  (and (extflonum-available?) (known /just /known /iw 0t0))
+  "Info smoosh join works on `equal-always?` extflonums")
 
 (check-equal?
   (if (extflonum-available?)
-    (sj (iw 0t0) (iw 1t0))
+    (sj (iw -0t0) (iw 0t0))
     (known /nothing))
   (known /nothing)
-  "Info smoosh join fails on unequal extflonums")
+  "Info smoosh join fails on non-`equal-always?` extflonums")
 
 (check-equal?
-  (and (extflonum-available?) (sm (iw -0t0) (iw 0t0)))
-  (and (extflonum-available?) (known /just /known /iw -0t0))
-  "Info smoosh meet works on equal extflonums")
+  (and (extflonum-available?) (sm (iw 0t0) (iw 0t0)))
+  (and (extflonum-available?) (known /just /known /iw 0t0))
+  "Info smoosh meet works on `equal-always?` extflonums")
 
 (check-equal?
   (if (extflonum-available?)
-    (sm (iw 0t0) (iw 1t0))
+    (sm (iw -0t0) (iw 0t0))
     (known /nothing))
   (known /nothing)
-  "Info smoosh meet fails on unequal extflonums")
+  "Info smoosh meet fails on non-`equal-always?` extflonums")
 
 (check-equal?
-  (and (extflonum-available?) (s= (pw /iw -0t0) (pw /iw 0t0)))
-  (and (extflonum-available?) (known /just /known /pw /iw -0t0))
-  "Path-related info smoosh works on equal extflonums")
+  (and (extflonum-available?) (s= (pw /iw 0t0) (pw /iw 0t0)))
+  (and (extflonum-available?) (known /just /known /pw /iw 0t0))
+  "Path-related info smoosh works on `equal-always?` extflonums")
 
 (check-equal?
   (if (extflonum-available?)
-    (s= (pw /iw 0t0) (pw /iw 1t0))
+    (s= (pw /iw -0t0) (pw /iw 0t0))
     (known /nothing))
   (known /nothing)
-  "Path-related info smoosh fails on unequal extflonums")
+  "Path-related info smoosh fails on non-`equal-always?` extflonums")
 
 
 (check-equal?
