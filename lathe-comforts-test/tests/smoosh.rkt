@@ -670,249 +670,6 @@
   "Path-related info smoosh fails on unequal booleans")
 
 
-(check-equal?
-  (s= #\a #\a)
-  (known /just /known #\a)
-  "Smoosh works on equal characters")
-
-(check-pred
-  unknown?
-  (s= #\a #\b)
-  "Smoosh is unknown on unequal characters")
-
-(check-equal?
-  (sj #\a #\a)
-  (known /just /known #\a)
-  "Smoosh join works on equal characters")
-
-(check-pred
-  unknown?
-  (sj #\a #\b)
-  "Smoosh join is unknown on unequal characters")
-
-(check-equal?
-  (sm #\a #\a)
-  (known /just /known #\a)
-  "Smoosh meet works on equal characters")
-
-(check-pred
-  unknown?
-  (sm #\a #\b)
-  "Smoosh meet is unknown on unequal characters")
-
-(check-equal?
-  (s= (pw #\a) (pw #\a))
-  (known /just /known /pw #\a)
-  "Path-related smoosh works on equal characters")
-
-(check-pred
-  unknown?
-  (s= (pw #\a) (pw #\b))
-  "Path-related smoosh is unknown on unequal characters")
-
-(check-equal?
-  (s= (iw #\a) (iw #\a))
-  (known /just /known /iw #\a)
-  "Info smoosh works on equal characters")
-
-(check-pred
-  unknown?
-  (s= (iw #\a) (iw #\b))
-  "Info smoosh is unknown on unequal characters")
-
-(check-equal?
-  (sj (iw #\a) (iw #\a))
-  (known /just /known /iw #\a)
-  "Info smoosh join works on equal characters")
-
-(check-pred
-  unknown?
-  (sj (iw #\a) (iw #\b))
-  "Info smoosh join is unknown on unequal characters")
-
-(check-equal?
-  (sm (iw #\a) (iw #\a))
-  (known /just /known /iw #\a)
-  "Info smoosh meet works on equal characters")
-
-(check-pred
-  unknown?
-  (sm (iw #\a) (iw #\b))
-  "Info smoosh meet is unknown on unequal characters")
-
-(check-equal?
-  (s= (pw /iw #\a) (pw /iw #\a))
-  (known /just /known /pw /iw #\a)
-  "Path-related info smoosh works on equal characters")
-
-(check-pred
-  unknown?
-  (s= (pw /iw #\a) (pw /iw #\b))
-  "Path-related info smoosh is unknown on unequal characters")
-
-
-(check-equal?
-  (s= str1 str1)
-  (known /just /known str1)
-  "Smoosh works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (s= str1 str2)
-  "Smoosh is unknown on unequal immutable strings")
-
-(check-equal?
-  (sj str1 str1)
-  (known /just /known str1)
-  "Smoosh join works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (sj str1 str2)
-  "Smoosh join is unknown on unequal immutable strings")
-
-(check-equal?
-  (sm str1 str1)
-  (known /just /known str1)
-  "Smoosh meet works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (sm str1 str2)
-  "Smoosh meet is unknown on unequal immutable strings")
-
-(check-equal?
-  (s= (pw str1) (pw str1))
-  (known /just /known /pw str1)
-  "Path-related smoosh works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (s= (pw str1) (pw str2))
-  "Path-related smoosh is unknown on unequal immutable strings")
-
-(check-equal?
-  (s= (iw str1) (iw str1))
-  (known /just /known /iw str1)
-  "Info smoosh works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (s= (iw str1) (iw str2))
-  "Info smoosh is unknown on unequal immutable strings")
-
-(check-equal?
-  (sj (iw str1) (iw str1))
-  (known /just /known /iw str1)
-  "Info smoosh join works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (sj (iw str1) (iw str2))
-  "Info smoosh join is unknown on unequal immutable strings")
-
-(check-equal?
-  (sm (iw str1) (iw str1))
-  (known /just /known /iw str1)
-  "Info smoosh meet works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (sm (iw str1) (iw str2))
-  "Info smoosh meet is unknown on unequal immutable strings")
-
-(check-equal?
-  (s= (pw /iw str1) (pw /iw str1))
-  (known /just /known /pw /iw str1)
-  "Path-related info smoosh works on equal immutable strings")
-
-(check-pred
-  unknown?
-  (s= (pw /iw str1) (pw /iw str2))
-  "Path-related info smoosh is unknown on unequal immutable strings")
-
-
-(check-equal?
-  (s= bts1 bts1)
-  (known /just /known bts1)
-  "Smoosh works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (s= bts1 bts2)
-  "Smoosh is unknown on unequal immutable byte strings")
-
-(check-equal?
-  (sj bts1 bts1)
-  (known /just /known bts1)
-  "Smoosh join works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (sj bts1 bts2)
-  "Smoosh join is unknown on unequal immutable byte strings")
-
-(check-equal?
-  (sm bts1 bts1)
-  (known /just /known bts1)
-  "Smoosh meet works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (sm bts1 bts2)
-  "Smoosh meet is unknown on unequal immutable byte strings")
-
-(check-equal?
-  (s= (pw bts1) (pw bts1))
-  (known /just /known /pw bts1)
-  "Path-related smoosh works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (s= (pw bts1) (pw bts2))
-  "Path-related smoosh is unknown on unequal immutable byte strings")
-
-(check-equal?
-  (s= (iw bts1) (iw bts1))
-  (known /just /known /iw bts1)
-  "Info smoosh works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (s= (iw bts1) (iw bts2))
-  "Info smoosh is unknown on unequal immutable byte strings")
-
-(check-equal?
-  (sj (iw bts1) (iw bts1))
-  (known /just /known /iw bts1)
-  "Info smoosh join works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (sj (iw bts1) (iw bts2))
-  "Info smoosh join is unknown on unequal immutable byte strings")
-
-(check-equal?
-  (sm (iw bts1) (iw bts1))
-  (known /just /known /iw bts1)
-  "Info smoosh meet works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (sm (iw bts1) (iw bts2))
-  "Info smoosh meet is unknown on unequal immutable byte strings")
-
-(check-equal?
-  (s= (pw /iw bts1) (pw /iw bts1))
-  (known /just /known /pw /iw bts1)
-  "Path-related info smoosh works on equal immutable byte strings")
-
-(check-pred
-  unknown?
-  (s= (pw /iw bts1) (pw /iw bts2))
-  "Path-related info smoosh is unknown on unequal immutable byte strings")
-
-
 (check-pred
   unknown?
   (s= +nan.0 +nan.0)
@@ -1289,6 +1046,249 @@
     (known /nothing))
   (known /nothing)
   "Path-related info smoosh fails on unequal extflonums")
+
+
+(check-equal?
+  (s= #\a #\a)
+  (known /just /known #\a)
+  "Smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= #\a #\b)
+  "Smoosh is unknown on unequal characters")
+
+(check-equal?
+  (sj #\a #\a)
+  (known /just /known #\a)
+  "Smoosh join works on equal characters")
+
+(check-pred
+  unknown?
+  (sj #\a #\b)
+  "Smoosh join is unknown on unequal characters")
+
+(check-equal?
+  (sm #\a #\a)
+  (known /just /known #\a)
+  "Smoosh meet works on equal characters")
+
+(check-pred
+  unknown?
+  (sm #\a #\b)
+  "Smoosh meet is unknown on unequal characters")
+
+(check-equal?
+  (s= (pw #\a) (pw #\a))
+  (known /just /known /pw #\a)
+  "Path-related smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= (pw #\a) (pw #\b))
+  "Path-related smoosh is unknown on unequal characters")
+
+(check-equal?
+  (s= (iw #\a) (iw #\a))
+  (known /just /known /iw #\a)
+  "Info smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= (iw #\a) (iw #\b))
+  "Info smoosh is unknown on unequal characters")
+
+(check-equal?
+  (sj (iw #\a) (iw #\a))
+  (known /just /known /iw #\a)
+  "Info smoosh join works on equal characters")
+
+(check-pred
+  unknown?
+  (sj (iw #\a) (iw #\b))
+  "Info smoosh join is unknown on unequal characters")
+
+(check-equal?
+  (sm (iw #\a) (iw #\a))
+  (known /just /known /iw #\a)
+  "Info smoosh meet works on equal characters")
+
+(check-pred
+  unknown?
+  (sm (iw #\a) (iw #\b))
+  "Info smoosh meet is unknown on unequal characters")
+
+(check-equal?
+  (s= (pw /iw #\a) (pw /iw #\a))
+  (known /just /known /pw /iw #\a)
+  "Path-related info smoosh works on equal characters")
+
+(check-pred
+  unknown?
+  (s= (pw /iw #\a) (pw /iw #\b))
+  "Path-related info smoosh is unknown on unequal characters")
+
+
+(check-equal?
+  (s= str1 str1)
+  (known /just /known str1)
+  "Smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= str1 str2)
+  "Smoosh is unknown on unequal immutable strings")
+
+(check-equal?
+  (sj str1 str1)
+  (known /just /known str1)
+  "Smoosh join works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sj str1 str2)
+  "Smoosh join is unknown on unequal immutable strings")
+
+(check-equal?
+  (sm str1 str1)
+  (known /just /known str1)
+  "Smoosh meet works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sm str1 str2)
+  "Smoosh meet is unknown on unequal immutable strings")
+
+(check-equal?
+  (s= (pw str1) (pw str1))
+  (known /just /known /pw str1)
+  "Path-related smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= (pw str1) (pw str2))
+  "Path-related smoosh is unknown on unequal immutable strings")
+
+(check-equal?
+  (s= (iw str1) (iw str1))
+  (known /just /known /iw str1)
+  "Info smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= (iw str1) (iw str2))
+  "Info smoosh is unknown on unequal immutable strings")
+
+(check-equal?
+  (sj (iw str1) (iw str1))
+  (known /just /known /iw str1)
+  "Info smoosh join works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sj (iw str1) (iw str2))
+  "Info smoosh join is unknown on unequal immutable strings")
+
+(check-equal?
+  (sm (iw str1) (iw str1))
+  (known /just /known /iw str1)
+  "Info smoosh meet works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (sm (iw str1) (iw str2))
+  "Info smoosh meet is unknown on unequal immutable strings")
+
+(check-equal?
+  (s= (pw /iw str1) (pw /iw str1))
+  (known /just /known /pw /iw str1)
+  "Path-related info smoosh works on equal immutable strings")
+
+(check-pred
+  unknown?
+  (s= (pw /iw str1) (pw /iw str2))
+  "Path-related info smoosh is unknown on unequal immutable strings")
+
+
+(check-equal?
+  (s= bts1 bts1)
+  (known /just /known bts1)
+  "Smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= bts1 bts2)
+  "Smoosh is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sj bts1 bts1)
+  (known /just /known bts1)
+  "Smoosh join works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sj bts1 bts2)
+  "Smoosh join is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sm bts1 bts1)
+  (known /just /known bts1)
+  "Smoosh meet works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sm bts1 bts2)
+  "Smoosh meet is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (s= (pw bts1) (pw bts1))
+  (known /just /known /pw bts1)
+  "Path-related smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= (pw bts1) (pw bts2))
+  "Path-related smoosh is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (s= (iw bts1) (iw bts1))
+  (known /just /known /iw bts1)
+  "Info smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= (iw bts1) (iw bts2))
+  "Info smoosh is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sj (iw bts1) (iw bts1))
+  (known /just /known /iw bts1)
+  "Info smoosh join works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sj (iw bts1) (iw bts2))
+  "Info smoosh join is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (sm (iw bts1) (iw bts1))
+  (known /just /known /iw bts1)
+  "Info smoosh meet works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (sm (iw bts1) (iw bts2))
+  "Info smoosh meet is unknown on unequal immutable byte strings")
+
+(check-equal?
+  (s= (pw /iw bts1) (pw /iw bts1))
+  (known /just /known /pw /iw bts1)
+  "Path-related info smoosh works on equal immutable byte strings")
+
+(check-pred
+  unknown?
+  (s= (pw /iw bts1) (pw /iw bts2))
+  "Path-related info smoosh is unknown on unequal immutable byte strings")
 
 
 ; TODO SMOOSH: Implement smooshing tests for values of the following
