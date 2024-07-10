@@ -33,6 +33,7 @@
 (require /only-in lathe-comforts/private/smoosh
   [info-wrapper iw]
   [path-related-wrapper pw])
+(require lathe-comforts/trivial)
 
 ; (We provide nothing from this module.)
 
@@ -181,6 +182,8 @@
 (define str2 "b")
 (define bts1 #"a")
 (define bts2 #"b")
+(define regexp1 #rx"")
+(define expr1 (compile #'0))
 
 
 (check-equal?
@@ -1283,6 +1286,186 @@
   "Path-related info smoosh is unknown on unequal immutable byte strings")
 
 
+(check-pred
+  unknown?
+  (s= regexp1 regexp1)
+  "Smoosh is unknown on regular expressions")
+
+(check-pred
+  unknown?
+  (sj regexp1 regexp1)
+  "Smoosh join is unknown on regular expressions")
+
+(check-pred
+  unknown?
+  (sm regexp1 regexp1)
+  "Smoosh meet is unknown on regular expressions")
+
+(check-pred
+  unknown?
+  (s= (pw regexp1) (pw regexp1))
+  "Path-related smoosh is unknown on regular expressions")
+
+(check-pred
+  unknown?
+  (s= (iw regexp1) (iw regexp1))
+  "Info smoosh is unknown on regular expressions")
+
+(check-pred
+  unknown?
+  (sj (iw regexp1) (iw regexp1))
+  "Info smoosh join is unknown on regular expressions")
+
+(check-pred
+  unknown?
+  (sm (iw regexp1) (iw regexp1))
+  "Info smoosh meet is unknown on regular expressions")
+
+(check-pred
+  unknown?
+  (s= (pw /iw regexp1) (pw /iw regexp1))
+  "Path-related info smoosh is unknown on regular expressions")
+
+
+(check-pred
+  unknown?
+  (s= expr1 expr1)
+  "Smoosh is unknown on compiled code expressions")
+
+(check-pred
+  unknown?
+  (sj expr1 expr1)
+  "Smoosh join is unknown on compiled code expressions")
+
+(check-pred
+  unknown?
+  (sm expr1 expr1)
+  "Smoosh meet is unknown on compiled code expressions")
+
+(check-pred
+  unknown?
+  (s= (pw expr1) (pw expr1))
+  "Path-related smoosh is unknown on compiled code expressions")
+
+(check-pred
+  unknown?
+  (s= (iw expr1) (iw expr1))
+  "Info smoosh is unknown on compiled code expressions")
+
+(check-pred
+  unknown?
+  (sj (iw expr1) (iw expr1))
+  "Info smoosh join is unknown on compiled code expressions")
+
+(check-pred
+  unknown?
+  (sm (iw expr1) (iw expr1))
+  "Info smoosh meet is unknown on compiled code expressions")
+
+(check-pred
+  unknown?
+  (s= (pw /iw expr1) (pw /iw expr1))
+  "Path-related info smoosh is unknown on compiled code expressions")
+
+
+(check-equal?
+  (s= (trivial) (trivial))
+  (known /just /known /trivial)
+  "Smoosh works on `trivial?` values")
+
+(check-equal?
+  (sj (trivial) (trivial))
+  (known /just /known /trivial)
+  "Smoosh join works on `trivial?` values")
+
+(check-equal?
+  (sm (trivial) (trivial))
+  (known /just /known /trivial)
+  "Smoosh meet works on `trivial?` values")
+
+(check-equal?
+  (s= (pw /trivial) (pw /trivial))
+  (known /just /known /pw /trivial)
+  "Path-related smoosh works on `trivial?` values")
+
+(check-equal?
+  (s= (iw /trivial) (iw /trivial))
+  (known /just /known /iw /trivial)
+  "Info smoosh works on `trivial?` values")
+
+(check-equal?
+  (sj (iw /trivial) (iw /trivial))
+  (known /just /known /iw /trivial)
+  "Info smoosh join works on `trivial?` values")
+
+(check-equal?
+  (sm (iw /trivial) (iw /trivial))
+  (known /just /known /iw /trivial)
+  "Info smoosh meet works on `trivial?` values")
+
+(check-equal?
+  (s= (pw /iw /trivial) (pw /iw /trivial))
+  (known /just /known /pw /iw /trivial)
+  "Path-related info smoosh works on `trivial?` values")
+
+
+(check-equal?
+  (s=
+    (dynamic-type-var-for-any-dynamic-type)
+    (dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /dynamic-type-var-for-any-dynamic-type)
+  "Smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+(check-equal?
+  (sj
+    (dynamic-type-var-for-any-dynamic-type)
+    (dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /dynamic-type-var-for-any-dynamic-type)
+  "Smoosh join works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+(check-equal?
+  (sm
+    (dynamic-type-var-for-any-dynamic-type)
+    (dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /dynamic-type-var-for-any-dynamic-type)
+  "Smoosh meet works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+(check-equal?
+  (s=
+    (pw /dynamic-type-var-for-any-dynamic-type)
+    (pw /dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /pw /dynamic-type-var-for-any-dynamic-type)
+  "Path-related smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+(check-equal?
+  (s=
+    (iw /dynamic-type-var-for-any-dynamic-type)
+    (iw /dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /iw /dynamic-type-var-for-any-dynamic-type)
+  "Info smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+(check-equal?
+  (sj
+    (iw /dynamic-type-var-for-any-dynamic-type)
+    (iw /dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /iw /dynamic-type-var-for-any-dynamic-type)
+  "Info smoosh join works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+(check-equal?
+  (sm
+    (iw /dynamic-type-var-for-any-dynamic-type)
+    (iw /dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /iw /dynamic-type-var-for-any-dynamic-type)
+  "Info smoosh meet works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+(check-equal?
+  (s=
+    (pw /iw /dynamic-type-var-for-any-dynamic-type)
+    (pw /iw /dynamic-type-var-for-any-dynamic-type))
+  (known /just /known /pw /iw /dynamic-type-var-for-any-dynamic-type)
+  "Path-related info smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
+
+
 ; TODO SMOOSH: Implement smooshing tests for values of the following
 ; types:
 ;
@@ -1311,8 +1494,8 @@
 ;   - (Done) Characters, immutable strings, and immutable byte
 ;     strings.
 ;
-;   - Regular expressions (`regexp?`) and compiled code expressions
-;     (`compiled-expression?`).
+;   - (Done) Regular expressions (`regexp?`) and compiled code
+;     expressions (`compiled-expression?`).
 ;
 ;   - Immutable boxes.
 ;
@@ -1324,13 +1507,13 @@
 ;
 ;   - `maybe?` values.
 ;
-;   - `trivial?` values.
+;   - (Done) `trivial?` values.
 ;
 ;   - `known?` values and `example-unknown?` values.
 ;
 ;   - `gloss?` values.
 ;
-;   - `dynamic-type-var-for-any-dynamic-type?` values.
+;   - (Done) `dynamic-type-var-for-any-dynamic-type?` values.
 ;
 ;   - `equal-always-wrapper?` values.
 ;
