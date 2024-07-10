@@ -19,6 +19,7 @@
 ;   language governing permissions and limitations under the License.
 
 
+(require /only-in racket/extflonum extflonum-available?)
 (require /only-in racket/fixnum fxvector)
 (require /only-in racket/flonum flvector)
 (require /only-in rackunit check-equal? check-pred)
@@ -1041,7 +1042,7 @@
 (check-equal?
   (s= 0 1)
   (known /nothing)
-  "Smoosh is fails on unequal numbers")
+  "Smoosh fails on unequal numbers")
 
 (check-equal?
   (sj 0 0.0)
@@ -1132,3 +1133,159 @@
   (s= (pw /iw 0) (pw /iw 0.0))
   (known /nothing)
   "Path-related info smoosh fails on non-`equal-always?` numbers")
+
+
+; TODO: Actually run the extflonum tests on a platform for which
+; `(extflonum-available?)` is `#t`.
+;
+; TODO: When an extflonum appears in a test's expected result, compare
+; it using a pickier check than `check-equal?`, since `equal?` is
+; consistent with `extfl=` and considers `-0t0` to be equal to `0t0`.
+
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (s= +nan.t +nan.t)
+    (unknown))
+  "Smoosh is unknown on extflonum NaNs")
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (sj +nan.t +nan.t)
+    (unknown))
+  "Smoosh join is unknown on extflonum NaNs")
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (sm +nan.t +nan.t)
+    (unknown))
+  "Smoosh meet is unknown on extflonum NaNs")
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (s= (pw +nan.t) (pw +nan.t))
+    (unknown))
+  "Path-related smoosh is unknown on extflonum NaNs")
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (s= (iw +nan.t) (iw +nan.t))
+    (unknown))
+  "Info smoosh is unknown on extflonum NaNs")
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (sj (iw +nan.t) (iw +nan.t))
+    (unknown))
+  "Info smoosh join is unknown on extflonum NaNs")
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (sm (iw +nan.t) (iw +nan.t))
+    (unknown))
+  "Info smoosh meet is unknown on extflonum NaNs")
+
+(check-pred
+  unknown?
+  (if (extflonum-available?)
+    (s= (pw /iw +nan.t) (pw /iw +nan.t))
+    (unknown))
+  "Path-related info smoosh is unknown on extflonum NaNs")
+
+
+(check-equal?
+  (and (extflonum-available?) (s= -0t0 0t0))
+  (and (extflonum-available?) (known /just /known -0t0))
+  "Smoosh works on equal extflonums")
+
+(check-equal?
+  (if (extflonum-available?)
+    (s= 0t0 1t0)
+    (known /nothing))
+  (known /nothing)
+  "Smoosh fails on unequal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (sj -0t0 0t0))
+  (and (extflonum-available?) (known /just /known -0t0))
+  "Smoosh join works on equal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (sj 0t0 1t0))
+  (and (extflonum-available?) (known /just /known 1t0))
+  "Smoosh join works on unequal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (sm -0t0 0t0))
+  (and (extflonum-available?) (known /just /known -0t0))
+  "Smoosh meet works on equal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (sm 0t0 1t0))
+  (and (extflonum-available?) (known /just /known 0t0))
+  "Smoosh meet works on unequal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (s= (pw -0t0) (pw 0t0)))
+  (and (extflonum-available?) (known /just /known /pw -0t0))
+  "Path-related smoosh works on equal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (s= (pw 0t0) (pw 1t0)))
+  (and (extflonum-available?) (known /just /known /pw 0t0))
+  "Path-related smoosh works on unequal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (s= (iw -0t0) (iw 0t0)))
+  (and (extflonum-available?) (known /just /known /iw -0t0))
+  "Info smoosh works on equal extflonums")
+
+(check-equal?
+  (if (extflonum-available?)
+    (s= (iw 0t0) (iw 1t0))
+    (known /nothing))
+  (known /nothing)
+  "Info smoosh fails on unequal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (sj (iw -0t0) (iw 0t0)))
+  (and (extflonum-available?) (known /just /known /iw -0t0))
+  "Info smoosh join works on equal extflonums")
+
+(check-equal?
+  (if (extflonum-available?)
+    (sj (iw 0t0) (iw 1t0))
+    (known /nothing))
+  (known /nothing)
+  "Info smoosh join fails on unequal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (sm (iw -0t0) (iw 0t0)))
+  (and (extflonum-available?) (known /just /known /iw -0t0))
+  "Info smoosh meet works on equal extflonums")
+
+(check-equal?
+  (if (extflonum-available?)
+    (sm (iw 0t0) (iw 1t0))
+    (known /nothing))
+  (known /nothing)
+  "Info smoosh meet fails on unequal extflonums")
+
+(check-equal?
+  (and (extflonum-available?) (s= (pw /iw -0t0) (pw /iw 0t0)))
+  (and (extflonum-available?) (known /just /known /pw /iw -0t0))
+  "Path-related info smoosh works on equal extflonums")
+
+(check-equal?
+  (if (extflonum-available?)
+    (s= (pw /iw 0t0) (pw /iw 1t0))
+    (known /nothing))
+  (known /nothing)
+  "Path-related info smoosh fails on unequal extflonums")
