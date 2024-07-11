@@ -174,6 +174,19 @@
 (define sm smooshable-meet-exercise-knowable-maybe-knowable)
 
 
+(define mstr1 (string #\a))
+(define mstr2 (string #\b))
+(define mbytes1 (bytes 0))
+(define mbytes2 (bytes 0))
+(define mbox1 (box 0))
+(define mbox2 (box 0))
+(define mv1 (vector 0))
+(define mv2 (vector 0))
+(struct mprefab ([field #:mutable]) #:prefab)
+(define mprefab1 (mprefab 0))
+(define mprefab2 (mprefab 0))
+(define mhash1 (make-hash /list /cons 0 0))
+(define mhash2 (make-hash /list /cons 0 0))
 (define flv1 (flvector 0.0))
 (define flv2 (flvector 0.0))
 (define fxv1 (fxvector 0))
@@ -184,6 +197,492 @@
 (define bts2 #"b")
 (define regexp1 #rx"")
 (define expr1 (compile #'0))
+
+
+(check-equal?
+  (s= mstr1 mstr1)
+  (known /just /known mstr1)
+  "Smoosh works on `eq?` mutable strings")
+
+(check-equal?
+  (s= mstr1 mstr2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` mutable strings")
+
+(check-equal?
+  (sj mstr1 mstr1)
+  (known /just /known mstr1)
+  "Smoosh join works on `eq?` mutable strings")
+
+(check-pred
+  unknown?
+  (sj mstr1 mstr2)
+  "Smoosh join is unknown on non-`eq?` mutable strings")
+
+(check-equal?
+  (sm mstr1 mstr1)
+  (known /just /known mstr1)
+  "Smoosh meet works on `eq?` mutable strings")
+
+(check-pred
+  unknown?
+  (sm mstr1 mstr2)
+  "Smoosh meet is unknown on non-`eq?` mutable strings")
+
+(check-equal?
+  (s= (pw mstr1) (pw mstr1))
+  (known /just /known /pw mstr1)
+  "Path-related smoosh works on `eq?` mutable strings")
+
+(check-pred
+  unknown?
+  (s= (pw mstr1) (pw mstr2))
+  "Path-related smoosh is unknown on non-`eq?` mutable strings")
+
+(check-equal?
+  (s= (iw mstr1) (iw mstr1))
+  (known /just /known /iw mstr1)
+  "Info smoosh works on `eq?` mutable strings")
+
+(check-equal?
+  (s= (iw mstr1) (iw mstr2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` mutable strings")
+
+(check-equal?
+  (sj (iw mstr1) (iw mstr1))
+  (known /just /known /iw mstr1)
+  "Info smoosh join works on `eq?` mutable strings")
+
+(check-equal?
+  (sj (iw mstr1) (iw mstr2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` mutable strings")
+
+(check-equal?
+  (sm (iw mstr1) (iw mstr1))
+  (known /just /known /iw mstr1)
+  "Info smoosh meet works on `eq?` mutable strings")
+
+(check-equal?
+  (sm (iw mstr1) (iw mstr2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` mutable strings")
+
+(check-equal?
+  (s= (pw /iw mstr1) (pw /iw mstr1))
+  (known /just /known /pw /iw mstr1)
+  "Path-related info smoosh works on `eq?` mutable strings")
+
+(check-equal?
+  (s= (pw /iw mstr1) (pw /iw mstr2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` mutable strings")
+
+
+(check-equal?
+  (s= mbytes1 mbytes1)
+  (known /just /known mbytes1)
+  "Smoosh works on `eq?` mutable byte strings")
+
+(check-equal?
+  (s= mbytes1 mbytes2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` mutable byte strings")
+
+(check-equal?
+  (sj mbytes1 mbytes1)
+  (known /just /known mbytes1)
+  "Smoosh join works on `eq?` mutable byte strings")
+
+(check-pred
+  unknown?
+  (sj mbytes1 mbytes2)
+  "Smoosh join is unknown on non-`eq?` mutable byte strings")
+
+(check-equal?
+  (sm mbytes1 mbytes1)
+  (known /just /known mbytes1)
+  "Smoosh meet works on `eq?` mutable byte strings")
+
+(check-pred
+  unknown?
+  (sm mbytes1 mbytes2)
+  "Smoosh meet is unknown on non-`eq?` mutable byte strings")
+
+(check-equal?
+  (s= (pw mbytes1) (pw mbytes1))
+  (known /just /known /pw mbytes1)
+  "Path-related smoosh works on `eq?` mutable byte strings")
+
+(check-pred
+  unknown?
+  (s= (pw mbytes1) (pw mbytes2))
+  "Path-related smoosh is unknown on non-`eq?` mutable byte strings")
+
+(check-equal?
+  (s= (iw mbytes1) (iw mbytes1))
+  (known /just /known /iw mbytes1)
+  "Info smoosh works on `eq?` mutable byte strings")
+
+(check-equal?
+  (s= (iw mbytes1) (iw mbytes2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` mutable byte strings")
+
+(check-equal?
+  (sj (iw mbytes1) (iw mbytes1))
+  (known /just /known /iw mbytes1)
+  "Info smoosh join works on `eq?` mutable byte strings")
+
+(check-equal?
+  (sj (iw mbytes1) (iw mbytes2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` mutable byte strings")
+
+(check-equal?
+  (sm (iw mbytes1) (iw mbytes1))
+  (known /just /known /iw mbytes1)
+  "Info smoosh meet works on `eq?` mutable byte strings")
+
+(check-equal?
+  (sm (iw mbytes1) (iw mbytes2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` mutable byte strings")
+
+(check-equal?
+  (s= (pw /iw mbytes1) (pw /iw mbytes1))
+  (known /just /known /pw /iw mbytes1)
+  "Path-related info smoosh works on `eq?` mutable byte strings")
+
+(check-equal?
+  (s= (pw /iw mbytes1) (pw /iw mbytes2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` mutable byte strings")
+
+
+(check-equal?
+  (s= mbox1 mbox1)
+  (known /just /known mbox1)
+  "Smoosh works on `eq?` mutable boxes")
+
+(check-equal?
+  (s= mbox1 mbox2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` mutable boxes")
+
+(check-equal?
+  (sj mbox1 mbox1)
+  (known /just /known mbox1)
+  "Smoosh join works on `eq?` mutable boxes")
+
+(check-pred
+  unknown?
+  (sj mbox1 mbox2)
+  "Smoosh join is unknown on non-`eq?` mutable boxes")
+
+(check-equal?
+  (sm mbox1 mbox1)
+  (known /just /known mbox1)
+  "Smoosh meet works on `eq?` mutable boxes")
+
+(check-pred
+  unknown?
+  (sm mbox1 mbox2)
+  "Smoosh meet is unknown on non-`eq?` mutable boxes")
+
+(check-equal?
+  (s= (pw mbox1) (pw mbox1))
+  (known /just /known /pw mbox1)
+  "Path-related smoosh works on `eq?` mutable boxes")
+
+(check-pred
+  unknown?
+  (s= (pw mbox1) (pw mbox2))
+  "Path-related smoosh is unknown on non-`eq?` mutable boxes")
+
+(check-equal?
+  (s= (iw mbox1) (iw mbox1))
+  (known /just /known /iw mbox1)
+  "Info smoosh works on `eq?` mutable boxes")
+
+(check-equal?
+  (s= (iw mbox1) (iw mbox2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` mutable boxes")
+
+(check-equal?
+  (sj (iw mbox1) (iw mbox1))
+  (known /just /known /iw mbox1)
+  "Info smoosh join works on `eq?` mutable boxes")
+
+(check-equal?
+  (sj (iw mbox1) (iw mbox2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` mutable boxes")
+
+(check-equal?
+  (sm (iw mbox1) (iw mbox1))
+  (known /just /known /iw mbox1)
+  "Info smoosh meet works on `eq?` mutable boxes")
+
+(check-equal?
+  (sm (iw mbox1) (iw mbox2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` mutable boxes")
+
+(check-equal?
+  (s= (pw /iw mbox1) (pw /iw mbox1))
+  (known /just /known /pw /iw mbox1)
+  "Path-related info smoosh works on `eq?` mutable boxes")
+
+(check-equal?
+  (s= (pw /iw mbox1) (pw /iw mbox2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` mutable boxes")
+
+
+(check-equal?
+  (s= mv1 mv1)
+  (known /just /known mv1)
+  "Smoosh works on `eq?` mutable vectors")
+
+(check-equal?
+  (s= mv1 mv2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` mutable vectors")
+
+(check-equal?
+  (sj mv1 mv1)
+  (known /just /known mv1)
+  "Smoosh join works on `eq?` mutable vectors")
+
+(check-pred
+  unknown?
+  (sj mv1 mv2)
+  "Smoosh join is unknown on non-`eq?` mutable vectors")
+
+(check-equal?
+  (sm mv1 mv1)
+  (known /just /known mv1)
+  "Smoosh meet works on `eq?` mutable vectors")
+
+(check-pred
+  unknown?
+  (sm mv1 mv2)
+  "Smoosh meet is unknown on non-`eq?` mutable vectors")
+
+(check-equal?
+  (s= (pw mv1) (pw mv1))
+  (known /just /known /pw mv1)
+  "Path-related smoosh works on `eq?` mutable vectors")
+
+(check-pred
+  unknown?
+  (s= (pw mv1) (pw mv2))
+  "Path-related smoosh is unknown on non-`eq?` mutable vectors")
+
+(check-equal?
+  (s= (iw mv1) (iw mv1))
+  (known /just /known /iw mv1)
+  "Info smoosh works on `eq?` mutable vectors")
+
+(check-equal?
+  (s= (iw mv1) (iw mv2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` mutable vectors")
+
+(check-equal?
+  (sj (iw mv1) (iw mv1))
+  (known /just /known /iw mv1)
+  "Info smoosh join works on `eq?` mutable vectors")
+
+(check-equal?
+  (sj (iw mv1) (iw mv2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` mutable vectors")
+
+(check-equal?
+  (sm (iw mv1) (iw mv1))
+  (known /just /known /iw mv1)
+  "Info smoosh meet works on `eq?` mutable vectors")
+
+(check-equal?
+  (sm (iw mv1) (iw mv2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` mutable vectors")
+
+(check-equal?
+  (s= (pw /iw mv1) (pw /iw mv1))
+  (known /just /known /pw /iw mv1)
+  "Path-related info smoosh works on `eq?` mutable vectors")
+
+(check-equal?
+  (s= (pw /iw mv1) (pw /iw mv2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` mutable vectors")
+
+
+(check-equal?
+  (s= mprefab1 mprefab1)
+  (known /just /known mprefab1)
+  "Smoosh works on `eq?` mutable prefab structs")
+
+(check-equal?
+  (s= mprefab1 mprefab2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` mutable prefab structs")
+
+(check-equal?
+  (sj mprefab1 mprefab1)
+  (known /just /known mprefab1)
+  "Smoosh join works on `eq?` mutable prefab structs")
+
+(check-pred
+  unknown?
+  (sj mprefab1 mprefab2)
+  "Smoosh join is unknown on non-`eq?` mutable prefab structs")
+
+(check-equal?
+  (sm mprefab1 mprefab1)
+  (known /just /known mprefab1)
+  "Smoosh meet works on `eq?` mutable prefab structs")
+
+(check-pred
+  unknown?
+  (sm mprefab1 mprefab2)
+  "Smoosh meet is unknown on non-`eq?` mutable prefab structs")
+
+(check-equal?
+  (s= (pw mprefab1) (pw mprefab1))
+  (known /just /known /pw mprefab1)
+  "Path-related smoosh works on `eq?` mutable prefab structs")
+
+(check-pred
+  unknown?
+  (s= (pw mprefab1) (pw mprefab2))
+  "Path-related smoosh is unknown on non-`eq?` mutable prefab structs")
+
+(check-equal?
+  (s= (iw mprefab1) (iw mprefab1))
+  (known /just /known /iw mprefab1)
+  "Info smoosh works on `eq?` mutable prefab structs")
+
+(check-equal?
+  (s= (iw mprefab1) (iw mprefab2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` mutable prefab structs")
+
+(check-equal?
+  (sj (iw mprefab1) (iw mprefab1))
+  (known /just /known /iw mprefab1)
+  "Info smoosh join works on `eq?` mutable prefab structs")
+
+(check-equal?
+  (sj (iw mprefab1) (iw mprefab2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` mutable prefab structs")
+
+(check-equal?
+  (sm (iw mprefab1) (iw mprefab1))
+  (known /just /known /iw mprefab1)
+  "Info smoosh meet works on `eq?` mutable prefab structs")
+
+(check-equal?
+  (sm (iw mprefab1) (iw mprefab2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` mutable prefab structs")
+
+(check-equal?
+  (s= (pw /iw mprefab1) (pw /iw mprefab1))
+  (known /just /known /pw /iw mprefab1)
+  "Path-related info smoosh works on `eq?` mutable prefab structs")
+
+(check-equal?
+  (s= (pw /iw mprefab1) (pw /iw mprefab2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` mutable prefab structs")
+
+
+(check-equal?
+  (s= mhash1 mhash1)
+  (known /just /known mhash1)
+  "Smoosh works on `eq?` mutable hash tables")
+
+(check-equal?
+  (s= mhash1 mhash2)
+  (known /nothing)
+  "Smoosh fails on non-`eq?` mutable hash tables")
+
+(check-equal?
+  (sj mhash1 mhash1)
+  (known /just /known mhash1)
+  "Smoosh join works on `eq?` mutable hash tables")
+
+(check-pred
+  unknown?
+  (sj mhash1 mhash2)
+  "Smoosh join is unknown on non-`eq?` mutable hash tables")
+
+(check-equal?
+  (sm mhash1 mhash1)
+  (known /just /known mhash1)
+  "Smoosh meet works on `eq?` mutable hash tables")
+
+(check-pred
+  unknown?
+  (sm mhash1 mhash2)
+  "Smoosh meet is unknown on non-`eq?` mutable hash tables")
+
+(check-equal?
+  (s= (pw mhash1) (pw mhash1))
+  (known /just /known /pw mhash1)
+  "Path-related smoosh works on `eq?` mutable hash tables")
+
+(check-pred
+  unknown?
+  (s= (pw mhash1) (pw mhash2))
+  "Path-related smoosh is unknown on non-`eq?` mutable hash tables")
+
+(check-equal?
+  (s= (iw mhash1) (iw mhash1))
+  (known /just /known /iw mhash1)
+  "Info smoosh works on `eq?` mutable hash tables")
+
+(check-equal?
+  (s= (iw mhash1) (iw mhash2))
+  (known /nothing)
+  "Info smoosh fails on non-`eq?` mutable hash tables")
+
+(check-equal?
+  (sj (iw mhash1) (iw mhash1))
+  (known /just /known /iw mhash1)
+  "Info smoosh join works on `eq?` mutable hash tables")
+
+(check-equal?
+  (sj (iw mhash1) (iw mhash2))
+  (known /nothing)
+  "Info smoosh join fails on non-`eq?` mutable hash tables")
+
+(check-equal?
+  (sm (iw mhash1) (iw mhash1))
+  (known /just /known /iw mhash1)
+  "Info smoosh meet works on `eq?` mutable hash tables")
+
+(check-equal?
+  (sm (iw mhash1) (iw mhash2))
+  (known /nothing)
+  "Info smoosh meet fails on non-`eq?` mutable hash tables")
+
+(check-equal?
+  (s= (pw /iw mhash1) (pw /iw mhash1))
+  (known /just /known /pw /iw mhash1)
+  "Path-related info smoosh works on `eq?` mutable hash tables")
+
+(check-equal?
+  (s= (pw /iw mhash1) (pw /iw mhash2))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`eq?` mutable hash tables")
 
 
 (check-equal?
@@ -1469,9 +1968,9 @@
 ; TODO SMOOSH: Implement smooshing tests for values of the following
 ; types:
 ;
-;   - Mutable strings, mutable byte strings, mutable boxes, mutable
-;     vectors, prefab structs with mutable fields, and mutable hash
-;     tables.
+;   - (Done) Mutable strings, mutable byte strings, mutable boxes,
+;     mutable vectors, prefab structs with mutable fields, and mutable
+;     hash tables.
 ;
 ;   - (Done) Flvectors and fxvectors.
 ;

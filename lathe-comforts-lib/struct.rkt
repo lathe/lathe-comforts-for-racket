@@ -142,13 +142,16 @@
 (define/own-contract (immutable-prefab-struct? v)
   (-> any/c boolean?)
   (and (prefab-struct? v)
-  #/w- type (struct-info v)
-  #/and type (known-to-be-immutable-struct-type? type)))
+  #/let-values ([(type skipped?) (struct-info v)])
+  #/and
+    (not skipped?)
+    type
+    (known-to-be-immutable-struct-type? type)))
 
 (define/own-contract (mutable-prefab-struct? v)
   (-> any/c boolean?)
   (and (prefab-struct? v)
-  #/w- type (struct-info v)
+  #/let-values ([(type skipped?) (struct-info v)])
   #/and type (known-to-be-mutable-struct-type? type)))
 
 

@@ -1267,13 +1267,17 @@
 
 (define/own-contract (boolean-and-knowable-thunk-zip* kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (boolean-and-knowable-promise-zip*
+  (force /boolean-and-knowable-promise-zip*
     (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)))
 
 (define/own-contract (boolean-or-knowable-thunk-zip* kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (not /boolean-and-knowable-thunk-zip*
-    (list-map kble-thunk-list /fn kble-thunk /fn /not /kble-thunk)))
+  (w- boolean-knowable-not
+    (fn k
+      (knowable-map k /fn result /not result))
+  /boolean-knowable-not /boolean-and-knowable-thunk-zip*
+    (list-map kble-thunk-list /fn kble-thunk
+      (fn /boolean-knowable-not /kble-thunk))))
 
 (define/own-contract
   (maybe-min-knowable-promise-zip*-map mkp-list on-value)
