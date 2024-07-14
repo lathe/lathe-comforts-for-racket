@@ -7452,8 +7452,9 @@
 
 (define/own-contract
   (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp)
+    operands kpmkp)
   (->
+    (listof path-related-wrapper?)
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
   (promise-map kpmkp /fn kpmk
@@ -7461,7 +7462,13 @@
       (maybe-map kpm /fn kp
         (promise-map kp /fn k
           (knowable-map k /fn result-value
-            (path-related-wrapper result-value)))))))
+            (w-loop next operands operands
+              (expect operands (cons operand operands)
+                (path-related-wrapper result-value)
+              /dissect operand (path-related-wrapper operand-value)
+              /if (eq? operand-value result-value)
+                operand
+              /next operands))))))))
 
 (define/own-contract (on-path-related-wrapper-hash-code-promise p)
   (-> (promise/c fixnum?) (promise/c fixnum?))
@@ -7472,12 +7479,17 @@
 
 (define/own-contract
   (path-related-wrapper-smoosh-reports-from-value-reports
-    value-reports)
-  (-> (sequence/c smoosh-report?) (sequence/c smoosh-report?))
+    operands value-reports)
+  (->
+    (listof path-related-wrapper?)
+    (sequence/c smoosh-report?)
+    (sequence/c smoosh-report?))
   (dissect
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+      (fn kpmkp
+        (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+          operands kpmkp)))
     (sequence* report-0 report-1+)
   /sequence*
     (constant-smoosh-report
@@ -7487,13 +7499,17 @@
 
 (define/own-contract
   (path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
-    value-reports)
-  (-> (sequence/c smoosh-and-comparison-of-two-report?)
+    operands value-reports)
+  (->
+    (listof path-related-wrapper?)
+    (sequence/c smoosh-and-comparison-of-two-report?)
     (sequence/c smoosh-and-comparison-of-two-report?))
   (dissect
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+      (fn kpmkp
+        (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+          operands kpmkp)))
     (sequence* report-0 report-1+)
   /sequence*
     (constant-smoosh-and-comparison-of-two-report
@@ -7555,9 +7571,14 @@
 ;     If the operands are not both `path-related-wrapper?` values,
 ;     then unknown.
 ;     
-;     Otherwise, the result of performing a level-0 path-related
-;     smoosh on their values, then wrapping the result in a
-;     `path-related-wrapper?` if it's successful.
+;     Otherwise, if the result of performing a level-0 path-related
+;     smoosh on their values is a known success and any operand's
+;     unwrapped value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as a
+;     `path-related-wrapper?` value.
+;     
+;     Otherwise, the same known failure or unknown result.
 ;   <=, >=:
 ;     If the operands are not both `path-related-wrapper?` values,
 ;     then unknown.
@@ -7569,9 +7590,17 @@
 ;     If the operands are not both `path-related-wrapper?` values,
 ;     then unknown.
 ;     
-;     Otherwise, the result of performing the same smoosh or check on
-;     their values, then wrapping any successful smoosh result in a
-;     `path-related-wrapper?`.
+;     Otherwise, if the result of performing the same smoosh or check
+;     on their values is a known success and we're doing a check, then
+;     `#t`.
+;     
+;     Otherwise, if it's a known success and any operand's unwrapped
+;     value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as a
+;     `path-related-wrapper?` value.
+;     
+;     Otherwise, the same known failure or unknown result.
 ;
 (define-imitation-simple-struct
   (path-related-wrapper-dynamic-type?
@@ -7586,6 +7615,7 @@
       (fn self
         (dissect self (path-related-wrapper-dynamic-type any-dt)
         /path-related-wrapper-smoosh-reports-from-value-reports
+          (list)
           (dynamic-type-get-smoosh-of-zero-reports any-dt)))
       
       #:get-smoosh-of-one-reports
@@ -7594,6 +7624,7 @@
         /expect a (path-related-wrapper a-value)
           (uninformative-smoosh-reports)
         /path-related-wrapper-smoosh-reports-from-value-reports
+          (list a)
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
       
       #:get-smoosh-and-comparison-of-two-reports
@@ -7604,6 +7635,7 @@
         /expect b (path-related-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             any-dt a-value b-value)))
       
@@ -7615,6 +7647,7 @@
         /expect b (path-related-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
             any-dt a-value b-value)))
       
@@ -7652,8 +7685,9 @@
 
 (define/own-contract
   (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp)
+    operands kpmkp)
   (->
+    (listof info-wrapper?)
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
   (promise-map kpmkp /fn kpmk
@@ -7661,7 +7695,13 @@
       (maybe-map kpm /fn kp
         (promise-map kp /fn k
           (knowable-map k /fn result-value
-            (info-wrapper result-value)))))))
+            (w-loop next operands operands
+              (expect operands (cons operand operands)
+                (info-wrapper result-value)
+              /dissect operand (info-wrapper operand-value)
+              /if (eq? operand-value result-value)
+                operand
+              /next operands))))))))
 
 (define/own-contract (on-info-wrapper-hash-code-promise p)
   (-> (promise/c fixnum?) (promise/c fixnum?))
@@ -7671,24 +7711,32 @@
       value-hash-code)))
 
 (define/own-contract
-  (info-wrapper-smoosh-reports-from-value-reports value-reports)
-  (-> (sequence/c smoosh-report?) (sequence/c smoosh-report?))
+  (info-wrapper-smoosh-reports-from-value-reports
+    operands value-reports)
+  (-> (listof info-wrapper?) (sequence/c smoosh-report?)
+    (sequence/c smoosh-report?))
   (dissect
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+      (fn kpmkp
+        (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+          operands kpmkp)))
     (sequence* report-0 report-1+)
     report-1+))
 
 (define/own-contract
   (info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
-    value-reports)
-  (-> (sequence/c smoosh-and-comparison-of-two-report?)
+    operands value-reports)
+  (->
+    (listof info-wrapper?)
+    (sequence/c smoosh-and-comparison-of-two-report?)
     (sequence/c smoosh-and-comparison-of-two-report?))
   (dissect
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)
+      (fn kpmkp
+        (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+          operands kpmkp)))
     (sequence* report-0 report-1+)
     report-1+))
 
@@ -7736,9 +7784,17 @@
 ;     If the operands are not both `info-wrapper?` values, then
 ;     unknown.
 ;     
-;     Otherwise, the result of performing the same smoosh or check 1
-;     level up on their values, then wrapping any successful smoosh
-;     result in an `info-wrapper?`.
+;     Otherwise, if the result of processing the unwrapped values with
+;     the same smoosh or check 1 level up is a known success and we're
+;     doing a check, then `#t`.
+;     
+;     Otherwise, if it's a known success and any operand's unwrapped
+;     value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as an
+;     `info-wrapper?` value.
+;     
+;     Otherwise, the same known failure or unknown result.
 ;
 (define-imitation-simple-struct
   (info-wrapper-dynamic-type?
@@ -7753,6 +7809,7 @@
       (fn self
         (dissect self (info-wrapper-dynamic-type any-dt)
         /info-wrapper-smoosh-reports-from-value-reports
+          (list)
           (dynamic-type-get-smoosh-of-zero-reports any-dt)))
       
       #:get-smoosh-of-one-reports
@@ -7761,6 +7818,7 @@
         /expect a (info-wrapper a-value)
           (uninformative-smoosh-reports)
         /info-wrapper-smoosh-reports-from-value-reports
+          (list a)
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
       
       #:get-smoosh-and-comparison-of-two-reports
@@ -7771,6 +7829,7 @@
         /expect b (info-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             any-dt a-value b-value)))
       
@@ -7782,6 +7841,7 @@
         /expect b (info-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
             any-dt a-value b-value)))
       
@@ -7961,8 +8021,9 @@
 
 (define/own-contract
   (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp)
+    operands kpmkp)
   (->
+    (listof indistinct-wrapper?)
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
   (promise-map kpmkp /fn kpmk
@@ -7970,7 +8031,13 @@
       (maybe-map kpm /fn kp
         (promise-map kp /fn k
           (knowable-map k /fn result-value
-            (indistinct-wrapper result-value)))))))
+            (w-loop next operands operands
+              (expect operands (cons operand operands)
+                (indistinct-wrapper result-value)
+              /dissect operand (indistinct-wrapper operand-value)
+              /if (eq? operand-value result-value)
+                operand
+              /next operands))))))))
 
 (define/own-contract (on-indistinct-wrapper-hash-code-promise p)
   (-> (promise/c fixnum?) (promise/c fixnum?))
@@ -7980,24 +8047,32 @@
       value-hash-code)))
 
 (define/own-contract
-  (indistinct-wrapper-smoosh-reports-from-value-reports value-reports)
-  (-> (sequence/c smoosh-report?) (sequence/c smoosh-report?))
+  (indistinct-wrapper-smoosh-reports-from-value-reports
+    operands value-reports)
+  (-> (listof indistinct-wrapper?) (sequence/c smoosh-report?)
+    (sequence/c smoosh-report?))
   (smoosh-reports-with-hesitation-at-discrepancies
     #:known-distinct? #f
     (smoosh-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)))
+      (fn kpmkp
+        (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+          operands kpmkp)))))
 
 (define/own-contract
   (indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
-    value-reports)
-  (-> (sequence/c smoosh-and-comparison-of-two-report?)
+    operands value-reports)
+  (->
+    (listof indistinct-wrapper?)
+    (sequence/c smoosh-and-comparison-of-two-report?)
     (sequence/c smoosh-and-comparison-of-two-report?))
   (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
     #:known-distinct? #f
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise)))
+      (fn kpmkp
+        (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
+          operands kpmkp)))))
 
 (define/own-contract
   (indistinct-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
@@ -8032,12 +8107,14 @@
 ;     unknown.
 ;     
 ;     Otherwise, if the result of processing the unwrapped values with
-;     the same smoosh or check is a known success and any operand's
-;     unwrapped value is `eq?` to it, then that operand (or, for a
-;     check, `#t`).
+;     the same smoosh or check is a known success and we're doing a
+;     check, then `#t`.
 ;     
-;     Otherwise, if it's a known success, that value wrapped up as an
-;     `indistinct-wrapper?` value (or, for a check, `#t`).
+;     Otherwise, if it's a known success and any operand's unwrapped
+;     value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as a
+;     `indistinct-wrapper?` value.
 ;     
 ;     Otherwise, unknown.
 ;
@@ -8056,6 +8133,7 @@
       (fn self
         (dissect self (indistinct-wrapper-dynamic-type any-dt)
         /indistinct-wrapper-smoosh-reports-from-value-reports
+          (list)
           (dynamic-type-get-smoosh-of-zero-reports any-dt)))
       
       #:get-smoosh-of-one-reports
@@ -8064,6 +8142,7 @@
         /expect a (indistinct-wrapper a-value)
           (uninformative-smoosh-reports)
         /indistinct-wrapper-smoosh-reports-from-value-reports
+          (list a)
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
       
       #:get-smoosh-and-comparison-of-two-reports
@@ -8074,6 +8153,7 @@
         /expect b (indistinct-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             any-dt a-value b-value)))
       
@@ -8085,6 +8165,7 @@
         /expect b (indistinct-wrapper b-value)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
             any-dt a-value b-value)))
       

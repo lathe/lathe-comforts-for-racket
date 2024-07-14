@@ -22,7 +22,7 @@
 (require /only-in racket/extflonum extflonum-available?)
 (require /only-in racket/fixnum fxvector)
 (require /only-in racket/flonum flvector)
-(require /only-in rackunit check-equal? check-pred)
+(require /only-in rackunit check-eq? check-equal? check-pred)
 
 (require lathe-comforts/private/shim)
 (init-shim)
@@ -1051,6 +1051,166 @@
 
 
 (check-equal?
+  (s= (cons 0 0.0) (cons 0.0 0))
+  (known /just /known /cons 0 0.0)
+  "Smoosh works on equal cons cells")
+
+(w- c (cons 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /s= c (cons 0.0 0))
+    c
+    "Smoosh preserves `eq?` when possible on equal cons cells"))
+
+(check-equal?
+  (s= (cons 0 0) (cons 1 0))
+  (known /nothing)
+  "Smoosh fails on unequal cons cells")
+
+(check-equal?
+  (sj (cons 0 0.0) (cons 0.0 0))
+  (known /just /known /cons 0 0.0)
+  "Smoosh join works on equal cons cells")
+
+(w- c (cons 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /sj c (cons 0.0 0))
+    c
+    "Smoosh join preserves `eq?` when possible on equal cons cells"))
+
+(check-equal?
+  (sj (cons 1 0) (cons 0.0 1+0.0i))
+  (known /just /known /cons 1 1+0.0i)
+  "Smoosh join works on unequal, comparable cons cells")
+
+(check-pred
+  unknown?
+  (sj (cons 0 0+i) (cons 0 1+i))
+  "Smoosh join is unknown on unequal, uncomparable cons cells")
+
+(check-equal?
+  (sm (cons 0 0.0) (cons 0.0 0))
+  (known /just /known /cons 0 0.0)
+  "Smoosh meet works on equal cons cells")
+
+(w- c (cons 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /sm c (cons 0.0 0))
+    c
+    "Smoosh meet preserves `eq?` when possible on equal cons cells"))
+
+(check-equal?
+  (sm (cons 1 0) (cons 0.0 1+0.0i))
+  (known /just /known /cons 0.0 0)
+  "Smoosh meet works on unequal, comparable cons cells")
+
+(check-pred
+  unknown?
+  (sm (cons 0 0+i) (cons 0 1+i))
+  "Smoosh meet is unknown on unequal, uncomparable cons cells")
+
+(check-equal?
+  (s= (pw /cons 0 0.0) (pw /cons 0.0 0))
+  (known /just /known /pw /cons 0 0.0)
+  "Path-related smoosh works on equal cons cells")
+
+(w- c (pw /cons 0 0.0)
+  (check-eq?
+    (path-related-wrapper-value /known-value /just-value /known-value /s= c (pw /cons 0.0 0))
+    (path-related-wrapper-value c)
+    "Path-related smoosh preserves `eq?` when possible on equal cons cells"))
+
+(check-equal?
+  (s= (pw /cons 0 0.0) (pw /cons 1.0 1+0.0i))
+  (known /just /known /pw /cons 0 0.0)
+  "Path-related smoosh works on cons cells with path-related elements")
+
+(w- c (pw /cons 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /s= c (pw /cons 1.0 1+0.0i))
+    c
+    "Path-related smoosh preserves `eq?` when possible on cons cells with path-related elements"))
+
+(check-pred
+  unknown?
+  (s= (pw /cons 0 0+i) (pw /cons 0 1+i))
+  "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+; TODO SMOOSH: If we ever have a pair of values whose path-related
+; smoosh actually fails (rather than just having an unknown result),
+; use it in the TODO slots here.
+;
+#;
+(check-equal?
+  (s= (pw /cons TODO 0+i) (pw /cons TODO 1+i))
+  (known /nothing)
+  "Path-related smoosh fails on cons cells with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+
+(check-equal?
+  (s= (iw /cons 0 0) (iw /cons 0 0))
+  (known /just /known /iw /cons 0 0)
+  "Info smoosh works on cons cells whose elements are info smooshable")
+
+(w- c (iw /cons 0 0)
+  (check-eq?
+    (known-value /just-value /known-value /s= c (iw /cons 0 0))
+    c
+    "Info smoosh preserves `eq?` when possible on cons cells whose elements are info smooshable"))
+
+(check-equal?
+  (s= (iw /cons 0 0) (iw /cons 0 0.0))
+  (known /nothing)
+  "Info smoosh fails on cons cells with a pair of corresponding elements whose info smoosh fails")
+
+(check-equal?
+  (sj (iw /cons 0 0) (iw /cons 0 0))
+  (known /just /known /iw /cons 0 0)
+  "Info smoosh join works on cons cells whose elements are info smoosh joinable")
+
+(w- c (iw /cons 0 0)
+  (check-eq?
+    (known-value /just-value /known-value /sj c (iw /cons 0 0))
+    c
+    "Info smoosh join preserves `eq?` when possible on cons cells whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw /cons 0 0) (iw /cons 0 0.0))
+  (known /nothing)
+  "Info smoosh join fails on cons cells with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-equal?
+  (sm (iw /cons 0 0) (iw /cons 0 0))
+  (known /just /known /iw /cons 0 0)
+  "Info smoosh meet works on `equal-always?` cons cells")
+
+(w- c (iw /cons 0 0)
+  (check-eq?
+    (known-value /just-value /known-value /sm c (iw /cons 0 0))
+    c
+    "Info smoosh meet preserves `eq?` when possible on cons cells whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw /cons 0 0) (iw /cons 0 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on cons cells with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-equal?
+  (s= (pw /iw /cons 0 0) (pw /iw /cons 0 0))
+  (known /just /known /pw /iw /cons 0 0)
+  "Path-related info smoosh works on cons cells whose elements are path-related info smooshable")
+
+(w- c (pw /iw /cons 0 0)
+  (check-eq?
+    (known-value /just-value /known-value /s= c (pw /iw /cons 0 0))
+    c
+    "Path-related info smoosh preserves `eq?` when possible on cons cells whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw /cons 0 0) (pw /iw /cons 0 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on cons cells with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-equal?
   (s= 'a '#:b)
   (known /nothing)
   "Smoosh fails on interactions between different types of base syntactic atom")
@@ -1970,7 +2130,8 @@
 ;
 ;   - (Done) Mutable strings, mutable byte strings, mutable boxes,
 ;     mutable vectors, prefab structs with mutable fields, and mutable
-;     hash tables.
+;     hash tables. (TODO SMOOSH: Write tests for smooshing the
+;     chaperone wrappers of these.)
 ;
 ;   - (Done) Flvectors and fxvectors.
 ;
@@ -1978,7 +2139,7 @@
 ;
 ;   - (Done) Empty lists.
 ;
-;   - Cons cells.
+;   - (Done) Cons cells.
 ;
 ;   - (Done) Booleans.
 ;
