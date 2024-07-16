@@ -174,6 +174,10 @@
 (define sm smooshable-meet-exercise-knowable-maybe-knowable)
 
 
+(define-values
+  (imp-prop:arbitrary imp-prop:arbitrary? imp-prop:arbitrary-get)
+  (make-impersonator-property 'imp-prop:arbitrary))
+
 (define mstr1 (string #\a))
 (define mstr2 (string #\b))
 (define mbytes1 (bytes 0))
@@ -182,6 +186,22 @@
 (define mbox2 (box 0))
 (define mv1 (vector 0))
 (define mv2 (vector 0))
+(define mv1-with-prop
+  (chaperone-vector mv1 #f #f imp-prop:arbitrary #t))
+(define mv1-chap
+  (chaperone-vector mv1
+    (fn mv i current-v current-v)
+    (fn mv i new-v new-v)))
+(define mv1-chap2
+  (chaperone-vector mv1
+    (fn mv i current-v current-v)
+    (fn mv i new-v new-v)))
+(define mv1-chap-with-prop
+  (chaperone-vector mv1-chap #f #f imp-prop:arbitrary #t))
+(define mv1-chap-chap
+  (chaperone-vector mv1-chap
+    (fn mv i current-v current-v)
+    (fn mv i new-v new-v)))
 (struct mprefab ([field #:mutable]) #:prefab)
 (define mprefab1 (mprefab 0))
 (define mprefab2 (mprefab 0))
@@ -364,42 +384,42 @@
 (check-equal?
   (s= mbox1 mbox1)
   (known /just /known mbox1)
-  "Smoosh works on `eq?` mutable boxes")
+  "Smoosh works on `equal-always?` mutable boxes")
 
 (check-equal?
   (s= mbox1 mbox2)
   (known /nothing)
-  "Smoosh fails on non-`eq?` mutable boxes")
+  "Smoosh fails on non-`equal-always?` mutable boxes")
 
 (check-equal?
   (sj mbox1 mbox1)
   (known /just /known mbox1)
-  "Smoosh join works on `eq?` mutable boxes")
+  "Smoosh join works on `equal-always?` mutable boxes")
 
 (check-pred
   unknown?
   (sj mbox1 mbox2)
-  "Smoosh join is unknown on non-`eq?` mutable boxes")
+  "Smoosh join is unknown on non-`equal-always?` mutable boxes")
 
 (check-equal?
   (sm mbox1 mbox1)
   (known /just /known mbox1)
-  "Smoosh meet works on `eq?` mutable boxes")
+  "Smoosh meet works on `equal-always?` mutable boxes")
 
 (check-pred
   unknown?
   (sm mbox1 mbox2)
-  "Smoosh meet is unknown on non-`eq?` mutable boxes")
+  "Smoosh meet is unknown on non-`equal-always?` mutable boxes")
 
 (check-equal?
   (s= (pw mbox1) (pw mbox1))
   (known /just /known /pw mbox1)
-  "Path-related smoosh works on `eq?` mutable boxes")
+  "Path-related smoosh works on `equal-always?` mutable boxes")
 
 (check-pred
   unknown?
   (s= (pw mbox1) (pw mbox2))
-  "Path-related smoosh is unknown on non-`eq?` mutable boxes")
+  "Path-related smoosh is unknown on non-`equal-always?` mutable boxes")
 
 (check-equal?
   (s= (iw mbox1) (iw mbox1))
@@ -445,204 +465,357 @@
 (check-equal?
   (s= mv1 mv1)
   (known /just /known mv1)
-  "Smoosh works on `eq?` mutable vectors")
+  "Smoosh works on `equal-always?` mutable vectors")
+
+(check-eq?
+  (known-value /just-value /known-value /s= mv1 mv1)
+  mv1
+  "Smoosh preserves `eq?` on `equal-always?` mutable vectors")
+
+(check-equal?
+  (s= mv1-chap-with-prop mv1-with-prop)
+  (known /just /known mv1-chap-with-prop)
+  "Smoosh works on `equal-always?` mutable vectors even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value /s= mv1-chap-with-prop mv1-with-prop)
+  mv1-chap-with-prop
+  "Smoosh preserves `eq?` on `equal-always?` mutable vectors even when they're not `eq?`")
 
 (check-equal?
   (s= mv1 mv2)
   (known /nothing)
-  "Smoosh fails on non-`eq?` mutable vectors")
+  "Smoosh fails on non-`equal-always?` mutable vectors")
 
 (check-equal?
   (sj mv1 mv1)
   (known /just /known mv1)
-  "Smoosh join works on `eq?` mutable vectors")
+  "Smoosh join works on `equal-always?` mutable vectors")
+
+(check-eq?
+  (known-value /just-value /known-value /sj mv1 mv1)
+  mv1
+  "Smoosh join preserves `eq?` on `equal-always?` mutable vectors")
+
+(check-equal?
+  (sj mv1-chap-with-prop mv1-with-prop)
+  (known /just /known mv1-chap-with-prop)
+  "Smoosh join works on `equal-always?` mutable vectors even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value /sj mv1-chap-with-prop mv1-with-prop)
+  mv1-chap-with-prop
+  "Smoosh join preserves `eq?` on `equal-always?` mutable vectors even when they're not `eq?`")
 
 (check-pred
   unknown?
   (sj mv1 mv2)
-  "Smoosh join is unknown on non-`eq?` mutable vectors")
+  "Smoosh join is unknown on non-`equal-always?` mutable vectors")
 
 (check-equal?
   (sm mv1 mv1)
   (known /just /known mv1)
-  "Smoosh meet works on `eq?` mutable vectors")
+  "Smoosh meet works on `equal-always?` mutable vectors")
+
+(check-eq?
+  (known-value /just-value /known-value /sm mv1 mv1)
+  mv1
+  "Smoosh meet preserves `eq?` on `equal-always?` mutable vectors")
+
+(check-equal?
+  (sm mv1-chap-with-prop mv1-with-prop)
+  (known /just /known mv1-chap-with-prop)
+  "Smoosh meet works on `equal-always?` mutable vectors even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value /sm mv1-chap-with-prop mv1-with-prop)
+  mv1-chap-with-prop
+  "Smoosh meet preserves `eq?` on `equal-always?` mutable vectors even when they're not `eq?`")
 
 (check-pred
   unknown?
   (sm mv1 mv2)
-  "Smoosh meet is unknown on non-`eq?` mutable vectors")
+  "Smoosh meet is unknown on non-`equal-always?` mutable vectors")
 
 (check-equal?
   (s= (pw mv1) (pw mv1))
   (known /just /known /pw mv1)
-  "Path-related smoosh works on `eq?` mutable vectors")
+  "Path-related smoosh works on `equal-always?` mutable vectors")
+
+(check-eq?
+  (path-related-wrapper-value /known-value /just-value /known-value
+    (s= (pw mv1) (pw mv1)))
+  mv1
+  "Path-related smoosh preserves `eq?` on `equal-always?` mutable vectors")
+
+(check-equal?
+  (s= (pw mv1-chap-with-prop) (pw mv1-with-prop))
+  (known /just /known /pw mv1-chap-with-prop)
+  "Path-related smoosh works on `equal-always?` mutable vectors even when they're not `eq?`")
+
+(check-eq?
+  (path-related-wrapper-value /known-value /just-value /known-value
+    (s= (pw mv1-chap-with-prop) (pw mv1-with-prop)))
+  mv1-chap-with-prop
+  "Path-related smoosh preserves `eq?` on `equal-always?` mutable vectors even when they're not `eq?`")
 
 (check-pred
   unknown?
   (s= (pw mv1) (pw mv2))
-  "Path-related smoosh is unknown on non-`eq?` mutable vectors")
+  "Path-related smoosh is unknown on non-`equal-always?` mutable vectors")
 
 (check-equal?
   (s= (iw mv1) (iw mv1))
   (known /just /known /iw mv1)
-  "Info smoosh works on `eq?` mutable vectors")
+  "Info smoosh works on `chaperone=?` mutable vectors")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (s= (iw mv1) (iw mv1)))
+  mv1
+  "Info smoosh preserves `eq?` on `chaperone=?` mutable vectors")
 
 (check-equal?
   (s= (iw mv1) (iw mv2))
   (known /nothing)
-  "Info smoosh fails on non-`eq?` mutable vectors")
+  "Info smoosh fails on non-`equal-always?` mutable vectors")
+
+(check-pred
+  unknown?
+  (s= (iw mv1-chap-chap) (iw mv1-chap-with-prop))
+  "Info smoosh is unknown on non-`chaperone=?` mutable vectors even when they're `chaperone-of?` in one direction")
+
+(check-pred
+  unknown?
+  (s= (iw mv1-chap) (iw mv1-chap2))
+  "Info smoosh is unknown on non-`chaperone=?` mutable vectors even when they're `equal-always?`")
 
 (check-equal?
   (sj (iw mv1) (iw mv1))
   (known /just /known /iw mv1)
-  "Info smoosh join works on `eq?` mutable vectors")
+  "Info smoosh join works on `chaperone=?` mutable vectors")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw mv1) (iw mv1)))
+  mv1
+  "Info smoosh join preserves `eq?` on `chaperone=?` mutable vectors")
+
+(check-equal?
+  (sj (iw mv1-chap-chap) (iw mv1-chap-with-prop))
+  (known /just /known /iw mv1-chap-chap)
+  "Info smoosh join works on `chaperone-of?` mutable vectors even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw mv1-chap-chap) (iw mv1-chap-with-prop)))
+  mv1-chap-chap
+  "Info smoosh join preserves `eq?` on `chaperone-of?` mutable vectors even when they're not `chaperone=?`")
 
 (check-equal?
   (sj (iw mv1) (iw mv2))
   (known /nothing)
-  "Info smoosh join fails on non-`eq?` mutable vectors")
+  "Info smoosh join fails on non-`equal-always?` mutable vectors")
+
+(check-pred
+  unknown?
+  (sj (iw mv1-chap) (iw mv1-chap2))
+  "Info smoosh join is unknown on non-`chaperone-of?` mutable vectors even when they're `equal-always?`")
 
 (check-equal?
   (sm (iw mv1) (iw mv1))
   (known /just /known /iw mv1)
-  "Info smoosh meet works on `eq?` mutable vectors")
+  "Info smoosh meet works on `chaperone=?` mutable vectors")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw mv1) (iw mv1)))
+  mv1
+  "Info smoosh meet preserves `eq?` on `chaperone=?` mutable vectors")
+
+(check-equal?
+  (sm (iw mv1-chap-chap) (iw mv1-chap-with-prop))
+  (known /just /known /iw mv1-chap-with-prop)
+  "Info smoosh meet works on `chaperone-of?` mutable vectors even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw mv1-chap-chap) (iw mv1-chap-with-prop)))
+  mv1-chap-with-prop
+  "Info smoosh meet preserves `eq?` on `chaperone-of?` mutable vectors even when they're not `chaperone=?`")
 
 (check-equal?
   (sm (iw mv1) (iw mv2))
   (known /nothing)
-  "Info smoosh meet fails on non-`eq?` mutable vectors")
+  "Info smoosh meet fails on non-`equal-always?` mutable vectors")
+
+(check-pred
+  unknown?
+  (sm (iw mv1-chap) (iw mv1-chap2))
+  "Info smoosh meet is unknown on non-`chaperone-of?` mutable vectors even when they're `equal-always?`")
 
 (check-equal?
   (s= (pw /iw mv1) (pw /iw mv1))
   (known /just /known /pw /iw mv1)
-  "Path-related info smoosh works on `eq?` mutable vectors")
+  "Path-related info smoosh works on `equal-always?` mutable vectors")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mv1) (pw /iw mv1))))
+  mv1
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable vectors")
+
+(check-equal?
+  (s= (pw /iw mv1-chap-chap) (pw /iw mv1-chap-with-prop))
+  (known /just /known /pw /iw mv1-chap-chap)
+  "Path-related info smoosh works on `equal-always?` mutable vectors even when they're not `eq?`")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mv1-chap-chap) (pw /iw mv1-chap-with-prop))))
+  mv1-chap-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable vectors even when they're not `eq?`")
+
+(check-equal?
+  (s= (pw /iw mv1-chap) (pw /iw mv1-chap2))
+  (known /just /known /pw /iw mv1-chap)
+  "Path-related info smoosh works on `equal-always?` mutable vectors even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mv1-chap) (pw /iw mv1-chap2))))
+  mv1-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable vectors even when they're not `chaperone=?`")
 
 (check-equal?
   (s= (pw /iw mv1) (pw /iw mv2))
   (known /nothing)
-  "Path-related info smoosh fails on non-`eq?` mutable vectors")
+  "Path-related info smoosh fails on non-`equal-always?` mutable vectors")
 
 
 (check-equal?
   (s= mprefab1 mprefab1)
   (known /just /known mprefab1)
-  "Smoosh works on `eq?` mutable prefab structs")
+  "Smoosh works on `equal-always?` mutable prefab structs")
 
 (check-equal?
   (s= mprefab1 mprefab2)
   (known /nothing)
-  "Smoosh fails on non-`eq?` mutable prefab structs")
+  "Smoosh fails on non-`equal-always?` mutable prefab structs")
 
 (check-equal?
   (sj mprefab1 mprefab1)
   (known /just /known mprefab1)
-  "Smoosh join works on `eq?` mutable prefab structs")
+  "Smoosh join works on `equal-always?` mutable prefab structs")
 
 (check-pred
   unknown?
   (sj mprefab1 mprefab2)
-  "Smoosh join is unknown on non-`eq?` mutable prefab structs")
+  "Smoosh join is unknown on non-`equal-always?` mutable prefab structs")
 
 (check-equal?
   (sm mprefab1 mprefab1)
   (known /just /known mprefab1)
-  "Smoosh meet works on `eq?` mutable prefab structs")
+  "Smoosh meet works on `equal-always?` mutable prefab structs")
 
 (check-pred
   unknown?
   (sm mprefab1 mprefab2)
-  "Smoosh meet is unknown on non-`eq?` mutable prefab structs")
+  "Smoosh meet is unknown on non-`equal-always?` mutable prefab structs")
 
 (check-equal?
   (s= (pw mprefab1) (pw mprefab1))
   (known /just /known /pw mprefab1)
-  "Path-related smoosh works on `eq?` mutable prefab structs")
+  "Path-related smoosh works on `equal-always?` mutable prefab structs")
 
 (check-pred
   unknown?
   (s= (pw mprefab1) (pw mprefab2))
-  "Path-related smoosh is unknown on non-`eq?` mutable prefab structs")
+  "Path-related smoosh is unknown on non-`equal-always?` mutable prefab structs")
 
 (check-equal?
   (s= (iw mprefab1) (iw mprefab1))
   (known /just /known /iw mprefab1)
-  "Info smoosh works on `eq?` mutable prefab structs")
+  "Info smoosh works on `chaperone=?` mutable prefab structs")
 
 (check-equal?
   (s= (iw mprefab1) (iw mprefab2))
   (known /nothing)
-  "Info smoosh fails on non-`eq?` mutable prefab structs")
+  "Info smoosh fails on non-`chaperone=?` mutable prefab structs")
 
 (check-equal?
   (sj (iw mprefab1) (iw mprefab1))
   (known /just /known /iw mprefab1)
-  "Info smoosh join works on `eq?` mutable prefab structs")
+  "Info smoosh join works on `chaperone=?` mutable prefab structs")
 
 (check-equal?
   (sj (iw mprefab1) (iw mprefab2))
   (known /nothing)
-  "Info smoosh join fails on non-`eq?` mutable prefab structs")
+  "Info smoosh join fails on non-`chaperone=?` mutable prefab structs")
 
 (check-equal?
   (sm (iw mprefab1) (iw mprefab1))
   (known /just /known /iw mprefab1)
-  "Info smoosh meet works on `eq?` mutable prefab structs")
+  "Info smoosh meet works on `chaperone=?` mutable prefab structs")
 
 (check-equal?
   (sm (iw mprefab1) (iw mprefab2))
   (known /nothing)
-  "Info smoosh meet fails on non-`eq?` mutable prefab structs")
+  "Info smoosh meet fails on non-`chaperone=?` mutable prefab structs")
 
 (check-equal?
   (s= (pw /iw mprefab1) (pw /iw mprefab1))
   (known /just /known /pw /iw mprefab1)
-  "Path-related info smoosh works on `eq?` mutable prefab structs")
+  "Path-related info smoosh works on `chaperone=?` mutable prefab structs")
 
 (check-equal?
   (s= (pw /iw mprefab1) (pw /iw mprefab2))
   (known /nothing)
-  "Path-related info smoosh fails on non-`eq?` mutable prefab structs")
+  "Path-related info smoosh fails on non-`chaperone=?` mutable prefab structs")
 
 
 (check-equal?
   (s= mhash1 mhash1)
   (known /just /known mhash1)
-  "Smoosh works on `eq?` mutable hash tables")
+  "Smoosh works on `equal-always?` mutable hash tables")
 
 (check-equal?
   (s= mhash1 mhash2)
   (known /nothing)
-  "Smoosh fails on non-`eq?` mutable hash tables")
+  "Smoosh fails on non-`equal-always?` mutable hash tables")
 
 (check-equal?
   (sj mhash1 mhash1)
   (known /just /known mhash1)
-  "Smoosh join works on `eq?` mutable hash tables")
+  "Smoosh join works on `equal-always?` mutable hash tables")
 
 (check-pred
   unknown?
   (sj mhash1 mhash2)
-  "Smoosh join is unknown on non-`eq?` mutable hash tables")
+  "Smoosh join is unknown on non-`equal-always?` mutable hash tables")
 
 (check-equal?
   (sm mhash1 mhash1)
   (known /just /known mhash1)
-  "Smoosh meet works on `eq?` mutable hash tables")
+  "Smoosh meet works on `equal-always?` mutable hash tables")
 
 (check-pred
   unknown?
   (sm mhash1 mhash2)
-  "Smoosh meet is unknown on non-`eq?` mutable hash tables")
+  "Smoosh meet is unknown on non-`equal-always?` mutable hash tables")
 
 (check-equal?
   (s= (pw mhash1) (pw mhash1))
   (known /just /known /pw mhash1)
-  "Path-related smoosh works on `eq?` mutable hash tables")
+  "Path-related smoosh works on `equal-always?` mutable hash tables")
 
 (check-pred
   unknown?
   (s= (pw mhash1) (pw mhash2))
-  "Path-related smoosh is unknown on non-`eq?` mutable hash tables")
+  "Path-related smoosh is unknown on non-`equal-always?` mutable hash tables")
 
 (check-equal?
   (s= (iw mhash1) (iw mhash1))
@@ -1115,7 +1288,8 @@
 
 (w- c (pw /cons 0 0.0)
   (check-eq?
-    (path-related-wrapper-value /known-value /just-value /known-value /s= c (pw /cons 0.0 0))
+    (path-related-wrapper-value
+      (known-value /just-value /known-value /s= c (pw /cons 0.0 0)))
     (path-related-wrapper-value c)
     "Path-related smoosh preserves `eq?` when possible on equal cons cells"))
 

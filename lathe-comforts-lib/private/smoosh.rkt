@@ -5830,11 +5830,11 @@
       /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
         (fn acceptable-result?
           (dissectfn (list)
-            (delay/strict /known /just /delay
+            (delay/strict
               (if (acceptable-result? a)
-                (known a)
+                (known /just /delay/strict /known a)
               /if (acceptable-result? b)
-                (known b)
+                (known /just /delay/strict /known b)
               /unknown))))
       /w- chaperone=?-promise
         (delay
