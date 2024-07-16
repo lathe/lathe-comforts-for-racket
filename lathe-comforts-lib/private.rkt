@@ -175,9 +175,10 @@
   (syntax-protect
   #/syntax-parse args #:context orig-stx #/
     (pattern:expr then:expr)
-    #`(fn subject
+    (quasisyntax/loc orig-stx
+      (fn subject
         (match/derived subject #,orig-stx
-          [pattern then]))))
+          [pattern then])))))
 
 (define-syntax (dissectfn stx)
   (syntax-parse stx #/ (_ args ...)
