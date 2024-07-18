@@ -217,6 +217,21 @@
 (struct mprefab ([field #:mutable]) #:prefab)
 (define mprefab1 (mprefab 0))
 (define mprefab2 (mprefab 0))
+(define mprefab1-with-prop
+  (chaperone-struct mprefab1 struct:mprefab
+    imp-prop:arbitrary #t))
+(define mprefab1-chap
+  (chaperone-struct mprefab1 mprefab-field
+    (fn mprefab current-v current-v)))
+(define mprefab1-chap2
+  (chaperone-struct mprefab1 mprefab-field
+    (fn mprefab current-v current-v)))
+(define mprefab1-chap-with-prop
+  (chaperone-struct mprefab1-chap struct:mprefab
+    imp-prop:arbitrary #t))
+(define mprefab1-chap-chap
+  (chaperone-struct mprefab1-chap mprefab-field
+    (fn mprefab current-v current-v)))
 (define mhash1 (make-hash /list /cons 0 0))
 (define mhash2 (make-hash /list /cons 0 0))
 (define flv1 (flvector 0.0))
@@ -869,6 +884,22 @@
   (known /just /known mprefab1)
   "Smoosh works on `equal-always?` mutable prefab structs")
 
+(check-eq?
+  (known-value /just-value /known-value /s= mprefab1 mprefab1)
+  mprefab1
+  "Smoosh preserves `eq?` on `equal-always?` mutable prefab structs")
+
+(check-equal?
+  (s= mprefab1-chap-with-prop mprefab1-with-prop)
+  (known /just /known mprefab1-chap-with-prop)
+  "Smoosh works on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value
+    (s= mprefab1-chap-with-prop mprefab1-with-prop))
+  mprefab1-chap-with-prop
+  "Smoosh preserves `eq?` on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
 (check-equal?
   (s= mprefab1 mprefab2)
   (known /nothing)
@@ -878,6 +909,22 @@
   (sj mprefab1 mprefab1)
   (known /just /known mprefab1)
   "Smoosh join works on `equal-always?` mutable prefab structs")
+
+(check-eq?
+  (known-value /just-value /known-value /sj mprefab1 mprefab1)
+  mprefab1
+  "Smoosh join preserves `eq?` on `equal-always?` mutable prefab structs")
+
+(check-equal?
+  (sj mprefab1-chap-with-prop mprefab1-with-prop)
+  (known /just /known mprefab1-chap-with-prop)
+  "Smoosh join works on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value
+    (sj mprefab1-chap-with-prop mprefab1-with-prop))
+  mprefab1-chap-with-prop
+  "Smoosh join preserves `eq?` on `equal-always?` mutable prefab structs even when they're not `eq?`")
 
 (check-pred
   unknown?
@@ -889,6 +936,22 @@
   (known /just /known mprefab1)
   "Smoosh meet works on `equal-always?` mutable prefab structs")
 
+(check-eq?
+  (known-value /just-value /known-value /sm mprefab1 mprefab1)
+  mprefab1
+  "Smoosh meet preserves `eq?` on `equal-always?` mutable prefab structs")
+
+(check-equal?
+  (sm mprefab1-chap-with-prop mprefab1-with-prop)
+  (known /just /known mprefab1-chap-with-prop)
+  "Smoosh meet works on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value
+    (sm mprefab1-chap-with-prop mprefab1-with-prop))
+  mprefab1-chap-with-prop
+  "Smoosh meet preserves `eq?` on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
 (check-pred
   unknown?
   (sm mprefab1 mprefab2)
@@ -898,6 +961,23 @@
   (s= (pw mprefab1) (pw mprefab1))
   (known /just /known /pw mprefab1)
   "Path-related smoosh works on `equal-always?` mutable prefab structs")
+
+(check-eq?
+  (path-related-wrapper-value /known-value /just-value /known-value
+    (s= (pw mprefab1) (pw mprefab1)))
+  mprefab1
+  "Path-related smoosh preserves `eq?` on `equal-always?` mutable prefab structs")
+
+(check-equal?
+  (s= (pw mprefab1-chap-with-prop) (pw mprefab1-with-prop))
+  (known /just /known /pw mprefab1-chap-with-prop)
+  "Path-related smoosh works on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
+(check-eq?
+  (path-related-wrapper-value /known-value /just-value /known-value
+    (s= (pw mprefab1-chap-with-prop) (pw mprefab1-with-prop)))
+  mprefab1-chap-with-prop
+  "Path-related smoosh preserves `eq?` on `equal-always?` mutable prefab structs even when they're not `eq?`")
 
 (check-pred
   unknown?
@@ -909,40 +989,133 @@
   (known /just /known /iw mprefab1)
   "Info smoosh works on `chaperone=?` mutable prefab structs")
 
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (s= (iw mprefab1) (iw mprefab1)))
+  mprefab1
+  "Info smoosh preserves `eq?` on `chaperone=?` mutable prefab structs")
+
 (check-equal?
   (s= (iw mprefab1) (iw mprefab2))
   (known /nothing)
-  "Info smoosh fails on non-`chaperone=?` mutable prefab structs")
+  "Info smoosh fails on non-`equal-always?` mutable prefab structs")
+
+(check-pred
+  unknown?
+  (s= (iw mprefab1-chap-chap) (iw mprefab1-chap-with-prop))
+  "Info smoosh is unknown on non-`chaperone=?` mutable prefab structs even when they're `chaperone-of?` in one direction")
+
+(check-pred
+  unknown?
+  (s= (iw mprefab1-chap) (iw mprefab1-chap2))
+  "Info smoosh is unknown on non-`chaperone=?` mutable prefab structs even when they're `equal-always?`")
 
 (check-equal?
   (sj (iw mprefab1) (iw mprefab1))
   (known /just /known /iw mprefab1)
   "Info smoosh join works on `chaperone=?` mutable prefab structs")
 
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw mprefab1) (iw mprefab1)))
+  mprefab1
+  "Info smoosh join preserves `eq?` on `chaperone=?` mutable prefab structs")
+
+(check-equal?
+  (sj (iw mprefab1-chap-chap) (iw mprefab1-chap-with-prop))
+  (known /just /known /iw mprefab1-chap-chap)
+  "Info smoosh join works on `chaperone-of?` mutable prefab structs even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw mprefab1-chap-chap) (iw mprefab1-chap-with-prop)))
+  mprefab1-chap-chap
+  "Info smoosh join preserves `eq?` on `chaperone-of?` mutable prefab structs even when they're not `chaperone=?`")
+
 (check-equal?
   (sj (iw mprefab1) (iw mprefab2))
   (known /nothing)
-  "Info smoosh join fails on non-`chaperone=?` mutable prefab structs")
+  "Info smoosh join fails on non-`equal-always?` mutable prefab structs")
+
+(check-pred
+  unknown?
+  (sj (iw mprefab1-chap) (iw mprefab1-chap2))
+  "Info smoosh join is unknown on non-`chaperone-of?` mutable prefab structs even when they're `equal-always?`")
 
 (check-equal?
   (sm (iw mprefab1) (iw mprefab1))
   (known /just /known /iw mprefab1)
   "Info smoosh meet works on `chaperone=?` mutable prefab structs")
 
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw mprefab1) (iw mprefab1)))
+  mprefab1
+  "Info smoosh meet preserves `eq?` on `chaperone=?` mutable prefab structs")
+
+(check-equal?
+  (sm (iw mprefab1-chap-chap) (iw mprefab1-chap-with-prop))
+  (known /just /known /iw mprefab1-chap-with-prop)
+  "Info smoosh meet works on `chaperone-of?` mutable prefab structs even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw mprefab1-chap-chap) (iw mprefab1-chap-with-prop)))
+  mprefab1-chap-with-prop
+  "Info smoosh meet preserves `eq?` on `chaperone-of?` mutable prefab structs even when they're not `chaperone=?`")
+
 (check-equal?
   (sm (iw mprefab1) (iw mprefab2))
   (known /nothing)
-  "Info smoosh meet fails on non-`chaperone=?` mutable prefab structs")
+  "Info smoosh meet fails on non-`equal-always?` mutable prefab structs")
+
+(check-pred
+  unknown?
+  (sm (iw mprefab1-chap) (iw mprefab1-chap2))
+  "Info smoosh meet is unknown on non-`chaperone-of?` mutable prefab structs even when they're `equal-always?`")
 
 (check-equal?
   (s= (pw /iw mprefab1) (pw /iw mprefab1))
   (known /just /known /pw /iw mprefab1)
-  "Path-related info smoosh works on `chaperone=?` mutable prefab structs")
+  "Path-related info smoosh works on `equal-always?` mutable prefab structs")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mprefab1) (pw /iw mprefab1))))
+  mprefab1
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable prefab structs")
+
+(check-equal?
+  (s= (pw /iw mprefab1-chap-chap) (pw /iw mprefab1-chap-with-prop))
+  (known /just /known /pw /iw mprefab1-chap-chap)
+  "Path-related info smoosh works on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s=
+        (pw /iw mprefab1-chap-chap)
+        (pw /iw mprefab1-chap-with-prop))))
+  mprefab1-chap-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable prefab structs even when they're not `eq?`")
+
+(check-equal?
+  (s= (pw /iw mprefab1-chap) (pw /iw mprefab1-chap2))
+  (known /just /known /pw /iw mprefab1-chap)
+  "Path-related info smoosh works on `equal-always?` mutable prefab structs even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mprefab1-chap) (pw /iw mprefab1-chap2))))
+  mprefab1-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable prefab structs even when they're not `chaperone=?`")
 
 (check-equal?
   (s= (pw /iw mprefab1) (pw /iw mprefab2))
   (known /nothing)
-  "Path-related info smoosh fails on non-`chaperone=?` mutable prefab structs")
+  "Path-related info smoosh fails on non-`equal-always?` mutable prefab structs")
 
 
 (check-equal?
