@@ -2816,8 +2816,7 @@
 ;
 ;   - (Done) Mutable strings, mutable byte strings, mutable boxes,
 ;     mutable vectors, prefab structs with mutable fields, and mutable
-;     hash tables. (TODO SMOOSH: Write tests for smooshing the
-;     chaperone wrappers of these.)
+;     hash tables.
 ;
 ;   - (Done) Flvectors and fxvectors.
 ;
