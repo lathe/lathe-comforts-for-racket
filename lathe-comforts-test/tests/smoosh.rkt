@@ -234,6 +234,24 @@
     (fn mprefab current-v current-v)))
 (define mhash1 (make-hash /list /cons 0 0))
 (define mhash2 (make-hash /list /cons 0 0))
+(define mhash1-chap
+  (chaperone-hash mhash1
+    (fn mhash k /values k /fn mhash k current-v current-v)
+    (fn mhash k new-v /values k new-v)
+    (fn mhash k k)
+    (fn mhash k k)))
+(define mhash1-chap2
+  (chaperone-hash mhash1
+    (fn mhash k /values k /fn mhash k current-v current-v)
+    (fn mhash k new-v /values k new-v)
+    (fn mhash k k)
+    (fn mhash k k)))
+(define mhash1-chap-chap
+  (chaperone-hash mhash1-chap
+    (fn mhash k /values k /fn mhash k current-v current-v)
+    (fn mhash k new-v /values k new-v)
+    (fn mhash k k)
+    (fn mhash k k)))
 (define flv1 (flvector 0.0))
 (define flv2 (flvector 0.0))
 (define fxv1 (fxvector 0))
@@ -1123,6 +1141,21 @@
   (known /just /known mhash1)
   "Smoosh works on `equal-always?` mutable hash tables")
 
+(check-eq?
+  (known-value /just-value /known-value /s= mhash1 mhash1)
+  mhash1
+  "Smoosh preserves `eq?` on `equal-always?` mutable hash tables")
+
+(check-equal?
+  (s= mhash1-chap mhash1)
+  (known /just /known mhash1-chap)
+  "Smoosh works on `equal-always?` mutable hash tables even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value /s= mhash1-chap mhash1)
+  mhash1-chap
+  "Smoosh preserves `eq?` on `equal-always?` mutable hash tables even when they're not `eq?`")
+
 (check-equal?
   (s= mhash1 mhash2)
   (known /nothing)
@@ -1132,6 +1165,21 @@
   (sj mhash1 mhash1)
   (known /just /known mhash1)
   "Smoosh join works on `equal-always?` mutable hash tables")
+
+(check-eq?
+  (known-value /just-value /known-value /sj mhash1 mhash1)
+  mhash1
+  "Smoosh join preserves `eq?` on `equal-always?` mutable hash tables")
+
+(check-equal?
+  (sj mhash1-chap mhash1)
+  (known /just /known mhash1-chap)
+  "Smoosh join works on `equal-always?` mutable hash tables even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value /sj mhash1-chap mhash1)
+  mhash1-chap
+  "Smoosh join preserves `eq?` on `equal-always?` mutable hash tables even when they're not `eq?`")
 
 (check-pred
   unknown?
@@ -1143,6 +1191,21 @@
   (known /just /known mhash1)
   "Smoosh meet works on `equal-always?` mutable hash tables")
 
+(check-eq?
+  (known-value /just-value /known-value /sm mhash1 mhash1)
+  mhash1
+  "Smoosh meet preserves `eq?` on `equal-always?` mutable hash tables")
+
+(check-equal?
+  (sm mhash1-chap mhash1)
+  (known /just /known mhash1-chap)
+  "Smoosh meet works on `equal-always?` mutable hash tables even when they're not `eq?`")
+
+(check-eq?
+  (known-value /just-value /known-value /sm mhash1-chap mhash1)
+  mhash1-chap
+  "Smoosh meet preserves `eq?` on `equal-always?` mutable hash tables even when they're not `eq?`")
+
 (check-pred
   unknown?
   (sm mhash1 mhash2)
@@ -1152,6 +1215,23 @@
   (s= (pw mhash1) (pw mhash1))
   (known /just /known /pw mhash1)
   "Path-related smoosh works on `equal-always?` mutable hash tables")
+
+(check-eq?
+  (path-related-wrapper-value /known-value /just-value /known-value
+    (s= (pw mhash1) (pw mhash1)))
+  mhash1
+  "Path-related smoosh preserves `eq?` on `equal-always?` mutable hash tables")
+
+(check-equal?
+  (s= (pw mhash1-chap) (pw mhash1))
+  (known /just /known /pw mhash1-chap)
+  "Path-related smoosh works on `equal-always?` mutable hash tables even when they're not `eq?`")
+
+(check-eq?
+  (path-related-wrapper-value /known-value /just-value /known-value
+    (s= (pw mhash1-chap) (pw mhash1)))
+  mhash1-chap
+  "Path-related smoosh preserves `eq?` on `equal-always?` mutable hash tables even when they're not `eq?`")
 
 (check-pred
   unknown?
@@ -1163,40 +1243,131 @@
   (known /just /known /iw mhash1)
   "Info smoosh works on `eq?` mutable hash tables")
 
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (s= (iw mhash1) (iw mhash1)))
+  mhash1
+  "Info smoosh preserves `eq?` on `eq?` mutable hash tables")
+
 (check-equal?
   (s= (iw mhash1) (iw mhash2))
   (known /nothing)
-  "Info smoosh fails on non-`eq?` mutable hash tables")
+  "Info smoosh fails on non-`equal-always?` mutable hash tables")
+
+(check-pred
+  unknown?
+  (s= (iw mhash1-chap-chap) (iw mhash1-chap))
+  "Info smoosh is unknown on non-`eq?` mutable hash tables even when they're `chaperone-of?` in one direction")
+
+(check-pred
+  unknown?
+  (s= (iw mhash1-chap) (iw mhash1-chap2))
+  "Info smoosh is unknown on non-`eq?` mutable hash tables even when they're `equal-always?`")
 
 (check-equal?
   (sj (iw mhash1) (iw mhash1))
   (known /just /known /iw mhash1)
   "Info smoosh join works on `eq?` mutable hash tables")
 
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw mhash1) (iw mhash1)))
+  mhash1
+  "Info smoosh join preserves `eq?` on `eq?` mutable hash tables")
+
+(check-equal?
+  (sj (iw mhash1-chap-chap) (iw mhash1-chap))
+  (known /just /known /iw mhash1-chap-chap)
+  "Info smoosh join works on `chaperone-of?` mutable hash tables even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw mhash1-chap-chap) (iw mhash1-chap)))
+  mhash1-chap-chap
+  "Info smoosh join preserves `eq?` on `chaperone-of?` mutable hash tables even when they're not `chaperone=?`")
+
 (check-equal?
   (sj (iw mhash1) (iw mhash2))
   (known /nothing)
   "Info smoosh join fails on non-`eq?` mutable hash tables")
+
+(check-pred
+  unknown?
+  (sj (iw mhash1-chap) (iw mhash1-chap2))
+  "Info smoosh join is unknown on non-`eq?` mutable hash tables even when they're `equal-always?`")
 
 (check-equal?
   (sm (iw mhash1) (iw mhash1))
   (known /just /known /iw mhash1)
   "Info smoosh meet works on `eq?` mutable hash tables")
 
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw mhash1) (iw mhash1)))
+  mhash1
+  "Info smoosh meet preserves `eq?` on `eq?` mutable hash tables")
+
+(check-equal?
+  (sm (iw mhash1-chap-chap) (iw mhash1-chap))
+  (known /just /known /iw mhash1-chap)
+  "Info smoosh meet works on `chaperone-of?` mutable hash tables even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw mhash1-chap-chap) (iw mhash1-chap)))
+  mhash1-chap
+  "Info smoosh meet preserves `eq?` on `chaperone-of?` mutable hash tables even when they're not `chaperone=?`")
+
 (check-equal?
   (sm (iw mhash1) (iw mhash2))
   (known /nothing)
   "Info smoosh meet fails on non-`eq?` mutable hash tables")
 
+(check-pred
+  unknown?
+  (sm (iw mhash1-chap) (iw mhash1-chap2))
+  "Info smoosh meet is unknown on non-`eq?` mutable hash tables even when they're `equal-always?`")
+
 (check-equal?
   (s= (pw /iw mhash1) (pw /iw mhash1))
   (known /just /known /pw /iw mhash1)
-  "Path-related info smoosh works on `eq?` mutable hash tables")
+  "Path-related info smoosh works on `equal-always?` mutable hash tables")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mhash1) (pw /iw mhash1))))
+  mhash1
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable hash tables")
+
+(check-equal?
+  (s= (pw /iw mhash1-chap-chap) (pw /iw mhash1-chap))
+  (known /just /known /pw /iw mhash1-chap-chap)
+  "Path-related info smoosh works on `equal-always?` mutable hash tables even when they're not `eq?`")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mhash1-chap-chap) (pw /iw mhash1-chap))))
+  mhash1-chap-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable hash tables even when they're not `eq?`")
+
+(check-equal?
+  (s= (pw /iw mhash1-chap) (pw /iw mhash1-chap2))
+  (known /just /known /pw /iw mhash1-chap)
+  "Path-related info smoosh works on `equal-always?` mutable hash tables even when they're not `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw mhash1-chap) (pw /iw mhash1-chap2))))
+  mhash1-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` mutable hash tables even when they're not `chaperone=?`")
 
 (check-equal?
   (s= (pw /iw mhash1) (pw /iw mhash2))
   (known /nothing)
-  "Path-related info smoosh fails on non-`eq?` mutable hash tables")
+  "Path-related info smoosh fails on non-`equal-always?` mutable hash tables")
 
 
 (check-equal?
