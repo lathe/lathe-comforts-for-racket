@@ -1740,10 +1740,10 @@
   (known /just /known /cons 0 0.0)
   "Smoosh works on equal cons cells")
 
-(w- c (cons 0 0.0)
+(w- obj (cons 0 0.0)
   (check-eq?
-    (known-value /just-value /known-value /s= c (cons 0.0 0))
-    c
+    (known-value /just-value /known-value /s= obj (cons 0.0 0))
+    obj
     "Smoosh preserves `eq?` when possible on equal cons cells"))
 
 (check-equal?
@@ -1756,10 +1756,10 @@
   (known /just /known /cons 0 0.0)
   "Smoosh join works on equal cons cells")
 
-(w- c (cons 0 0.0)
+(w- obj (cons 0 0.0)
   (check-eq?
-    (known-value /just-value /known-value /sj c (cons 0.0 0))
-    c
+    (known-value /just-value /known-value /sj obj (cons 0.0 0))
+    obj
     "Smoosh join preserves `eq?` when possible on equal cons cells"))
 
 (check-equal?
@@ -1777,10 +1777,10 @@
   (known /just /known /cons 0 0.0)
   "Smoosh meet works on equal cons cells")
 
-(w- c (cons 0 0.0)
+(w- obj (cons 0 0.0)
   (check-eq?
-    (known-value /just-value /known-value /sm c (cons 0.0 0))
-    c
+    (known-value /just-value /known-value /sm obj (cons 0.0 0))
+    obj
     "Smoosh meet preserves `eq?` when possible on equal cons cells"))
 
 (check-equal?
@@ -1798,11 +1798,10 @@
   (known /just /known /pw /cons 0 0.0)
   "Path-related smoosh works on equal cons cells")
 
-(w- c (pw /cons 0 0.0)
+(w- obj (pw /cons 0 0.0)
   (check-eq?
-    (path-related-wrapper-value
-      (known-value /just-value /known-value /s= c (pw /cons 0.0 0)))
-    (path-related-wrapper-value c)
+    (known-value /just-value /known-value /s= obj (pw /cons 0.0 0))
+    obj
     "Path-related smoosh preserves `eq?` when possible on equal cons cells"))
 
 (check-equal?
@@ -1810,10 +1809,11 @@
   (known /just /known /pw /cons 0 0.0)
   "Path-related smoosh works on cons cells with path-related elements")
 
-(w- c (pw /cons 0 0.0)
+(w- obj (pw /cons 0 0.0)
   (check-eq?
-    (known-value /just-value /known-value /s= c (pw /cons 1.0 1+0.0i))
-    c
+    (known-value /just-value /known-value
+      (s= obj (pw /cons 1.0 1+0.0i)))
+    obj
     "Path-related smoosh preserves `eq?` when possible on cons cells with path-related elements"))
 
 (check-pred
@@ -1836,10 +1836,10 @@
   (known /just /known /iw /cons 0 0)
   "Info smoosh works on cons cells whose elements are info smooshable")
 
-(w- c (iw /cons 0 0)
+(w- obj (iw /cons 0 0)
   (check-eq?
-    (known-value /just-value /known-value /s= c (iw /cons 0 0))
-    c
+    (known-value /just-value /known-value /s= obj (iw /cons 0 0))
+    obj
     "Info smoosh preserves `eq?` when possible on cons cells whose elements are info smooshable"))
 
 (check-equal?
@@ -1852,10 +1852,10 @@
   (known /just /known /iw /cons 0 0)
   "Info smoosh join works on cons cells whose elements are info smoosh joinable")
 
-(w- c (iw /cons 0 0)
+(w- obj (iw /cons 0 0)
   (check-eq?
-    (known-value /just-value /known-value /sj c (iw /cons 0 0))
-    c
+    (known-value /just-value /known-value /sj obj (iw /cons 0 0))
+    obj
     "Info smoosh join preserves `eq?` when possible on cons cells whose elements are info smoosh joinable"))
 
 (check-equal?
@@ -1868,10 +1868,10 @@
   (known /just /known /iw /cons 0 0)
   "Info smoosh meet works on `equal-always?` cons cells")
 
-(w- c (iw /cons 0 0)
+(w- obj (iw /cons 0 0)
   (check-eq?
-    (known-value /just-value /known-value /sm c (iw /cons 0 0))
-    c
+    (known-value /just-value /known-value /sm obj (iw /cons 0 0))
+    obj
     "Info smoosh meet preserves `eq?` when possible on cons cells whose elements are info smoosh meetable"))
 
 (check-equal?
@@ -1884,10 +1884,10 @@
   (known /just /known /pw /iw /cons 0 0)
   "Path-related info smoosh works on cons cells whose elements are path-related info smooshable")
 
-(w- c (pw /iw /cons 0 0)
+(w- obj (pw /iw /cons 0 0)
   (check-eq?
-    (known-value /just-value /known-value /s= c (pw /iw /cons 0 0))
-    c
+    (known-value /just-value /known-value /s= obj (pw /iw /cons 0 0))
+    obj
     "Path-related info smoosh preserves `eq?` when possible on cons cells whose elements are path-related info smooshable"))
 
 (check-equal?
@@ -2714,6 +2714,162 @@
 
 
 (check-equal?
+  (s= (box-immutable 0) (box-immutable 0.0))
+  (known /just /known /box-immutable 0)
+  "Smoosh works on equal immutable boxes")
+
+(w- obj (box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value /s= obj (box-immutable 0.0))
+    obj
+    "Smoosh preserves `eq?` when possible on equal immutable boxes"))
+
+(check-equal?
+  (s= (box-immutable 0) (box-immutable 1))
+  (known /nothing)
+  "Smoosh fails on unequal immutable boxes")
+
+(check-equal?
+  (sj (box-immutable 0) (box-immutable 0.0))
+  (known /just /known /box-immutable 0)
+  "Smoosh join works on equal immutable boxes")
+
+(w- obj (box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value /sj obj (box-immutable 0.0))
+    obj
+    "Smoosh join preserves `eq?` when possible on equal immutable boxes"))
+
+(check-equal?
+  (sj (box-immutable 1) (box-immutable 0.0))
+  (known /just /known /box-immutable 1)
+  "Smoosh join works on unequal, comparable immutable boxes")
+
+(check-pred
+  unknown?
+  (sj (box-immutable 0+i) (box-immutable 1+i))
+  "Smoosh join is unknown on unequal, uncomparable immutable boxes")
+
+(check-equal?
+  (sm (box-immutable 0) (box-immutable 0.0))
+  (known /just /known /box-immutable 0)
+  "Smoosh meet works on equal immutable boxes")
+
+(w- obj (box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value /sm obj (box-immutable 0.0))
+    obj
+    "Smoosh meet preserves `eq?` when possible on equal immutable boxes"))
+
+(check-equal?
+  (sm (box-immutable 1) (box-immutable 0.0))
+  (known /just /known /box-immutable 0.0)
+  "Smoosh meet works on unequal, comparable immutable boxes")
+
+(check-pred
+  unknown?
+  (sm (box-immutable 0+i) (box-immutable 1+i))
+  "Smoosh meet is unknown on unequal, uncomparable immutable boxes")
+
+(check-equal?
+  (s= (pw /box-immutable 0) (pw /box-immutable 0.0))
+  (known /just /known /pw /box-immutable 0)
+  "Path-related smoosh works on equal immutable boxes")
+
+(w- obj (pw /box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /box-immutable 0.0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on equal immutable boxes"))
+
+(check-equal?
+  (s= (pw /box-immutable 0) (pw /box-immutable 1.0))
+  (known /just /known /pw /box-immutable 0)
+  "Path-related smoosh works on immutable boxes with path-related elements")
+
+(w- obj (pw /box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /box-immutable 1.0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on immutable boxes with path-related elements"))
+
+(check-pred
+  unknown?
+  (s= (pw /box-immutable 0+i) (pw /box-immutable 1+i))
+  "Path-related smoosh is unknown on immutable boxes with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+(check-equal?
+  (s= (iw /box-immutable 0) (iw /box-immutable 0))
+  (known /just /known /iw /box-immutable 0)
+  "Info smoosh works on immutable boxes whose elements are info smooshable")
+
+(w- obj (iw /box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (iw /box-immutable 0)))
+    obj
+    "Info smoosh preserves `eq?` when possible on immutable boxes whose elements are info smooshable"))
+
+(check-equal?
+  (s= (iw /box-immutable 0) (iw /box-immutable 0.0))
+  (known /nothing)
+  "Info smoosh fails on immutable boxes with a pair of corresponding elements whose info smoosh fails")
+
+(check-equal?
+  (sj (iw /box-immutable 0) (iw /box-immutable 0))
+  (known /just /known /iw /box-immutable 0)
+  "Info smoosh join works on immutable boxes whose elements are info smoosh joinable")
+
+(w- obj (iw /box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sj obj (iw /box-immutable 0)))
+    obj
+    "Info smoosh join preserves `eq?` when possible on immutable boxes whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw /box-immutable 0) (iw /box-immutable 0.0))
+  (known /nothing)
+  "Info smoosh join fails on immutable boxes with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-equal?
+  (sm (iw /box-immutable 0) (iw /box-immutable 0))
+  (known /just /known /iw /box-immutable 0)
+  "Info smoosh meet works on `equal-always?` immutable boxes")
+
+(w- obj (iw /box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sm obj (iw /box-immutable 0)))
+    obj
+    "Info smoosh meet preserves `eq?` when possible on immutable boxes whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw /box-immutable 0) (iw /box-immutable 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on immutable boxes with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-equal?
+  (s= (pw /iw /box-immutable 0) (pw /iw /box-immutable 0))
+  (known /just /known /pw /iw /box-immutable 0)
+  "Path-related info smoosh works on immutable boxes whose elements are path-related info smooshable")
+
+(w- obj (pw /iw /box-immutable 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iw /box-immutable 0)))
+    obj
+    "Path-related info smoosh preserves `eq?` when possible on immutable boxes whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw /box-immutable 0) (pw /iw /box-immutable 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on immutable boxes with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-equal?
   (s= (trivial) (trivial))
   (known /just /known /trivial)
   "Smoosh works on `trivial?` values")
@@ -2842,7 +2998,7 @@
 ;   - (Done) Regular expressions (`regexp?`) and compiled code
 ;     expressions (`compiled-expression?`).
 ;
-;   - Immutable boxes.
+;   - (Done) Immutable boxes.
 ;
 ;   - Immutable vectors.
 ;
