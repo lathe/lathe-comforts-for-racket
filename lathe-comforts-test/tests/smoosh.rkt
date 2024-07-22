@@ -308,10 +308,11 @@
 (define eaw2 (equal-always-wrapper /box-immutable 0))
 (define eaw-different (equal-always-wrapper /box-immutable 1))
 
-; This is a pair of values whose path-related smoosh actually fails
-; (rather than just having an unknown result).
-(define path-failing-1 (iw 0))
-(define path-failing-2 (iw 0.0))
+; This is a pair of values whose smoosh join, smoosh meet, and
+; path-related smoosh actually fail (rather than just having unknown
+; results).
+(define path-failing-1 (iw #t))
+(define path-failing-2 (iw #f))
 
 
 (check-equal?
@@ -4140,6 +4141,147 @@
   "Path-related info smoosh fails on non-`equal-always?` `equal-always-wrapper?` values")
 
 
+(check-equal?
+  (s= (indistinct-wrapper eaw1) (indistinct-wrapper eaw2))
+  (known /just /known /indistinct-wrapper eaw1)
+  "Smoosh works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (s= (indistinct-wrapper eaw1) (indistinct-wrapper eaw-different))
+  "Smoosh is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (s= (indistinct-wrapper +nan.0) (indistinct-wrapper +nan.0))
+  "Smoosh is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+(check-equal?
+  (sj (indistinct-wrapper eaw1) (indistinct-wrapper eaw2))
+  (known /just /known /indistinct-wrapper eaw1)
+  "Smoosh join works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (sj
+    (indistinct-wrapper path-failing-1)
+    (indistinct-wrapper path-failing-2))
+  "Smoosh join is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (sj (indistinct-wrapper eaw1) (indistinct-wrapper eaw-different))
+  "Smoosh join is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+(check-equal?
+  (sm (indistinct-wrapper eaw1) (indistinct-wrapper eaw2))
+  (known /just /known /indistinct-wrapper eaw1)
+  "Smoosh meet works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (sm
+    (indistinct-wrapper path-failing-1)
+    (indistinct-wrapper path-failing-2))
+  "Smoosh meet is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (sm (indistinct-wrapper eaw1) (indistinct-wrapper eaw-different))
+  "Smoosh meet is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+(check-equal?
+  (s= (pw /indistinct-wrapper eaw1) (pw /indistinct-wrapper eaw2))
+  (known /just /known /pw /indistinct-wrapper eaw1)
+  "Path-related smoosh works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (s=
+    (pw /indistinct-wrapper path-failing-1)
+    (pw /indistinct-wrapper path-failing-2))
+  "Path-related smoosh is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (s=
+    (pw /indistinct-wrapper eaw1)
+    (pw /indistinct-wrapper eaw-different))
+  "Path-related smoosh is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+(check-equal?
+  (s= (iw /indistinct-wrapper eaw1) (iw /indistinct-wrapper eaw2))
+  (known /just /known /iw /indistinct-wrapper eaw1)
+  "Info smoosh works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (s=
+    (iw /indistinct-wrapper eaw1)
+    (iw /indistinct-wrapper eaw-different))
+  "Info smoosh is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (s= (iw /indistinct-wrapper +nan.0) (iw /indistinct-wrapper +nan.0))
+  "Info smoosh is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+(check-equal?
+  (sj (iw /indistinct-wrapper eaw1) (iw /indistinct-wrapper eaw2))
+  (known /just /known /iw /indistinct-wrapper eaw1)
+  "Info smoosh join works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (sj
+    (iw /indistinct-wrapper eaw1)
+    (iw /indistinct-wrapper eaw-different))
+  "Info smoosh join is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (sj (iw /indistinct-wrapper +nan.0) (iw /indistinct-wrapper +nan.0))
+  "Info smoosh join is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+(check-equal?
+  (sm (iw /indistinct-wrapper eaw1) (iw /indistinct-wrapper eaw2))
+  (known /just /known /iw /indistinct-wrapper eaw1)
+  "Info smoosh meet works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (sm
+    (iw /indistinct-wrapper eaw1)
+    (iw /indistinct-wrapper eaw-different))
+  "Info smoosh meet is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (sm (iw /indistinct-wrapper +nan.0) (iw /indistinct-wrapper +nan.0))
+  "Info smoosh meet is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+(check-equal?
+  (s=
+    (pw /iw /indistinct-wrapper eaw1)
+    (pw /iw /indistinct-wrapper eaw2))
+  (known /just /known /pw /iw /indistinct-wrapper eaw1)
+  "Path-related info smoosh works on `indistinct-wrapper?` values if it works on their elements")
+
+(check-pred
+  unknown?
+  (s=
+    (pw /iw /indistinct-wrapper eaw1)
+    (pw /iw /indistinct-wrapper eaw-different))
+  "Path-related info smoosh is unknown on `indistinct-wrapper?` values if it fails on their elements")
+
+(check-pred
+  unknown?
+  (s=
+    (pw /iw /indistinct-wrapper +nan.0)
+    (pw /iw /indistinct-wrapper +nan.0))
+  "Path-related info smoosh is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
+
+
 ; TODO SMOOSH: Implement smooshing tests for values of the following
 ; types:
 ;
@@ -4191,4 +4333,4 @@
 ;
 ;   - (Done) `equal-always-wrapper?` values.
 ;
-;   - `indistinct-wrapper?` values.
+;   - (Done) `indistinct-wrapper?` values.
