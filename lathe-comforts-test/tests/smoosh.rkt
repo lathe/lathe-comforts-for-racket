@@ -3442,6 +3442,244 @@
 
 
 (check-equal?
+  (s= (nothing) (nothing))
+  (known /just /known /nothing)
+  "Smoosh works on `nothing?` values")
+
+(check-equal?
+  (sj (nothing) (nothing))
+  (known /just /known /nothing)
+  "Smoosh join works on `nothing?` values")
+
+(check-equal?
+  (sm (nothing) (nothing))
+  (known /just /known /nothing)
+  "Smoosh meet works on `nothing?` values")
+
+(check-equal?
+  (s= (pw /nothing) (pw /nothing))
+  (known /just /known /pw /nothing)
+  "Path-related smoosh works on `nothing?` values")
+
+(check-equal?
+  (s= (iw /nothing) (iw /nothing))
+  (known /just /known /iw /nothing)
+  "Info smoosh works on `nothing?` values")
+
+(check-equal?
+  (sj (iw /nothing) (iw /nothing))
+  (known /just /known /iw /nothing)
+  "Info smoosh join works on `nothing?` values")
+
+(check-equal?
+  (sm (iw /nothing) (iw /nothing))
+  (known /just /known /iw /nothing)
+  "Info smoosh meet works on `nothing?` values")
+
+(check-equal?
+  (s= (pw /iw /nothing) (pw /iw /nothing))
+  (known /just /known /pw /iw /nothing)
+  "Path-related info smoosh works on `nothing?` values")
+
+
+(check-equal?
+  (s= (just 0) (just 0.0))
+  (known /just /known /just 0)
+  "Smoosh works on equal `just?` values")
+
+(w- obj (just 0)
+  (check-eq?
+    (known-value /just-value /known-value /s= obj (just 0.0))
+    obj
+    "Smoosh preserves `eq?` when possible on equal `just?` values"))
+
+(check-equal?
+  (s= (just 0) (just 1))
+  (known /nothing)
+  "Smoosh fails on unequal `just?` values")
+
+(check-equal?
+  (sj (just 0) (just 0.0))
+  (known /just /known /just 0)
+  "Smoosh join works on equal `just?` values")
+
+(w- obj (just 0)
+  (check-eq?
+    (known-value /just-value /known-value /sj obj (just 0.0))
+    obj
+    "Smoosh join preserves `eq?` when possible on equal `just?` values"))
+
+(check-equal?
+  (sj (just 1) (just 0.0))
+  (known /just /known /just 1)
+  "Smoosh join works on unequal, comparable `just?` values")
+
+(check-pred
+  unknown?
+  (sj (just 0+i) (just 1+i))
+  "Smoosh join is unknown on unequal, uncomparable `just?` values")
+
+(check-equal?
+  (sm (just 0) (just 0.0))
+  (known /just /known /just 0)
+  "Smoosh meet works on equal `just?` values")
+
+(w- obj (just 0)
+  (check-eq?
+    (known-value /just-value /known-value /sm obj (just 0.0))
+    obj
+    "Smoosh meet preserves `eq?` when possible on equal `just?` values"))
+
+(check-equal?
+  (sm (just 1) (just 0.0))
+  (known /just /known /just 0.0)
+  "Smoosh meet works on unequal, comparable `just?` values")
+
+(check-pred
+  unknown?
+  (sm (just 0+i) (just 1+i))
+  "Smoosh meet is unknown on unequal, uncomparable `just?` values")
+
+(check-equal?
+  (s= (pw /just 0) (pw /just 0.0))
+  (known /just /known /pw /just 0)
+  "Path-related smoosh works on equal `just?` values")
+
+(w- obj (pw /just 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /just 0.0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on equal `just?` values"))
+
+(check-equal?
+  (s= (pw /just 0) (pw /just 1.0))
+  (known /just /known /pw /just 0)
+  "Path-related smoosh works on `just?` values with path-related elements")
+
+(w- obj (pw /just 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /just 1.0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on `just?` values with path-related elements"))
+
+(check-pred
+  unknown?
+  (s= (pw /just 0+i) (pw /just 1+i))
+  "Path-related smoosh is unknown on `just?` values with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+(check-equal?
+  (s= (iw /just 0) (iw /just 0))
+  (known /just /known /iw /just 0)
+  "Info smoosh works on shallowly `chaperone=?` `just?` values whose elements are info smooshable")
+
+(w- obj (iw /just 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (iw /just 0)))
+    obj
+    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` `just?` values whose elements are info smooshable"))
+
+(check-equal?
+  (s= (iw /just 0) (iw /just 0.0))
+  (known /nothing)
+  "Info smoosh fails on shallowly `chaperone=?` `just?` values with a pair of corresponding elements whose info smoosh fails")
+
+(check-equal?
+  (sj (iw /just 0) (iw /just 0))
+  (known /just /known /iw /just 0)
+  "Info smoosh join works on shallowly `chaperone=?` `just?` values whose elements are info smoosh joinable")
+
+(w- obj (iw /just 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sj obj (iw /just 0)))
+    obj
+    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` `just?` values whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw /just 0) (iw /just 0.0))
+  (known /nothing)
+  "Info smoosh join fails on `just?` values with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-equal?
+  (sm (iw /just 0) (iw /just 0))
+  (known /just /known /iw /just 0)
+  "Info smoosh meet works on shallowly `chaperone=?` `just?` values whose elements are info smoosh meetable")
+
+(w- obj (iw /just 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sm obj (iw /just 0)))
+    obj
+    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` `just?` values whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw /just 0) (iw /just 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on `just?` values with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-equal?
+  (s= (pw /iw /just 0) (pw /iw /just 0))
+  (known /just /known /pw /iw /just 0)
+  "Path-related info smoosh works on `just?` values whose elements are path-related info smooshable")
+
+(w- obj (pw /iw /just 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iw /just 0)))
+    obj
+    "Path-related info smoosh preserves `eq?` when possible on `just?` values whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw /just 0) (pw /iw /just 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on `just?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-equal?
+  (s= (nothing) (just 0))
+  (known /nothing)
+  "Smoosh fails on distinctive `maybe?` values")
+
+(check-pred
+  unknown?
+  (sj (nothing) (just 0))
+  "Smoosh join is unknown on distinctive `maybe?` values")
+
+(check-pred
+  unknown?
+  (sm (nothing) (just 0))
+  "Smoosh meet is unknown on distinctive `maybe?` values")
+
+(check-pred
+  unknown?
+  (s= (pw /nothing) (pw /just 0))
+  "Path-related smoosh is unknown on distinctive `maybe?` values")
+
+(check-equal?
+  (s= (iw /nothing) (iw /just 0))
+  (known /nothing)
+  "Info smoosh fails on distinctive `maybe?` values")
+
+(check-equal?
+  (sj (iw /nothing) (iw /just 0))
+  (known /nothing)
+  "Info smoosh join fails on distinctive `maybe?` values")
+
+(check-equal?
+  (sm (iw /nothing) (iw /just 0))
+  (known /nothing)
+  "Info smoosh meet fails on distinctive `maybe?` values")
+
+(check-equal?
+  (s= (pw /iw /nothing) (pw /iw /just 0))
+  (known /nothing)
+  "Path-related info smoosh fails on distinctive `maybe?` values")
+
+
+(check-equal?
   (s= (trivial) (trivial))
   (known /just /known /trivial)
   "Smoosh works on `trivial?` values")
@@ -3578,7 +3816,7 @@
 ;
 ;   - Immutable hash tables.
 ;
-;   - `maybe?` values.
+;   - (Done) `maybe?` values.
 ;
 ;   - (Done) `trivial?` values.
 ;
