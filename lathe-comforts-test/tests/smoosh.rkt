@@ -262,6 +262,34 @@
 (define bts2 #"b")
 (define regexp1 #rx"")
 (define expr1 (compile #'0))
+(define ibox1 (box 0))
+(define ibox1-chap
+  (chaperone-box ibox1
+    (fn ibox current-v current-v)
+    (fn ibox new-v new-v)))
+(define ibox1-chap2
+  (chaperone-box ibox1
+    (fn ibox current-v current-v)
+    (fn ibox new-v new-v)))
+(define ibox1-chap-chap
+  (chaperone-box ibox1-chap
+    (fn ibox current-v current-v)
+    (fn ibox new-v new-v)))
+(define iv1 (vector 0))
+(define iv1-chap
+  (chaperone-vector iv1
+    (fn iv i current-v current-v)
+    (fn iv i new-v new-v)))
+(define iv1-chap2
+  (chaperone-vector iv1
+    (fn iv i current-v current-v)
+    (fn iv i new-v new-v)))
+(define iv1-chap-with-prop
+  (chaperone-vector iv1-chap #f #f imp-prop:arbitrary #t))
+(define iv1-chap-chap
+  (chaperone-vector iv1-chap
+    (fn iv i current-v current-v)
+    (fn iv i new-v new-v)))
 
 
 (check-equal?
@@ -1866,7 +1894,7 @@
 (check-equal?
   (sm (iw /cons 0 0) (iw /cons 0 0))
   (known /just /known /iw /cons 0 0)
-  "Info smoosh meet works on `equal-always?` cons cells")
+  "Info smoosh meet works on cons cells whose elements are info smoosh meetable")
 
 (w- obj (iw /cons 0 0)
   (check-eq?
@@ -2803,53 +2831,95 @@
 (check-equal?
   (s= (iw /box-immutable 0) (iw /box-immutable 0))
   (known /just /known /iw /box-immutable 0)
-  "Info smoosh works on immutable boxes whose elements are info smooshable")
+  "Info smoosh works on shallowly `chaperone=?` immutable boxes whose elements are info smooshable")
 
 (w- obj (iw /box-immutable 0)
   (check-eq?
     (known-value /just-value /known-value
       (s= obj (iw /box-immutable 0)))
     obj
-    "Info smoosh preserves `eq?` when possible on immutable boxes whose elements are info smooshable"))
+    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` immutable boxes whose elements are info smooshable"))
 
 (check-equal?
   (s= (iw /box-immutable 0) (iw /box-immutable 0.0))
   (known /nothing)
-  "Info smoosh fails on immutable boxes with a pair of corresponding elements whose info smoosh fails")
+  "Info smoosh fails on shallowly `chaperone=?` immutable boxes with a pair of corresponding elements whose info smoosh fails")
+
+(check-pred
+  unknown?
+  (s= (iw ibox1-chap-chap) (iw ibox1-chap))
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable boxes even when they're shallowly `chaperone-of?` in one direction and have elements which are info smooshable")
+
+(check-pred
+  unknown?
+  (s= (iw ibox1-chap) (iw ibox1-chap2))
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable boxes even when they're shallowly `equal-always?` and have elements which are info smooshable")
 
 (check-equal?
   (sj (iw /box-immutable 0) (iw /box-immutable 0))
   (known /just /known /iw /box-immutable 0)
-  "Info smoosh join works on immutable boxes whose elements are info smoosh joinable")
+  "Info smoosh join works on shallowly `chaperone=?` immutable boxes whose elements are info smoosh joinable")
 
 (w- obj (iw /box-immutable 0)
   (check-eq?
     (known-value /just-value /known-value
       (sj obj (iw /box-immutable 0)))
     obj
-    "Info smoosh join preserves `eq?` when possible on immutable boxes whose elements are info smoosh joinable"))
+    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` immutable boxes whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw ibox1-chap-chap) (iw ibox1-chap))
+  (known /just /known /iw ibox1-chap-chap)
+  "Info smoosh join works on shallowly `chaperone-of?` immutable boxes even when they're not shallowly `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw ibox1-chap-chap) (iw ibox1-chap)))
+  ibox1-chap-chap
+  "Info smoosh join preserves `eq?` on shallowly `chaperone-of?` immutable boxes even when they're not shallowly `chaperone=?`")
 
 (check-equal?
   (sj (iw /box-immutable 0) (iw /box-immutable 0.0))
   (known /nothing)
   "Info smoosh join fails on immutable boxes with at least one pair of corresponding elements whose info smoosh join fails")
 
+(check-pred
+  unknown?
+  (sj (iw ibox1-chap) (iw ibox1-chap2))
+  "Info smoosh join is unknown on non-shallowly-`chaperone-of?` immutable boxes even when they're `equal-always?`")
+
 (check-equal?
   (sm (iw /box-immutable 0) (iw /box-immutable 0))
   (known /just /known /iw /box-immutable 0)
-  "Info smoosh meet works on `equal-always?` immutable boxes")
+  "Info smoosh meet works on shallowly `chaperone=?` immutable boxes whose elements are info smoosh meetable")
 
 (w- obj (iw /box-immutable 0)
   (check-eq?
     (known-value /just-value /known-value
       (sm obj (iw /box-immutable 0)))
     obj
-    "Info smoosh meet preserves `eq?` when possible on immutable boxes whose elements are info smoosh meetable"))
+    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` immutable boxes whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw ibox1-chap-chap) (iw ibox1-chap))
+  (known /just /known /iw ibox1-chap)
+  "Info smoosh meet works on shallowly `chaperone-of?` immutable boxes even when they're not shallowly `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw ibox1-chap-chap) (iw ibox1-chap)))
+  ibox1-chap
+  "Info smoosh meet preserves `eq?` on shallowly `chaperone-of?` immutable boxes even when they're not shallowly `chaperone=?`")
 
 (check-equal?
   (sm (iw /box-immutable 0) (iw /box-immutable 0.0))
   (known /nothing)
   "Info smoosh meet fails on immutable boxes with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-pred
+  unknown?
+  (sm (iw ibox1-chap) (iw ibox1-chap2))
+  "Info smoosh meet is unknown on non-shallowly-`chaperone-of?` immutable boxes even when they're `equal-always?`")
 
 (check-equal?
   (s= (pw /iw /box-immutable 0) (pw /iw /box-immutable 0))
@@ -2862,6 +2932,30 @@
       (s= obj (pw /iw /box-immutable 0)))
     obj
     "Path-related info smoosh preserves `eq?` when possible on immutable boxes whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw ibox1-chap-chap) (pw /iw ibox1-chap))
+  (known /just /known /pw /iw ibox1-chap-chap)
+  "Path-related info smoosh works on `equal-always?` immutable boxes even when they're only shallowly `chaperone-of?` in one direction")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw ibox1-chap-chap) (pw /iw ibox1-chap))))
+  ibox1-chap-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` immutable boxes even when they're only shallowly `chaperone-of?` in one direction")
+
+(check-equal?
+  (s= (pw /iw ibox1-chap) (pw /iw ibox1-chap2))
+  (known /just /known /pw /iw ibox1-chap)
+  "Path-related info smoosh works on `equal-always?` immutable boxes even when they're not shallowly `chaperone=?` in either direction")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw ibox1-chap) (pw /iw ibox1-chap2))))
+  ibox1-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` immutable boxes even when they're not shallowly `chaperone=?` in either direction")
 
 (check-equal?
   (s= (pw /iw /box-immutable 0) (pw /iw /box-immutable 0.0))
@@ -2972,53 +3066,95 @@
 (check-equal?
   (s= (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
   (known /just /known /iw /vector-immutable 0 0)
-  "Info smoosh works on immutable vectors whose elements are info smooshable")
+  "Info smoosh works on shallowly `chaperone=?` immutable vectors whose elements are info smooshable")
 
 (w- obj (iw /vector-immutable 0 0)
   (check-eq?
     (known-value /just-value /known-value
       (s= obj (iw /vector-immutable 0 0)))
     obj
-    "Info smoosh preserves `eq?` when possible on immutable vectors whose elements are info smooshable"))
+    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` immutable vectors whose elements are info smooshable"))
 
 (check-equal?
   (s= (iw /vector-immutable 0 0) (iw /vector-immutable 0 0.0))
   (known /nothing)
-  "Info smoosh fails on immutable vectors with a pair of corresponding elements whose info smoosh fails")
+  "Info smoosh fails on shallowly `chaperone=?` immutable vectors with a pair of corresponding elements whose info smoosh fails")
+
+(check-pred
+  unknown?
+  (s= (iw iv1-chap-chap) (iw iv1-chap-with-prop))
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable vectors even when they're shallowly `chaperone-of?` in one direction and have elements which are info smooshable")
+
+(check-pred
+  unknown?
+  (s= (iw iv1-chap) (iw iv1-chap2))
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable vectors even when they're shallowly `equal-always?` and have elements which are info smooshable")
 
 (check-equal?
   (sj (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
   (known /just /known /iw /vector-immutable 0 0)
-  "Info smoosh join works on immutable vectors whose elements are info smoosh joinable")
+  "Info smoosh join works on shallowly `chaperone=?` immutable vectors whose elements are info smoosh joinable")
 
 (w- obj (iw /vector-immutable 0 0)
   (check-eq?
     (known-value /just-value /known-value
       (sj obj (iw /vector-immutable 0 0)))
     obj
-    "Info smoosh join preserves `eq?` when possible on immutable vectors whose elements are info smoosh joinable"))
+    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` immutable vectors whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw iv1-chap-chap) (iw iv1-chap-with-prop))
+  (known /just /known /iw iv1-chap-chap)
+  "Info smoosh join works on shallowly `chaperone-of?` immutable vectors even when they're not shallowly `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw iv1-chap-chap) (iw iv1-chap-with-prop)))
+  iv1-chap-chap
+  "Info smoosh join preserves `eq?` on shallowly `chaperone-of?` immutable vectors even when they're not shallowly `chaperone=?`")
 
 (check-equal?
   (sj (iw /vector-immutable 0 0) (iw /vector-immutable 0 0.0))
   (known /nothing)
   "Info smoosh join fails on immutable vectors with at least one pair of corresponding elements whose info smoosh join fails")
 
+(check-pred
+  unknown?
+  (sj (iw iv1-chap) (iw iv1-chap2))
+  "Info smoosh join is unknown on non-shallowly-`chaperone-of?` immutable vectors even when they're `equal-always?`")
+
 (check-equal?
   (sm (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
   (known /just /known /iw /vector-immutable 0 0)
-  "Info smoosh meet works on `equal-always?` immutable vectors")
+  "Info smoosh meet works on shallowly `chaperone=?` immutable vectors whose elements are info smoosh meetable")
 
 (w- obj (iw /vector-immutable 0 0)
   (check-eq?
     (known-value /just-value /known-value
       (sm obj (iw /vector-immutable 0 0)))
     obj
-    "Info smoosh meet preserves `eq?` when possible on immutable vectors whose elements are info smoosh meetable"))
+    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` immutable vectors whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw iv1-chap-chap) (iw iv1-chap-with-prop))
+  (known /just /known /iw iv1-chap-with-prop)
+  "Info smoosh meet works on shallowly `chaperone-of?` immutable vectors even when they're not shallowly `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw iv1-chap-chap) (iw iv1-chap-with-prop)))
+  iv1-chap-with-prop
+  "Info smoosh meet preserves `eq?` on shallowly `chaperone-of?` immutable vectors even when they're not shallowly `chaperone=?`")
 
 (check-equal?
   (sm (iw /vector-immutable 0 0) (iw /vector-immutable 0 0.0))
   (known /nothing)
   "Info smoosh meet fails on immutable vectors with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-pred
+  unknown?
+  (sm (iw iv1-chap) (iw iv1-chap2))
+  "Info smoosh meet is unknown on non-shallowly-`chaperone-of?` immutable vectors even when they're `equal-always?`")
 
 (check-equal?
   (s= (pw /iw /vector-immutable 0 0) (pw /iw /vector-immutable 0 0))
@@ -3031,6 +3167,30 @@
       (s= obj (pw /iw /vector-immutable 0 0)))
     obj
     "Path-related info smoosh preserves `eq?` when possible on immutable vectors whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw iv1-chap-chap) (pw /iw iv1-chap-with-prop))
+  (known /just /known /pw /iw iv1-chap-chap)
+  "Path-related info smoosh works on `equal-always?` immutable vectors even when they're only shallowly `chaperone-of?` in one direction")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw iv1-chap-chap) (pw /iw iv1-chap-with-prop))))
+  iv1-chap-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` immutable vectors even when they're only shallowly `chaperone-of?` in one direction")
+
+(check-equal?
+  (s= (pw /iw iv1-chap) (pw /iw iv1-chap2))
+  (known /just /known /pw /iw iv1-chap)
+  "Path-related info smoosh works on `equal-always?` immutable vectors even when they're not shallowly `chaperone=?` in either direction")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw iv1-chap) (pw /iw iv1-chap2))))
+  iv1-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` immutable vectors even when they're not shallowly `chaperone=?` in either direction")
 
 (check-equal?
   (s= (pw /iw /vector-immutable 0 0) (pw /iw /vector-immutable 0 0.0))
@@ -3167,9 +3327,9 @@
 ;   - (Done) Regular expressions (`regexp?`) and compiled code
 ;     expressions (`compiled-expression?`).
 ;
-;   - (Done) Immutable boxes (TODO SMOOSH: and chaperones thereof).
+;   - (Done) Immutable boxes.
 ;
-;   - (Done) Immutable vectors (TODO SMOOSH: and chaperones thereof).
+;   - (Done) Immutable vectors.
 ;
 ;   - Prefab structs with no mutable fields.
 ;
