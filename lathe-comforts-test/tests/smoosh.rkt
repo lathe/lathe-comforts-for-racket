@@ -262,7 +262,7 @@
 (define bts2 #"b")
 (define regexp1 #rx"")
 (define expr1 (compile #'0))
-(define ibox1 (box 0))
+(define ibox1 (box-immutable 0))
 (define ibox1-chap
   (chaperone-box ibox1
     (fn ibox current-v current-v)
@@ -275,7 +275,7 @@
   (chaperone-box ibox1-chap
     (fn ibox current-v current-v)
     (fn ibox new-v new-v)))
-(define iv1 (vector 0))
+(define iv1 (vector-immutable 0))
 (define iv1-chap
   (chaperone-vector iv1
     (fn iv i current-v current-v)

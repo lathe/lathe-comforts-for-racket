@@ -5064,25 +5064,22 @@
         (fn result-needs-to-be-chaperone-of?
           (fn result-list-kpmkp
             (promise-map result-list-kpmkp /fn list-kpmk
-              (knowable-map list-kpmk /fn list-kpm
-                (maybe-map list-kpm /fn list-kp
-                  (promise-map list-kp /fn list-k
-                    (knowable-bind list-k /fn result-list
-                      (if (list-elements-eq? result-list a-list)
-                        (known a)
-                      /w- noncanonical-result
-                        (example-and-list-> a result-list)
-                      /if
-                        ; If we're doing a particularly strict check
-                        ; and the operand `a` is wrapped with
-                        ; impersonators or interposing chaperones, we
-                        ; have no `known?` result.
-                        (or
-                          (not result-needs-to-be-chaperone-of?)
-                          (force
-                            a-shallowly-unchaperoned?-promise))
-                        (known noncanonical-result)
-                      /unknown))))))))
+              (knowable-bind list-kpmk /fn list-kpm
+              /expect list-kpm (just list-kp) (known /nothing)
+              /knowable-bind (force list-kp) /fn result-list
+              /if (list-elements-eq? result-list a-list)
+                (known /just /delay/strict /known a)
+              /w- noncanonical-result
+                (example-and-list-> a result-list)
+              /if
+                ; If we're doing a particularly strict check and the
+                ; operand `a` is wrapped with impersonators or
+                ; interposing chaperones, we have no `known?` result.
+                (or
+                  (not result-needs-to-be-chaperone-of?)
+                  (force a-shallowly-unchaperoned?-promise))
+                (known /just /delay/strict /known noncanonical-result)
+              /unknown))))
       /sequence*
         (smoosh-report-map report-0
           #:on-smoosh-result-knowable-promise-maybe-knowable-promise
@@ -5201,25 +5198,24 @@
         (fn acceptable-result?
           (fn result-list-kpmkp
             (promise-map result-list-kpmkp /fn list-kpmk
-              (knowable-map list-kpmk /fn list-kpm
-                (maybe-map list-kpm /fn list-kp
-                  (promise-map list-kp /fn list-k
-                    (knowable-bind list-k /fn result-list
-                      (if
-                        (and
-                          (list-elements-eq? result-list a-list)
-                          (acceptable-result? a))
-                        (known a)
-                      /if
-                        (and
-                          (list-elements-eq? result-list b-list)
-                          (acceptable-result? b))
-                        (known b)
-                      /w- noncanonical-result
-                        (example-and-list-> a result-list)
-                      /if (acceptable-result? noncanonical-result)
-                        (known noncanonical-result)
-                      /unknown))))))))
+              (knowable-bind list-kpmk /fn list-kpm
+              /expect list-kpm (just list-kp) (known /nothing)
+              /knowable-bind (force list-kp) /fn result-list
+              /if
+                (and
+                  (list-elements-eq? result-list a-list)
+                  (acceptable-result? a))
+                (known /just /delay/strict /known a)
+              /if
+                (and
+                  (list-elements-eq? result-list b-list)
+                  (acceptable-result? b))
+                (known /just /delay/strict /known b)
+              /w- noncanonical-result
+                (example-and-list-> a result-list)
+              /if (acceptable-result? noncanonical-result)
+                (known /just /delay/strict /known noncanonical-result)
+              /unknown))))
       /w- chaperone=?-promise
         (delay
           (and
