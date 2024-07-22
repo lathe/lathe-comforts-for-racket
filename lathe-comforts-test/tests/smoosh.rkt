@@ -2870,6 +2870,175 @@
 
 
 (check-equal?
+  (s= (vector-immutable 0 0.0) (vector-immutable 0.0 0))
+  (known /just /known /vector-immutable 0 0.0)
+  "Smoosh works on equal immutable vectors")
+
+(w- obj (vector-immutable 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (vector-immutable 0.0 0)))
+    obj
+    "Smoosh preserves `eq?` when possible on equal immutable vectors"))
+
+(check-equal?
+  (s= (vector-immutable 0 0) (vector-immutable 1 0))
+  (known /nothing)
+  "Smoosh fails on unequal immutable vectors")
+
+(check-equal?
+  (sj (vector-immutable 0 0.0) (vector-immutable 0.0 0))
+  (known /just /known /vector-immutable 0 0.0)
+  "Smoosh join works on equal immutable vectors")
+
+(w- obj (vector-immutable 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sj obj (vector-immutable 0.0 0)))
+    obj
+    "Smoosh join preserves `eq?` when possible on equal immutable vectors"))
+
+(check-equal?
+  (sj (vector-immutable 1 0) (vector-immutable 0.0 1+0.0i))
+  (known /just /known /vector-immutable 1 1+0.0i)
+  "Smoosh join works on unequal, comparable immutable vectors")
+
+(check-pred
+  unknown?
+  (sj (vector-immutable 0 0+i) (vector-immutable 0 1+i))
+  "Smoosh join is unknown on unequal, uncomparable immutable vectors")
+
+(check-equal?
+  (sm (vector-immutable 0 0.0) (vector-immutable 0.0 0))
+  (known /just /known /vector-immutable 0 0.0)
+  "Smoosh meet works on equal immutable vectors")
+
+(w- obj (vector-immutable 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sm obj (vector-immutable 0.0 0)))
+    obj
+    "Smoosh meet preserves `eq?` when possible on equal immutable vectors"))
+
+(check-equal?
+  (sm (vector-immutable 1 0) (vector-immutable 0.0 1+0.0i))
+  (known /just /known /vector-immutable 0.0 0)
+  "Smoosh meet works on unequal, comparable immutable vectors")
+
+(check-pred
+  unknown?
+  (sm (vector-immutable 0 0+i) (vector-immutable 0 1+i))
+  "Smoosh meet is unknown on unequal, uncomparable immutable vectors")
+
+(check-equal?
+  (s= (pw /vector-immutable 0 0.0) (pw /vector-immutable 0.0 0))
+  (known /just /known /pw /vector-immutable 0 0.0)
+  "Path-related smoosh works on equal immutable vectors")
+
+(w- obj (pw /vector-immutable 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /vector-immutable 0.0 0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on equal immutable vectors"))
+
+(check-equal?
+  (s= (pw /vector-immutable 0 0.0) (pw /vector-immutable 1.0 1+0.0i))
+  (known /just /known /pw /vector-immutable 0 0.0)
+  "Path-related smoosh works on immutable vectors with path-related elements")
+
+(w- obj (pw /vector-immutable 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /vector-immutable 1.0 1+0.0i)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on immutable vectors with path-related elements"))
+
+(check-pred
+  unknown?
+  (s= (pw /vector-immutable 0 0+i) (pw /vector-immutable 0 1+i))
+  "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+; TODO SMOOSH: If we ever have a pair of values whose path-related
+; smoosh actually fails (rather than just having an unknown result),
+; use it in the TODO slots here.
+;
+#;
+(check-equal?
+  (s= (pw /vector-immutable TODO 0+i) (pw /vector-immutable TODO 1+i))
+  (known /nothing)
+  "Path-related smoosh fails on immutable vectors with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+
+(check-equal?
+  (s= (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
+  (known /just /known /iw /vector-immutable 0 0)
+  "Info smoosh works on immutable vectors whose elements are info smooshable")
+
+(w- obj (iw /vector-immutable 0 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (iw /vector-immutable 0 0)))
+    obj
+    "Info smoosh preserves `eq?` when possible on immutable vectors whose elements are info smooshable"))
+
+(check-equal?
+  (s= (iw /vector-immutable 0 0) (iw /vector-immutable 0 0.0))
+  (known /nothing)
+  "Info smoosh fails on immutable vectors with a pair of corresponding elements whose info smoosh fails")
+
+(check-equal?
+  (sj (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
+  (known /just /known /iw /vector-immutable 0 0)
+  "Info smoosh join works on immutable vectors whose elements are info smoosh joinable")
+
+(w- obj (iw /vector-immutable 0 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sj obj (iw /vector-immutable 0 0)))
+    obj
+    "Info smoosh join preserves `eq?` when possible on immutable vectors whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw /vector-immutable 0 0) (iw /vector-immutable 0 0.0))
+  (known /nothing)
+  "Info smoosh join fails on immutable vectors with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-equal?
+  (sm (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
+  (known /just /known /iw /vector-immutable 0 0)
+  "Info smoosh meet works on `equal-always?` immutable vectors")
+
+(w- obj (iw /vector-immutable 0 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sm obj (iw /vector-immutable 0 0)))
+    obj
+    "Info smoosh meet preserves `eq?` when possible on immutable vectors whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw /vector-immutable 0 0) (iw /vector-immutable 0 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on immutable vectors with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-equal?
+  (s= (pw /iw /vector-immutable 0 0) (pw /iw /vector-immutable 0 0))
+  (known /just /known /pw /iw /vector-immutable 0 0)
+  "Path-related info smoosh works on immutable vectors whose elements are path-related info smooshable")
+
+(w- obj (pw /iw /vector-immutable 0 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iw /vector-immutable 0 0)))
+    obj
+    "Path-related info smoosh preserves `eq?` when possible on immutable vectors whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw /vector-immutable 0 0) (pw /iw /vector-immutable 0 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on immutable vectors with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-equal?
   (s= (trivial) (trivial))
   (known /just /known /trivial)
   "Smoosh works on `trivial?` values")
@@ -2998,9 +3167,9 @@
 ;   - (Done) Regular expressions (`regexp?`) and compiled code
 ;     expressions (`compiled-expression?`).
 ;
-;   - (Done) Immutable boxes.
+;   - (Done) Immutable boxes (TODO SMOOSH: and chaperones thereof).
 ;
-;   - Immutable vectors.
+;   - (Done) Immutable vectors (TODO SMOOSH: and chaperones thereof).
 ;
 ;   - Prefab structs with no mutable fields.
 ;
