@@ -305,6 +305,11 @@
   (chaperone-struct iprefab1-chap iprefab-field1
     (fn iprefab current-v current-v)))
 
+; This is a pair of values whose path-related smoosh actually fails
+; (rather than just having an unknown result).
+(define path-failing-1 (iw 0))
+(define path-failing-2 (iw 0.0))
+
 
 (check-equal?
   (s= mstr1 mstr1)
@@ -1863,13 +1868,8 @@
   (s= (pw /cons 0 0+i) (pw /cons 0 1+i))
   "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
 
-; TODO SMOOSH: If we ever have a pair of values whose path-related
-; smoosh actually fails (rather than just having an unknown result),
-; use it in the TODO slots here.
-;
-#;
 (check-equal?
-  (s= (pw /cons TODO 0+i) (pw /cons TODO 1+i))
+  (s= (pw /cons path-failing-1 0+i) (pw /cons path-failing-2 1+i))
   (known /nothing)
   "Path-related smoosh fails on cons cells with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
 
@@ -3067,13 +3067,10 @@
   (s= (pw /vector-immutable 0 0+i) (pw /vector-immutable 0 1+i))
   "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
 
-; TODO SMOOSH: If we ever have a pair of values whose path-related
-; smoosh actually fails (rather than just having an unknown result),
-; use it in the TODO slots here.
-;
-#;
 (check-equal?
-  (s= (pw /vector-immutable TODO 0+i) (pw /vector-immutable TODO 1+i))
+  (s=
+    (pw /vector-immutable path-failing-1 0+i)
+    (pw /vector-immutable path-failing-2 1+i))
   (known /nothing)
   "Path-related smoosh fails on immutable vectors with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
 
@@ -3299,13 +3296,10 @@
   (s= (pw /iprefab 0 0+i) (pw /iprefab 0 1+i))
   "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
 
-; TODO SMOOSH: If we ever have a pair of values whose path-related
-; smoosh actually fails (rather than just having an unknown result),
-; use it in the TODO slots here.
-;
-#;
 (check-equal?
-  (s= (pw /iprefab TODO 0+i) (pw /iprefab TODO 1+i))
+  (s=
+    (pw /iprefab path-failing-1 0+i)
+    (pw /iprefab path-failing-2 1+i))
   (known /nothing)
   "Path-related smoosh fails on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
 
