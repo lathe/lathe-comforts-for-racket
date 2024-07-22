@@ -3572,31 +3572,31 @@
 (check-equal?
   (s= (iw /just 0) (iw /just 0))
   (known /just /known /iw /just 0)
-  "Info smoosh works on shallowly `chaperone=?` `just?` values whose elements are info smooshable")
+  "Info smoosh works on `just?` values whose elements are info smooshable")
 
 (w- obj (iw /just 0)
   (check-eq?
     (known-value /just-value /known-value
       (s= obj (iw /just 0)))
     obj
-    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` `just?` values whose elements are info smooshable"))
+    "Info smoosh preserves `eq?` when possible on `just?` values whose elements are info smooshable"))
 
 (check-equal?
   (s= (iw /just 0) (iw /just 0.0))
   (known /nothing)
-  "Info smoosh fails on shallowly `chaperone=?` `just?` values with a pair of corresponding elements whose info smoosh fails")
+  "Info smoosh fails on `just?` values with a pair of corresponding elements whose info smoosh fails")
 
 (check-equal?
   (sj (iw /just 0) (iw /just 0))
   (known /just /known /iw /just 0)
-  "Info smoosh join works on shallowly `chaperone=?` `just?` values whose elements are info smoosh joinable")
+  "Info smoosh join works on `just?` values whose elements are info smoosh joinable")
 
 (w- obj (iw /just 0)
   (check-eq?
     (known-value /just-value /known-value
       (sj obj (iw /just 0)))
     obj
-    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` `just?` values whose elements are info smoosh joinable"))
+    "Info smoosh join preserves `eq?` when possible on `just?` values whose elements are info smoosh joinable"))
 
 (check-equal?
   (sj (iw /just 0) (iw /just 0.0))
@@ -3613,7 +3613,7 @@
     (known-value /just-value /known-value
       (sm obj (iw /just 0)))
     obj
-    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` `just?` values whose elements are info smoosh meetable"))
+    "Info smoosh meet preserves `eq?` when possible on `just?` values whose elements are info smoosh meetable"))
 
 (check-equal?
   (sm (iw /just 0) (iw /just 0.0))
@@ -3857,31 +3857,31 @@
 (check-equal?
   (s= (iw /known 0) (iw /known 0))
   (known /just /known /iw /known 0)
-  "Info smoosh works on shallowly `chaperone=?` `known?` values whose elements are info smooshable")
+  "Info smoosh works on `known?` values whose elements are info smooshable")
 
 (w- obj (iw /known 0)
   (check-eq?
     (known-value /just-value /known-value
       (s= obj (iw /known 0)))
     obj
-    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` `known?` values whose elements are info smooshable"))
+    "Info smoosh preserves `eq?` when possible on `known?` values whose elements are info smooshable"))
 
 (check-equal?
   (s= (iw /known 0) (iw /known 0.0))
   (known /nothing)
-  "Info smoosh fails on shallowly `chaperone=?` `known?` values with a pair of corresponding elements whose info smoosh fails")
+  "Info smoosh fails on `known?` values with a pair of corresponding elements whose info smoosh fails")
 
 (check-equal?
   (sj (iw /known 0) (iw /known 0))
   (known /just /known /iw /known 0)
-  "Info smoosh join works on shallowly `chaperone=?` `known?` values whose elements are info smoosh joinable")
+  "Info smoosh join works on `known?` values whose elements are info smoosh joinable")
 
 (w- obj (iw /known 0)
   (check-eq?
     (known-value /just-value /known-value
       (sj obj (iw /known 0)))
     obj
-    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` `known?` values whose elements are info smoosh joinable"))
+    "Info smoosh join preserves `eq?` when possible on `known?` values whose elements are info smoosh joinable"))
 
 (check-equal?
   (sj (iw /known 0) (iw /known 0.0))
@@ -3891,14 +3891,14 @@
 (check-equal?
   (sm (iw /known 0) (iw /known 0))
   (known /just /known /iw /known 0)
-  "Info smoosh meet works on shallowly `chaperone=?` `known?` values whose elements are info smoosh meetable")
+  "Info smoosh meet works on `known?` values whose elements are info smoosh meetable")
 
 (w- obj (iw /known 0)
   (check-eq?
     (known-value /just-value /known-value
       (sm obj (iw /known 0)))
     obj
-    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` `known?` values whose elements are info smoosh meetable"))
+    "Info smoosh meet preserves `eq?` when possible on `known?` values whose elements are info smoosh meetable"))
 
 (check-equal?
   (sm (iw /known 0) (iw /known 0.0))
