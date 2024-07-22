@@ -290,6 +290,20 @@
   (chaperone-vector iv1-chap
     (fn iv i current-v current-v)
     (fn iv i new-v new-v)))
+(struct iprefab (field1 field2) #:prefab)
+(define iprefab1 (iprefab 0 0))
+(define iprefab1-chap
+  (chaperone-struct iprefab1 iprefab-field1
+    (fn iprefab current-v current-v)))
+(define iprefab1-chap2
+  (chaperone-struct iprefab1 iprefab-field1
+    (fn iprefab current-v current-v)))
+(define iprefab1-chap-with-prop
+  (chaperone-struct iprefab1-chap struct:iprefab
+    imp-prop:arbitrary #t))
+(define iprefab1-chap-chap
+  (chaperone-struct iprefab1-chap iprefab-field1
+    (fn iprefab current-v current-v)))
 
 
 (check-equal?
@@ -3199,6 +3213,235 @@
 
 
 (check-equal?
+  (s= (iprefab 0 0.0) (iprefab 0.0 0))
+  (known /just /known /iprefab 0 0.0)
+  "Smoosh works on equal immutable prefab structs")
+
+(w- obj (iprefab 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /s= obj (iprefab 0.0 0))
+    obj
+    "Smoosh preserves `eq?` when possible on equal immutable prefab structs"))
+
+(check-equal?
+  (s= (iprefab 0 0) (iprefab 1 0))
+  (known /nothing)
+  "Smoosh fails on unequal immutable prefab structs")
+
+(check-equal?
+  (sj (iprefab 0 0.0) (iprefab 0.0 0))
+  (known /just /known /iprefab 0 0.0)
+  "Smoosh join works on equal immutable prefab structs")
+
+(w- obj (iprefab 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /sj obj (iprefab 0.0 0))
+    obj
+    "Smoosh join preserves `eq?` when possible on equal immutable prefab structs"))
+
+(check-equal?
+  (sj (iprefab 1 0) (iprefab 0.0 1+0.0i))
+  (known /just /known /iprefab 1 1+0.0i)
+  "Smoosh join works on unequal, comparable immutable prefab structs")
+
+(check-pred
+  unknown?
+  (sj (iprefab 0 0+i) (iprefab 0 1+i))
+  "Smoosh join is unknown on unequal, uncomparable immutable prefab structs")
+
+(check-equal?
+  (sm (iprefab 0 0.0) (iprefab 0.0 0))
+  (known /just /known /iprefab 0 0.0)
+  "Smoosh meet works on equal immutable prefab structs")
+
+(w- obj (iprefab 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /sm obj (iprefab 0.0 0))
+    obj
+    "Smoosh meet preserves `eq?` when possible on equal immutable prefab structs"))
+
+(check-equal?
+  (sm (iprefab 1 0) (iprefab 0.0 1+0.0i))
+  (known /just /known /iprefab 0.0 0)
+  "Smoosh meet works on unequal, comparable immutable prefab structs")
+
+(check-pred
+  unknown?
+  (sm (iprefab 0 0+i) (iprefab 0 1+i))
+  "Smoosh meet is unknown on unequal, uncomparable immutable prefab structs")
+
+(check-equal?
+  (s= (pw /iprefab 0 0.0) (pw /iprefab 0.0 0))
+  (known /just /known /pw /iprefab 0 0.0)
+  "Path-related smoosh works on equal immutable prefab structs")
+
+(w- obj (pw /iprefab 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iprefab 0.0 0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on equal immutable prefab structs"))
+
+(check-equal?
+  (s= (pw /iprefab 0 0.0) (pw /iprefab 1.0 1+0.0i))
+  (known /just /known /pw /iprefab 0 0.0)
+  "Path-related smoosh works on immutable prefab structs with path-related elements")
+
+(w- obj (pw /iprefab 0 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iprefab 1.0 1+0.0i)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on immutable prefab structs with path-related elements"))
+
+(check-pred
+  unknown?
+  (s= (pw /iprefab 0 0+i) (pw /iprefab 0 1+i))
+  "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+; TODO SMOOSH: If we ever have a pair of values whose path-related
+; smoosh actually fails (rather than just having an unknown result),
+; use it in the TODO slots here.
+;
+#;
+(check-equal?
+  (s= (pw /iprefab TODO 0+i) (pw /iprefab TODO 1+i))
+  (known /nothing)
+  "Path-related smoosh fails on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+
+(check-equal?
+  (s= (iw /iprefab 0 0) (iw /iprefab 0 0))
+  (known /just /known /iw /iprefab 0 0)
+  "Info smoosh works on shallowly `chaperone=?` immutable prefab structs whose elements are info smooshable")
+
+(w- obj (iw /iprefab 0 0)
+  (check-eq?
+    (known-value /just-value /known-value /s= obj (iw /iprefab 0 0))
+    obj
+    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` immutable prefab structs whose elements are info smooshable"))
+
+(check-equal?
+  (s= (iw /iprefab 0 0) (iw /iprefab 0 0.0))
+  (known /nothing)
+  "Info smoosh fails on shallowly `chaperone=?` immutable prefab structs with a pair of corresponding elements whose info smoosh fails")
+
+(check-pred
+  unknown?
+  (s= (iw iprefab1-chap-chap) (iw iprefab1-chap-with-prop))
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable prefab structs even when they're shallowly `chaperone-of?` in one direction and have elements which are info smooshable")
+
+(check-pred
+  unknown?
+  (s= (iw iprefab1-chap) (iw iprefab1-chap2))
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable prefab structs even when they're shallowly `equal-always?` and have elements which are info smooshable")
+
+(check-equal?
+  (sj (iw /iprefab 0 0) (iw /iprefab 0 0))
+  (known /just /known /iw /iprefab 0 0)
+  "Info smoosh join works on shallowly `chaperone=?` immutable prefab structs whose elements are info smoosh joinable")
+
+(w- obj (iw /iprefab 0 0)
+  (check-eq?
+    (known-value /just-value /known-value /sj obj (iw /iprefab 0 0))
+    obj
+    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` immutable prefab structs whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw iprefab1-chap-chap) (iw iprefab1-chap-with-prop))
+  (known /just /known /iw iprefab1-chap-chap)
+  "Info smoosh join works on shallowly `chaperone-of?` immutable prefab structs even when they're not shallowly `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw iprefab1-chap-chap) (iw iprefab1-chap-with-prop)))
+  iprefab1-chap-chap
+  "Info smoosh join preserves `eq?` on shallowly `chaperone-of?` immutable prefab structs even when they're not shallowly `chaperone=?`")
+
+(check-equal?
+  (sj (iw /iprefab 0 0) (iw /iprefab 0 0.0))
+  (known /nothing)
+  "Info smoosh join fails on immutable prefab structs with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-pred
+  unknown?
+  (sj (iw iprefab1-chap) (iw iprefab1-chap2))
+  "Info smoosh join is unknown on non-shallowly-`chaperone-of?` immutable prefab structs even when they're `equal-always?`")
+
+(check-equal?
+  (sm (iw /iprefab 0 0) (iw /iprefab 0 0))
+  (known /just /known /iw /iprefab 0 0)
+  "Info smoosh meet works on shallowly `chaperone=?` immutable prefab structs whose elements are info smoosh meetable")
+
+(w- obj (iw /iprefab 0 0)
+  (check-eq?
+    (known-value /just-value /known-value /sm obj (iw /iprefab 0 0))
+    obj
+    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` immutable prefab structs whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw iprefab1-chap-chap) (iw iprefab1-chap-with-prop))
+  (known /just /known /iw iprefab1-chap-with-prop)
+  "Info smoosh meet works on shallowly `chaperone-of?` immutable prefab structs even when they're not shallowly `chaperone=?`")
+
+(check-eq?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw iprefab1-chap-chap) (iw iprefab1-chap-with-prop)))
+  iprefab1-chap-with-prop
+  "Info smoosh meet preserves `eq?` on shallowly `chaperone-of?` immutable prefab structs even when they're not shallowly `chaperone=?`")
+
+(check-equal?
+  (sm (iw /iprefab 0 0) (iw /iprefab 0 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on immutable prefab structs with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-pred
+  unknown?
+  (sm (iw iprefab1-chap) (iw iprefab1-chap2))
+  "Info smoosh meet is unknown on non-shallowly-`chaperone-of?` immutable prefab structs even when they're `equal-always?`")
+
+(check-equal?
+  (s= (pw /iw /iprefab 0 0) (pw /iw /iprefab 0 0))
+  (known /just /known /pw /iw /iprefab 0 0)
+  "Path-related info smoosh works on immutable prefab structs whose elements are path-related info smooshable")
+
+(w- obj (pw /iw /iprefab 0 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iw /iprefab 0 0)))
+    obj
+    "Path-related info smoosh preserves `eq?` when possible on immutable prefab structs whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw iprefab1-chap-chap) (pw /iw iprefab1-chap-with-prop))
+  (known /just /known /pw /iw iprefab1-chap-chap)
+  "Path-related info smoosh works on `equal-always?` immutable prefab structs even when they're only shallowly `chaperone-of?` in one direction")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw iprefab1-chap-chap) (pw /iw iprefab1-chap-with-prop))))
+  iprefab1-chap-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` immutable prefab structs even when they're only shallowly `chaperone-of?` in one direction")
+
+(check-equal?
+  (s= (pw /iw iprefab1-chap) (pw /iw iprefab1-chap2))
+  (known /just /known /pw /iw iprefab1-chap)
+  "Path-related info smoosh works on `equal-always?` immutable prefab structs even when they're not shallowly `chaperone=?` in either direction")
+
+(check-eq?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw iprefab1-chap) (pw /iw iprefab1-chap2))))
+  iprefab1-chap
+  "Path-related info smoosh preserves `eq?` on `equal-always?` immutable prefab structs even when they're not shallowly `chaperone=?` in either direction")
+
+(check-equal?
+  (s= (pw /iw /iprefab 0 0) (pw /iw /iprefab 0 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on immutable prefab structs with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-equal?
   (s= (trivial) (trivial))
   (known /just /known /trivial)
   "Smoosh works on `trivial?` values")
@@ -3331,7 +3574,7 @@
 ;
 ;   - (Done) Immutable vectors.
 ;
-;   - Prefab structs with no mutable fields.
+;   - (Done) Prefab structs with no mutable fields.
 ;
 ;   - Immutable hash tables.
 ;
