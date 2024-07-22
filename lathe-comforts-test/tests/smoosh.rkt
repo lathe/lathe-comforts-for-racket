@@ -304,6 +304,9 @@
 (define iprefab1-chap-chap
   (chaperone-struct iprefab1-chap iprefab-field1
     (fn iprefab current-v current-v)))
+(define eaw1 (equal-always-wrapper /box-immutable 0))
+(define eaw2 (equal-always-wrapper /box-immutable 0))
+(define eaw-different (equal-always-wrapper /box-immutable 1))
 
 ; This is a pair of values whose path-related smoosh actually fails
 ; (rather than just having an unknown result).
@@ -4056,6 +4059,87 @@
   "Path-related info smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
 
 
+(check-equal?
+  (s= eaw1 eaw2)
+  (known /just /known eaw1)
+  "Smoosh works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (s= eaw1 eaw-different)
+  (known /nothing)
+  "Smoosh fails on non-`equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (sj eaw1 eaw2)
+  (known /just /known eaw1)
+  "Smoosh join works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-pred
+  unknown?
+  (sj eaw1 eaw-different)
+  "Smoosh join is unknown on non-`equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (sm eaw1 eaw2)
+  (known /just /known eaw1)
+  "Smoosh meet works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-pred
+  unknown?
+  (sm eaw1 eaw-different)
+  "Smoosh meet is unknown on non-`equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (s= (pw eaw1) (pw eaw2))
+  (known /just /known /pw eaw1)
+  "Path-related smoosh works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-pred
+  unknown?
+  (s= (pw eaw1) (pw eaw-different))
+  "Path-related smoosh is unknown on non-`equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (s= (iw eaw1) (iw eaw2))
+  (known /just /known /iw eaw1)
+  "Info smoosh works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (s= (iw eaw1) (iw eaw-different))
+  (known /nothing)
+  "Info smoosh fails on non-`equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (sj (iw eaw1) (iw eaw2))
+  (known /just /known /iw eaw1)
+  "Info smoosh join works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (sj (iw eaw1) (iw eaw-different))
+  (known /nothing)
+  "Info smoosh join fails on non-`equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (sm (iw eaw1) (iw eaw2))
+  (known /just /known /iw eaw1)
+  "Info smoosh meet works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (sm (iw eaw1) (iw eaw-different))
+  (known /nothing)
+  "Info smoosh meet fails on non-`equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (s= (pw /iw eaw1) (pw /iw eaw2))
+  (known /just /known /pw /iw eaw1)
+  "Path-related info smoosh works on `equal-always?` `equal-always-wrapper?` values")
+
+(check-equal?
+  (s= (pw /iw eaw1) (pw /iw eaw-different))
+  (known /nothing)
+  "Path-related info smoosh fails on non-`equal-always?` `equal-always-wrapper?` values")
+
+
 ; TODO SMOOSH: Implement smooshing tests for values of the following
 ; types:
 ;
@@ -4105,6 +4189,6 @@
 ;
 ;   - (Done) `dynamic-type-var-for-any-dynamic-type?` values.
 ;
-;   - `equal-always-wrapper?` values.
+;   - (Done) `equal-always-wrapper?` values.
 ;
 ;   - `indistinct-wrapper?` values.
