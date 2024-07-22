@@ -7164,8 +7164,9 @@
 
 (define/own-contract
   (on-known-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp)
+    operands kpmkp)
   (->
+    (listof known?)
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
     (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
   (promise-map kpmkp /fn kpmk
@@ -7173,7 +7174,13 @@
       (maybe-map kpm /fn kp
         (promise-map kp /fn k
           (knowable-map k /fn result-value
-            (known result-value)))))))
+            (w-loop next operands operands
+              (expect operands (cons operand operands)
+                (known result-value)
+              /dissect operand (known operand-value)
+              /if (eq? operand-value result-value)
+                operand
+              /next operands))))))))
 
 ; This is an appropriate dynamic type of `known?` and
 ; `example-unknown?` values, with handling of their interactions with
@@ -7267,8 +7274,11 @@
         /mat a (known a-value)
           (smoosh-reports-map
             (dynamic-type-get-smoosh-of-one-reports any-dt a-value)
-            #:on-result-knowable-promise-maybe-knowable-promise
-            on-known-smoosh-result-knowable-promise-maybe-knowable-promise)
+            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn kpmkp
+              (on-known-smoosh-result-knowable-promise-maybe-knowable-promise
+                (list a)
+                kpmkp)))
         /sequence* (uninformative-smoosh-report)
           (constant-smoosh-reports
             (delay/strict /known /just /delay/strict /known a))))
@@ -7289,11 +7299,14 @@
               (delay/strict /known /just /delay/strict /known b))
           /uninformative-smoosh-and-comparison-of-two-reports)
         /mat (list a b) (list (known a-value) (known b-value))
-          (smoosh-reports-map
+          (smoosh-and-comparison-of-two-reports-map
             (dynamic-type-get-smoosh-and-comparison-of-two-reports
               any-dt a-value b-value)
-            #:on-result-knowable-promise-maybe-knowable-promise
-            on-known-smoosh-result-knowable-promise-maybe-knowable-promise)
+            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+            (fn kpmkp
+              (on-known-smoosh-result-knowable-promise-maybe-knowable-promise
+                (list a b)
+                kpmkp)))
         /sequence* (uninformative-smoosh-and-comparison-of-two-report)
           (smoosh-and-comparison-of-two-report-zip*-map (list)
             

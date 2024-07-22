@@ -3720,6 +3720,291 @@
   "Path-related info smoosh works on `trivial?` values")
 
 
+(check-pred
+  unknown?
+  (known-value /just-value /known-value /s= (unknown) (unknown))
+  "Smoosh works on `example-unknown?` values")
+
+(check-pred
+  unknown?
+  (known-value /just-value /known-value /sj (unknown) (unknown))
+  "Smoosh join works on `example-unknown?` values")
+
+(check-pred
+  unknown?
+  (known-value /just-value /known-value /sm (unknown) (unknown))
+  "Smoosh meet works on `example-unknown?` values")
+
+(check-pred
+  unknown?
+  (path-related-wrapper-value /known-value /just-value /known-value
+    (s= (pw /unknown) (pw /unknown)))
+  "Path-related smoosh works on `example-unknown?` values")
+
+(check-pred
+  unknown?
+  (info-wrapper-value /known-value /just-value /known-value
+    (s= (iw /unknown) (iw /unknown)))
+  "Info smoosh works on `example-unknown?` values")
+
+(check-pred
+  unknown?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sj (iw /unknown) (iw /unknown)))
+  "Info smoosh join works on `example-unknown?` values")
+
+(check-pred
+  unknown?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw /unknown) (iw /unknown)))
+  "Info smoosh meet works on `example-unknown?` values")
+
+(check-pred
+  unknown?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw /unknown) (pw /iw /unknown))))
+  "Path-related info smoosh works on `example-unknown?` values")
+
+
+(check-equal?
+  (s= (known 0) (known 0.0))
+  (known /just /known /known 0)
+  "Smoosh works on equal `known?` values")
+
+(w- obj (known 0)
+  (check-eq?
+    (known-value /just-value /known-value /s= obj (known 0.0))
+    obj
+    "Smoosh preserves `eq?` when possible on equal `known?` values"))
+
+(check-equal?
+  (s= (known 0) (known 1))
+  (known /nothing)
+  "Smoosh fails on unequal `known?` values")
+
+(check-equal?
+  (sj (known 0) (known 0.0))
+  (known /just /known /known 0)
+  "Smoosh join works on equal `known?` values")
+
+(w- obj (known 0)
+  (check-eq?
+    (known-value /just-value /known-value /sj obj (known 0.0))
+    obj
+    "Smoosh join preserves `eq?` when possible on equal `known?` values"))
+
+(check-equal?
+  (sj (known 1) (known 0.0))
+  (known /just /known /known 1)
+  "Smoosh join works on unequal, comparable `known?` values")
+
+(check-pred
+  unknown?
+  (sj (known 0+i) (known 1+i))
+  "Smoosh join is unknown on unequal, uncomparable `known?` values")
+
+(check-equal?
+  (sm (known 0) (known 0.0))
+  (known /just /known /known 0)
+  "Smoosh meet works on equal `known?` values")
+
+(w- obj (known 0)
+  (check-eq?
+    (known-value /just-value /known-value /sm obj (known 0.0))
+    obj
+    "Smoosh meet preserves `eq?` when possible on equal `known?` values"))
+
+(check-equal?
+  (sm (known 1) (known 0.0))
+  (known /just /known /known 0.0)
+  "Smoosh meet works on unequal, comparable `known?` values")
+
+(check-pred
+  unknown?
+  (sm (known 0+i) (known 1+i))
+  "Smoosh meet is unknown on unequal, uncomparable `known?` values")
+
+(check-equal?
+  (s= (pw /known 0) (pw /known 0.0))
+  (known /just /known /pw /known 0)
+  "Path-related smoosh works on equal `known?` values")
+
+(w- obj (pw /known 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /known 0.0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on equal `known?` values"))
+
+(check-equal?
+  (s= (pw /known 0) (pw /known 1.0))
+  (known /just /known /pw /known 0)
+  "Path-related smoosh works on `known?` values with path-related elements")
+
+(w- obj (pw /known 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /known 1.0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on `known?` values with path-related elements"))
+
+(check-pred
+  unknown?
+  (s= (pw /known 0+i) (pw /known 1+i))
+  "Path-related smoosh is unknown on `known?` values with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+(check-equal?
+  (s= (iw /known 0) (iw /known 0))
+  (known /just /known /iw /known 0)
+  "Info smoosh works on shallowly `chaperone=?` `known?` values whose elements are info smooshable")
+
+(w- obj (iw /known 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (iw /known 0)))
+    obj
+    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` `known?` values whose elements are info smooshable"))
+
+(check-equal?
+  (s= (iw /known 0) (iw /known 0.0))
+  (known /nothing)
+  "Info smoosh fails on shallowly `chaperone=?` `known?` values with a pair of corresponding elements whose info smoosh fails")
+
+(check-equal?
+  (sj (iw /known 0) (iw /known 0))
+  (known /just /known /iw /known 0)
+  "Info smoosh join works on shallowly `chaperone=?` `known?` values whose elements are info smoosh joinable")
+
+(w- obj (iw /known 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sj obj (iw /known 0)))
+    obj
+    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` `known?` values whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw /known 0) (iw /known 0.0))
+  (known /nothing)
+  "Info smoosh join fails on `known?` values with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-equal?
+  (sm (iw /known 0) (iw /known 0))
+  (known /just /known /iw /known 0)
+  "Info smoosh meet works on shallowly `chaperone=?` `known?` values whose elements are info smoosh meetable")
+
+(w- obj (iw /known 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sm obj (iw /known 0)))
+    obj
+    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` `known?` values whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw /known 0) (iw /known 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on `known?` values with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-equal?
+  (s= (pw /iw /known 0) (pw /iw /known 0))
+  (known /just /known /pw /iw /known 0)
+  "Path-related info smoosh works on `known?` values whose elements are path-related info smooshable")
+
+(w- obj (pw /iw /known 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iw /known 0)))
+    obj
+    "Path-related info smoosh preserves `eq?` when possible on `known?` values whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw /known 0) (pw /iw /known 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on `known?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-pred
+  unknown?
+  (s= (unknown) (known 0))
+  "Smoosh is unknown on an `example-unknown?` value vs a `known?` value")
+
+(check-pred
+  unknown?
+  (sj (unknown) (known 0))
+  "Smoosh join is unknown on an `example-unknown?` value vs a `known?` value")
+
+(check-pred
+  unknown?
+  (sm (unknown) (known 0))
+  "Smoosh meet is unknown on an `example-unknown?` value vs a `known?` value")
+
+(check-pred
+  unknown?
+  (s= (pw /unknown) (pw /known 0))
+  "Path-related smoosh is unknown on an `example-unknown?` value vs a `known?` value")
+
+(check-equal?
+  (s= (iw /unknown) (iw /known 0))
+  (known /nothing)
+  "Info smoosh fails on an `example-unknown?` value vs a `known?` value")
+
+(check-equal?
+  (sj (iw /unknown) (iw /known 0))
+  (known /just /known /iw /known 0)
+  "Info smoosh join succeeds on an `example-unknown?` value vs a `known?` value")
+
+(w- obj (iw /known 0)
+  (check-eq?
+    (known-value /just-value /known-value /sj (iw /unknown) obj)
+    obj
+    "Info smoosh join preserves `eq?` on an `example-unknown?` value vs a `known?` value"))
+
+(check-pred
+  unknown?
+  (info-wrapper-value /known-value /just-value /known-value
+    (sm (iw /unknown) (iw /known 0)))
+  "Info smoosh meet succeeds on an `example-unknown?` value vs a `known?` value")
+
+(w- obj (iw /unknown)
+  (check-eq?
+    (known-value /just-value /known-value /sm obj (iw /known 0))
+    obj
+    "Info smoosh meet succeeds on an `example-unknown?` value vs a `known?` value"))
+
+(check-pred
+  unknown?
+  (info-wrapper-value /path-related-wrapper-value
+    (known-value /just-value /known-value
+      (s= (pw /iw /unknown) (pw /iw /known 0))))
+  "Path-related info smoosh succeeds on an `example-unknown?` value vs a `known?` value")
+
+(w- obj (pw /iw /unknown)
+  (check-eq?
+    (known-value /just-value /known-value /s= obj (pw /iw /known 0))
+    obj
+    "Path-related info smoosh succeeds on an `example-unknown?` value vs a `known?` value"))
+
+(check-equal?
+  (s= (iw /iw /unknown) (iw /iw /known 0))
+  (known /nothing)
+  "Info info smoosh fails on an `example-unknown?` value vs a `known?` value")
+
+(check-equal?
+  (sj (iw /iw /unknown) (iw /iw /known 0))
+  (known /nothing)
+  "Info info smoosh join fails on an `example-unknown?` value vs a `known?` value")
+
+(check-equal?
+  (sm (iw /iw /unknown) (iw /iw /known 0))
+  (known /nothing)
+  "Info info smoosh meet fails on an `example-unknown?` value vs a `known?` value")
+
+(check-equal?
+  (s= (pw /iw /iw /unknown) (pw /iw /iw /known 0))
+  (known /nothing)
+  "Path-related info info smoosh fails on an `example-unknown?` value vs a `known?` value")
+
+
 (check-equal?
   (s=
     (dynamic-type-var-for-any-dynamic-type)
@@ -3820,7 +4105,7 @@
 ;
 ;   - (Done) `trivial?` values.
 ;
-;   - `known?` values and `example-unknown?` values.
+;   - (Done) `example-unknown?` values and `known?` values.
 ;
 ;   - `gloss?` values.
 ;
