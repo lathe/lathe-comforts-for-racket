@@ -133,7 +133,7 @@
   boolean-or-knowable-thunk-zip*
   maybe-min-knowable-promise-zip*-map
   sequence-zip*-map
-  knowable-promise-or
+  knowable-or-promise-zip*
   gloss?
   list-map-foldl-knowable
   rider-and-hash-update-maybe-knowable
@@ -1300,8 +1300,8 @@
     (lambda elements /on-element elements)
     (apply in-parallel sequences)))
 
-(define/own-contract (knowable-promise-or kp-list)
-  (-> (listof (knowable/c promise?)) (knowable/c promise?))
+(define/own-contract (knowable-or-promise-zip* kp-list)
+  (-> (listof (promise/c knowable?)) (promise/c knowable?))
   (delay
     (w-loop next kp-list kp-list
       (expect kp-list (cons kp kp-list) (unknown)
@@ -3557,7 +3557,7 @@
   (smoosh-and-comparison-of-two-report-zip*-map reports-list
     #:on-check-result-knowable-promise
     (fn kp-list
-      (knowable-promise-or kp-list))
+      (knowable-or-promise-zip* kp-list))
     #:on-smoosh-result-knowable-promise-maybe-knowable-promise
     (fn kpmkp-list
       (delay
