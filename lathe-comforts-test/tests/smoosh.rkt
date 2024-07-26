@@ -39,6 +39,15 @@
 
 
 
+(define/own-contract (gloss . args)
+  (->* () (list?) gloss?)
+  (unless (even? /length args)
+    (raise-arguments-error 'gloss
+      "expected an even number of arguments"
+      "args" args))
+  (make-gloss /sequence->list /in-slice 2 /in-list args))
+
+
 (define (smoosh-report-exercise report)
   (w- kpmkp-exercise-and-force
     (fn kpmkp
@@ -4252,6 +4261,169 @@
 
 
 (check-equal?
+  (s= (gloss #f 0 #t 0.0) (gloss #f 0.0 #t 0))
+  (known /just /known /gloss #f 0 #t 0.0)
+  "Smoosh works on equal `gloss?` values")
+
+(w- obj (gloss #f 0 #t 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /s= obj (gloss #f 0.0 #t 0))
+    obj
+    "Smoosh preserves `eq?` when possible on equal `gloss?` values"))
+
+(check-equal?
+  (s= (gloss #f 0 #t 0) (gloss #f 1 #t 0))
+  (known /nothing)
+  "Smoosh fails on unequal `gloss?` values")
+
+(check-equal?
+  (sj (gloss #f 0 #t 0.0) (gloss #f 0.0 #t 0))
+  (known /just /known /gloss #f 0 #t 0.0)
+  "Smoosh join works on equal `gloss?` values")
+
+(w- obj (gloss #f 0 #t 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /sj obj (gloss #f 0.0 #t 0))
+    obj
+    "Smoosh join preserves `eq?` when possible on equal `gloss?` values"))
+
+(check-equal?
+  (sj (gloss #f 1 #t 0) (gloss #f 0.0 #t 1+0.0i))
+  (known /just /known /gloss #f 1 #t 1+0.0i)
+  "Smoosh join works on unequal, comparable `gloss?` values")
+
+(check-pred
+  unknown?
+  (sj (gloss #f 0 #t 0+i) (gloss #f 0 #t 1+i))
+  "Smoosh join is unknown on unequal, uncomparable `gloss?` values")
+
+(check-equal?
+  (sm (gloss #f 0 #t 0.0) (gloss #f 0.0 #t 0))
+  (known /just /known /gloss #f 0 #t 0.0)
+  "Smoosh meet works on equal `gloss?` values")
+
+(w- obj (gloss #f 0 #t 0.0)
+  (check-eq?
+    (known-value /just-value /known-value /sm obj (gloss #f 0.0 #t 0))
+    obj
+    "Smoosh meet preserves `eq?` when possible on equal `gloss?` values"))
+
+(check-equal?
+  (sm (gloss #f 1 #t 0) (gloss #f 0.0 #t 1+0.0i))
+  (known /just /known /gloss #f 0.0 #t 0)
+  "Smoosh meet works on unequal, comparable `gloss?` values")
+
+(check-pred
+  unknown?
+  (sm (gloss #f 0 #t 0+i) (gloss #f 0 #t 1+i))
+  "Smoosh meet is unknown on unequal, uncomparable `gloss?` values")
+
+(check-equal?
+  (s= (pw /gloss #f 0 #t 0.0) (pw /gloss #f 0.0 #t 0))
+  (known /just /known /pw /gloss #f 0 #t 0.0)
+  "Path-related smoosh works on equal `gloss?` values")
+
+(w- obj (pw /gloss #f 0 #t 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /gloss #f 0.0 #t 0)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on equal `gloss?` values"))
+
+(check-equal?
+  (s= (pw /gloss #f 0 #t 0.0) (pw /gloss #f 1.0 #t 1+0.0i))
+  (known /just /known /pw /gloss #f 0 #t 0.0)
+  "Path-related smoosh works on `gloss?` values with path-related elements")
+
+(w- obj (pw /gloss #f 0 #t 0.0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /gloss #f 1.0 #t 1+0.0i)))
+    obj
+    "Path-related smoosh preserves `eq?` when possible on `gloss?` values with path-related elements"))
+
+(check-pred
+  unknown?
+  (s= (pw /gloss #f 0 #t 0+i) (pw /gloss #f 0 #t 1+i))
+  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+(check-equal?
+  (s=
+    (pw /gloss #f path-failing-1 #t 0+i)
+    (pw /gloss #f path-failing-2 #t 1+i))
+  (known /nothing)
+  "Path-related smoosh fails on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+
+(check-equal?
+  (s= (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0))
+  (known /just /known /iw /gloss #f 0 #t 0)
+  "Info smoosh works on shallowly `chaperone=?` `gloss?` values whose elements are info smooshable")
+
+(w- obj (iw /gloss #f 0 #t 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (iw /gloss #f 0 #t 0)))
+    obj
+    "Info smoosh preserves `eq?` when possible on shallowly `chaperone=?` `gloss?` values whose elements are info smooshable"))
+
+(check-equal?
+  (s= (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0.0))
+  (known /nothing)
+  "Info smoosh fails on shallowly `chaperone=?` `gloss?` values with a pair of corresponding elements whose info smoosh fails")
+
+(check-equal?
+  (sj (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0))
+  (known /just /known /iw /gloss #f 0 #t 0)
+  "Info smoosh join works on shallowly `chaperone=?` `gloss?` values whose elements are info smoosh joinable")
+
+(w- obj (iw /gloss #f 0 #t 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sj obj (iw /gloss #f 0 #t 0)))
+    obj
+    "Info smoosh join preserves `eq?` when possible on shallowly `chaperone=?` `gloss?` values whose elements are info smoosh joinable"))
+
+(check-equal?
+  (sj (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0.0))
+  (known /nothing)
+  "Info smoosh join fails on `gloss?` values with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-equal?
+  (sm (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0))
+  (known /just /known /iw /gloss #f 0 #t 0)
+  "Info smoosh meet works on shallowly `chaperone=?` `gloss?` values whose elements are info smoosh meetable")
+
+(w- obj (iw /gloss #f 0 #t 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (sm obj (iw /gloss #f 0 #t 0)))
+    obj
+    "Info smoosh meet preserves `eq?` when possible on shallowly `chaperone=?` `gloss?` values whose elements are info smoosh meetable"))
+
+(check-equal?
+  (sm (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on `gloss?` values with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-equal?
+  (s= (pw /iw /gloss #f 0 #t 0) (pw /iw /gloss #f 0 #t 0))
+  (known /just /known /pw /iw /gloss #f 0 #t 0)
+  "Path-related info smoosh works on `gloss?` values whose elements are path-related info smooshable")
+
+(w- obj (pw /iw /gloss #f 0 #t 0)
+  (check-eq?
+    (known-value /just-value /known-value
+      (s= obj (pw /iw /gloss #f 0 #t 0)))
+    obj
+    "Path-related info smoosh preserves `eq?` when possible on `gloss?` values whose elements are path-related info smooshable"))
+
+(check-equal?
+  (s= (pw /iw /gloss #f 0 #t 0) (pw /iw /gloss #f 0 #t 0.0))
+  (known /nothing)
+  "Path-related info smoosh fails on `gloss?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-equal?
   (s=
     (dynamic-type-var-for-any-dynamic-type)
     (dynamic-type-var-for-any-dynamic-type))
@@ -4530,8 +4702,8 @@
   "Path-related info smoosh is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
 
 
-; TODO SMOOSH: Implement smooshing tests for values of the following
-; types:
+; TODO SMOOSH (currently basically done): Implement smooshing tests
+; for values of the following types:
 ;
 ;   - (Done) Mutable strings, mutable byte strings, mutable boxes,
 ;     mutable vectors, prefab structs with mutable fields, and mutable
@@ -4578,7 +4750,7 @@
 ;
 ;   - (Done) `example-unknown?` values and `known?` values.
 ;
-;   - `gloss?` values.
+;   - (Done) `gloss?` values.
 ;
 ;   - (Done) `dynamic-type-var-for-any-dynamic-type?` values.
 ;

@@ -501,7 +501,7 @@
   (knowable-map
     (glossesque-sys-rider-and-glossesque-update-maybe-knowable
       gs (list (trivial) g) k
-      (dissectfn (list (trivial) old-m) (list (trivial) m)))
+      (dissectfn (list (trivial) old-m) (known /list (trivial) m)))
   /dissectfn (list (trivial) g)
     g))
 
@@ -1230,16 +1230,16 @@
       (just /any-dynamic-type))
     v))
 
-(define (knowable-zip* knowable-list)
+(define/own-contract (knowable-zip* knowable-list)
   (-> (listof knowable?) (knowable/c list?))
   (expect knowable-list (cons knowable knowable-list) (known /list)
   /knowable-bind knowable /fn element
   /knowable-map (knowable-zip* knowable-list) /fn element-list
     (cons element element-list)))
 
-(define (maybe-min-zip* maybe-list)
+(define/own-contract (maybe-min-zip* maybe-list)
   (-> (listof maybe?) (maybe/c list?))
-  (expect maybe-list (cons maybe maybe-list) (list)
+  (expect maybe-list (cons maybe maybe-list) (just /list)
   /maybe-bind maybe /fn element
   /maybe-map (maybe-min-zip* maybe-list) /fn element-list
     (cons element element-list)))
@@ -1368,7 +1368,8 @@
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (knowable->falsable /gloss-equal-always?-knowable a b recur))
+      (knowable->falsable /gloss-equal-always?-knowable a b /fn a b
+        (falsable->uninformative-knowable /recur a b)))
     
     (define (hash-mode-proc v recur now?)
       (define (hash-code-smooshable v)
@@ -1600,7 +1601,7 @@
     rider-and-g k on-rider-and-m-knowable)
   (-> (list/c any/c gloss?) any/c
     (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
-    (knowable/c (and/c any/c gloss?)))
+    (knowable/c (list/c any/c gloss?)))
   (dissect rider-and-g (list rider (gloss rep))
   /mat rep (gloss-rep-empty)
     (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
@@ -1617,9 +1618,9 @@
     /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
     /expect k-inhabits? #t (unknown)
     /w- then (glossesque-sys-glossesque-union-of-zero gs)
-    ; TODO FORWARD: This use of `gloss-set-maybe-knowable` is a
-    ; forward reference. See if we can untangle it.
-    /knowable-bind (gloss-set-maybe-knowable gs then k /just v)
+    /knowable-bind
+      (glossesque-sys-glossesque-set-maybe-knowable
+        gs then k (just v))
     /fn then
     /known
       (list rider
