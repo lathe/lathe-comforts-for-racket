@@ -45,7 +45,10 @@
     (raise-arguments-error 'gloss
       "expected an even number of arguments"
       "args" args))
-  (make-gloss /sequence->list /in-slice 2 /in-list args))
+  (make-gloss
+    (for/list ([entry (in-slice 2 (in-list args))])
+      (dissect entry (list k v)
+      /cons k v))))
 
 
 (define (smoosh-report-exercise report)
