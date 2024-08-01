@@ -160,6 +160,8 @@
   expressly-has-dynamic-type-impl?
   prop:expressly-has-dynamic-type
   make-expressly-has-dynamic-type-impl
+  default-get-dynamic-type
+  current-get-dynamic-type
   get-dynamic-type
   smoosh-report?
   smoosh-report-impl?
@@ -1720,11 +1722,25 @@
 (ascribe-own-contract make-expressly-has-dynamic-type-impl
   (-> (-> gloss? any/c any/c) expressly-has-dynamic-type-impl?))
 
-(define/own-contract (get-dynamic-type bindings v)
+(define/own-contract (default-get-dynamic-type bindings v)
   (-> gloss? any/c any/c)
   (if (expressly-has-dynamic-type? v)
     (expressly-has-dynamic-type-get-dynamic-type bindings v)
     (uninformative-dynamic-type)))
+
+; This parameter's value is a function of contract
+; `(-> gloss? any/c any/c)` (defaulting to `default-get-dynamic-type`)
+; that takes a `gloss?` of context (including the "any" dynamic type
+; to use) and a value and returns its dynamic type.
+;
+(define/own-contract current-get-dynamic-type
+  (parameter/c (-> gloss? any/c any/c))
+  (make-parameter /fn bindings v
+    (default-get-dynamic-type bindings v)))
+
+(define/own-contract (get-dynamic-type bindings v)
+  (-> gloss? any/c any/c)
+  ((current-get-dynamic-type) bindings v))
 
 
 (define-imitation-simple-generics
