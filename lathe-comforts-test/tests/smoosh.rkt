@@ -4427,63 +4427,6 @@
 
 
 (check-equal?
-  (s=
-    (dynamic-type-var-for-any-dynamic-type)
-    (dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /dynamic-type-var-for-any-dynamic-type)
-  "Smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-(check-equal?
-  (sj
-    (dynamic-type-var-for-any-dynamic-type)
-    (dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /dynamic-type-var-for-any-dynamic-type)
-  "Smoosh join works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-(check-equal?
-  (sm
-    (dynamic-type-var-for-any-dynamic-type)
-    (dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /dynamic-type-var-for-any-dynamic-type)
-  "Smoosh meet works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-(check-equal?
-  (s=
-    (pw /dynamic-type-var-for-any-dynamic-type)
-    (pw /dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /pw /dynamic-type-var-for-any-dynamic-type)
-  "Path-related smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-(check-equal?
-  (s=
-    (iw /dynamic-type-var-for-any-dynamic-type)
-    (iw /dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /iw /dynamic-type-var-for-any-dynamic-type)
-  "Info smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-(check-equal?
-  (sj
-    (iw /dynamic-type-var-for-any-dynamic-type)
-    (iw /dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /iw /dynamic-type-var-for-any-dynamic-type)
-  "Info smoosh join works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-(check-equal?
-  (sm
-    (iw /dynamic-type-var-for-any-dynamic-type)
-    (iw /dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /iw /dynamic-type-var-for-any-dynamic-type)
-  "Info smoosh meet works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-(check-equal?
-  (s=
-    (pw /iw /dynamic-type-var-for-any-dynamic-type)
-    (pw /iw /dynamic-type-var-for-any-dynamic-type))
-  (known /just /known /pw /iw /dynamic-type-var-for-any-dynamic-type)
-  "Path-related info smoosh works on `dynamic-type-var-for-any-dynamic-type?` values")
-
-
-(check-equal?
   (s= eaw1 eaw2)
   (known /just /known eaw1)
   "Smoosh works on `equal-always?` `equal-always-wrapper?` values")
@@ -4754,8 +4697,6 @@
 ;   - (Done) `example-unknown?` values and `known?` values.
 ;
 ;   - (Done) `gloss?` values.
-;
-;   - (Done) `dynamic-type-var-for-any-dynamic-type?` values.
 ;
 ;   - (Done) `equal-always-wrapper?` values.
 ;

@@ -123,7 +123,6 @@
   prop:expressly-custom-gloss-key-dynamic-type
   make-expressly-custom-gloss-key-dynamic-type-impl
   dynamic-type-get-custom-gloss-key-reports
-  get-dynamic-type-with-default-bindings
   knowable-zip*
   maybe-min-zip*
   promise-zip*-map
@@ -153,10 +152,6 @@
   make-gloss-glossesque-sys
   gloss-set-maybe-knowable
   uninformative-dynamic-type
-  dynamic-type-var-for-any-dynamic-type?)
-(provide
-  dynamic-type-var-for-any-dynamic-type)
-(provide /own-contract-out
   expressly-has-dynamic-type-impl?
   prop:expressly-has-dynamic-type
   make-expressly-has-dynamic-type-impl
@@ -276,6 +271,7 @@
   gloss-set
   make-gloss
   gloss-keys
+  get-dynamic-type-with-any-dynamic-type
   default-any-dynamic-type?)
 (provide
   default-any-dynamic-type)
@@ -1218,23 +1214,6 @@
   /uninformative-custom-gloss-key-reports))
 
 
-; TODO SMOOSH: Aren't we going to have the default "any" type depend
-; partly on what orphan instances are in scope?
-(define/own-contract (get-dynamic-type-with-default-bindings v)
-  (-> any/c any/c)
-  ; TODO FORWARD: These uses of `known-to-lathe-comforts-data?`,
-  ; `known-to-lathe-comforts-data-dynamic-type`, `any-dynamic-type`,
-  ; `get-dynamic-type`, `make-gloss`, and
-  ; `dynamic-type-var-for-any-dynamic-type` are forward references.
-  ; See if we can untangle them.
-  (if (known-to-lathe-comforts-data? v)
-    (known-to-lathe-comforts-data-dynamic-type /any-dynamic-type)
-  /get-dynamic-type
-    (known-value /make-gloss /list /cons
-      (dynamic-type-var-for-any-dynamic-type)
-      (just /any-dynamic-type))
-    v))
-
 (define/own-contract (knowable-zip* knowable-list)
   (-> (listof knowable?) (knowable/c list?))
   (expect knowable-list (cons knowable knowable-list) (known /list)
@@ -1325,6 +1304,8 @@
         (sequence->list
           (in-values-sequence /gloss-iteration-sequence a))
       /dissectfn (list k a-v)
+        ; TODO FORWARD: This use of `gloss-ref-maybe-knowable` is a
+        ; forward reference. See if we can untangle it.
         (knowable-map (gloss-ref-maybe-knowable b k) /fn b-v-m
           (maybe-map b-v-m /fn b-v
             (delay /value-equal-always?-knowable a-v b-v)))))
@@ -1701,18 +1682,12 @@
   (-> any/c)
   (uninformative-dynamic-type-unguarded))
 
-(define-imitation-simple-struct
-  (dynamic-type-var-for-any-dynamic-type?)
-  dynamic-type-var-for-any-dynamic-type
-  'dynamic-type-var-for-any-dynamic-type (current-inspector)
-  (auto-write)
-  (auto-equal))
-(ascribe-own-contract dynamic-type-var-for-any-dynamic-type?
-  (-> any/c boolean?))
-
 (define-imitation-simple-generics
   expressly-has-dynamic-type? expressly-has-dynamic-type-impl?
-  (#:method expressly-has-dynamic-type-get-dynamic-type () (#:this))
+  (#:method expressly-has-dynamic-type-get-dynamic-type
+    ()
+    ()
+    (#:this))
   prop:expressly-has-dynamic-type make-expressly-has-dynamic-type-impl
   'expressly-has-dynamic-type 'expressly-has-dynamic-type-impl (list))
 (ascribe-own-contract expressly-has-dynamic-type-impl?
@@ -1720,27 +1695,35 @@
 (ascribe-own-contract prop:expressly-has-dynamic-type
   (struct-type-property/c expressly-has-dynamic-type-impl?))
 (ascribe-own-contract make-expressly-has-dynamic-type-impl
-  (-> (-> gloss? any/c any/c) expressly-has-dynamic-type-impl?))
+  (-> (-> gloss? any/c any/c any/c) expressly-has-dynamic-type-impl?))
 
-(define/own-contract (default-get-dynamic-type bindings v)
-  (-> gloss? any/c any/c)
+; Gets as specific a dynamic type for Racket values as Lathe Comforts
+; knows about.
+(define/own-contract (default-get-dynamic-type bindings any-dt v)
+  (-> gloss? any/c any/c any/c)
   (if (expressly-has-dynamic-type? v)
-    (expressly-has-dynamic-type-get-dynamic-type bindings v)
+    (expressly-has-dynamic-type-get-dynamic-type bindings any-dt v)
+  ; TODO FORWARD: These uses of `known-to-lathe-comforts-data?` and
+  ; `known-to-lathe-comforts-data-dynamic-type` are forward
+  ; references. See if we can untangle them.
+  /if (known-to-lathe-comforts-data? v)
+    (known-to-lathe-comforts-data-dynamic-type any-dt)
     (uninformative-dynamic-type)))
 
 ; This parameter's value is a function of contract
-; `(-> gloss? any/c any/c)` (defaulting to `default-get-dynamic-type`)
-; that takes a `gloss?` of context (including the "any" dynamic type
-; to use) and a value and returns its dynamic type.
+; `(-> gloss? any/c any/c any/c)` (defaulting to
+; `default-get-dynamic-type`) that takes a `gloss?` of miscellaneous
+; context, an "any" dynamic type to use recursively, and a value and
+; returns its dynamic type.
 ;
 (define/own-contract current-get-dynamic-type
-  (parameter/c (-> gloss? any/c any/c))
-  (make-parameter /fn bindings v
-    (default-get-dynamic-type bindings v)))
+  (parameter/c (-> gloss? any/c any/c any/c))
+  (make-parameter /fn bindings any-dt v
+    (default-get-dynamic-type bindings any-dt v)))
 
-(define/own-contract (get-dynamic-type bindings v)
-  (-> gloss? any/c any/c)
-  ((current-get-dynamic-type) bindings v))
+(define/own-contract (get-dynamic-type bindings any-dt v)
+  (-> gloss? any/c any/c any/c)
+  ((current-get-dynamic-type) bindings any-dt v))
 
 
 (define-imitation-simple-generics
@@ -6664,16 +6647,8 @@
 ;
 #;
 (#:prop prop:expressly-has-dynamic-type
-  (make-expressly-has-dynamic-type-impl /fn bindings self
-    (expect
-      (known-value /gloss-ref-maybe-knowable bindings
-        (dynamic-type-var-for-any-dynamic-type))
-      (just any-dt)
-      (raise-arguments-error 'get-dynamic-type
-        "tried to get the dynamic type of a cons cell without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-        "bindings" bindings
-        "inhabitant" self)
-    /cons-dynamic-type any-dt)))
+  (make-expressly-has-dynamic-type-impl /fn bindings any-dt self
+    (cons-dynamic-type any-dt)))
 ;
 (define-imitation-simple-struct
   (cons-dynamic-type? cons-dynamic-type-get-any-dynamic-type)
@@ -6730,16 +6705,8 @@
 ;
 #;
 (#:prop prop:expressly-has-dynamic-type
-  (make-expressly-has-dynamic-type-impl /fn bindings self
-    (expect
-      (known-value /gloss-ref-maybe-knowable bindings
-        (dynamic-type-var-for-any-dynamic-type))
-      (just any-dt)
-      (raise-arguments-error 'get-dynamic-type
-        "tried to get the dynamic type of an immutable vector without giving a binding for (dynamic-type-var-for-any-dynamic-type)"
-        "bindings" bindings
-        "inhabitant" self)
-    /immutable-vector-dynamic-type any-dt)))
+  (make-expressly-has-dynamic-type-impl /fn bindings any-dt self
+    (immutable-vector-dynamic-type any-dt)))
 ;
 (define-imitation-simple-struct
   (immutable-vector-dynamic-type?
@@ -7998,27 +7965,6 @@
   
   )
 
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
-;     If the operands are not both
-;     `dynamic-type-var-for-any-dynamic-type?` values, then
-;     unknown.
-;     
-;     Otherwise, the first operand (or, for a check, `#t`).
-;
-(define-imitation-simple-struct
-  (dynamic-type-for-dynamic-type-var-for-any-dynamic-type?)
-  dynamic-type-for-dynamic-type-var-for-any-dynamic-type
-  'dynamic-type-for-dynamic-type-var-for-any-dynamic-type
-  (current-inspector)
-  (auto-write)
-  
-  (#:prop
-    (make-expressly-smooshable-bundle-property-for-atom
-      #:ignore-chaperones? #t
-      #:inhabitant? dynamic-type-var-for-any-dynamic-type?)
-    (trivial)))
-
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `equal-always-wrapper?` values,
@@ -8260,15 +8206,15 @@
         (fn any-dt /info-wrapper-dynamic-type any-dt))
       (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
       (list
-        dynamic-type-var-for-any-dynamic-type?
-        (fn any-dt
-          (dynamic-type-for-dynamic-type-var-for-any-dynamic-type)))
-      (list
         equal-always-wrapper?
         (fn any-dt /equal-always-wrapper-dynamic-type))
       (list
         indistinct-wrapper?
         (fn any-dt /indistinct-wrapper-dynamic-type any-dt)))))
+
+(define/own-contract (get-dynamic-type-with-any-dynamic-type any-dt v)
+  (-> any/c any/c any/c)
+  (get-dynamic-type (gloss-union-of-zero) any-dt v))
 
 (define-imitation-simple-struct (default-any-dynamic-type?)
   default-any-dynamic-type
@@ -8283,12 +8229,12 @@
       
       #:get-smoosh-of-one-reports
       (fn self a
-        (w- a-dt (get-dynamic-type-with-default-bindings a)
+        (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
         /dynamic-type-get-smoosh-of-one-reports a-dt a))
       
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
-        (w- a-dt (get-dynamic-type-with-default-bindings a)
+        (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
         /smoosh-and-comparison-of-two-reports-join /list
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             a-dt a b)
@@ -8297,7 +8243,7 @@
       
       #:get-smoosh-and-comparison-of-two-reports-via-second
       (fn self a b
-        (w- b-dt (get-dynamic-type-with-default-bindings b)
+        (w- b-dt (get-dynamic-type-with-any-dynamic-type self b)
         /dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
           b-dt a b))
       
@@ -8308,7 +8254,7 @@
       
       #:get-smoosh-equal-hash-code-support-reports
       (fn self a
-        (w- a-dt (get-dynamic-type-with-default-bindings a)
+        (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
         /dynamic-type-get-smoosh-equal-hash-code-support-reports a-dt a))
       
       ))
@@ -8318,7 +8264,7 @@
       
       #:get-custom-gloss-key-reports
       (fn self a
-        (w- a-dt (get-dynamic-type-with-default-bindings a)
+        (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
         /dynamic-type-get-custom-gloss-key-reports a-dt a))
       
       ))
@@ -8514,8 +8460,6 @@
 ;       known-different sets of keys according to smoosh-ordering are
 ;       known to be distinct from each other.
 ;
-;     - (Done) `dynamic-type-var-for-any-dynamic-type?` values.
-;
 ;     - (Done) `equal-always-wrapper?` values, all equatable and
 ;       distinguishable with each other according to the
 ;       `equal-always?` behavior of their wrapped value.
@@ -8583,8 +8527,6 @@
 ;       - `info-wrapper-dynamic-type?`
 ;
 ;       - `gloss-dynamic-type?`
-;
-;       - `dynamic-type-for-dynamic-type-var-for-any-dynamic-type?`
 ;
 ;       - `equal-always-wrapper-dynamic-type?`
 ;
