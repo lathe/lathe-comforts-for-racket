@@ -8363,14 +8363,7 @@
 ;
 ;       - (Done) Non-NaN extflonums, ordered in a way consistent with
 ;         `extfl<=` and `extfl=`, and information-ordered in a way
-;         consistent with `chaperone-of?`. (TODO SMOOSH: The
-;         documentation indicates extflonums are `equal?` if (but not
-;         necessarily only if) they are `extfl=`, but this is
-;         inconsistent with observed behavior
-;         (https://github.com/racket/racket/issues/5039). We're
-;         programming against the observed behavior right now. If it
-;         turns out the assumptions we're making are incorrect, revise
-;         our approach accordingly.)
+;         consistent with `chaperone-of?`.
 ;
 ;       - (Done) Characters, immutable strings, and immutable byte
 ;         strings, which are known to be equal to themselves when
