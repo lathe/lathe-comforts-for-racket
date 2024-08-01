@@ -1358,15 +1358,15 @@
         (falsable->uninformative-knowable /recur a b)))
     
     (define (hash-mode-proc v recur now?)
+      ; TODO FORWARD: This use of `any-dynamic-type` is a forward
+      ; reference. See if we can untangle it.
+      (define any-dt (any-dynamic-type))
       (define (hash-code-smooshable v)
-        ; TODO FORWARD: This use of `any-dynamic-type` is a forward
-        ; reference. See if we can untangle it.
         (force
           (smoosh-equal-hash-code-support-report-==-hash-code-promise
             (sequence-first
               (dynamic-type-get-smoosh-equal-hash-code-support-reports
-                (any-dynamic-type)
-                v))
+                any-dt v))
             #f)))
       (hash-code-combine (equal-always-hash-code gloss?)
         (hash-code-combine-unordered* /for/list
