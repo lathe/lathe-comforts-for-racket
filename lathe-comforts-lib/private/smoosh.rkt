@@ -274,8 +274,11 @@
   gloss-set
   make-gloss
   gloss-keys
-  any-dynamic-type?)
+  default-any-dynamic-type?)
 (provide
+  default-any-dynamic-type)
+(provide /own-contract-out
+  current-any-dynamic-type
   any-dynamic-type)
 
 
@@ -1373,6 +1376,8 @@
     
     (define (hash-mode-proc v recur now?)
       (define (hash-code-smooshable v)
+        ; TODO FORWARD: This use of `any-dynamic-type` is a forward
+        ; reference. See if we can untangle it.
         (force
           (smoosh-equal-hash-code-support-report-==-hash-code-promise
             (sequence-first
@@ -1607,6 +1612,8 @@
     (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
     /dissectfn (list rider m)
     /expect m (just v) (known /list rider /gloss /gloss-rep-empty)
+    ; TODO FORWARD: This use of `any-dynamic-type` is a forward
+    ; reference. See if we can untangle it.
     /knowable-bind
       (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
         (sequence-first
@@ -8247,8 +8254,9 @@
         indistinct-wrapper?
         (fn any-dt /indistinct-wrapper-dynamic-type any-dt)))))
 
-(define-imitation-simple-struct (any-dynamic-type?) any-dynamic-type
-  'any-dynamic-type (current-inspector) (auto-write)
+(define-imitation-simple-struct (default-any-dynamic-type?)
+  default-any-dynamic-type
+  'default-any-dynamic-type (current-inspector) (auto-write)
   
   (#:prop prop:expressly-smooshable-dynamic-type
     (make-expressly-smooshable-dynamic-type-impl
@@ -8300,7 +8308,20 @@
       ))
   
   )
-(ascribe-own-contract any-dynamic-type? (-> any/c boolean?))
+(ascribe-own-contract default-any-dynamic-type? (-> any/c boolean?))
+
+; This parameter's value is a thunk (defaulting to
+; `default-any-dynamic-type`) that obtains the "any" dynamic type
+; value that the application entrypoint deems most appropriate to the
+; entire application.
+;
+(define/own-contract current-any-dynamic-type
+  (parameter/c (-> any/c))
+  (make-parameter /fn /default-any-dynamic-type))
+
+(define/own-contract (any-dynamic-type)
+  (-> any/c)
+  (/current-any-dynamic-type))
 
 
 ; TODO SMOOSH: Implement a `glossesque-sys?` based on AVL trees, for
@@ -8560,7 +8581,7 @@
 ;       - `known-to-lathe-comforts-data-dynamic-type?` (the type
 ;         constructed by `known-to-lathe-comforts-data-dynamic-type`)
 ;
-;       - `any-dynamic-type?`
+;       - `default-any-dynamic-type?`
 ;
 ;   - Types defined by Lathe Comforts even if this smooshing framework
 ;     doesn't use them. The following are indistinct from each other
