@@ -449,6 +449,47 @@
   (makeshift-knowable-predicate accepts?-knowable))
 
 
+(define-imitation-simple-struct
+  (yknow? yknow-value-promise-maybe-knowable-promise)
+  yknow 'yknow (current-inspector) (auto-write))
+(ascribe-own-contract yknow? (-> any/c boolean?))
+(ascribe-own-contract yknow-value-promise-maybe-knowable-promise
+  (-> yknow? (promise/c (knowable/c (maybe/c (promise/c any/c))))))
+
+(define/own-contract
+  (make-yknow-from-value-promise-maybe-knowable-promise value-pmkp)
+  (-> (promise/c (knowable/c (maybe/c (promise/c any/c)))) yknow?)
+  (yknow value-pmkp))
+
+; TODO: Give the resulting contract a better name, check that it has
+; good `contract-stronger?` behavior, etc.
+(define/own-contract (yknow/c c)
+  (-> contract? contract?)
+  (w- c (coerce-contract 'yknow/c c)
+  /rename-contract (promise/c /knowable/c /maybe/c /promise/c c)
+    `(yknow/c ,(contract-name c))))
+
+; TODO SMOOSH: Use this where we're currently using
+; `knowable-or-promise-zip*`. See details in
+; notes/2024-03-20-squashable-object-system.txt section "Yknow."
+;
+(define/own-contract
+  (yknow-join-knowable-promise a b element-promise-join-knowable)
+  (-> yknow? yknow? (-> promise? promise? (knowable/c promise?))
+    (promise/c (knowable/c yknow?)))
+  (w- a-pmkp (yknow-value-promise-maybe-knowable-promise a)
+  /w- b-pmkp (yknow-value-promise-maybe-knowable-promise b)
+  /promise-map a-pmkp /fn a-pmk
+    (knowable-bind a-pmk /fn a-pm
+    /knowable-bind (force b-pmkp) /fn b-pm
+    /expect a-pm (just a-p) b-pmkp
+    /expect b-pm (just b-p) a-pmkp
+    /knowable-map (element-promise-join-knowable a-p b-p)
+    /fn element-p
+      (make-yknow-from-value-promise-maybe-knowable-promise
+        (delay/strict /known /just element-p)))))
+
+
 (define-imitation-simple-generics
   glossesque-sys? glossesque-sys-impl?
   (#:method glossesque-sys-glossesque-union-of-zero (#:this))

@@ -233,3 +233,39 @@ All right, so we are going to have yet another place to dispatch to: The merge p
 
 
 In practice, we have chosen not to implement the mutable dicts. If we need them, we're just going to model them as mutable boxes containing immutable dicts. If we need them to be more efficient than that, we'll tack on a mutable dict equivalent of the `glossesque-sys?` approach as an afterthought, and have our types that currently implement `prop:expressly-custom-gloss-key-dynamic-type` implement an analogous `prop:expressly-custom-mutable-gloss-key-dynamic-type` property alongside it.
+
+
+## Yknow: Reconciling extensible behavior with library-update-reserved behavior for multiple dispatch
+
+(This section is basically a glorified "TODO SMOOSH" comment.)
+
+Rethink `knowable-or-promise-zip*` and ultimately how we do the `...-via-second` combination. Do the merging in a helper function that invokes the two methods, not in the "any" type's method. This way, potentially, we won't need `current-any-dynamic-type` to be a Racket parameter object.
+
+  Make a type `(yknow/c _)` that is like a `(promise/c (knowable/c (maybe/c (promise/c _))))`, except that joining this type does the following:
+  
+  For the purposes of join smooshing values, it's like there's a NaN-style value and a two-level lattice:
+  
+    yknow unknown, representing that the library hasn't decided whether to provide this detail yet, or that the details we've tried to combine have not been join smooshable
+    yknow (known (just x))
+    yknow (known nothing), the bottom element, representing that the library has decided not to provide this detail but to let it be provided in other places that are joined in
+  
+  Join smooshing works like so:
+  
+    yknow (known nothing) + yknow (known *) = yknow (known *)
+    yknow (known (just x)) + yknow (known (just y)) = attempt `x + y` with allowance for failure; if it's `unknown` or `known nothing`, then this `+` operation fails, and attempting this `+` operation with allowance for failure gives `unknown`; if it's `known (just z)`, then this `+` operation gives `yknow (known (just z))` (and attempting it with allowance for failure gives `known (just (yknow (known (just z))))`)
+    yknow unknown + * = attempting this `+` operation always fails, and attempting it with allowance for failure gives `unknown`
+      (If we defined this instead as `yknow unknown + * = yknow unknown`, then we might think of `yknow unknown` as the top element. However, that would be weird since `unknown` represents the least information.)
+    (TODO: Do we want to define what happens with `info (yknow *)` values? Maybe we can just treat them as failing with `unknown` for now.)
+  
+  For comparison, `(knowable/c _)`:
+  
+    unknown, the bottom element *of the information lattice* (not of the by-design lattice)
+    known x
+  
+    known x + known y = attempt `x + y` with allowance for failure; if it's `unknown` or `known nothing`, then this `+` operation fails, and attempting this `+` operation with allowance for failure gives `unknown`; if it's `known (just z)`, then this `+` operation gives `known z` (and attempting it with allowance for failure gives `known (just (known z))`)
+    unknown + * = attempting this `+` operation always fails, and attempting it with allowance for failure gives `unknown`
+    info unknown + info unknown = info unknown
+    info unknown + info (known *) = info (known *)
+    info (known x) + info (known y) = attempt `info x + info y`, and if that gives us `info z`, then `info (known z)`, or something like that
+  
+  Redesign the methods of `smoosh-and-comparison-of-two-report?` and `smoosh-report?` so that instead of returning `...-knowable-promise` values, they return `...-yknow` values.
