@@ -198,8 +198,9 @@
   make-expressly-smooshable-dynamic-type-impl
   dynamic-type-get-smoosh-of-zero-reports
   dynamic-type-get-smoosh-of-one-reports
-  dynamic-type-get-smoosh-and-comparison-of-two-reports
+  dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
   dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+  dynamic-type-get-smoosh-and-comparison-of-two-reports
   uninformative-hash-code
   smoosh-equal-hash-code-support-report?
   smoosh-equal-hash-code-support-report-impl?
@@ -2120,7 +2121,7 @@
     (#:this)
     ())
   (#:method
-    expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports
+    expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
     (#:this)
     ()
     ())
@@ -2145,12 +2146,21 @@
     #:get-smoosh-of-one-reports get-smoosh-of-one-reports
     
     #:get-smoosh-and-comparison-of-two-reports
-    get-smoosh-and-comparison-of-two-reports
+    [get-smoosh-and-comparison-of-two-reports #f]
+    
+    #:get-smoosh-and-comparison-of-two-reports-via-first
+    [ get-smoosh-and-comparison-of-two-reports-via-first
+      (or get-smoosh-and-comparison-of-two-reports
+        (raise-arguments-error 'make-expressly-smooshable-dynamic-type-impl
+          "expected either #:get-smoosh-and-comparison-of-two-reports or #:get-smoosh-and-comparison-of-two-reports-via-first to be provided"))]
     
     #:get-smoosh-and-comparison-of-two-reports-via-second
     [ get-smoosh-and-comparison-of-two-reports-via-second
-      (fn dt a b
-        (get-smoosh-and-comparison-of-two-reports dt a b))])
+      (or get-smoosh-and-comparison-of-two-reports
+        (raise-arguments-error 'make-expressly-smooshable-dynamic-type-impl
+          "expected either #:get-smoosh-and-comparison-of-two-reports or #:get-smoosh-and-comparison-of-two-reports-via-second to be provided"))]
+    
+    )
   (->*
     (
       #:get-smoosh-of-zero-reports
@@ -2160,11 +2170,16 @@
       (-> any/c any/c (sequence/c smoosh-report?))
       
       #:get-smoosh-and-comparison-of-two-reports
-      (-> any/c any/c any/c
-        (sequence/c smoosh-and-comparison-of-two-report?))
+      (or/c #f
+        (-> any/c any/c any/c
+          (sequence/c smoosh-and-comparison-of-two-report?)))
       
       )
     (
+      #:get-smoosh-and-comparison-of-two-reports-via-first
+      (-> any/c any/c any/c
+        (sequence/c smoosh-and-comparison-of-two-report?))
+      
       #:get-smoosh-and-comparison-of-two-reports-via-second
       (-> any/c any/c any/c
         (sequence/c smoosh-and-comparison-of-two-report?))
@@ -2174,7 +2189,7 @@
   (make-expressly-smooshable-dynamic-type-impl-from-various-unkeyworded
     get-smoosh-of-zero-reports
     get-smoosh-of-one-reports
-    get-smoosh-and-comparison-of-two-reports
+    get-smoosh-and-comparison-of-two-reports-via-first
     get-smoosh-and-comparison-of-two-reports-via-second))
 
 (define/own-contract (dynamic-type-get-smoosh-of-zero-reports dt)
@@ -2196,7 +2211,8 @@
     (uninformative-smoosh-reports)))
 
 (define/own-contract
-  (dynamic-type-get-smoosh-and-comparison-of-two-reports dt a b)
+  (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
+    dt a b)
   (-> any/c any/c any/c
     ; For each report in the infinite sequence, the next report says
     ; not only whether they smoosh along that one's == but also, only
@@ -2204,22 +2220,37 @@
     ; smoosh along their information ordering.
     (sequence/c smoosh-and-comparison-of-two-report?))
   (if (expressly-smooshable-dynamic-type? dt)
-    (expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports
+    (expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
       dt a b)
     (uninformative-smoosh-and-comparison-of-two-reports)))
 
 (define/own-contract
-  (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second dt a b)
+  (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+    dt a b)
   (-> any/c any/c any/c
     ; For each report in the infinite sequence, the next report says
     ; not only whether they smoosh along that one's == but also, only
     ; if they do, how their information ordering representatives
     ; smoosh along their information ordering.
-    (sequence/c smoosh-report?))
+    (sequence/c smoosh-and-comparison-of-two-report?))
   (if (expressly-smooshable-dynamic-type? dt)
     (expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
       dt a b)
     (uninformative-smoosh-and-comparison-of-two-reports)))
+
+(define/own-contract
+  (dynamic-type-get-smoosh-and-comparison-of-two-reports dt a b)
+  (-> any/c any/c any/c
+    ; For each report in the infinite sequence, the next report says
+    ; not only whether they smoosh along that one's == but also, only
+    ; if they do, how their information ordering representatives
+    ; smoosh along their information ordering.
+    (sequence/c smoosh-and-comparison-of-two-report?))
+  (smoosh-and-comparison-of-two-reports-joininfo /list
+    (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
+      dt a b)
+    (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+      dt a b)))
 
 
 (define/own-contract (uninformative-hash-code)
@@ -6843,6 +6874,30 @@
   (define (inhabitant? v)
     (list-any cases /dissectfn (list check? dt)
       (check? v)))
+  (define
+    (get-smoosh-and-comparison-of-two-reports dt a b get-via-operand)
+    (dissect dt (case-dynamic-type any-dt)
+    /w-loop next cases cases
+      (expect cases (cons case cases)
+        (uninformative-smoosh-and-comparison-of-two-reports)
+      /dissect case (list check? make-specific-dt)
+      /match (list (check? a) (check? b))
+        [ (list #t #t)
+          (w- specific-dt (make-specific-dt any-dt)
+          /get-via-operand specific-dt a b)]
+        [ (list #t #f)
+          (if
+            (list-any cases /dissectfn (list check? make-specific-dt)
+              (check? b))
+            distinct-cases-smoosh-and-comparison-of-two-reports
+            (uninformative-smoosh-and-comparison-of-two-reports))]
+        [ (list #f #t)
+          (if
+            (list-any cases /dissectfn (list check? make-specific-dt)
+              (check? a))
+            distinct-cases-smoosh-and-comparison-of-two-reports
+            (uninformative-smoosh-and-comparison-of-two-reports))]
+        [(list #f #f) (next cases)])))
   (define-imitation-simple-struct
     (case-dynamic-type? case-dynamic-type-get-any-dynamic-type)
     case-dynamic-type
@@ -6868,31 +6923,19 @@
               (dynamic-type-get-smoosh-of-one-reports (dt any-dt) a)
             /next cases)))
         
-        #:get-smoosh-and-comparison-of-two-reports
+        #:get-smoosh-and-comparison-of-two-reports-via-first
         (fn self a b
-          (dissect self (case-dynamic-type any-dt)
-          /w-loop next cases cases
-            (expect cases (cons case cases)
-              (uninformative-smoosh-and-comparison-of-two-reports)
-            /dissect case (list check? dt)
-            /match (list (check? a) (check? b))
-              [ (list #t #t)
-                (w- a-dt (dt any-dt)
-                /dynamic-type-get-smoosh-and-comparison-of-two-reports
-                  a-dt a b)]
-              [ (list #t #f)
-                (if
-                  (list-any cases /dissectfn (list check? dt)
-                    (check? b))
-                  distinct-cases-smoosh-and-comparison-of-two-reports
-                  (uninformative-smoosh-and-comparison-of-two-reports))]
-              [ (list #f #t)
-                (if
-                  (list-any cases /dissectfn (list check? dt)
-                    (check? a))
-                  distinct-cases-smoosh-and-comparison-of-two-reports
-                  (uninformative-smoosh-and-comparison-of-two-reports))]
-              [(list #f #f) (next cases)])))
+          (get-smoosh-and-comparison-of-two-reports self a b
+          /fn specific-dt a b
+            (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
+              specific-dt a b)))
+        
+        #:get-smoosh-and-comparison-of-two-reports-via-second
+        (fn self a b
+          (get-smoosh-and-comparison-of-two-reports self a b
+          /fn specific-dt a b
+            (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+              specific-dt a b)))
         
         ))
     
@@ -7542,7 +7585,7 @@
           (list a)
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
       
-      #:get-smoosh-and-comparison-of-two-reports
+      #:get-smoosh-and-comparison-of-two-reports-via-first
       (fn self a b
         (dissect self (path-related-wrapper-dynamic-type any-dt)
         /expect a (path-related-wrapper a-value)
@@ -7551,7 +7594,7 @@
           (uninformative-smoosh-and-comparison-of-two-reports)
         /path-related-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (list a b)
-          (dynamic-type-get-smoosh-and-comparison-of-two-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
             any-dt a-value b-value)))
       
       #:get-smoosh-and-comparison-of-two-reports-via-second
@@ -7733,7 +7776,7 @@
           (list a)
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
       
-      #:get-smoosh-and-comparison-of-two-reports
+      #:get-smoosh-and-comparison-of-two-reports-via-first
       (fn self a b
         (dissect self (info-wrapper-dynamic-type any-dt)
         /expect a (info-wrapper a-value)
@@ -7742,7 +7785,7 @@
           (uninformative-smoosh-and-comparison-of-two-reports)
         /info-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (list a b)
-          (dynamic-type-get-smoosh-and-comparison-of-two-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
             any-dt a-value b-value)))
       
       #:get-smoosh-and-comparison-of-two-reports-via-second
@@ -8033,7 +8076,7 @@
           (list a)
           (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
       
-      #:get-smoosh-and-comparison-of-two-reports
+      #:get-smoosh-and-comparison-of-two-reports-via-first
       (fn self a b
         (dissect self (indistinct-wrapper-dynamic-type any-dt)
         /expect a (indistinct-wrapper a-value)
@@ -8042,7 +8085,7 @@
           (uninformative-smoosh-and-comparison-of-two-reports)
         /indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
           (list a b)
-          (dynamic-type-get-smoosh-and-comparison-of-two-reports
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
             any-dt a-value b-value)))
       
       #:get-smoosh-and-comparison-of-two-reports-via-second
@@ -8141,14 +8184,11 @@
         (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
         /dynamic-type-get-smoosh-of-one-reports a-dt a))
       
-      #:get-smoosh-and-comparison-of-two-reports
+      #:get-smoosh-and-comparison-of-two-reports-via-first
       (fn self a b
         (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
-        /smoosh-and-comparison-of-two-reports-joininfo /list
-          (dynamic-type-get-smoosh-and-comparison-of-two-reports
-            a-dt a b)
-          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
-            self a b)))
+        /dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
+          a-dt a b))
       
       #:get-smoosh-and-comparison-of-two-reports-via-second
       (fn self a b

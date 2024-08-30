@@ -241,7 +241,7 @@ Our `...-via-second` double dispatch on smoosh operands involves some subtlety. 
 
 This is just a simple form of dispatching to merge peers.
 
-Let's (TODO SMOOSH) do the merging in a helper function that invokes the two methods, not in the "any" type's method. This way, potentially, we won't need `current-any-dynamic-type` to be a Racket parameter object.
+We do the merging in a helper function `dynamic-type-get-smoosh-and-comparison-of-two-reports` that invokes the two methods `dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first` and `dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second`. (TODO SMOOSH: Now that we're not doing this in the "any" type's method, see if we won't need `current-any-dynamic-type` to be a Racket parameter object.)
 
 We've made a type `(yknow/c _)` that is like a `(promise/c (knowable/c (maybe/c (promise/c _))))`, except that joining the info of these values does the following:
 
