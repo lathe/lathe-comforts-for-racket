@@ -72,6 +72,23 @@
   make-procedure-impl-for-knowable-predicate
   make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
   makeshift-knowable-predicate
+  yknow?
+  yknow-value-promise-maybe-knowable-promise
+  yknow/c
+  make-yknow-from-value-promise-maybe-knowable-promise
+  make-yknow-from-value-knowable-promise
+  make-yknow-from-value
+  uninformative-yknow
+  yknow-value-promise-knowable
+  yknow-value-knowable
+  yknow-known-specified?
+  yknow-value
+  yknow-value-promise-maybe-knowable-promise-map
+  yknow-value-promise-maybe-knowable-map
+  yknow-map
+  yknow-map/knowable
+  yknow-joininfo*
+  yknow-maybe-yknow-joininfo*
   glossesque-sys?
   glossesque-sys-impl?
   glossesque-sys-glossesque-union-of-zero
@@ -126,13 +143,12 @@
   knowable-zip*
   maybe-min-zip*
   promise-zip*-map
-  knowable-promise-zip*-map
+  yknow-zip*-map
   boolean-and-knowable-promise-zip*
   boolean-and-knowable-thunk-zip*
   boolean-or-knowable-thunk-zip*
-  maybe-min-knowable-promise-zip*-map
+  maybe-min-yknow-zip*-map
   sequence-zip*-map
-  knowable-or-promise-zip*
   gloss?
   list-map-foldl-knowable
   rider-and-hash-update-maybe-knowable
@@ -160,18 +176,18 @@
   get-dynamic-type
   smoosh-report?
   smoosh-report-impl?
-  smoosh-report-join-knowable-promise-maybe-knowable-promise
-  smoosh-report-meet-knowable-promise-maybe-knowable-promise
-  smoosh-report-==-knowable-promise-maybe-knowable-promise
-  smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+  smoosh-report-join-yknow-maybe-yknow
+  smoosh-report-meet-yknow-maybe-yknow
+  smoosh-report-==-yknow-maybe-yknow
+  smoosh-report-path-related-yknow-maybe-yknow
   prop:smoosh-report
   make-smoosh-report-impl
   uninformative-smoosh-report
   uninformative-smoosh-reports
   smoosh-and-comparison-of-two-report?
   smoosh-and-comparison-of-two-report-impl?
-  smoosh-and-comparison-of-two-report-<=?-knowable-promise
-  smoosh-and-comparison-of-two-report->=?-knowable-promise
+  smoosh-and-comparison-of-two-report-<=?-yknow
+  smoosh-and-comparison-of-two-report->=?-yknow
   smoosh-and-comparison-of-two-report-get-smoosh-report
   prop:smoosh-and-comparison-of-two-report
   make-smoosh-and-comparison-of-two-report-impl
@@ -227,8 +243,8 @@
 (provide
   indistinct-wrapper)
 (provide /own-contract-out
-  smoosh-and-comparison-of-two-report-join
-  smoosh-and-comparison-of-two-reports-join
+  smoosh-and-comparison-of-two-report-joininfo
+  smoosh-and-comparison-of-two-reports-joininfo
   smoosh-reports-with-hesitation-at-discrepancies
   smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
   list-rev-append
@@ -449,45 +465,176 @@
   (makeshift-knowable-predicate accepts?-knowable))
 
 
-(define-imitation-simple-struct
-  (yknow? yknow-value-promise-maybe-knowable-promise)
-  yknow 'yknow (current-inspector) (auto-write))
+; NOTE: When we want to debug where a `yknow?` value came from, we can
+; configure this.
+(define-for-syntax debugging-yknow #f)
+(ifc debugging-yknow
+  (define-imitation-simple-struct
+    (yknow? yknow-debug-info yknow-value-promise-maybe-knowable-promise)
+    yknow 'yknow (current-inspector) (auto-write))
+  (define-imitation-simple-struct
+    (yknow? yknow-value-promise-maybe-knowable-promise)
+    yknow 'yknow (current-inspector) (auto-write)))
 (ascribe-own-contract yknow? (-> any/c boolean?))
 (ascribe-own-contract yknow-value-promise-maybe-knowable-promise
   (-> yknow? (promise/c (knowable/c (maybe/c (promise/c any/c))))))
-
-(define/own-contract
-  (make-yknow-from-value-promise-maybe-knowable-promise value-pmkp)
-  (-> (promise/c (knowable/c (maybe/c (promise/c any/c)))) yknow?)
-  (yknow value-pmkp))
 
 ; TODO: Give the resulting contract a better name, check that it has
 ; good `contract-stronger?` behavior, etc.
 (define/own-contract (yknow/c c)
   (-> contract? contract?)
   (w- c (coerce-contract 'yknow/c c)
-  /rename-contract (promise/c /knowable/c /maybe/c /promise/c c)
+  /rename-contract
+    (ifc debugging-yknow
+      (match/c yknow any/c
+        (promise/c /knowable/c /maybe/c /promise/c c))
+      (match/c yknow /promise/c /knowable/c /maybe/c /promise/c c))
     `(yknow/c ,(contract-name c))))
 
-; TODO SMOOSH: Use this where we're currently using
-; `knowable-or-promise-zip*`. See details in
-; notes/2024-03-20-squashable-object-system.txt section "Yknow."
-;
 (define/own-contract
-  (yknow-join-knowable-promise a b element-promise-join-knowable)
-  (-> yknow? yknow? (-> promise? promise? (knowable/c promise?))
-    (promise/c (knowable/c yknow?)))
-  (w- a-pmkp (yknow-value-promise-maybe-knowable-promise a)
-  /w- b-pmkp (yknow-value-promise-maybe-knowable-promise b)
-  /promise-map a-pmkp /fn a-pmk
-    (knowable-bind a-pmk /fn a-pm
-    /knowable-bind (force b-pmkp) /fn b-pm
-    /expect a-pm (just a-p) b-pmkp
-    /expect b-pm (just b-p) a-pmkp
-    /knowable-map (element-promise-join-knowable a-p b-p)
-    /fn element-p
-      (make-yknow-from-value-promise-maybe-knowable-promise
-        (delay/strict /known /just element-p)))))
+  (make-yknow-from-value-promise-maybe-knowable-promise value-pmkp)
+  (-> (promise/c (knowable/c (maybe/c (promise/c any/c)))) yknow?)
+  (ifc debugging-yknow
+    (yknow
+      `(
+         (make-yknow-from-value-promise-maybe-knowable-promise
+           ,value-pmkp))
+      value-pmkp)
+    (yknow value-pmkp)))
+
+(ifc debugging-yknow
+  (define (yknow-augment debug-info y)
+    (dissect y (yknow d pmkp)
+    /begin (knowable-map (force pmkp) /fn pm /maybe-map pm /fn p /force p)
+    /yknow (cons debug-info d) pmkp))
+  (define-syntax-parse-rule (yknow-augment debug-info:expr y:expr)
+    (begin
+      (fn debug-info)
+      y)))
+
+(define/own-contract (make-yknow-from-value-knowable-promise value-kp)
+  (-> (promise/c (knowable/c any/c)) yknow?)
+  (yknow-augment `(make-yknow-from-value-knowable-promise ,value-kp)
+  /make-yknow-from-value-promise-maybe-knowable-promise
+    (promise-map value-kp /fn value-k
+      (knowable-map value-k /fn value /just /delay/strict value))))
+
+(define/own-contract (make-yknow-from-value value)
+  (-> any/c yknow?)
+  (yknow-augment `(make-yknow-from-value ,value)
+  /make-yknow-from-value-knowable-promise /delay/strict /known value))
+
+(define/own-contract (uninformative-yknow)
+  (-> (yknow/c none/c))
+  (yknow-augment `(uninformative-yknow)
+  /make-yknow-from-value-knowable-promise /delay/strict /unknown))
+
+(define/own-contract (yknow-value-promise-knowable y)
+  (-> yknow? (knowable/c promise?))
+  (w- pmkp (yknow-value-promise-maybe-knowable-promise y)
+  /knowable-bind (force pmkp) /fn pm
+  /expect pm (just p) (unknown)
+  /known p))
+
+(define/own-contract (yknow-value-knowable y)
+  (-> yknow? knowable?)
+  (knowable-map (yknow-value-promise-knowable y) /fn p /force p))
+
+(define/own-contract (yknow-known-specified? y)
+  (-> any/c boolean?)
+  (and (yknow? y) (known? /yknow-value-promise-knowable y)))
+
+(define/own-contract (yknow-value y)
+  (-> yknow-known-specified? knowable?)
+  (known-value /yknow-value-knowable y))
+
+(define/own-contract
+  (yknow-value-promise-maybe-knowable-promise-map y on-value-pmkp)
+  (->
+    yknow?
+    (-> (promise/c (knowable/c (maybe/c (promise/c any/c))))
+      (promise/c (knowable/c (maybe/c (promise/c any/c)))))
+    yknow?)
+  (yknow-augment `(yknow-value-promise-maybe-knowable-promise-map ,y ,on-value-pmkp)
+  /make-yknow-from-value-promise-maybe-knowable-promise
+    (on-value-pmkp /yknow-value-promise-maybe-knowable-promise y)))
+
+(define/own-contract
+  (yknow-value-promise-maybe-knowable-map y on-value-pmk)
+  (->
+    yknow?
+    (-> (knowable/c (maybe/c (promise/c any/c)))
+      (knowable/c (maybe/c (promise/c any/c))))
+    yknow?)
+  (yknow-augment `(yknow-value-promise-maybe-knowable-map ,y ,on-value-pmk)
+  /yknow-value-promise-maybe-knowable-promise-map y /fn pmkp
+    (promise-map pmkp /fn pmk
+      (on-value-pmk pmk))))
+
+(define/own-contract (yknow-map y on-value)
+  (-> yknow? (-> any/c any/c) yknow?)
+  (yknow-augment `(yknow-map ,y ,on-value)
+  /yknow-value-promise-maybe-knowable-map y /fn pmk
+    (knowable-map pmk /fn pm
+      (maybe-map pm /fn p
+        (promise-map p /fn value
+          (on-value value))))))
+
+(define/own-contract (yknow-map/knowable y on-value-knowable)
+  (-> yknow? (-> any/c knowable?) yknow?)
+  (yknow-augment `(yknow-map/knowable ,y ,on-value-knowable)
+  /yknow-value-promise-maybe-knowable-map y /fn pmk
+    (knowable-bind pmk /fn pm
+      (expect pm (just p) (unknown)
+      /knowable-map (on-value-knowable /force p) /fn value
+        (just /delay/strict value)))))
+
+(define/own-contract (yknow-joininfo*-on-promise y-list on-promise)
+  (-> (listof yknow?) (-> (listof yknow?) promise? promise?) yknow?)
+  (yknow-augment `(yknow-joininfo*-on-promise ,y-list ,on-promise)
+  /make-yknow-from-value-promise-maybe-knowable-promise /delay
+    (w-loop next y-list y-list
+      (expect y-list (cons y y-list) (known /nothing)
+      /w- pmkp (yknow-value-promise-maybe-knowable-promise y)
+      /knowable-bind (force pmkp) /fn pm
+      /expect pm (just p) (next y-list)
+      /known /just /on-promise y-list p))))
+
+(define/own-contract (yknow-joininfo* y-list)
+  (-> (listof yknow?) yknow?)
+  (yknow-value-knowable /yknow-joininfo*-on-promise y-list /fn y-list p
+    (unless (promise? p)
+      (raise-arguments-error 'yknow-joininfo* "aha"
+        "y-list" y-list)))
+  (yknow-augment `(yknow-joininfo* ,y-list)
+  /yknow-joininfo*-on-promise y-list /fn y-list p p))
+
+(define/own-contract (yknow-maybe-yknow-joininfo* ymy-list)
+  (-> (listof (yknow/c (maybe/c (yknow/c any/c))))
+    (yknow/c (maybe/c (yknow/c any/c))))
+  (yknow-augment `(yknow-maybe-yknow-joininfo* ,ymy-list)
+  /yknow-joininfo*-on-promise ymy-list /fn ymy-list ymp
+    (promise-map ymp /fn ym
+      (maybe-map ym /fn y
+        (yknow-augment `(yknow-maybe-yknow-joininfo*/inner ,ymy-list ,y)
+        /yknow-joininfo*
+          (cons y
+            (list-map ymy-list /fn ymy
+              (yknow-value-promise-maybe-knowable-map ymy /fn ympmk
+                (expect ympmk (known ympm)
+                  ; TODO: Add details to this error message.
+                  (raise-arguments-error 'yknow-maybe-yknow-joininfo*
+                    "encountered a not-known-if-specified outer yknow after trying a known-specified one, which means the resulting outer yknow should have been not-known-if-specified all along, but we can't back up now"
+                    "ympmk" ympmk)
+                /expect ympm (just ymp) (known /nothing)
+                /expect (force ymp) (just y)
+                  ; TODO: Add details to this error message.
+                  (raise-arguments-error 'yknow-maybe-yknow-joininfo*
+                    "encountered a known-specified yknow with a `nothing?` value after trying a known-specified yknow with a `just?` value, meaning we have contradictory information"
+                    "ym" (force ymp)
+                    "ymy" ymy)
+                /force /yknow-value-promise-maybe-knowable-promise
+                  y)))))))))
 
 
 (define-imitation-simple-generics
@@ -1137,22 +1284,22 @@
     
     (define (equal-mode-proc a b recur now?)
       (knowable->falsable /knowable-map
-        (force
+        (yknow-value-knowable
           ; TODO FORWARD: These uses of
-          ; `smoosh-report-==-knowable-promise-maybe-knowable-promise`,
+          ; `smoosh-report-==-yknow-maybe-yknow`,
           ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
           ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
           ; and `any-dynamic-type` are forward references. See if we can
           ; untangle them.
-          (smoosh-report-==-knowable-promise-maybe-knowable-promise
+          (smoosh-report-==-yknow-maybe-yknow
             (smoosh-and-comparison-of-two-report-get-smoosh-report
               (sequence-first
                 (dynamic-type-get-smoosh-and-comparison-of-two-reports
                   (any-dynamic-type)
                   a
                   b)))))
-        (fn kpm
-          (just? kpm))))
+        (fn ym
+          (just? ym))))
     
     (define (hash-mode-proc v recur now?)
       ; TODO FORWARD: These uses of
@@ -1179,22 +1326,22 @@
     
     (define (equal-mode-proc a b recur now?)
       (knowable->falsable /knowable-map
-        (force
+        (yknow-value-knowable
           ; TODO FORWARD: These uses of
-          ; `smoosh-report-==-knowable-promise-maybe-knowable-promise`,
+          ; `smoosh-report-==-yknow-maybe-yknow`,
           ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
           ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
           ; and `any-dynamic-type` are forward references. See if we can
           ; untangle them.
-          (smoosh-report-==-knowable-promise-maybe-knowable-promise
+          (smoosh-report-==-yknow-maybe-yknow
             (smoosh-and-comparison-of-two-report-get-smoosh-report
               (sequence-first
                 (dynamic-type-get-smoosh-and-comparison-of-two-reports
                   (any-dynamic-type)
                   a
                   b)))))
-        (fn kpm
-          (just? kpm))))
+        (fn ym
+          (just? ym))))
     
     (define (hash-mode-proc v recur now?)
       ; TODO FORWARD: These uses of
@@ -1273,12 +1420,12 @@
   (-> (listof promise?) (-> any/c any/c) promise?)
   (delay /on-value /list-map p-list /fn p /force p))
 
-(define/own-contract (knowable-promise-zip*-map kp-list on-value)
-  (-> (listof (promise/c knowable?)) (-> any/c any/c)
-    (promise/c knowable?))
-  (delay
-    (knowable-if (list-all kp-list /fn kp /known? /force kp) /fn
-      (on-value /list-map kp-list /fn kp /known-value /force kp))))
+(define/own-contract (yknow-zip*-map y-list on-value)
+  (-> (listof yknow?) (-> any/c any/c) yknow?)
+  (yknow-augment `(yknow-zip*-map ,y-list ,on-value)
+  /make-yknow-from-value-knowable-promise /delay
+    (knowable-if (list-all y-list /fn y /yknow-known-specified? y) /fn
+      (on-value /list-map y-list /fn y /yknow-value y))))
 
 (define/own-contract (boolean-and-knowable-promise-zip* kp-list)
   (-> (listof (promise/c (knowable/c boolean?)))
@@ -1289,6 +1436,13 @@
         (mat (force kp) (known #f) #t #f))
       (known #f)
     /knowable-if (list-all kp-list /fn kp /known? /force kp) /fn #t)))
+
+(define/own-contract (boolean-and-yknow-zip* y-list)
+  (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
+  (yknow-augment `(boolean-and-yknow-zip* ,y-list)
+  /make-yknow-from-value-knowable-promise
+    (boolean-and-knowable-promise-zip* /list-map y-list /fn y
+      (delay /yknow-value-knowable y))))
 
 (define/own-contract (boolean-and-knowable-thunk-zip* kble-thunk-list)
   (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
@@ -1304,17 +1458,17 @@
     (list-map kble-thunk-list /fn kble-thunk
       (fn /boolean-knowable-not /kble-thunk))))
 
-(define/own-contract
-  (maybe-min-knowable-promise-zip*-map mkp-list on-value)
-  (-> (listof (promise/c (knowable/c maybe?))) (-> list? any/c)
-    (promise/c (knowable/c maybe?)))
-  (delay
+(define/own-contract (maybe-min-yknow-zip*-map my-list on-value)
+  (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
+  (yknow-augment `(maybe-min-yknow-zip*-map ,my-list ,on-value)
+  /make-yknow-from-value-promise-maybe-knowable-promise /delay
     (if
-      (list-any mkp-list /fn mkp
-        (mat (force mkp) (known /nothing) #t #f))
-      (known /nothing)
-    /force /knowable-promise-zip*-map mkp-list /fn m-list
-      (just /on-value /list-map m-list /fn m /just-value m))))
+      (list-any my-list /fn my
+        (mat (yknow-value-knowable my) (known /nothing) #t #f))
+      (known /just /delay/strict /nothing)
+    /force /yknow-value-promise-maybe-knowable-promise
+      (yknow-zip*-map my-list /fn m-list
+        (just /on-value /list-map m-list /fn m /just-value m)))))
 
 (define/own-contract (sequence-zip*-map sequences on-element)
   (->
@@ -1324,15 +1478,6 @@
   (sequence-map
     (lambda elements /on-element elements)
     (apply in-parallel sequences)))
-
-(define/own-contract (knowable-or-promise-zip* kp-list)
-  (-> (listof (promise/c knowable?)) (promise/c knowable?))
-  (delay
-    (w-loop next kp-list kp-list
-      (expect kp-list (cons kp kp-list) (unknown)
-      /w- k (force kp)
-      /if (known? k) k
-      /next kp-list))))
 
 (define/own-contract
   (gloss-equal-always?-knowable a b value-equal-always?-knowable)
@@ -1773,21 +1918,18 @@
   ; This says the operands' join, i.e. what result they smoosh into
   ; such that each operand satisfies `operand <= result`.
   ;
-  (#:method smoosh-report-join-knowable-promise-maybe-knowable-promise
-    (#:this))
+  (#:method smoosh-report-join-yknow-maybe-yknow (#:this))
   
   ; This says the operands' join, i.e. what result they smoosh into
   ; such that each operand satisfies `operand >= result`.
   ;
-  (#:method smoosh-report-meet-knowable-promise-maybe-knowable-promise
-    (#:this))
+  (#:method smoosh-report-meet-yknow-maybe-yknow (#:this))
   
   ; This says how the operands smoosh along ==, in the sense of a
   ; result such that each operand satisfies both `operand <= result`
   ; and `operand >= result`.
   ;
-  (#:method smoosh-report-==-knowable-promise-maybe-knowable-promise
-    (#:this))
+  (#:method smoosh-report-==-yknow-maybe-yknow (#:this))
   
   ; This says how they smoosh along path-relatedness, in the sense of a
   ; result such that each operand is path-related to the result. Two
@@ -1817,66 +1959,42 @@
   ; want those two values to index the same entry in an
   ; information-equality-keyed table.
   ;
-  (#:method
-    smoosh-report-path-related-knowable-promise-maybe-knowable-promise
-    (#:this))
+  (#:method smoosh-report-path-related-yknow-maybe-yknow (#:this))
   
   prop:smoosh-report make-smoosh-report-impl-from-various-unkeyworded
   'smoosh-report 'smoosh-report-impl (list))
 (define smoosh-report-component/c
-  (-> smoosh-report?
-    (promise/c
-      (knowable/c (maybe/c (promise/c (knowable/c any/c)))))))
+  (-> smoosh-report? (yknow/c (maybe/c (yknow/c any/c)))))
 (ascribe-own-contract smoosh-report? (-> any/c boolean?))
 (ascribe-own-contract smoosh-report-impl? (-> any/c boolean?))
-(ascribe-own-contract
-  smoosh-report-join-knowable-promise-maybe-knowable-promise
+(ascribe-own-contract smoosh-report-join-yknow-maybe-yknow
   smoosh-report-component/c)
-(ascribe-own-contract
-  smoosh-report-meet-knowable-promise-maybe-knowable-promise
+(ascribe-own-contract smoosh-report-meet-yknow-maybe-yknow
   smoosh-report-component/c)
-(ascribe-own-contract
-  smoosh-report-==-knowable-promise-maybe-knowable-promise
+(ascribe-own-contract smoosh-report-==-yknow-maybe-yknow
   smoosh-report-component/c)
-(ascribe-own-contract
-  smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+(ascribe-own-contract smoosh-report-path-related-yknow-maybe-yknow
   smoosh-report-component/c)
 (ascribe-own-contract prop:smoosh-report
   (struct-type-property/c smoosh-report-impl?))
 
 (define/own-contract
   (make-smoosh-report-impl
-    
-    #:join-knowable-promise-maybe-knowable-promise
-    join-knowable-promise-maybe-knowable-promise
-    
-    #:meet-knowable-promise-maybe-knowable-promise
-    meet-knowable-promise-maybe-knowable-promise
-    
-    #:==-knowable-promise-maybe-knowable-promise
-    ==-knowable-promise-maybe-knowable-promise
-    
-    #:path-related-knowable-promise-maybe-knowable-promise
-    path-related-knowable-promise-maybe-knowable-promise)
+    #:join-yknow-maybe-yknow join-yknow-maybe-yknow
+    #:meet-yknow-maybe-yknow meet-yknow-maybe-yknow
+    #:==-yknow-maybe-yknow ==-yknow-maybe-yknow
+    #:path-related-yknow-maybe-yknow path-related-yknow-maybe-yknow)
   (->
-    #:join-knowable-promise-maybe-knowable-promise
-    smoosh-report-component/c
-    
-    #:meet-knowable-promise-maybe-knowable-promise
-    smoosh-report-component/c
-    
-    #:==-knowable-promise-maybe-knowable-promise
-    smoosh-report-component/c
-    
-    #:path-related-knowable-promise-maybe-knowable-promise
-    smoosh-report-component/c
-    
+    #:join-yknow-maybe-yknow smoosh-report-component/c
+    #:meet-yknow-maybe-yknow smoosh-report-component/c
+    #:==-yknow-maybe-yknow smoosh-report-component/c
+    #:path-related-yknow-maybe-yknow smoosh-report-component/c
     smoosh-report-impl?)
   (make-smoosh-report-impl-from-various-unkeyworded
-    join-knowable-promise-maybe-knowable-promise
-    meet-knowable-promise-maybe-knowable-promise
-    ==-knowable-promise-maybe-knowable-promise
-    path-related-knowable-promise-maybe-knowable-promise))
+    join-yknow-maybe-yknow
+    meet-yknow-maybe-yknow
+    ==-yknow-maybe-yknow
+    path-related-yknow-maybe-yknow))
 
 (define-imitation-simple-struct
   (uninformative-smoosh-report?)
@@ -1884,21 +2002,21 @@
   'uninformative-smoosh-report (current-inspector) (auto-write)
   (#:prop prop:smoosh-report /make-smoosh-report-impl
     
-    #:join-knowable-promise-maybe-knowable-promise
+    #:join-yknow-maybe-yknow
     (fn self
-      (delay/strict /unknown))
+      (uninformative-yknow))
     
-    #:meet-knowable-promise-maybe-knowable-promise
+    #:meet-yknow-maybe-yknow
     (fn self
-      (delay/strict /unknown))
+      (uninformative-yknow))
     
-    #:==-knowable-promise-maybe-knowable-promise
+    #:==-yknow-maybe-yknow
     (fn self
-      (delay/strict /unknown))
+      (uninformative-yknow))
     
-    #:path-related-knowable-promise-maybe-knowable-promise
+    #:path-related-yknow-maybe-yknow
     (fn self
-      (delay/strict /unknown))
+      (uninformative-yknow))
     
     ))
 
@@ -1914,11 +2032,9 @@
   smoosh-and-comparison-of-two-report?
   smoosh-and-comparison-of-two-report-impl?
   ; This says whether they're related as (lhs <= rhs).
-  (#:method smoosh-and-comparison-of-two-report-<=?-knowable-promise
-    (#:this))
+  (#:method smoosh-and-comparison-of-two-report-<=?-yknow (#:this))
   ; This says whether they're related as (lhs >= rhs).
-  (#:method smoosh-and-comparison-of-two-report->=?-knowable-promise
-    (#:this))
+  (#:method smoosh-and-comparison-of-two-report->=?-yknow (#:this))
   (#:method smoosh-and-comparison-of-two-report-get-smoosh-report
     (#:this))
   prop:smoosh-and-comparison-of-two-report
@@ -1930,14 +2046,10 @@
   (-> any/c boolean?))
 (ascribe-own-contract smoosh-and-comparison-of-two-report-impl?
   (-> any/c boolean?))
-(ascribe-own-contract
-  smoosh-and-comparison-of-two-report-<=?-knowable-promise
-  (-> smoosh-and-comparison-of-two-report?
-    (promise/c (knowable/c boolean?))))
-(ascribe-own-contract
-  smoosh-and-comparison-of-two-report->=?-knowable-promise
-  (-> smoosh-and-comparison-of-two-report?
-    (promise/c (knowable/c boolean?))))
+(ascribe-own-contract smoosh-and-comparison-of-two-report-<=?-yknow
+  (-> smoosh-and-comparison-of-two-report? (yknow/c boolean?)))
+(ascribe-own-contract smoosh-and-comparison-of-two-report->=?-yknow
+  (-> smoosh-and-comparison-of-two-report? (yknow/c boolean?)))
 (ascribe-own-contract
   smoosh-and-comparison-of-two-report-get-smoosh-report
   (-> smoosh-and-comparison-of-two-report? smoosh-report?))
@@ -1946,26 +2058,22 @@
 
 (define/own-contract
   (make-smoosh-and-comparison-of-two-report-impl
-    #:<=?-knowable-promise <=?-knowable-promise
-    #:>=?-knowable-promise >=?-knowable-promise
+    #:<=?-yknow <=?-yknow
+    #:>=?-yknow >=?-yknow
     #:get-smoosh-report get-smoosh-report)
   (->
-    #:<=?-knowable-promise
-    (-> smoosh-and-comparison-of-two-report?
-      (promise/c (knowable/c boolean?)))
+    #:<=?-yknow
+    (-> smoosh-and-comparison-of-two-report? (yknow/c boolean?))
     
-    #:>=?-knowable-promise
-    (-> smoosh-and-comparison-of-two-report?
-      (promise/c (knowable/c boolean?)))
+    #:>=?-yknow
+    (-> smoosh-and-comparison-of-two-report? (yknow/c boolean?))
     
     #:get-smoosh-report
     (-> smoosh-and-comparison-of-two-report? smoosh-report?)
     
     smoosh-report-impl?)
   (make-smoosh-and-comparison-of-two-report-impl-from-various-unkeyworded
-    <=?-knowable-promise
-    >=?-knowable-promise
-    get-smoosh-report))
+    <=?-yknow >=?-yknow get-smoosh-report))
 
 (define-imitation-simple-struct
   (uninformative-smoosh-and-comparison-of-two-report?)
@@ -1976,13 +2084,13 @@
   (#:prop prop:smoosh-and-comparison-of-two-report
     (make-smoosh-and-comparison-of-two-report-impl
       
-      #:<=?-knowable-promise
+      #:<=?-yknow
       (fn self
-        (delay/strict /unknown))
+        (uninformative-yknow))
       
-      #:>=?-knowable-promise
+      #:>=?-yknow
       (fn self
-        (delay/strict /unknown))
+        (uninformative-yknow))
       
       #:get-smoosh-report
       (fn self
@@ -2249,61 +2357,60 @@
 
 (define-imitation-simple-struct
   (mapped-smoosh-report?
-    mapped-smoosh-report-on-join-knowable-promise-maybe-knowable-promise
-    mapped-smoosh-report-on-meet-knowable-promise-maybe-knowable-promise
-    mapped-smoosh-report-on-==-knowable-promise-maybe-knowable-promise
-    mapped-smoosh-report-on-path-related-knowable-promise-maybe-knowable-promise
+    mapped-smoosh-report-on-join-yknow-maybe-yknow
+    mapped-smoosh-report-on-meet-yknow-maybe-yknow
+    mapped-smoosh-report-on-==-yknow-maybe-yknow
+    mapped-smoosh-report-on-path-related-yknow-maybe-yknow
     mapped-smoosh-report-original)
   mapped-smoosh-report 'mapped-smoosh-report (current-inspector)
   (auto-write)
   (#:prop prop:smoosh-report /make-smoosh-report-impl
     
-    #:join-knowable-promise-maybe-knowable-promise
+    #:join-yknow-maybe-yknow
     (dissectfn
       (mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         original)
-      (on-join-knowable-promise-maybe-knowable-promise
-        (smoosh-report-join-knowable-promise-maybe-knowable-promise
+      (on-join-yknow-maybe-yknow
+        (smoosh-report-join-yknow-maybe-yknow original)))
+    
+    #:meet-yknow-maybe-yknow
+    (dissectfn
+      (mapped-smoosh-report
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
+        original)
+      (on-meet-yknow-maybe-yknow
+        (smoosh-report-meet-yknow-maybe-yknow
           original)))
     
-    #:meet-knowable-promise-maybe-knowable-promise
+    #:==-yknow-maybe-yknow
     (dissectfn
       (mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         original)
-      (on-meet-knowable-promise-maybe-knowable-promise
-        (smoosh-report-meet-knowable-promise-maybe-knowable-promise
+      (on-==-yknow-maybe-yknow
+        (smoosh-report-==-yknow-maybe-yknow
           original)))
     
-    #:==-knowable-promise-maybe-knowable-promise
+    #:path-related-yknow-maybe-yknow
     (dissectfn
       (mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         original)
-      (on-==-knowable-promise-maybe-knowable-promise
-        (smoosh-report-==-knowable-promise-maybe-knowable-promise
-          original)))
-    
-    #:path-related-knowable-promise-maybe-knowable-promise
-    (dissectfn
-      (mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
-        original)
-      (on-path-related-knowable-promise-maybe-knowable-promise
-        (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+      (on-path-related-yknow-maybe-yknow
+        (smoosh-report-path-related-yknow-maybe-yknow
           original)))
     
     ))
@@ -2316,20 +2423,20 @@
       (fn kpmkp
         kpmkp)]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
+    #:on-join-yknow-maybe-yknow
+    [ on-join-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
+    #:on-meet-yknow-maybe-yknow
+    [ on-meet-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
+    #:on-==-yknow-maybe-yknow
+    [ on-==-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
+    #:on-path-related-yknow-maybe-yknow
+    [ on-path-related-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
@@ -2337,32 +2444,27 @@
     (smoosh-report?)
     (
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
       )
     smoosh-report?)
   (mapped-smoosh-report
-    on-join-knowable-promise-maybe-knowable-promise
-    on-meet-knowable-promise-maybe-knowable-promise
-    on-==-knowable-promise-maybe-knowable-promise
-    on-path-related-knowable-promise-maybe-knowable-promise
+    on-join-yknow-maybe-yknow
+    on-meet-yknow-maybe-yknow
+    on-==-yknow-maybe-yknow
+    on-path-related-yknow-maybe-yknow
     report))
 
 (define/own-contract
@@ -2373,20 +2475,20 @@
       (fn kpmkp
         kpmkp)]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
+    #:on-join-yknow-maybe-yknow
+    [ on-join-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
+    #:on-meet-yknow-maybe-yknow
+    [ on-meet-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
+    #:on-==-yknow-maybe-yknow
+    [ on-==-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
+    #:on-path-related-yknow-maybe-yknow
+    [ on-path-related-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
@@ -2394,109 +2496,94 @@
     ((sequence/c smoosh-report?))
     (
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
       )
     (sequence/c smoosh-report?))
   (sequence-map
     (fn report
       (smoosh-report-map report
+        #:on-join-yknow-maybe-yknow on-join-yknow-maybe-yknow
+        #:on-meet-yknow-maybe-yknow on-meet-yknow-maybe-yknow
+        #:on-==-yknow-maybe-yknow on-==-yknow-maybe-yknow
         
-        #:on-join-knowable-promise-maybe-knowable-promise
-        on-join-knowable-promise-maybe-knowable-promise
-        
-        #:on-meet-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        
-        #:on-==-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        
-        #:on-path-related-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        #:on-path-related-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         
         ))
     reports))
 
 (define-imitation-simple-struct
   (zip*-mapped-smoosh-report?
-    zip*-mapped-smoosh-report-on-join-knowable-promise-maybe-knowable-promise
-    zip*-mapped-smoosh-report-on-meet-knowable-promise-maybe-knowable-promise
-    zip*-mapped-smoosh-report-on-==-knowable-promise-maybe-knowable-promise
-    zip*-mapped-smoosh-report-on-path-related-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-report-on-join-yknow-maybe-yknow
+    zip*-mapped-smoosh-report-on-meet-yknow-maybe-yknow
+    zip*-mapped-smoosh-report-on-==-yknow-maybe-yknow
+    zip*-mapped-smoosh-report-on-path-related-yknow-maybe-yknow
     zip*-mapped-smoosh-report-original-list)
   zip*-mapped-smoosh-report
   'zip*-mapped-smoosh-report (current-inspector)
   (auto-write)
   (#:prop prop:smoosh-report /make-smoosh-report-impl
     
-    #:join-knowable-promise-maybe-knowable-promise
+    #:join-yknow-maybe-yknow
     (dissectfn
       (zip*-mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         original-list)
-      (on-join-knowable-promise-maybe-knowable-promise
+      (on-join-yknow-maybe-yknow
         (list-map original-list /fn original
-          (smoosh-report-join-knowable-promise-maybe-knowable-promise
-            original))))
+          (smoosh-report-join-yknow-maybe-yknow original))))
     
-    #:meet-knowable-promise-maybe-knowable-promise
+    #:meet-yknow-maybe-yknow
     (dissectfn
       (zip*-mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         original-list)
-      (on-meet-knowable-promise-maybe-knowable-promise
+      (on-meet-yknow-maybe-yknow
         (list-map original-list /fn original
-          (smoosh-report-meet-knowable-promise-maybe-knowable-promise
-            original))))
+          (smoosh-report-meet-yknow-maybe-yknow original))))
     
-    #:==-knowable-promise-maybe-knowable-promise
+    #:==-yknow-maybe-yknow
     (dissectfn
       (zip*-mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         original-list)
-      (on-==-knowable-promise-maybe-knowable-promise
+      (on-==-yknow-maybe-yknow
         (list-map original-list /fn original
-          (smoosh-report-==-knowable-promise-maybe-knowable-promise
-            original))))
+          (smoosh-report-==-yknow-maybe-yknow original))))
     
-    #:path-related-knowable-promise-maybe-knowable-promise
+    #:path-related-yknow-maybe-yknow
     (dissectfn
       (zip*-mapped-smoosh-report
-        on-join-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
+        on-join-yknow-maybe-yknow
+        on-meet-yknow-maybe-yknow
+        on-==-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow
         original-list)
-      (on-path-related-knowable-promise-maybe-knowable-promise
+      (on-path-related-yknow-maybe-yknow
         (list-map original-list /fn original
-          (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
-            original))))
+          (smoosh-report-path-related-yknow-maybe-yknow original))))
     
     ))
 
@@ -2514,20 +2601,20 @@
           
           ))]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
+    #:on-join-yknow-maybe-yknow
+    [ on-join-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
+    #:on-meet-yknow-maybe-yknow
+    [ on-meet-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
+    #:on-==-yknow-maybe-yknow
+    [ on-==-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
+    #:on-path-related-yknow-maybe-yknow
+    [ on-path-related-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
@@ -2535,42 +2622,32 @@
     ((listof smoosh-report?))
     (
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
       )
     smoosh-report?)
   (zip*-mapped-smoosh-report
-    on-join-knowable-promise-maybe-knowable-promise
-    on-meet-knowable-promise-maybe-knowable-promise
-    on-==-knowable-promise-maybe-knowable-promise
-    on-path-related-knowable-promise-maybe-knowable-promise
+    on-join-yknow-maybe-yknow
+    on-meet-yknow-maybe-yknow
+    on-==-yknow-maybe-yknow
+    on-path-related-yknow-maybe-yknow
     report-list))
 
 (define/own-contract
@@ -2587,20 +2664,20 @@
           
           ))]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
+    #:on-join-yknow-maybe-yknow
+    [ on-join-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
+    #:on-meet-yknow-maybe-yknow
+    [ on-meet-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
+    #:on-==-yknow-maybe-yknow
+    [ on-==-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
+    #:on-path-related-yknow-maybe-yknow
+    [ on-path-related-yknow-maybe-yknow
       on-smoosh-result-knowable-promise-maybe-knowable-promise]
     
     )
@@ -2608,60 +2685,44 @@
     ((listof (sequence/c smoosh-report?)))
     (
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
       )
     (sequence/c smoosh-report?))
   (sequence-zip*-map reports-list /fn report-list
     (smoosh-report-zip*-map report-list
+      #:on-join-yknow-maybe-yknow on-join-yknow-maybe-yknow
+      #:on-meet-yknow-maybe-yknow on-meet-yknow-maybe-yknow
+      #:on-==-yknow-maybe-yknow on-==-yknow-maybe-yknow
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      on-join-knowable-promise-maybe-knowable-promise
-      
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      on-meet-knowable-promise-maybe-knowable-promise
-      
-      #:on-==-knowable-promise-maybe-knowable-promise
-      on-==-knowable-promise-maybe-knowable-promise
-      
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      on-path-related-knowable-promise-maybe-knowable-promise)))
+      #:on-path-related-yknow-maybe-yknow
+      on-path-related-yknow-maybe-yknow)))
 
 (define-imitation-simple-struct
   (mapped-smoosh-and-comparison-of-two-report?
-    mapped-smoosh-and-comparison-of-two-report-on-<=?-knowable-promise
-    mapped-smoosh-and-comparison-of-two-report-on->=?-knowable-promise
-    mapped-smoosh-and-comparison-of-two-report-on-join-knowable-promise-maybe-knowable-promise
-    mapped-smoosh-and-comparison-of-two-report-on-meet-knowable-promise-maybe-knowable-promise
-    mapped-smoosh-and-comparison-of-two-report-on-==-knowable-promise-maybe-knowable-promise
-    mapped-smoosh-and-comparison-of-two-report-on-path-related-knowable-promise-maybe-knowable-promise
+    mapped-smoosh-and-comparison-of-two-report-on-<=?-yknow
+    mapped-smoosh-and-comparison-of-two-report-on->=?-yknow
+    mapped-smoosh-and-comparison-of-two-report-on-join-yknow-maybe-yknow
+    mapped-smoosh-and-comparison-of-two-report-on-meet-yknow-maybe-yknow
+    mapped-smoosh-and-comparison-of-two-report-on-==-yknow-maybe-yknow
+    mapped-smoosh-and-comparison-of-two-report-on-path-related-yknow-maybe-yknow
     mapped-smoosh-and-comparison-of-two-report-original)
   mapped-smoosh-and-comparison-of-two-report
   'mapped-smoosh-and-comparison-of-two-report (current-inspector)
@@ -2669,59 +2730,51 @@
   (#:prop prop:smoosh-and-comparison-of-two-report
     (make-smoosh-and-comparison-of-two-report-impl
       
-      #:<=?-knowable-promise
+      #:<=?-yknow
       (dissectfn
         (mapped-smoosh-and-comparison-of-two-report
-          on-<=?-knowable-promise
-          on->=?-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
+          on-<=?-yknow
+          on->=?-yknow
+          on-join-yknow-maybe-yknow
+          on-meet-yknow-maybe-yknow
+          on-==-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow
           original)
-        (on-<=?-knowable-promise
-          (smoosh-and-comparison-of-two-report-<=?-knowable-promise
-            original)))
+        (on-<=?-yknow
+          (smoosh-and-comparison-of-two-report-<=?-yknow original)))
       
-      #:>=?-knowable-promise
+      #:>=?-yknow
       (dissectfn
         (mapped-smoosh-and-comparison-of-two-report
-          on-<=?-knowable-promise
-          on->=?-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
+          on-<=?-yknow
+          on->=?-yknow
+          on-join-yknow-maybe-yknow
+          on-meet-yknow-maybe-yknow
+          on-==-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow
           original)
-        (on->=?-knowable-promise
-          (smoosh-and-comparison-of-two-report->=?-knowable-promise
-            original)))
+        (on->=?-yknow
+          (smoosh-and-comparison-of-two-report->=?-yknow original)))
       
       #:get-smoosh-report
       (dissectfn
         (mapped-smoosh-and-comparison-of-two-report
-          on-<=?-knowable-promise
-          on->=?-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
+          on-<=?-yknow
+          on->=?-yknow
+          on-join-yknow-maybe-yknow
+          on-meet-yknow-maybe-yknow
+          on-==-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow
           original)
         (smoosh-report-map
           (smoosh-and-comparison-of-two-report-get-smoosh-report
             original)
+          #:on-join-yknow-maybe-yknow on-join-yknow-maybe-yknow
+          #:on-meet-yknow-maybe-yknow on-meet-yknow-maybe-yknow
+          #:on-==-yknow-maybe-yknow on-==-yknow-maybe-yknow
           
-          #:on-join-knowable-promise-maybe-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          
-          #:on-meet-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          
-          #:on-==-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          
-          #:on-path-related-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
+          #:on-path-related-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow
           
           ))
       
@@ -2730,187 +2783,144 @@
 (define/own-contract
   (smoosh-and-comparison-of-two-report-map report
     
-    #:on-check-result-knowable-promise
-    [ on-check-result-knowable-promise
-      (fn kp
-        kp)]
+    #:on-check-result-yknow
+    [ on-check-result-yknow
+      (fn y
+        y)]
     
-    #:on-<=?-knowable-promise
-    [on-<=?-knowable-promise on-check-result-knowable-promise]
+    #:on-<=?-yknow [on-<=?-yknow on-check-result-yknow]
+    #:on->=?-yknow [on->=?-yknow on-check-result-yknow]
     
-    #:on->=?-knowable-promise
-    [on->=?-knowable-promise on-check-result-knowable-promise]
+    #:on-smoosh-result-yknow-maybe-yknow
+    [ on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        ymy)]
     
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        kpmkp)]
+    #:on-join-yknow-maybe-yknow
+    [on-join-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-meet-yknow-maybe-yknow
+    [on-meet-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-==-yknow-maybe-yknow
+    [on-==-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-path-related-yknow-maybe-yknow
+    [ on-path-related-yknow-maybe-yknow
+      on-smoosh-result-yknow-maybe-yknow]
     
     )
   (->*
     (smoosh-and-comparison-of-two-report?)
     (
-      #:on-check-result-knowable-promise
-      (-> (promise/c (knowable/c boolean?))
-        (promise/c (knowable/c boolean?)))
+      #:on-check-result-yknow
+      (-> (yknow/c boolean?) (yknow/c boolean?))
       
-      #:on-<=?-knowable-promise
-      (-> (promise/c (knowable/c boolean?))
-        (promise/c (knowable/c boolean?)))
+      #:on-<=?-yknow (-> (yknow/c boolean?) (yknow/c boolean?))
+      #:on->=?-yknow (-> (yknow/c boolean?) (yknow/c boolean?))
       
-      #:on->=?-knowable-promise
-      (-> (promise/c (knowable/c boolean?))
-        (promise/c (knowable/c boolean?)))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
       )
     smoosh-and-comparison-of-two-report?)
   (mapped-smoosh-and-comparison-of-two-report
-    on-<=?-knowable-promise
-    on->=?-knowable-promise
-    on-join-knowable-promise-maybe-knowable-promise
-    on-meet-knowable-promise-maybe-knowable-promise
-    on-==-knowable-promise-maybe-knowable-promise
-    on-path-related-knowable-promise-maybe-knowable-promise
+    on-<=?-yknow
+    on->=?-yknow
+    on-join-yknow-maybe-yknow
+    on-meet-yknow-maybe-yknow
+    on-==-yknow-maybe-yknow
+    on-path-related-yknow-maybe-yknow
     report))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-reports-map reports
     
-    #:on-check-result-knowable-promise
-    [ on-check-result-knowable-promise
-      (fn kp
-        kp)]
+    #:on-check-result-yknow
+    [ on-check-result-yknow
+      (fn y
+        y)]
     
-    #:on-<=?-knowable-promise
-    [on-<=?-knowable-promise on-check-result-knowable-promise]
+    #:on-<=?-yknow [on-<=?-yknow on-check-result-yknow]
+    #:on->=?-yknow [on->=?-yknow on-check-result-yknow]
     
-    #:on->=?-knowable-promise
-    [on->=?-knowable-promise on-check-result-knowable-promise]
+    #:on-smoosh-result-yknow-maybe-yknow
+    [ on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        ymy)]
     
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        kpmkp)]
+    #:on-join-yknow-maybe-yknow
+    [on-join-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-meet-yknow-maybe-yknow
+    [on-meet-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-==-yknow-maybe-yknow
+    [on-==-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
-    
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-path-related-yknow-maybe-yknow
+    [on-path-related-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
     )
   (->*
     ((sequence/c smoosh-and-comparison-of-two-report?))
     (
-      #:on-check-result-knowable-promise
-      (-> (promise/c (knowable/c boolean?))
-        (promise/c (knowable/c boolean?)))
+      #:on-check-result-yknow
+      (-> (yknow/c boolean?) (yknow/c boolean?))
       
-      #:on-<=?-knowable-promise
-      (-> (promise/c (knowable/c boolean?))
-        (promise/c (knowable/c boolean?)))
+      #:on-<=?-yknow (-> (yknow/c boolean?) (yknow/c boolean?))
+      #:on->=?-yknow (-> (yknow/c boolean?) (yknow/c boolean?))
       
-      #:on->=?-knowable-promise
-      (-> (promise/c (knowable/c boolean?))
-        (promise/c (knowable/c boolean?)))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-      
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (-> (promise/c (knowable/c (maybe/c (promise/c knowable?))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
       )
     (sequence/c smoosh-and-comparison-of-two-report?))
   (sequence-map
     (fn report
       (smoosh-and-comparison-of-two-report-map report
-        #:on-<=?-knowable-promise on-<=?-knowable-promise
-        #:on->=?-knowable-promise on->=?-knowable-promise
+        #:on-<=?-yknow on-<=?-yknow
+        #:on->=?-yknow on->=?-yknow
+        #:on-join-yknow-maybe-yknow on-join-yknow-maybe-yknow
+        #:on-meet-yknow-maybe-yknow on-meet-yknow-maybe-yknow
+        #:on-==-yknow-maybe-yknow on-==-yknow-maybe-yknow
         
-        #:on-join-knowable-promise-maybe-knowable-promise
-        on-join-knowable-promise-maybe-knowable-promise
-        
-        #:on-meet-knowable-promise-maybe-knowable-promise
-        on-meet-knowable-promise-maybe-knowable-promise
-        
-        #:on-==-knowable-promise-maybe-knowable-promise
-        on-==-knowable-promise-maybe-knowable-promise
-        
-        #:on-path-related-knowable-promise-maybe-knowable-promise
-        on-path-related-knowable-promise-maybe-knowable-promise
-        
-        ))
+        #:on-path-related-yknow-maybe-yknow
+        on-path-related-yknow-maybe-yknow))
     reports))
 
 (define-imitation-simple-struct
   (zip*-mapped-smoosh-and-comparison-of-two-report?
-    zip*-mapped-smoosh-and-comparison-of-two-report-on-<=?-knowable-promise
-    zip*-mapped-smoosh-and-comparison-of-two-report-on->=?-knowable-promise
-    zip*-mapped-smoosh-and-comparison-of-two-report-on-join-knowable-promise-maybe-knowable-promise
-    zip*-mapped-smoosh-and-comparison-of-two-report-on-meet-knowable-promise-maybe-knowable-promise
-    zip*-mapped-smoosh-and-comparison-of-two-report-on-==-knowable-promise-maybe-knowable-promise
-    zip*-mapped-smoosh-and-comparison-of-two-report-on-path-related-knowable-promise-maybe-knowable-promise
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-<=?-yknow
+    zip*-mapped-smoosh-and-comparison-of-two-report-on->=?-yknow
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-join-yknow-maybe-yknow
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-meet-yknow-maybe-yknow
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-==-yknow-maybe-yknow
+    zip*-mapped-smoosh-and-comparison-of-two-report-on-path-related-yknow-maybe-yknow
     zip*-mapped-smoosh-and-comparison-of-two-report-original-list)
   zip*-mapped-smoosh-and-comparison-of-two-report
   'zip*-mapped-smoosh-and-comparison-of-two-report (current-inspector)
@@ -2918,276 +2928,214 @@
   (#:prop prop:smoosh-and-comparison-of-two-report
     (make-smoosh-and-comparison-of-two-report-impl
       
-      #:<=?-knowable-promise
+      #:<=?-yknow
       (dissectfn
         (zip*-mapped-smoosh-and-comparison-of-two-report
-          on-<=?-knowable-promise
-          on->=?-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
+          on-<=?-yknow
+          on->=?-yknow
+          on-join-yknow-maybe-yknow
+          on-meet-yknow-maybe-yknow
+          on-==-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow
           original-list)
-        (on-<=?-knowable-promise
+        (on-<=?-yknow
           (list-map original-list /fn original
-            (smoosh-and-comparison-of-two-report-<=?-knowable-promise
+            (smoosh-and-comparison-of-two-report-<=?-yknow
               original))))
       
-      #:>=?-knowable-promise
+      #:>=?-yknow
       (dissectfn
         (zip*-mapped-smoosh-and-comparison-of-two-report
-          on-<=?-knowable-promise
-          on->=?-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
+          on-<=?-yknow
+          on->=?-yknow
+          on-join-yknow-maybe-yknow
+          on-meet-yknow-maybe-yknow
+          on-==-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow
           original-list)
-        (on->=?-knowable-promise
+        (on->=?-yknow
           (list-map original-list /fn original
-            (smoosh-and-comparison-of-two-report->=?-knowable-promise
+            (smoosh-and-comparison-of-two-report->=?-yknow
               original))))
       
       #:get-smoosh-report
       (dissectfn
         (zip*-mapped-smoosh-and-comparison-of-two-report
-          on-<=?-knowable-promise
-          on->=?-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
+          on-<=?-yknow
+          on->=?-yknow
+          on-join-yknow-maybe-yknow
+          on-meet-yknow-maybe-yknow
+          on-==-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow
           original-list)
         (smoosh-report-zip*-map
           (list-map original-list /fn original
             (smoosh-and-comparison-of-two-report-get-smoosh-report
               original))
+          #:on-join-yknow-maybe-yknow on-join-yknow-maybe-yknow
+          #:on-meet-yknow-maybe-yknow on-meet-yknow-maybe-yknow
+          #:on-==-yknow-maybe-yknow on-==-yknow-maybe-yknow
           
-          #:on-join-knowable-promise-maybe-knowable-promise
-          on-join-knowable-promise-maybe-knowable-promise
-          
-          #:on-meet-knowable-promise-maybe-knowable-promise
-          on-meet-knowable-promise-maybe-knowable-promise
-          
-          #:on-==-knowable-promise-maybe-knowable-promise
-          on-==-knowable-promise-maybe-knowable-promise
-          
-          #:on-path-related-knowable-promise-maybe-knowable-promise
-          on-path-related-knowable-promise-maybe-knowable-promise
-          
-          ))
+          #:on-path-related-yknow-maybe-yknow
+          on-path-related-yknow-maybe-yknow))
       
       )))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-report-zip*-map report-list
     
-    #:on-check-result-knowable-promise
-    [ on-check-result-knowable-promise
-      (fn kp-list
+    #:on-check-result-yknow
+    [ on-check-result-yknow
+      (fn y-list
         (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a check result when its mapping behavior was undefined"
-          "check-result-knowable-promise-list" kp-list))]
+          "check-result-yknow-list" y-list))]
     
-    #:on-<=?-knowable-promise
-    [on-<=?-knowable-promise on-check-result-knowable-promise]
+    #:on-<=?-yknow [on-<=?-yknow on-check-result-yknow]
+    #:on->=?-yknow [on->=?-yknow on-check-result-yknow]
     
-    #:on->=?-knowable-promise
-    [on->=?-knowable-promise on-check-result-knowable-promise]
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp-list
+    #:on-smoosh-result-yknow-maybe-yknow
+    [ on-smoosh-result-yknow-maybe-yknow
+      (fn ymy-list
         (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
-          
-          "smoosh-result-knowable-promise-maybe-knowable-promise-list"
-          kpmkp-list
-          
-          ))]
+          "smoosh-result-yknow-maybe-yknow-list" ymy-list))]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-join-yknow-maybe-yknow
+    [on-join-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-meet-yknow-maybe-yknow
+    [on-meet-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-==-yknow-maybe-yknow
+    [on-==-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-path-related-yknow-maybe-yknow
+    [ on-path-related-yknow-maybe-yknow
+      on-smoosh-result-yknow-maybe-yknow]
     
     )
   (->*
     ((listof smoosh-and-comparison-of-two-report?))
     (
-      #:on-check-result-knowable-promise
-      (-> (listof (promise/c (knowable/c boolean?)))
-        (promise/c (knowable/c boolean?)))
+      #:on-check-result-yknow
+      (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
       
-      #:on-<=?-knowable-promise
-      (-> (listof (promise/c (knowable/c boolean?)))
-        (promise/c (knowable/c boolean?)))
+      #:on-<=?-yknow
+      (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
       
-      #:on->=?-knowable-promise
-      (-> (listof (promise/c (knowable/c boolean?)))
-        (promise/c (knowable/c boolean?)))
+      #:on->=?-yknow
+      (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
       
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
       )
     smoosh-and-comparison-of-two-report?)
   (zip*-mapped-smoosh-and-comparison-of-two-report
-    on-<=?-knowable-promise
-    on->=?-knowable-promise
-    on-join-knowable-promise-maybe-knowable-promise
-    on-meet-knowable-promise-maybe-knowable-promise
-    on-==-knowable-promise-maybe-knowable-promise
-    on-path-related-knowable-promise-maybe-knowable-promise
+    on-<=?-yknow
+    on->=?-yknow
+    on-join-yknow-maybe-yknow
+    on-meet-yknow-maybe-yknow
+    on-==-yknow-maybe-yknow
+    on-path-related-yknow-maybe-yknow
     report-list))
 
 (define/own-contract
   (smoosh-and-comparison-of-two-reports-zip*-map reports-list
     
-    #:on-check-result-knowable-promise
-    [ on-check-result-knowable-promise
-      (fn kp-list
+    #:on-check-result-yknow
+    [ on-check-result-yknow
+      (fn y-list
         (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a check result when its mapping behavior was undefined"
-          "check-result-knowable-promise-list" kp-list))]
+          "check-result-yknow-list" y-list))]
     
-    #:on-<=?-knowable-promise
-    [ on-<=?-knowable-promise
-      on-check-result-knowable-promise]
+    #:on-<=?-yknow [on-<=?-yknow on-check-result-yknow]
+    #:on->=?-yknow [on->=?-yknow on-check-result-yknow]
     
-    #:on->=?-knowable-promise
-    [ on->=?-knowable-promise
-      on-check-result-knowable-promise]
-    
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    [ on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp-list
+    #:on-smoosh-result-yknow-maybe-yknow
+    [ on-smoosh-result-yknow-maybe-yknow
+      (fn ymy-list
         (raise-arguments-error 'smoosh-and-comparison-of-two-report-zip*-map
           "tried to retrieve a smoosh result when its mapping behavior was undefined"
-          
-          "smoosh-result-knowable-promise-maybe-knowable-promise-list"
-          kpmkp-list
-          
-          ))]
+          "smoosh-result-yknow-maybe-yknow-list" ymy-list))]
     
-    #:on-join-knowable-promise-maybe-knowable-promise
-    [ on-join-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-join-yknow-maybe-yknow
+    [on-join-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-meet-knowable-promise-maybe-knowable-promise
-    [ on-meet-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-meet-yknow-maybe-yknow
+    [on-meet-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-==-knowable-promise-maybe-knowable-promise
-    [ on-==-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-==-yknow-maybe-yknow
+    [on-==-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
-    #:on-path-related-knowable-promise-maybe-knowable-promise
-    [ on-path-related-knowable-promise-maybe-knowable-promise
-      on-smoosh-result-knowable-promise-maybe-knowable-promise]
+    #:on-path-related-yknow-maybe-yknow
+    [ on-path-related-yknow-maybe-yknow
+      on-smoosh-result-yknow-maybe-yknow]
     
     )
   (->*
     ((listof (sequence/c smoosh-and-comparison-of-two-report?)))
     (
-      #:on-check-result-knowable-promise
-      (-> (listof (promise/c (knowable/c boolean?)))
-        (promise/c (knowable/c boolean?)))
+      #:on-check-result-yknow
+      (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
       
-      #:on-<=?-knowable-promise
-      (-> (listof (promise/c (knowable/c boolean?)))
-        (promise/c (knowable/c boolean?)))
+      #:on-<=?-yknow
+      (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
       
-      #:on->=?-knowable-promise
-      (-> (listof (promise/c (knowable/c boolean?)))
-        (promise/c (knowable/c boolean?)))
+      #:on->=?-yknow
+      (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
       
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-join-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-meet-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-==-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      (->
-        (listof
-          (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
-        (promise/c (knowable/c (maybe/c (promise/c knowable?)))))
+      #:on-path-related-yknow-maybe-yknow
+      (-> (listof (yknow/c (maybe/c yknow?)))
+        (yknow/c (maybe/c yknow?)))
       
       )
     (sequence/c smoosh-and-comparison-of-two-report?))
   (sequence-zip*-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-zip*-map report-list
-      #:on-<=?-knowable-promise on-<=?-knowable-promise
-      #:on->=?-knowable-promise on->=?-knowable-promise
+      #:on-<=?-yknow on-<=?-yknow
+      #:on->=?-yknow on->=?-yknow
+      #:on-join-yknow-maybe-yknow on-join-yknow-maybe-yknow
+      #:on-meet-yknow-maybe-yknow on-meet-yknow-maybe-yknow
+      #:on-==-yknow-maybe-yknow on-==-yknow-maybe-yknow
       
-      #:on-join-knowable-promise-maybe-knowable-promise
-      on-join-knowable-promise-maybe-knowable-promise
-      
-      #:on-meet-knowable-promise-maybe-knowable-promise
-      on-meet-knowable-promise-maybe-knowable-promise
-      
-      #:on-==-knowable-promise-maybe-knowable-promise
-      on-==-knowable-promise-maybe-knowable-promise
-      
-      #:on-path-related-knowable-promise-maybe-knowable-promise
-      on-path-related-knowable-promise-maybe-knowable-promise)))
+      #:on-path-related-yknow-maybe-yknow
+      on-path-related-yknow-maybe-yknow)))
 
 
 (define-imitation-simple-struct
@@ -3412,63 +3360,50 @@
 (define/own-contract (false-smoosh-and-comparison-of-two-reports)
   (-> (sequence/c smoosh-and-comparison-of-two-report?))
   (smoosh-and-comparison-of-two-reports-zip*-map (list)
-    #:on-check-result-knowable-promise
+    #:on-check-result-yknow
     (dissectfn (list)
-      (delay/strict /known #f))
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
+      (make-yknow-from-value #f))
+    #:on-smoosh-result-yknow-maybe-yknow
     (dissectfn (list)
-      (delay/strict /known /nothing))))
+      (make-yknow-from-value /nothing))))
 
 (define-imitation-simple-struct
   (constant-smoosh-report?
-    constant-smoosh-report-result-knowable-promise-maybe-knowable-promise)
+    constant-smoosh-report-result-yknow-maybe-yknow)
   constant-smoosh-report-unguarded
   'constant-smoosh-report (current-inspector) (auto-write)
   (#:prop prop:smoosh-report /make-smoosh-report-impl
     
-    #:join-knowable-promise-maybe-knowable-promise
+    #:join-yknow-maybe-yknow
     (dissectfn
-      (constant-smoosh-report-unguarded
-        result-knowable-promise-maybe-knowable-promise)
-      result-knowable-promise-maybe-knowable-promise)
+      (constant-smoosh-report-unguarded result-yknow-maybe-yknow)
+      result-yknow-maybe-yknow)
     
-    #:meet-knowable-promise-maybe-knowable-promise
+    #:meet-yknow-maybe-yknow
     (dissectfn
-      (constant-smoosh-report-unguarded
-        result-knowable-promise-maybe-knowable-promise)
-      result-knowable-promise-maybe-knowable-promise)
+      (constant-smoosh-report-unguarded result-yknow-maybe-yknow)
+      result-yknow-maybe-yknow)
     
-    #:==-knowable-promise-maybe-knowable-promise
+    #:==-yknow-maybe-yknow
     (dissectfn
-      (constant-smoosh-report-unguarded
-        result-knowable-promise-maybe-knowable-promise)
-      result-knowable-promise-maybe-knowable-promise)
+      (constant-smoosh-report-unguarded result-yknow-maybe-yknow)
+      result-yknow-maybe-yknow)
     
-    #:path-related-knowable-promise-maybe-knowable-promise
+    #:path-related-yknow-maybe-yknow
     (dissectfn
-      (constant-smoosh-report-unguarded
-        result-knowable-promise-maybe-knowable-promise)
-      result-knowable-promise-maybe-knowable-promise)
+      (constant-smoosh-report-unguarded result-yknow-maybe-yknow)
+      result-yknow-maybe-yknow)
     
     ))
 
-(define/own-contract
-  (constant-smoosh-report
-    result-knowable-promise-maybe-knowable-promise)
-  (->
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c)))))
-    smoosh-report?)
-  (constant-smoosh-report-unguarded
-    result-knowable-promise-maybe-knowable-promise))
+(define/own-contract (constant-smoosh-report result-yknow-maybe-yknow)
+  (-> (yknow/c (maybe/c yknow?)) smoosh-report?)
+  (constant-smoosh-report-unguarded result-yknow-maybe-yknow))
 
 (define/own-contract
-  (constant-smoosh-reports
-    result-knowable-promise-maybe-knowable-promise)
-  (->
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c)))))
-    (sequence/c smoosh-report?))
-  (in-cycle /list /constant-smoosh-report
-    result-knowable-promise-maybe-knowable-promise))
+  (constant-smoosh-reports result-yknow-maybe-yknow)
+  (-> (yknow/c (maybe/c yknow?)) (sequence/c smoosh-report?))
+  (in-cycle /list /constant-smoosh-report result-yknow-maybe-yknow))
 
 (define/own-contract (promise-map promise on-value)
   (-> promise? (-> any/c any/c) promise?)
@@ -3476,56 +3411,46 @@
 
 (define-imitation-simple-struct
   (constant-smoosh-and-comparison-of-two-report?
-    constant-smoosh-and-comparison-of-two-report-result-knowable-promise-maybe-knowable-promise)
+    constant-smoosh-and-comparison-of-two-report-result-yknow-maybe-yknow)
   constant-smoosh-and-comparison-of-two-report-unguarded
   'constant-smoosh-and-comparison-of-two-report (current-inspector) (auto-write)
   (#:prop prop:smoosh-and-comparison-of-two-report
     (make-smoosh-and-comparison-of-two-report-impl
       
-      #:<=?-knowable-promise
+      #:<=?-yknow
       (dissectfn
         (constant-smoosh-and-comparison-of-two-report-unguarded
-          result-knowable-promise-maybe-knowable-promise)
-        (promise-map result-knowable-promise-maybe-knowable-promise
-          (fn kpmk
-            (knowable-map kpmk /fn kpm
-              (just? kpm)))))
+          result-yknow-maybe-yknow)
+        (yknow-map result-yknow-maybe-yknow /fn ym /just? ym))
       
-      #:>=?-knowable-promise
+      #:>=?-yknow
       (dissectfn
         (constant-smoosh-and-comparison-of-two-report-unguarded
-          result-knowable-promise-maybe-knowable-promise)
-        (promise-map result-knowable-promise-maybe-knowable-promise
-          (fn kpmk
-            (knowable-map kpmk /fn kpm
-              (just? kpm)))))
+          result-yknow-maybe-yknow)
+        (yknow-map result-yknow-maybe-yknow /fn ym /just? ym))
       
       #:get-smoosh-report
       (dissectfn
         (constant-smoosh-and-comparison-of-two-report-unguarded
-          result-knowable-promise-maybe-knowable-promise)
-        (constant-smoosh-report
-          result-knowable-promise-maybe-knowable-promise))
+          result-yknow-maybe-yknow)
+        (constant-smoosh-report result-yknow-maybe-yknow))
       
       )))
 
 (define/own-contract
   (constant-smoosh-and-comparison-of-two-report
-    result-knowable-promise-maybe-knowable-promise)
-  (->
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c)))))
-    smoosh-and-comparison-of-two-report?)
+    result-yknow-maybe-yknow)
+  (-> (yknow/c (maybe/c yknow?)) smoosh-and-comparison-of-two-report?)
   (constant-smoosh-and-comparison-of-two-report-unguarded
-    result-knowable-promise-maybe-knowable-promise))
+    result-yknow-maybe-yknow))
 
 (define/own-contract
   (constant-smoosh-and-comparison-of-two-reports
-    result-knowable-promise-maybe-knowable-promise)
-  (->
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c any/c)))))
+    result-yknow-maybe-yknow)
+  (-> (yknow/c (maybe/c yknow?))
     (sequence/c smoosh-and-comparison-of-two-report?))
   (in-cycle /list /constant-smoosh-and-comparison-of-two-report
-    result-knowable-promise-maybe-knowable-promise))
+    result-yknow-maybe-yknow))
 
 (define-imitation-simple-struct
   (constant-smoosh-equal-hash-code-support-report?
@@ -3598,41 +3523,23 @@
   (-> indistinct-wrapper? any/c))
 
 (define/own-contract
-  (smoosh-and-comparison-of-two-report-join reports-list)
+  (smoosh-and-comparison-of-two-report-joininfo reports-list)
   (-> (listof smoosh-and-comparison-of-two-report?)
     smoosh-and-comparison-of-two-report?)
   (smoosh-and-comparison-of-two-report-zip*-map reports-list
-    #:on-check-result-knowable-promise
-    (fn kp-list
-      (knowable-or-promise-zip* kp-list))
-    #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-    (fn kpmkp-list
-      (delay
-        (w-loop next kpmkp-list kpmkp-list
-          (expect kpmkp-list (cons kpmkp kpmkp-list) (unknown)
-          /expect (force kpmkp) (known kpm) (next kpmkp-list)
-          /known
-            (maybe-map kpm /fn kp
-              (promise-map kp /fn k
-                (if (known? k) k
-                /w-loop next kpmkp-list kpmkp-list
-                  (expect kpmkp-list (cons kpmkp kpmkp-list) (unknown)
-                  /expect (force kpmkp) (known kpm) (next kpmkp-list)
-                  /expect kpm (just kp)
-                    ; TODO: Add details to this error message.
-                    (raise-argument-error
-                      'smoosh-and-comparison-of-two-report-join
-                      "contradictory information")
-                  /w- k (force kp)
-                  /if (known? k) k
-                  /next kpmkp-list))))))))))
+    #:on-check-result-yknow
+    (fn y-list
+      (yknow-joininfo* y-list))
+    #:on-smoosh-result-yknow-maybe-yknow
+    (fn ymy-list
+      (yknow-maybe-yknow-joininfo* ymy-list))))
 
 (define/own-contract
-  (smoosh-and-comparison-of-two-reports-join reports-list)
+  (smoosh-and-comparison-of-two-reports-joininfo reports-list)
   (-> (listof (sequence/c smoosh-and-comparison-of-two-report?))
     (sequence/c smoosh-and-comparison-of-two-report?))
   (sequence-zip*-map reports-list /fn report-list
-    (smoosh-and-comparison-of-two-report-join report-list)))
+    (smoosh-and-comparison-of-two-report-joininfo report-list)))
 
 (define/own-contract
   (smoosh-reports-with-hesitation-at-discrepancies reports
@@ -3643,26 +3550,21 @@
     (#:known-distinct? boolean? #:known-discrete? boolean?)
     (sequence/c smoosh-report?))
   (if (and known-distinct? known-discrete?) reports
-  /w- kpmkp->known-true
-    (fn kpmkp
-      (promise-map kpmkp /fn kpmk
-        (knowable-bind kpmk /fn kpm
-        /knowable-if (just? kpm) /fn kpm)))
+  /w- my->known-true
+    (fn my
+      (yknow-augment `(smoosh-reports-with-hesitation-at-discrepancies/inner/my->known-true ,my)
+      /yknow-map/knowable my /fn m /knowable-if (just? m) /fn m))
   /if (not known-distinct?)
     (smoosh-reports-map reports
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      kpmkp->known-true)
+      #:on-smoosh-result-yknow-maybe-yknow my->known-true)
   /dissect reports (sequence* report-0 report-1+)
   /sequence*
     (smoosh-report-map report-0
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      kpmkp->known-true
+      #:on-smoosh-result-yknow-maybe-yknow my->known-true
       
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        kpmkp)
-      
-      )
+      #:on-==-yknow-maybe-yknow
+      (fn ymy
+        ymy))
     report-1+))
 
 (define/own-contract
@@ -3680,32 +3582,27 @@
       (promise-map kp /fn k
         (knowable-bind k /fn result
         /knowable-if result /fn result)))
-  /w- kpmkp->known-true
-    (fn kpmkp
-      (promise-map kpmkp /fn kpmk
-        (knowable-bind kpmk /fn kpm
-        /knowable-if (just? kpm) /fn kpm)))
+  /w- y->known-true
+    (fn y
+      (yknow-augment `(smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies/inner/y->known-true ,y)
+      /yknow-map/knowable y /fn r /knowable-if r /fn r))
+  /w- my->known-true
+    (fn my
+      (yknow-augment `(smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies/inner/my->known-true ,my)
+      /yknow-map/knowable my /fn m /knowable-if (just? m) /fn m))
   /if (not known-distinct?)
     (smoosh-and-comparison-of-two-reports-map reports
-      #:on-check-result-knowable-promise kp->known-true
-      
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      kpmkp->known-true
-      
-      )
+      #:on-check-result-yknow y->known-true
+      #:on-smoosh-result-yknow-maybe-yknow my->known-true)
   /dissect reports (sequence* report-0 report-1+)
   /sequence*
     (smoosh-and-comparison-of-two-report-map report-0
-      #:on-check-result-knowable-promise kp->known-true
+      #:on-check-result-yknow y->known-true
+      #:on-smoosh-result-yknow-maybe-yknow my->known-true
       
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      kpmkp->known-true
-      
-      #:on-==-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        kpmkp)
-      
-      )
+      #:on-==-yknow-maybe-yknow
+      (fn ymy
+        ymy))
     report-1+))
 
 (define/own-contract
@@ -4787,10 +4684,10 @@
       /smoosh-reports-zip*-map
         (list-map a-list /fn a-elem
           (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
-        #:on-result-knowable-promise-maybe-knowable-promise
-        (fn kpmkp-list
-          (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
-            (knowable-promise-zip*-map kp-list /fn result-list
+        #:on-result-yknow-maybe-yknow
+        (fn ymy-list
+          (maybe-min-yknow-zip*-map ymy-list /fn y-list
+            (yknow-zip*-map y-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /example-and-list-> a result-list))))))
     
@@ -4827,13 +4724,13 @@
         (list-zip-map a-list b-list /fn a-elem b-elem
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             any-dt a-elem b-elem))
-        #:on-check-result-knowable-promise
-        (fn kp-list
-          (boolean-and-knowable-promise-zip* kp-list))
-        #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-        (fn kpmkp-list
-          (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
-            (knowable-promise-zip*-map kp-list /fn result-list
+        #:on-check-result-yknow
+        (fn y-list
+          (boolean-and-yknow-zip* y-list))
+        #:on-smoosh-result-yknow-maybe-yknow
+        (fn ymy-list
+          (maybe-min-yknow-zip*-map ymy-list /fn y-list
+            (yknow-zip*-map y-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /if (list-elements-eq? result-list b-list) b
               /example-and-list-> a result-list))))))
@@ -5100,23 +4997,24 @@
         (smoosh-reports-zip*-map
           (list-map a-list /fn a-elem
             (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
-          #:on-result-knowable-promise-maybe-knowable-promise
-          (fn kpmkp-list
-            (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
-              (knowable-promise-zip*-map kp-list /fn result-list
+          #:on-result-yknow-maybe-yknow
+          (fn ymy-list
+            (maybe-min-yknow-zip*-map ymy-list /fn y-list
+              (yknow-zip*-map y-list /fn result-list
                 result-list))))
         (sequence* report-0 report-1 report-2+)
       /w- a-shallowly-unchaperoned?-promise
         (delay /inhabitant-shallowly-unchaperoned? a)
-      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
+      /w- on-smoosh-result-yknow-maybe-yknow
         (fn result-needs-to-be-chaperone-of?
-          (fn result-list-kpmkp
-            (promise-map result-list-kpmkp /fn list-kpmk
-              (knowable-bind list-kpmk /fn list-kpm
-              /expect list-kpm (just list-kp) (known /nothing)
-              /knowable-bind (force list-kp) /fn result-list
+          (fn result-list-ymy
+            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism/inner/get-smoosh-of-one-reports/on-smoosh-result-yknow-maybe-yknow ,result-list-ymy)
+            /yknow-map/knowable result-list-ymy /fn list-ym
+              (expect list-ym (just list-y) (known /nothing)
+              /knowable-bind (yknow-value-knowable list-y)
+              /fn result-list
               /if (list-elements-eq? result-list a-list)
-                (known /just /delay/strict /known a)
+                (known /just /make-yknow-from-value a)
               /w- noncanonical-result
                 (example-and-list-> a result-list)
               /if
@@ -5126,30 +5024,25 @@
                 (or
                   (not result-needs-to-be-chaperone-of?)
                   (force a-shallowly-unchaperoned?-promise))
-                (known /just /delay/strict /known noncanonical-result)
+                (known
+                  (just /make-yknow-from-value noncanonical-result))
               /unknown))))
       /sequence*
         (smoosh-report-map report-0
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            #f))
+          #:on-smoosh-result-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow #f))
         (smoosh-report-map report-1
-          #:on-join-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            #t)
-          #:on-meet-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            #t)
-          #:on-==-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            #t)
-          #:on-path-related-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            #f))
+          #:on-join-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow #t)
+          #:on-meet-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow #t)
+          #:on-==-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow #t)
+          #:on-path-related-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow #f))
         (smoosh-reports-map report-2+
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            #t))))
+          #:on-smoosh-result-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow #t))))
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
@@ -5186,13 +5079,13 @@
           (list-zip-map a-list b-list /fn a-elem b-elem
             (dynamic-type-get-smoosh-and-comparison-of-two-reports
               any-dt a-elem b-elem))
-          #:on-check-result-knowable-promise
-          (fn kp-list
-            (boolean-and-knowable-promise-zip* kp-list))
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn kpmkp-list
-            (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
-              (knowable-promise-zip*-map kp-list /fn result-list
+          #:on-check-result-yknow
+          (fn y-list
+            (boolean-and-yknow-zip* y-list))
+          #:on-smoosh-result-yknow-maybe-yknow
+          (fn ymy-list
+            (maybe-min-yknow-zip*-map ymy-list /fn y-list
+              (yknow-zip*-map y-list /fn result-list
                 result-list))))
         (sequence* report-0 report-1 report-2+)
       /w- a-shallowly-unchaperoned?-promise
@@ -5227,42 +5120,44 @@
               [(eq? t b) (force b-shallowly-unchaperoned?-promise)]
               [else (inhabitant-shallowly-unchaperoned? t)])
             (chaperone-of? s t)))
-      /w- on-check-result-knowable-promise
+      /w- on-check-result-yknow
         (fn should-a-be-small? should-b-be-small?
-          (fn kp
-            (promise-map kp /fn k
-              (knowable-bind k /fn result
-                (boolean-and-knowable-thunk-zip* /list
-                  (fn /known result)
-                  (fn /boolean-or-knowable-thunk-zip* /list
-                    (fn /known /not should-a-be-small?)
-                    (fn /falsable->uninformative-knowable
-                      (inhabitant-shallowly-chaperone-of? b a)))
-                  (fn /boolean-or-knowable-thunk-zip* /list
-                    (fn /known /not should-b-be-small?)
-                    (fn /falsable->uninformative-knowable
-                      (inhabitant-shallowly-chaperone-of? a b))))))))
-      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
+          (fn y
+            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism/inner/on-check-result-yknow ,y)
+            /yknow-map/knowable y /fn result
+              (boolean-and-knowable-thunk-zip* /list
+                (fn /known result)
+                (fn /boolean-or-knowable-thunk-zip* /list
+                  (fn /known /not should-a-be-small?)
+                  (fn /falsable->uninformative-knowable
+                    (inhabitant-shallowly-chaperone-of? b a)))
+                (fn /boolean-or-knowable-thunk-zip* /list
+                  (fn /known /not should-b-be-small?)
+                  (fn /falsable->uninformative-knowable
+                    (inhabitant-shallowly-chaperone-of? a b)))))))
+      /w- on-smoosh-result-yknow-maybe-yknow
         (fn acceptable-result?
-          (fn result-list-kpmkp
-            (promise-map result-list-kpmkp /fn list-kpmk
-              (knowable-bind list-kpmk /fn list-kpm
-              /expect list-kpm (just list-kp) (known /nothing)
-              /knowable-bind (force list-kp) /fn result-list
+          (fn result-list-ymy
+            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism/inner/on-smoosh-result-yknow-maybe-yknow ,result-list-ymy)
+            /yknow-map/knowable result-list-ymy /fn list-ym
+              (expect list-ym (just list-y) (known /nothing)
+              /knowable-bind (yknow-value-knowable list-y)
+              /fn result-list
               /if
                 (and
                   (list-elements-eq? result-list a-list)
                   (acceptable-result? a))
-                (known /just /delay/strict /known a)
+                (known /just /make-yknow-from-value a)
               /if
                 (and
                   (list-elements-eq? result-list b-list)
                   (acceptable-result? b))
-                (known /just /delay/strict /known b)
+                (known /just /make-yknow-from-value b)
               /w- noncanonical-result
                 (example-and-list-> a result-list)
               /if (acceptable-result? noncanonical-result)
-                (known /just /delay/strict /known noncanonical-result)
+                (known
+                  (just /make-yknow-from-value noncanonical-result))
               /unknown))))
       /w- chaperone=?-promise
         (delay
@@ -5279,40 +5174,35 @@
           #t)
       /sequence*
         (smoosh-and-comparison-of-two-report-map report-0
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #f #f)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-check-result-yknow (on-check-result-yknow #f #f)
+          #:on-smoosh-result-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             path-related-acceptable-result?))
         (smoosh-and-comparison-of-two-report-map report-1
-          #:on-<=?-knowable-promise
-          (on-check-result-knowable-promise #t #f)
-          #:on->=?-knowable-promise
-          (on-check-result-knowable-promise #f #t)
-          #:on-join-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-<=?-yknow (on-check-result-yknow #t #f)
+          #:on->=?-yknow (on-check-result-yknow #f #t)
+          #:on-join-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             (fn v
               (and
                 (inhabitant-shallowly-chaperone-of? v a)
                 (inhabitant-shallowly-chaperone-of? v b))))
-          #:on-meet-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-meet-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             (fn v
               (and
                 (or (eq? v a) (eq? v b))
                 (inhabitant-shallowly-chaperone-of? a v)
                 (inhabitant-shallowly-chaperone-of? b v))))
-          #:on-==-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            ==-acceptable-result?)
-          #:on-path-related-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-==-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow ==-acceptable-result?)
+          #:on-path-related-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             path-related-acceptable-result?))
         (smoosh-and-comparison-of-two-reports-map report-2+
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #t #t)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-check-result-yknow (on-check-result-yknow #t #t)
+          #:on-smoosh-result-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             ==-acceptable-result?))))
     
     ))
@@ -5702,8 +5592,10 @@
       /smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
         #:known-distinct? known-distinct?
         #:known-discrete? known-discrete?
-        (constant-smoosh-and-comparison-of-two-reports /delay
-          (known /maybe-if (==? a b) /fn /delay/strict /known a))))
+        (constant-smoosh-and-comparison-of-two-reports
+          (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom/inner)
+          /make-yknow-from-value-knowable-promise /delay /known
+            (maybe-if (==? a b) /fn /make-yknow-from-value a)))))
     
     ))
 
@@ -5858,10 +5750,11 @@
           /if (and (eq? s a) (eq? t b))
             (force a-chaperone-of-b?-promise)
           /chaperone-of? s t))
-      /w- on-check-result-knowable-promise
+      /w- on-check-result-yknow
         (fn should-a-be-small? should-b-be-small?
           (dissectfn (list)
-            (delay
+            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom/inner/on-check-result-yknow)
+            /make-yknow-from-value-knowable-promise /delay
               (boolean-and-knowable-thunk-zip* /list
                 (fn /boolean-or-knowable-thunk-zip* /list
                   (fn /known /not should-a-be-small?)
@@ -5871,14 +5764,15 @@
                   (fn /known /not should-b-be-small?)
                   (fn /falsable->uninformative-knowable
                     (inhabitant-chaperone-of? a b)))))))
-      /w- on-smoosh-result-knowable-promise-maybe-knowable-promise
+      /w- on-smoosh-result-yknow-maybe-yknow
         (fn acceptable-result?
           (dissectfn (list)
-            (delay/strict
+            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom/inner/on-smoosh-result-yknow-maybe-yknow)
+            /make-yknow-from-value-knowable-promise /delay/strict
               (if (acceptable-result? a)
-                (known /just /delay/strict /known a)
+                (known /just /make-yknow-from-value a)
               /if (acceptable-result? b)
-                (known /just /delay/strict /known b)
+                (known /just /make-yknow-from-value b)
               /unknown))))
       /w- chaperone=?-promise
         (delay
@@ -5893,39 +5787,34 @@
           #t)
       /sequence*
         (smoosh-and-comparison-of-two-report-zip*-map (list)
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #f #f)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-check-result-yknow (on-check-result-yknow #f #f)
+          #:on-smoosh-result-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             path-related-acceptable-result?))
         (smoosh-and-comparison-of-two-report-zip*-map (list)
-          #:on-<=?-knowable-promise
-          (on-check-result-knowable-promise #t #f)
-          #:on->=?-knowable-promise
-          (on-check-result-knowable-promise #f #t)
-          #:on-join-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-<=?-yknow (on-check-result-yknow #t #f)
+          #:on->=?-yknow (on-check-result-yknow #f #t)
+          #:on-join-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             (fn v
               (and
                 (inhabitant-chaperone-of? v a)
                 (inhabitant-chaperone-of? v b))))
-          #:on-meet-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-meet-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             (fn v
               (and
                 (inhabitant-chaperone-of? a v)
                 (inhabitant-chaperone-of? b v))))
-          #:on-==-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
-            ==-acceptable-result?)
-          #:on-path-related-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-==-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow ==-acceptable-result?)
+          #:on-path-related-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             path-related-acceptable-result?))
         (smoosh-and-comparison-of-two-reports-zip*-map (list)
-          #:on-check-result-knowable-promise
-          (on-check-result-knowable-promise #t #t)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (on-smoosh-result-knowable-promise-maybe-knowable-promise
+          #:on-check-result-yknow (on-check-result-yknow #t #t)
+          #:on-smoosh-result-yknow-maybe-yknow
+          (on-smoosh-result-yknow-maybe-yknow
             ==-acceptable-result?))))
     
     ))
@@ -6430,52 +6319,60 @@
         /expect (non-nan-number? b) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
         /w- report-1+
-          (constant-smoosh-and-comparison-of-two-reports /delay /known
-            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
+          (constant-smoosh-and-comparison-of-two-reports
+            (yknow-augment `(non-nan-number-dynamic-type/inner/report-1+)
+            /make-yknow-from-value-knowable-promise /delay /known
+              (maybe-if (equal-always? a b) /fn
+                (make-yknow-from-value a))))
         /if (= a b)
           (sequence*
             (constant-smoosh-and-comparison-of-two-report
-              (delay/strict /known /just /delay/strict /known a))
+              (make-yknow-from-value /just /make-yknow-from-value a))
             report-1+)
         /w- real?-promise
           (delay /and (zero? /imag-part a) (zero? /imag-part b))
-        /w- <=?-knowable-promise
-          (promise-map real?-promise /fn real?
-            (knowable-if real? /fn /<= (real-part a) (real-part b)))
-        /w- >=?-knowable-promise
-          (promise-map real?-promise /fn real?
-            (knowable-if real? /fn />= (real-part a) (real-part b)))
-        /w- join-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn result
-              (just /delay/strict /known /if result b a)))
-        /w- meet-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn result
-              (just /delay/strict /known /if result a b)))
-        /w- path-related-knowable-promise-maybe-knowable-promise
-          (promise-map real?-promise /fn real?
-            (knowable-if real? /fn /just /delay/strict /known a))
+        /w- <=?-yknow
+          (make-yknow-from-value-promise-maybe-knowable-promise
+            (promise-map real?-promise /fn real?
+              (knowable-if real? /fn
+                (just /delay /<= (real-part a) (real-part b)))))
+        /w- >=?-yknow
+          (make-yknow-from-value-promise-maybe-knowable-promise
+            (promise-map real?-promise /fn real?
+              (knowable-if real? /fn
+                (just /delay />= (real-part a) (real-part b)))))
+        /w- join-yknow-maybe-yknow
+          (yknow-map <=?-yknow /fn result
+            (just /make-yknow-from-value /if result b a))
+        /w- meet-yknow-maybe-yknow
+          (yknow-map <=?-yknow /fn result
+            (just /make-yknow-from-value /if result a b))
+        /w- path-related-yknow-maybe-yknow
+          (yknow-augment `(non-nan-number-dynamic-type/inner/path-related-yknow-maybe-yknow)
+          /make-yknow-from-value-knowable-promise
+            (promise-map real?-promise /fn real?
+              (knowable-if real? /fn
+                (just /make-yknow-from-value a))))
         /sequence*
           (smoosh-and-comparison-of-two-report-zip*-map (list)
-            #:on-<=?-knowable-promise
+            #:on-<=?-yknow
             (dissectfn (list)
-              <=?-knowable-promise)
-            #:on->=?-knowable-promise
+              <=?-yknow)
+            #:on->=?-yknow
             (dissectfn (list)
-              >=?-knowable-promise)
-            #:on-join-knowable-promise-maybe-knowable-promise
+              >=?-yknow)
+            #:on-join-yknow-maybe-yknow
             (dissectfn (list)
-              join-knowable-promise-maybe-knowable-promise)
-            #:on-meet-knowable-promise-maybe-knowable-promise
+              join-yknow-maybe-yknow)
+            #:on-meet-yknow-maybe-yknow
             (dissectfn (list)
-              meet-knowable-promise-maybe-knowable-promise)
-            #:on-==-knowable-promise-maybe-knowable-promise
+              meet-yknow-maybe-yknow)
+            #:on-==-yknow-maybe-yknow
             (dissectfn (list)
-              (delay/strict /known /nothing))
-            #:on-path-related-knowable-promise-maybe-knowable-promise
+              (make-yknow-from-value /nothing))
+            #:on-path-related-yknow-maybe-yknow
             (dissectfn (list)
-              path-related-knowable-promise-maybe-knowable-promise))
+              path-related-yknow-maybe-yknow))
           report-1+))
       
       ))
@@ -6601,43 +6498,48 @@
         /expect (non-nan-extflonum? b) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
         /w- report-1+
-          (constant-smoosh-and-comparison-of-two-reports /delay /known
-            (maybe-if (equal-always? a b) /fn /delay/strict /known a))
+          (constant-smoosh-and-comparison-of-two-reports
+            (yknow-augment `(non-nan-extflonum-dynamic-type/inner/report-1+)
+            /make-yknow-from-value-knowable-promise /delay /known
+              (maybe-if (equal-always? a b) /fn
+                (make-yknow-from-value a))))
         /if (extfl= a b)
           (sequence*
             (constant-smoosh-and-comparison-of-two-report
-              (delay/strict /known /just /delay/strict /known a))
+              (make-yknow-from-value /just /make-yknow-from-value a))
             report-1+)
-        /w- <=?-knowable-promise (delay /known /extfl<= a b)
-        /w- >=?-knowable-promise (delay /known /extfl>= a b)
-        /w- join-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn <=?
-              (just /delay/strict /known /if <=? b a)))
-        /w- meet-knowable-promise-maybe-knowable-promise
-          (promise-map <=?-knowable-promise /fn knowable
-            (knowable-map knowable /fn <=?
-              (just /delay/strict /known /if <=? a b)))
+        /w- <=?-yknow
+          (make-yknow-from-value-promise-maybe-knowable-promise
+            (delay/strict /known /just /delay /extfl<= a b))
+        /w- >=?-yknow
+          (make-yknow-from-value-promise-maybe-knowable-promise
+            (delay/strict /known /just /delay /extfl>= a b))
+        /w- join-yknow-maybe-yknow
+          (yknow-map <=?-yknow /fn result
+            (just /make-yknow-from-value /if result b a))
+        /w- meet-yknow-maybe-yknow
+          (yknow-map <=?-yknow /fn result
+            (just /make-yknow-from-value /if result a b))
         /sequence*
           (smoosh-and-comparison-of-two-report-zip*-map (list)
-            #:on-<=?-knowable-promise
+            #:on-<=?-yknow
             (dissectfn (list)
-              <=?-knowable-promise)
-            #:on->=?-knowable-promise
+              <=?-yknow)
+            #:on->=?-yknow
             (dissectfn (list)
-              >=?-knowable-promise)
-            #:on-join-knowable-promise-maybe-knowable-promise
+              >=?-yknow)
+            #:on-join-yknow-maybe-yknow
             (dissectfn (list)
-              join-knowable-promise-maybe-knowable-promise)
-            #:on-meet-knowable-promise-maybe-knowable-promise
+              join-yknow-maybe-yknow)
+            #:on-meet-yknow-maybe-yknow
             (dissectfn (list)
-              meet-knowable-promise-maybe-knowable-promise)
-            #:on-==-knowable-promise-maybe-knowable-promise
+              meet-yknow-maybe-yknow)
+            #:on-==-yknow-maybe-yknow
             (dissectfn (list)
-              (delay/strict /known /nothing))
-            #:on-path-related-knowable-promise-maybe-knowable-promise
+              (make-yknow-from-value /nothing))
+            #:on-path-related-yknow-maybe-yknow
             (dissectfn (list)
-              (delay/strict /known /just /delay/strict /known a)))
+              (make-yknow-from-value /just /make-yknow-from-value a)))
           report-1+))
       
       ))
@@ -6668,21 +6570,6 @@
       ))
   
   )
-
-(define/own-contract
-  (on-cons-smoosh-result-knowable-promise-maybe-knowable-promise
-    kpmkp-list)
-  (->
-    (list/c
-      (promise/c
-        (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-      (promise/c
-        (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (maybe-min-knowable-promise-zip*-map kpmkp-list /fn kp-list
-    (knowable-promise-zip*-map kp-list /dissectfn
-      (list result-car result-cdr)
-      (cons result-car result-cdr))))
 
 ; NOTE: This would be used like so:
 ;
@@ -6722,14 +6609,12 @@
         (dissect self (cons-dynamic-type any-dt)
         /smoosh-reports-map
           (dynamic-type-get-smoosh-of-zero-reports any-dt)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn kpmkp
-            (promise-map kpmkp /fn kpmk
-              (knowable-map kpmk /fn kpm
-                (maybe-map kpm /fn kp
-                  (promise-map kp /fn k
-                    (knowable-map k /fn result
-                      (cons result result)))))))))
+          #:on-smoosh-result-yknow-maybe-yknow
+          (fn ymy
+            (yknow-map ymy /fn ym
+              (maybe-map ym /fn y
+                (yknow-map y /fn result
+                  (cons result result)))))))
       
       )
     (trivial))
@@ -6850,14 +6735,12 @@
         (dissect self (immutable-box-dynamic-type any-dt)
         /smoosh-reports-map
           (dynamic-type-get-smoosh-of-zero-reports any-dt)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn kpmkp
-            (promise-map kpmkp /fn kpmk
-              (knowable-map kpmk /fn kpm
-                (maybe-map kpm /fn kp
-                  (promise-map kp /fn k
-                    (knowable-map k /fn result
-                      (box-immutable result)))))))))
+          #:on-smoosh-result-yknow-maybe-yknow
+          (fn ymy
+            (yknow-map ymy /fn ym
+              (maybe-map ym /fn y
+                (yknow-map y /fn result
+                  (box-immutable result)))))))
       
       )
     (trivial))
@@ -7164,14 +7047,12 @@
       (dissectfn (just-dynamic-type any-dt)
         (smoosh-reports-map
           (dynamic-type-get-smoosh-of-zero-reports any-dt)
-          #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-          (fn kpmkp
-            (promise-map kpmkp /fn kpmk
-              (knowable-map kpmk /fn kpm
-                (maybe-map kpm /fn kp
-                  (promise-map kp /fn k
-                    (knowable-map k /fn result-value
-                      (just result-value)))))))))
+          #:on-smoosh-result-yknow-maybe-yknow
+          (fn ymy
+            (yknow-map ymy /fn ym
+              (maybe-map ym /fn y
+                (yknow-map y /fn result-value
+                  (just result-value)))))))
       
       )
     (trivial))
@@ -7195,24 +7076,19 @@
     (trivial)))
 
 (define/own-contract
-  (on-known-smoosh-result-knowable-promise-maybe-knowable-promise
-    operands kpmkp)
-  (->
-    (listof known?)
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (promise-map kpmkp /fn kpmk
-    (knowable-map kpmk /fn kpm
-      (maybe-map kpm /fn kp
-        (promise-map kp /fn k
-          (knowable-map k /fn result-value
-            (w-loop next operands operands
-              (expect operands (cons operand operands)
-                (known result-value)
-              /dissect operand (known operand-value)
-              /if (eq? operand-value result-value)
-                operand
-              /next operands))))))))
+  (on-known-smoosh-result-yknow-maybe-yknow operands ymy)
+  (-> (listof known?) (yknow/c (maybe/c (yknow/c known?)))
+    (yknow/c (maybe/c (yknow/c known?))))
+  (yknow-map ymy /fn ym
+    (maybe-map ym /fn y
+      (yknow-map y /fn result-value
+        (w-loop next operands operands
+          (expect operands (cons operand operands)
+            (known result-value)
+          /dissect operand (known operand-value)
+          /if (eq? operand-value result-value)
+            operand
+          /next operands))))))
 
 ; This is an appropriate dynamic type of `known?` and
 ; `example-unknown?` values, with handling of their interactions with
@@ -7306,11 +7182,11 @@
         /mat a (known a-value)
           (smoosh-reports-map
             (dynamic-type-get-smoosh-of-one-reports any-dt a-value)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn kpmkp
-              (on-known-smoosh-result-knowable-promise-maybe-knowable-promise
+            #:on-smoosh-result-yknow-maybe-yknow
+            (fn ymy
+              (on-known-smoosh-result-yknow-maybe-yknow
                 (list a)
-                kpmkp)))
+                ymy)))
         /sequence* (uninformative-smoosh-report)
           (constant-smoosh-reports
             (delay/strict /known /just /delay/strict /known a))))
@@ -7325,52 +7201,53 @@
         /if (and (unknown? a) (unknown? b))
           (if (example-unknown? b)
             (constant-smoosh-and-comparison-of-two-reports
-              (delay/strict /known /just /delay/strict /known a))
+              (make-yknow-from-value /just /make-yknow-from-value a))
           /if (example-unknown? a)
             (constant-smoosh-and-comparison-of-two-reports
-              (delay/strict /known /just /delay/strict /known b))
+              (make-yknow-from-value /just /make-yknow-from-value b))
           /uninformative-smoosh-and-comparison-of-two-reports)
         /mat (list a b) (list (known a-value) (known b-value))
           (smoosh-and-comparison-of-two-reports-map
             (dynamic-type-get-smoosh-and-comparison-of-two-reports
               any-dt a-value b-value)
-            #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-            (fn kpmkp
-              (on-known-smoosh-result-knowable-promise-maybe-knowable-promise
+            #:on-smoosh-result-yknow-maybe-yknow
+            (fn ymy
+              (on-known-smoosh-result-yknow-maybe-yknow
                 (list a b)
-                kpmkp)))
+                ymy)))
         /sequence* (uninformative-smoosh-and-comparison-of-two-report)
           (smoosh-and-comparison-of-two-report-zip*-map (list)
             
-            #:on-<=?-knowable-promise
+            #:on-<=?-yknow
             (w- result (unknown? a)
               (dissectfn (list)
-                (delay/strict /known result)))
+                (make-yknow-from-value result)))
             
-            #:on->=?-knowable-promise
+            #:on->=?-yknow
             (w- result (unknown? b)
               (dissectfn (list)
-                (delay/strict /known result)))
+                (make-yknow-from-value result)))
             
-            #:on-join-knowable-promise-maybe-knowable-promise
+            #:on-join-yknow-maybe-yknow
             (w- result (if (known? a) a b)
               (dissectfn (list)
-                (delay/strict /known /just /delay/strict /known
-                  result)))
+                (make-yknow-from-value
+                  (just /make-yknow-from-value result))))
             
-            #:on-meet-knowable-promise-maybe-knowable-promise
+            #:on-meet-yknow-maybe-yknow
             (w- result (if (known? a) b a)
               (dissectfn (list)
-                (delay/strict /known /just /delay/strict /known
-                  result)))
+                (make-yknow-from-value
+                  (just /make-yknow-from-value result))))
             
-            #:on-==-knowable-promise-maybe-knowable-promise
+            #:on-==-yknow-maybe-yknow
             (dissectfn (list)
-              (delay/strict /known /nothing))
+              (make-yknow-from-value /nothing))
             
-            #:on-path-related-knowable-promise-maybe-knowable-promise
+            #:on-path-related-yknow-maybe-yknow
             (dissectfn (list)
-              (delay/strict /known /just /delay/strict /known a))
+              (make-yknow-from-value
+                (just /make-yknow-from-value a)))
             
             )
           (false-smoosh-and-comparison-of-two-reports)))
@@ -7492,24 +7369,22 @@
   )
 
 (define/own-contract
-  (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-    operands kpmkp)
+  (on-path-related-wrapper-smoosh-result-yknow-maybe-yknow
+    operands ymy)
   (->
     (listof path-related-wrapper?)
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (promise-map kpmkp /fn kpmk
-    (knowable-map kpmk /fn kpm
-      (maybe-map kpm /fn kp
-        (promise-map kp /fn k
-          (knowable-map k /fn result-value
-            (w-loop next operands operands
-              (expect operands (cons operand operands)
-                (path-related-wrapper result-value)
-              /dissect operand (path-related-wrapper operand-value)
-              /if (eq? operand-value result-value)
-                operand
-              /next operands))))))))
+    (yknow/c (maybe/c (yknow/c path-related-wrapper?)))
+    (yknow/c (maybe/c (yknow/c path-related-wrapper?))))
+  (yknow-map ymy /fn ym
+    (maybe-map ym /fn y
+      (yknow-map y /fn result-value
+        (w-loop next operands operands
+          (expect operands (cons operand operands)
+            (path-related-wrapper result-value)
+          /dissect operand (path-related-wrapper operand-value)
+          /if (eq? operand-value result-value)
+            operand
+          /next operands))))))
 
 (define/own-contract (on-path-related-wrapper-hash-code-promise p)
   (-> (promise/c fixnum?) (promise/c fixnum?))
@@ -7527,15 +7402,14 @@
     (sequence/c smoosh-report?))
   (dissect
     (smoosh-reports-map value-reports
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-          operands kpmkp)))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-path-related-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))
     (sequence* report-0 report-1+)
   /sequence*
     (constant-smoosh-report
-      (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
-        report-0))
+      (smoosh-report-path-related-yknow-maybe-yknow report-0))
     report-1+))
 
 (define/own-contract
@@ -7547,14 +7421,14 @@
     (sequence/c smoosh-and-comparison-of-two-report?))
   (dissect
     (smoosh-and-comparison-of-two-reports-map value-reports
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        (on-path-related-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-          operands kpmkp)))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-path-related-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))
     (sequence* report-0 report-1+)
   /sequence*
     (constant-smoosh-and-comparison-of-two-report
-      (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
+      (smoosh-report-path-related-yknow-maybe-yknow
         (smoosh-and-comparison-of-two-report-get-smoosh-report
           report-0)))
     report-1+))
@@ -7725,24 +7599,21 @@
   )
 
 (define/own-contract
-  (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-    operands kpmkp)
+  (on-info-wrapper-smoosh-result-yknow-maybe-yknow operands ymy)
   (->
     (listof info-wrapper?)
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (promise-map kpmkp /fn kpmk
-    (knowable-map kpmk /fn kpm
-      (maybe-map kpm /fn kp
-        (promise-map kp /fn k
-          (knowable-map k /fn result-value
-            (w-loop next operands operands
-              (expect operands (cons operand operands)
-                (info-wrapper result-value)
-              /dissect operand (info-wrapper operand-value)
-              /if (eq? operand-value result-value)
-                operand
-              /next operands))))))))
+    (yknow/c (maybe/c (yknow/c info-wrapper?)))
+    (yknow/c (maybe/c (yknow/c info-wrapper?))))
+  (yknow-map ymy /fn ym
+    (maybe-map ym /fn y
+      (yknow-map y /fn result-value
+        (w-loop next operands operands
+          (expect operands (cons operand operands)
+            (info-wrapper result-value)
+          /dissect operand (info-wrapper operand-value)
+          /if (eq? operand-value result-value)
+            operand
+          /next operands))))))
 
 (define/own-contract (on-info-wrapper-hash-code-promise p)
   (-> (promise/c fixnum?) (promise/c fixnum?))
@@ -7758,10 +7629,10 @@
     (sequence/c smoosh-report?))
   (dissect
     (smoosh-reports-map value-reports
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-          operands kpmkp)))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-info-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))
     (sequence* report-0 report-1+)
     report-1+))
 
@@ -7774,10 +7645,10 @@
     (sequence/c smoosh-and-comparison-of-two-report?))
   (dissect
     (smoosh-and-comparison-of-two-reports-map value-reports
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        (on-info-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-          operands kpmkp)))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-info-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))
     (sequence* report-0 report-1+)
     report-1+))
 
@@ -8040,24 +7911,21 @@
     (trivial)))
 
 (define/own-contract
-  (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-    operands kpmkp)
+  (on-indistinct-wrapper-smoosh-result-yknow-maybe-yknow operands ymy)
   (->
     (listof indistinct-wrapper?)
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?)))))
-    (promise/c (knowable/c (maybe/c (promise/c (knowable/c pair?))))))
-  (promise-map kpmkp /fn kpmk
-    (knowable-map kpmk /fn kpm
-      (maybe-map kpm /fn kp
-        (promise-map kp /fn k
-          (knowable-map k /fn result-value
-            (w-loop next operands operands
-              (expect operands (cons operand operands)
-                (indistinct-wrapper result-value)
-              /dissect operand (indistinct-wrapper operand-value)
-              /if (eq? operand-value result-value)
-                operand
-              /next operands))))))))
+    (yknow/c (maybe/c (yknow/c indistinct-wrapper?)))
+    (yknow/c (maybe/c (yknow/c indistinct-wrapper?))))
+  (yknow-map ymy /fn ym
+    (maybe-map ym /fn y
+      (yknow-map y /fn result-value
+        (w-loop next operands operands
+          (expect operands (cons operand operands)
+            (indistinct-wrapper result-value)
+          /dissect operand (indistinct-wrapper operand-value)
+          /if (eq? operand-value result-value)
+            operand
+          /next operands))))))
 
 (define/own-contract (on-indistinct-wrapper-hash-code-promise p)
   (-> (promise/c fixnum?) (promise/c fixnum?))
@@ -8074,10 +7942,10 @@
   (smoosh-reports-with-hesitation-at-discrepancies
     #:known-distinct? #f
     (smoosh-reports-map value-reports
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-          operands kpmkp)))))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-indistinct-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))))
 
 (define/own-contract
   (indistinct-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
@@ -8089,10 +7957,10 @@
   (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
     #:known-distinct? #f
     (smoosh-and-comparison-of-two-reports-map value-reports
-      #:on-smoosh-result-knowable-promise-maybe-knowable-promise
-      (fn kpmkp
-        (on-indistinct-wrapper-smoosh-result-knowable-promise-maybe-knowable-promise
-          operands kpmkp)))))
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-indistinct-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))))
 
 (define/own-contract
   (indistinct-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
@@ -8276,7 +8144,7 @@
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
         (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
-        /smoosh-and-comparison-of-two-reports-join /list
+        /smoosh-and-comparison-of-two-reports-joininfo /list
           (dynamic-type-get-smoosh-and-comparison-of-two-reports
             a-dt a b)
           (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
@@ -8333,8 +8201,9 @@
 ; generality of the design here; without types like this, it's a
 ; wonder we don't just hash everything.
 
-; TODO SMOOSH: Implement smooshing, better `gen:equal-mode+hash`
-; equality,
+; Except where noted (TODO) or where not mentioned (e.g., where
+; pertaining to a type that didn't exist at the time of writing this),
+; we've implemented smooshing, better `gen:equal-mode+hash` equality,
 ; `prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type`
 ; hashing, and `prop:expressly-custom-gloss-key-dynamic-type` behavior
 ; for these types:
@@ -8453,8 +8322,8 @@
 ;         their comparison functions are known to be distinct from
 ;         each other.
 ;
-;     - Potentially others in future versions of Racket. The above
-;       list is up-to-date as of Racket 8.12.
+;     - (TODO) Potentially others in future versions of Racket. The
+;       above list is up-to-date as of Racket 8.12.
 ;
 ;   - Types defined by Lathe Comforts that this smooshing framework
 ;     uses. The following are indistinct from each other and from the
@@ -8481,6 +8350,8 @@
 ;       than any `unknown?` value, and any `example-unknown?` value is
 ;       considered equal to any `unknown?` value.
 ;
+;     - (TODO SMOOSH) `yknow?` values.
+;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
 ;       whether elements are path-related according to the "any"
 ;       type's smoosh ordering.
@@ -8504,12 +8375,12 @@
 ;       treats known false results as though they were unknown
 ;       results.
 ;
-;     - Perhaps the types of types, ideally allowing an expressive
-;       subset of types of types to be related by subtyping, namely
-;       when they don't have identities with meaningful details
-;       independent of the set of inhabitants they have. This
-;       smooshability would be relevant mainly when types appear as
-;       elements of data structures that would be otherwise
+;     - (TODO SMOOSH) Perhaps the types of types, ideally allowing an
+;       expressive subset of types of types to be related by
+;       subtyping, namely when they don't have identities with
+;       meaningful details independent of the set of inhabitants they
+;       have. This smooshability would be relevant mainly when types
+;       appear as elements of data structures that would be otherwise
 ;       smooshable.
 ;
 ;       - `uninformative-dynamic-type?`
@@ -8575,9 +8446,9 @@
 ;
 ;       - `default-any-dynamic-type?`
 ;
-;   - Types defined by Lathe Comforts even if this smooshing framework
-;     doesn't use them. The following are indistinct from each other
-;     and from the other types listed above:
+;   - (TODO) Types defined by Lathe Comforts even if this smooshing
+;     framework doesn't use them. The following are indistinct from
+;     each other and from the other types listed above:
 ;
 ;     - `obstinacy?`, for instance. Potentially others; we haven't
 ;       made a comprehensive list here yet.

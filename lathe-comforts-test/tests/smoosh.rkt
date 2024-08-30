@@ -51,41 +51,54 @@
       /cons k v))))
 
 
+; A stricter version of `yknow-value-knowable` that raises an error if
+; the given `yknow?` value is known-unspecified, as in
+; `(make-yknow-from-promise-maybe-knowable-promise /delay/strict /known /nothing)`.
+;
+; TODO SMOOSH: Someday, write unit tests involving known-unspecified
+; `yknow?` values too. For instance, these might arise as intermediate
+; results of info-smooshing an `example-unknown?` value with a
+; user-defined `unknown?` value, since only the user-defined value
+; could specify the result, and the `example-unknown?` value leaves
+; the result known-unspecified so that the other operand's
+; specification can be used without fear of potential conflict.
+; However, we might simply consider `unknown?` values to be info
+; smooshable only when they're related in a `chaperone-of?`-like way,
+; in which case we might just consider every user-defined `unknown?`
+; value to be info-smoosh-distinct from every `example-unknown?`
+; value, making this a bad example.
+;
+(define (yknow-value-strictly-knowable y)
+  (knowable-map (force /yknow-value-promise-maybe-knowable-promise y)
+  /fn pm
+    (expect pm (just p)
+      (error "expected the `yknow?` values we were testing to never be known-unspecified")
+    /force p)))
+
+(define (ymy->kmk ymy)
+  (knowable-map (yknow-value-strictly-knowable ymy) /fn ym
+    (maybe-map ym /fn y
+      (yknow-value-strictly-knowable y))))
+
 (define (smoosh-report-exercise report)
-  (w- kpmkp-exercise-and-force
-    (fn kpmkp
-      (knowable-map (force kpmkp) /fn kpm
-        (maybe-map kpm /fn kp
-          (delay/strict /force kp))))
-  /w- path-related-kpmk
-    (kpmkp-exercise-and-force
-      (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
-        report))
-  /w- join-kpmk
-    (kpmkp-exercise-and-force
-      (smoosh-report-join-knowable-promise-maybe-knowable-promise
-        report))
-  /w- meet-kpmk
-    (kpmkp-exercise-and-force
-      (smoosh-report-meet-knowable-promise-maybe-knowable-promise
-        report))
-  /w- ==-kpmk
-    (kpmkp-exercise-and-force
-      (smoosh-report-==-knowable-promise-maybe-knowable-promise
-        report))
+  (w- path-related-kmk
+    (ymy->kmk /smoosh-report-path-related-yknow-maybe-yknow report)
+  /w- join-kmk (ymy->kmk /smoosh-report-join-yknow-maybe-yknow report)
+  /w- meet-kmk (ymy->kmk /smoosh-report-meet-yknow-maybe-yknow report)
+  /w- ==-kmk (ymy->kmk /smoosh-report-==-yknow-maybe-yknow report)
   /begin
-    (expect ==-kpmk (known /just _) (void) /begin
-      (mat path-related-kpmk (known /just _) (void)
+    (expect ==-kmk (known /just _) (void) /begin
+      (mat path-related-kmk (known /just _) (void)
         (error "expected == to imply path-related"))
-      (mat join-kpmk (known /just _) (void)
+      (mat join-kmk (known /just _) (void)
         (error "expected == to imply join"))
-      (mat meet-kpmk (known /just _) (void)
+      (mat meet-kmk (known /just _) (void)
         (error "expected == to imply meet")))
-    (expect join-kpmk (known /just _) (void) /begin
-      (mat path-related-kpmk (known /just _) (void)
+    (expect join-kmk (known /just _) (void) /begin
+      (mat path-related-kmk (known /just _) (void)
         (error "expected join to imply path-related")))
-    (expect meet-kpmk (known /just _) (void) /begin
-      (mat path-related-kpmk (known /just _) (void)
+    (expect meet-kmk (known /just _) (void) /begin
+      (mat path-related-kmk (known /just _) (void)
         (error "expected meet to imply path-related")))
     report))
 
@@ -94,44 +107,38 @@
     (smoosh-report-exercise
       (smoosh-and-comparison-of-two-report-get-smoosh-report report))
   /w- <=?-k
-    (force
-      (smoosh-and-comparison-of-two-report-<=?-knowable-promise
-        report))
+    (yknow-value-strictly-knowable
+      (smoosh-and-comparison-of-two-report-<=?-yknow report))
   /w- >=?-k
-    (force
-      (smoosh-and-comparison-of-two-report->=?-knowable-promise
-        report))
-  /w- path-related-kpmk
-    (force
-      (smoosh-report-path-related-knowable-promise-maybe-knowable-promise
-        smoosh-report))
-  /w- join-kpmk
-    (force
-      (smoosh-report-join-knowable-promise-maybe-knowable-promise
-        smoosh-report))
-  /w- meet-kpmk
-    (force
-      (smoosh-report-meet-knowable-promise-maybe-knowable-promise
-        smoosh-report))
-  /w- ==-kpmk
-    (force
-      (smoosh-report-==-knowable-promise-maybe-knowable-promise
-        smoosh-report))
+    (yknow-value-strictly-knowable
+      (smoosh-and-comparison-of-two-report->=?-yknow report))
+  /w- path-related-ymk
+    (yknow-value-strictly-knowable
+      (smoosh-report-path-related-yknow-maybe-yknow smoosh-report))
+  /w- join-ymk
+    (yknow-value-strictly-knowable
+      (smoosh-report-join-yknow-maybe-yknow smoosh-report))
+  /w- meet-ymk
+    (yknow-value-strictly-knowable
+      (smoosh-report-meet-yknow-maybe-yknow smoosh-report))
+  /w- ==-ymk
+    (yknow-value-strictly-knowable
+      (smoosh-report-==-yknow-maybe-yknow smoosh-report))
   /begin
-    (expect ==-kpmk (known /just _) (void) /begin
+    (expect ==-ymk (known /just _) (void) /begin
       (mat <=?-k (known #t) (void)
         (error "expected == to imply <="))
       (mat >=?-k (known #t) (void)
         (error "expected == to imply >=")))
     (expect <=?-k (known #t) (void) /begin
-      (mat join-kpmk (known /just _) (void)
+      (mat join-ymk (known /just _) (void)
         (error "expected <= to imply join"))
-      (mat meet-kpmk (known /just _) (void)
+      (mat meet-ymk (known /just _) (void)
         (error "expected <= to imply meet")))
     (expect >=?-k (known #t) (void) /begin
-      (mat join-kpmk (known /just _) (void)
+      (mat join-ymk (known /just _) (void)
         (error "expected >= to imply join"))
-      (mat meet-kpmk (known /just _) (void)
+      (mat meet-ymk (known /just _) (void)
         (error "expected >= to imply meet")))
     report))
 
@@ -144,11 +151,6 @@
     reports))
 
 
-(define (kpmkp->kmk kpmkp)
-  (knowable-map (force kpmkp) /fn kpm
-    (maybe-map kpm /fn kp
-      (force kp))))
-
 (define
   (smooshable-exercise-first-smoosh-and-comparison-of-two-report a b)
   (smoosh-and-comparison-of-two-report-get-smoosh-report
@@ -160,22 +162,22 @@
           b)))))
 
 (define (smooshable-==-exercise-knowable-maybe-knowable a b)
-  (kpmkp->kmk
-    (smoosh-report-==-knowable-promise-maybe-knowable-promise
+  (ymy->kmk
+    (smoosh-report-==-yknow-maybe-yknow
       (smooshable-exercise-first-smoosh-and-comparison-of-two-report
         a
         b))))
 
 (define (smooshable-join-exercise-knowable-maybe-knowable a b)
-  (kpmkp->kmk
-    (smoosh-report-join-knowable-promise-maybe-knowable-promise
+  (ymy->kmk
+    (smoosh-report-join-yknow-maybe-yknow
       (smooshable-exercise-first-smoosh-and-comparison-of-two-report
         a
         b))))
 
 (define (smooshable-meet-exercise-knowable-maybe-knowable a b)
-  (kpmkp->kmk
-    (smoosh-report-meet-knowable-promise-maybe-knowable-promise
+  (ymy->kmk
+    (smoosh-report-meet-yknow-maybe-yknow
       (smooshable-exercise-first-smoosh-and-comparison-of-two-report
         a
         b))))

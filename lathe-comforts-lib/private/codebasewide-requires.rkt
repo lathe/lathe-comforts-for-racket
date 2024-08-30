@@ -24,6 +24,7 @@
     (only-in racket/contract/base -> or/c)
     (only-in racket/format ~a)
     (only-in racket/list append* check-duplicates last range)
+    (only-in racket/match match-define)
     (only-in racket/provide-transform
       make-provide-pre-transformer pre-expand-export)
     (only-in racket/struct-info extract-struct-info struct-info?)
