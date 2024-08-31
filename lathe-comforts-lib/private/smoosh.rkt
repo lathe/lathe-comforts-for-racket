@@ -434,7 +434,8 @@
   (compose knowable->falsable call-knowable))
 
 (define/own-contract
-  (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure p)
+  (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
+    p)
   (-> procedure? (unconstrained-domain-> any/c))
   (define-values (required-kws allowed-kws) (procedure-keywords p))
   (procedure-reduce-keyword-arity-mask
@@ -471,7 +472,9 @@
 (define-for-syntax debugging-yknow #f)
 (ifc debugging-yknow
   (define-imitation-simple-struct
-    (yknow? yknow-debug-info yknow-value-promise-maybe-knowable-promise)
+    (yknow?
+      yknow-debug-info
+      yknow-value-promise-maybe-knowable-promise)
     yknow 'yknow (current-inspector) (auto-write))
   (define-imitation-simple-struct
     (yknow? yknow-value-promise-maybe-knowable-promise)
@@ -506,7 +509,8 @@
 (ifc debugging-yknow
   (define (yknow-augment debug-info y)
     (dissect y (yknow d pmkp)
-    /begin (knowable-map (force pmkp) /fn pm /maybe-map pm /fn p /force p)
+    /begin
+      (knowable-map (force pmkp) /fn pm /maybe-map pm /fn p /force p)
     /yknow (cons debug-info d) pmkp))
   (define-syntax-parse-rule (yknow-augment debug-info:expr y:expr)
     (begin
@@ -931,7 +935,9 @@
     tagged-glossesque-sys-get-inhabitant?
     tagged-glossesque-sys-get-glossesque-sys)
   tagged-glossesque-sys
-  'tagged-glossesque-sys (current-inspector) (auto-write) (auto-equal))
+  'tagged-glossesque-sys (current-inspector)
+  (auto-write)
+  (auto-equal))
 (ascribe-own-contract tagged-glossesque-sys? (-> any/c boolean?))
 (ascribe-own-contract tagged-glossesque-sys-get-inhabitant?
   (-> tagged-glossesque-sys? (-> any/c boolean?)))
@@ -955,7 +961,8 @@
   make-custom-gloss-key-report-impl-from-various-unkeyworded
   'custom-gloss-key-report 'custom-gloss-key-report-impl (list))
 (ascribe-own-contract custom-gloss-key-report? (-> any/c boolean?))
-(ascribe-own-contract custom-gloss-key-report-impl? (-> any/c boolean?))
+(ascribe-own-contract custom-gloss-key-report-impl?
+  (-> any/c boolean?))
 (ascribe-own-contract
   custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
   (-> custom-gloss-key-report? (knowable/c tagged-glossesque-sys?)))
@@ -1290,8 +1297,8 @@
           ; `smoosh-report-==-yknow-maybe-yknow`,
           ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
           ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
-          ; and `any-dynamic-type` are forward references. See if we can
-          ; untangle them.
+          ; and `any-dynamic-type` are forward references. See if we
+          ; can untangle them.
           (smoosh-report-==-yknow-maybe-yknow
             (smoosh-and-comparison-of-two-report-get-smoosh-report
               (sequence-first
@@ -1332,8 +1339,8 @@
           ; `smoosh-report-==-yknow-maybe-yknow`,
           ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
           ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
-          ; and `any-dynamic-type` are forward references. See if we can
-          ; untangle them.
+          ; and `any-dynamic-type` are forward references. See if we
+          ; can untangle them.
           (smoosh-report-==-yknow-maybe-yknow
             (smoosh-and-comparison-of-two-report-get-smoosh-report
               (sequence-first
@@ -1365,7 +1372,8 @@
 (define-imitation-simple-generics
   expressly-custom-gloss-key-dynamic-type?
   expressly-custom-gloss-key-dynamic-type-impl?
-  (#:method expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports
+  (#:method
+    expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports
     (#:this)
     ())
   prop:expressly-custom-gloss-key-dynamic-type
@@ -1932,8 +1940,8 @@
   ;
   (#:method smoosh-report-==-yknow-maybe-yknow (#:this))
   
-  ; This says how they smoosh along path-relatedness, in the sense of a
-  ; result such that each operand is path-related to the result. Two
+  ; This says how they smoosh along path-relatedness, in the sense of
+  ; a result such that each operand is path-related to the result. Two
   ; elements are path-related if they're related by the transitive
   ; closure of `<= or >=`, or in other words, if there's a sequence of
   ; values `v1`, `v2`, ..., `vn` such that
@@ -2317,7 +2325,9 @@
 (define-imitation-simple-struct
   (uninformative-smoosh-equal-hash-code-support-report?)
   uninformative-smoosh-equal-hash-code-support-report-unguarded
-  'uninformative-smoosh-equal-hash-code-support-report (current-inspector) (auto-write)
+  'uninformative-smoosh-equal-hash-code-support-report
+  (current-inspector)
+  (auto-write)
   (#:prop prop:smoosh-equal-hash-code-support-report
     (make-smoosh-equal-hash-code-support-report-impl
       
@@ -2902,7 +2912,8 @@
     [on-==-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
     
     #:on-path-related-yknow-maybe-yknow
-    [on-path-related-yknow-maybe-yknow on-smoosh-result-yknow-maybe-yknow]
+    [ on-path-related-yknow-maybe-yknow
+      on-smoosh-result-yknow-maybe-yknow]
     
     )
   (->*
@@ -3283,7 +3294,8 @@
     zip*-mapped-smoosh-equal-hash-code-support-report-on-path-related-hash-code-promise
     zip*-mapped-smoosh-equal-hash-code-support-report-original-list)
   zip*-mapped-smoosh-equal-hash-code-support-report
-  'zip*-mapped-smoosh-equal-hash-code-support-report (current-inspector)
+  'zip*-mapped-smoosh-equal-hash-code-support-report
+  (current-inspector)
   (auto-write)
   (#:prop prop:smoosh-equal-hash-code-support-report
     (make-smoosh-equal-hash-code-support-report-impl
@@ -3444,7 +3456,8 @@
   (constant-smoosh-and-comparison-of-two-report?
     constant-smoosh-and-comparison-of-two-report-result-yknow-maybe-yknow)
   constant-smoosh-and-comparison-of-two-report-unguarded
-  'constant-smoosh-and-comparison-of-two-report (current-inspector) (auto-write)
+  'constant-smoosh-and-comparison-of-two-report (current-inspector)
+  (auto-write)
   (#:prop prop:smoosh-and-comparison-of-two-report
     (make-smoosh-and-comparison-of-two-report-impl
       
@@ -5489,7 +5502,8 @@
                 #:inhabitant-shallowly-equal-always?-knowable
                 inhabitant-shallowly-equal-always?-knowable
                 
-                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports)
+                #:get-smoosh-of-zero-reports
+                get-smoosh-of-zero-reports)
               (make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
@@ -5503,7 +5517,9 @@
                 inhabitant-shallowly-equal-always?-knowable
                 
                 #:copy copy
-                #:get-smoosh-of-zero-reports get-smoosh-of-zero-reports))))
+                
+                #:get-smoosh-of-zero-reports
+                get-smoosh-of-zero-reports))))
         (cons
           prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
           (dissectfn (trivial)
@@ -5512,7 +5528,9 @@
               #:inhabitant? inhabitant?
               #:->list ->list
               #:->->list ->->list
-              #:combine-element-hash-codes combine-element-hash-codes)))
+              
+              #:combine-element-hash-codes
+              combine-element-hash-codes)))
         (cons
           prop:expressly-custom-gloss-key-dynamic-type
           (dissectfn (trivial)
@@ -6727,7 +6745,8 @@
       (makeshift-knowable-predicate /fn v
         ; TODO FORWARD: This use of `base-readable?` is a forward
         ; reference. See if we can untangle it.
-        (knowable-if (base-readable? v) /fn /base-mutable-readable? v))
+        (knowable-if (base-readable? v) /fn
+          (base-mutable-readable? v)))
       
       )
     (trivial)))
@@ -6847,7 +6866,8 @@
       #:combine-element-hash-codes
       (fn element-hash-codes
         (hash-code-combine-unordered*
-          (for/list ([entry (in-slice 2 (in-list element-hash-codes))])
+          (for/list
+            ([entry (in-slice 2 (in-list element-hash-codes))])
             (dissect entry (list k v)
             /hash-code-combine k v))))
       
@@ -7372,7 +7392,9 @@
                     (makeshift-knowable-predicate /fn v
                       (expect v (path-related-wrapper v) (unknown)
                       /call-knowable inhabitant? v))
-                    (glossesque-sys-map-key gs #:granted-key-knowable /fn k
+                    (glossesque-sys-map-key gs
+                      #:granted-key-knowable
+                    /fn k
                       (expect k (path-related-wrapper k) (unknown)
                       /known k)))))))
           (sequence* report-0 report-1 report-2+)
@@ -7907,7 +7929,8 @@
       #:combine-element-hash-codes
       (fn element-hash-codes
         (hash-code-combine-unordered*
-          (for/list ([entry (in-slice 2 (in-list element-hash-codes))])
+          (for/list
+            ([entry (in-slice 2 (in-list element-hash-codes))])
             (dissect entry (list k v)
             /hash-code-combine k v))))
       
@@ -8204,7 +8227,8 @@
       #:get-smoosh-equal-hash-code-support-reports
       (fn self a
         (w- a-dt (get-dynamic-type-with-any-dynamic-type self a)
-        /dynamic-type-get-smoosh-equal-hash-code-support-reports a-dt a))
+        /dynamic-type-get-smoosh-equal-hash-code-support-reports
+          a-dt a))
       
       ))
   
