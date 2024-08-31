@@ -509,8 +509,6 @@
 (ifc debugging-yknow
   (define (yknow-augment debug-info y)
     (dissect y (yknow d pmkp)
-    /begin
-      (knowable-map (force pmkp) /fn pm /maybe-map pm /fn p /force p)
     /yknow (cons debug-info d) pmkp))
   (define-syntax-parse-rule (yknow-augment debug-info:expr y:expr)
     (begin
@@ -607,10 +605,6 @@
 
 (define/own-contract (yknow-joininfo* y-list)
   (-> (listof yknow?) yknow?)
-  (yknow-value-knowable /yknow-joininfo*-on-promise y-list /fn y-list p
-    (unless (promise? p)
-      (raise-arguments-error 'yknow-joininfo* "aha"
-        "y-list" y-list)))
   (yknow-augment `(yknow-joininfo* ,y-list)
   /yknow-joininfo*-on-promise y-list /fn y-list p p))
 
