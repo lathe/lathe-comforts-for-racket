@@ -316,3 +316,12 @@ We'd like the pact system to be able to specify whether it's asserting every det
     - like `etc-preserving/p`, but creates an attenuated value which has a known absence of any knack or constructor round-trippability other than the ones either specified here or implied by the asserted constructors' implementations (and only successfully creates this value if the asserted constructors' implementations have consensus that this attenuated value is possible to create without interfering with their round-trippability, or if there are no asserted constructors here whose round-trippability we need to concern ourselves with); when a value is exported through this contract, the known absence is reported as a usage error (and possibly represented as an unknown result), and when a value is imported through this contract, the known absence is reported as known-unspecifiedness the user can potentially use for merging imports
   - `(etc-obviating/p (knack-1/p ...) (knack-2/p ...) (constructor-1/p ...) (constructor-2/p ...) (not/p negated-knack-1?) (not/p negated-knack-2?) (not/p negated-constructor-1?) (not/p negated-constructor-2?) ...)`
     - like `etc-ignoring/p`, but also asserts the value already has a known absence of any knack or constructor round-trippability other than the ones either specified here or implied by the asserted constructors' implementations
+
+
+## Further along
+
+After the object system is built, we can define specific knacks that represent different specific ways a macro can be used.
+
+Then we can define a way to import multiple special-purpose definitions of a macro or function while merging them all into a single abstraction.
+
+Then, with those mergeable abstraction interfaces, we can define alternative ways of calling macros and functions that don't execute them immediately but instead obtain a bundle of their code and the code of their transitive dependencies, in a program representation that we can translate to multiple other programming languages. This is the main goal of the Cene project, and in this fashion, we can approach it seamlessly and incrementally within Racket.
