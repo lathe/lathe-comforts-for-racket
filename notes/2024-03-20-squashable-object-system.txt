@@ -271,3 +271,48 @@ We've made a type `(yknow/c _)` that is like a `(promise/c (knowable/c (maybe/c 
     info unknown + info (known *) = info (known *)
     info (known x) + info (known y) = attempt `info x + info y`, and if that gives us `info z`, then `info (known z)`, or something like that
     (TODO: Do we want to describe what happens with `info (info (known *))` values?)
+
+
+## Designing the object system
+
+We're going to try to coexist seamlessly with Racket, which already has a couple of different notions of "interfaces" and "methods."
+
+We'll use the following terminology:
+
+We'll use "knack" as our term for a new kind of method declaration, interface, or protocol
+
+We'll use "appoint" as our term for invoking a method.
+
+We'll use "appointment" as our term for a first-class method call object (possibly comprised of a method name, callsite metadata, a lexical environment from which implicit arguments can be gleaned, and a bundle of explicit arguments, but not the target object).
+
+We'll use "grip" for a first-class context object that's usually implicitly kept in the dynamic scope, and which can be consulted for certain method implementations that neither the method nor the target object knows about. These implementations correspond to what's known as "orphan instances" in Haskell. They may be thought of and derided as "ambient capabilities" in an object-capability security mindset, although we consider them to be the runtime service of the language, and we'll still take lessons from object-capability security and think of "capabilities" as separate first-class objects that serve as highly special-purpose gatekeepers to the service. It can also be thought of as the set of effect handlers that's currently in force. Another way to think of this is that it's simply the "dynamic scope." In some projects, I've referred to this bundle of orphan instances as the "specialization matrix" (by appeal to the geometry of the Expression Problem, with interface types on one axis of a 2D grid and concrete types on the other) or as the "perm" or "permit" (the bundle of permissions for side effects). Since this object in some sense represents a running program's access to the outside world and to its own set of code that has survived the dead code elimination process, we could potentially refer to it as the "WPI" ("World Programming Interface"), as the "affordance" the world provides the program, or as the "provisioning" or "loadout" of the program. Along the lines of "affordance," we've presently chosen "grip," basically in the sense of "grip on reality." It's a nice short term that can evoke ideas of both perception and control.
+
+For now (TODO), we'll use "constructor" as our term for a user-defined concrete type that can be instantiated. We should change this term; it's too close to "struct."
+
+We'll use "pact" and the naming convention `_____/p` to refer to our own contract system inspired by Racket's, suitable for documenting our objects. (These terms are our off-brand variants of "contract" and `_____/c`, respectively.) A pact will usually attenuate a value `x` by replacing it with a value `y` such that `x` and `y` pass an info <= check in the contract system. (Sometimes computing the actual info <= check can give an unknown result, but the pact system will still conceptually preserve the information ordering relation that info <= checks approximate.)
+
+A Racket value that supports our object system will have certain knacks and constructors it innately knows that it has the presence or absence of support for. "Support" for a constructor means that it can be deconstructed and put back together again in a round trip that preserves everything we know about its info {==, <=, >=, join, meet, and path-related} smooshability.
+
+Where the smooshability is unknown, round-tripping has some leeway, so it's possible for a value to differ in some observable behavior after one of these round trips. An observable behavior that can differ like this is one we'll consider suitable for use only in debugging and optimization situations.
+
+We'd like the pact system to be able to specify whether it's asserting every detail about a value or just asserting some of the details. Racket's contract systems seem to be unprincipled about this, with `->` contracts preserving `prop:evt` but `evt/c` contracts not preserving `prop:procedure`, although `evt/c` seems like an exception to the usual trend. Since we'd like to be able to ensure that clients of a module's API aren't relying on undocumented details, we'll tend to consider pacts to hide away everything except the functionality they directly describe, unless otherwise specified.
+
+  - `(constructor a b c)`
+    - constructs a value which has its details specified by the `constructor` constructor's implementation, which determines whether the value is known to be (or not to be) round-trippable through any given constructor, or known to have (or not to have) any given knack
+      - typically (but not always), the value is known to be fully round-trippable through the `constructor` constructor and known not to be fully round-trippable through any other constructors of the same algebraic data type by the same author or upstream authors; and when this is the case, typically (but not always), the constructor doesn't leave anything known-unspecified, since the round-trippability support might not be prepared to preserve any particular additional info that's been merged into the known-unspecified parts of a value
+  - `match (constructor a b c)`
+    - matches a value which is known to be fully round-trippable through the `constructor` constructor, and otherwise asserts that the value is known not to be fully round-trippable through that constructor
+  - `dissect (constructor a b c)`
+    - asserts the value is known to be fully round-trippable through the `constructor` constructor
+  - `(constructor/p a/p b/p c/p)`
+    - equivalent to `(etc-ignoring/p (constructor/p ...))`; i.e., asserts the value is known to be round-trippable through the given constructor in a way that abides by the given contracts; creates an attenuated value which still has this property, and which replaces the status of other knacks and constructor round-trippabilities with known absences (and only successfully creates this value if the constructor's implementation deems that this attenuated value is possible to create without interfering with its round-trippability)
+  - `(makeshift knack ...)`
+    - constructs a value which is known to have the given knack but is not known not to have others, is not known to be fully round-trippable through any particular constructor, and is only known not to be round-trippable through any particular constructor if that constructor's implementation overtly excludes the knack
+  - `(knack/p ...)`
+    - equivalent to `(etc-ignoring/p (knack/p ...))`; i.e., asserts the value is known to have the given knack in a way that abides by the given contracts; creates an attenuated value which still has this property, and which replaces the status of other knacks and constructor round-trippabilities with known absences
+  - `(etc-preserving/p (knack-1/p ...) (knack-2/p ...) (constructor-1/p ...) (constructor-2/p ...) (not/p negated-knack-1?) (not/p negated-knack-2?) (not/p negated-constructor-1?) (not/p negated-constructor-2?) ...)`
+    - asserts the value is known to have all of the given knacks in ways that abide by the given contracts, known to be round-trippable through each of the given constructors in ways where the field values abide by the given contracts, and known not to have the given negated knacks and not to be round-trippable through the given negated constructors; creates an attenuated value which still has these properties, and which preserves the present, absent, unknown, or known-unspecified status of other knacks and constructor round-trippabilities of the value
+  - `(etc-ignoring/p (knack-1/p ...) (knack-2/p ...) (constructor-1/p ...) (constructor-2/p ...) (not/p negated-knack-1?) (not/p negated-knack-2?) (not/p negated-constructor-1?) (not/p negated-constructor-2?) ...)`
+    - like `etc-preserving/p`, but creates an attenuated value which has a known absence of any knack or constructor round-trippability other than the ones either specified here or implied by the asserted constructors' implementations (and only successfully creates this value if the asserted constructors' implementations have consensus that this attenuated value is possible to create without interfering with their round-trippability, or if there are no asserted constructors here whose round-trippability we need to concern ourselves with); when a value is exported through this contract, the known absence is reported as a usage error (and possibly represented as an unknown result), and when a value is imported through this contract, the known absence is reported as known-unspecifiedness the user can potentially use for merging imports
+  - `(etc-obviating/p (knack-1/p ...) (knack-2/p ...) (constructor-1/p ...) (constructor-2/p ...) (not/p negated-knack-1?) (not/p negated-knack-2?) (not/p negated-constructor-1?) (not/p negated-constructor-2?) ...)`
+    - like `etc-ignoring/p`, but also asserts the value already has a known absence of any knack or constructor round-trippability other than the ones either specified here or implied by the asserted constructors' implementations
