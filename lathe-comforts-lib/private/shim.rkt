@@ -7,7 +7,7 @@
 ; these things, and various utilities that could come in handy in
 ; other codebases for making shim files like this one.
 
-;   Copyright 2021, 2022 The Lathe Authors
+;   Copyright 2021, 2022, 2014 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -430,7 +430,12 @@
     (expr/c #'contract?
       #:name "the ascribe-own-contract value of a variable")
     
-    #:attr val/c #'val/c-unguarded.c))
+    #:attr val/c
+    #'(begin
+      (when (eq? var val/c-unguarded)
+        (raise-arguments-error 'own-contract-out
+          (format "no ascribe-own-contract information for ~a" 'var)))
+      val/c-unguarded.c)))
 
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-ignored-out
