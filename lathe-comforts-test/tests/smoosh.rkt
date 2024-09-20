@@ -33,6 +33,7 @@
 (require /only-in lathe-comforts/private/smoosh
   [info-wrapper iw]
   [path-related-wrapper pw])
+(require lathe-comforts/sequence)
 (require lathe-comforts/trivial)
 
 ; (We provide nothing from this module.)

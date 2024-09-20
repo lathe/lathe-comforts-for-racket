@@ -22,8 +22,6 @@
 (require /for-syntax lathe-comforts/private/shim)
 (begin-for-syntax /init-shim)
 
-(require /for-syntax /only-in syntax/parse syntax-parser)
-
 (require lathe-comforts/private/shim)
 (init-shim)
 
@@ -37,6 +35,8 @@
 (require /only-in lathe-comforts/maybe
   just just? just-value maybe? maybe-bind maybe/c maybe-if maybe-map
   nothing nothing?)
+(require /only-in lathe-comforts/sequence
+  endless-sequence/c sequence* sequence-first)
 (require /only-in lathe-comforts/string immutable-string?)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
@@ -45,8 +45,6 @@
 (require /only-in lathe-comforts/trivial trivial trivial?)
 
 
-(provide
-  sequence*)
 (provide /own-contract-out
   expressly-possibly-unknown-impl?
   prop:expressly-possibly-unknown
@@ -125,7 +123,6 @@
   custom-gloss-key-reports-zip*-map
   constant-custom-gloss-key-report
   constant-custom-gloss-key-reports
-  sequence-first
   path-related-wrapper?
   path-related-wrapper-value)
 (provide
@@ -295,15 +292,6 @@
 (provide /own-contract-out
   current-any-dynamic-type
   any-dynamic-type)
-
-
-(define-match-expander sequence*
-  ; TODO: Use a syntax class for match patterns rather than `expr`
-  ; here, if one ever exists.
-  (syntax-parser / (_ elem:expr ... rest:expr)
-    #'(app sequence->stream /stream* elem ... rest))
-  (syntax-parser / (_ elem:expr ... rest:expr)
-    #'(stream* elem ... /sequence->stream rest)))
 
 
 (define-imitation-simple-generics
@@ -1008,7 +996,7 @@
   (uninformative-custom-gloss-key-report-unguarded))
 
 (define/own-contract (uninformative-custom-gloss-key-reports)
-  (-> (sequence/c custom-gloss-key-report?))
+  (-> (endless-sequence/c custom-gloss-key-report?))
   (in-cycle /list /uninformative-custom-gloss-key-report))
 
 (define-imitation-simple-struct
@@ -1270,13 +1258,9 @@
     #:tagged-glossesque-sys-knowable
     (knowable/c tagged-glossesque-sys?)
     
-    (sequence/c custom-gloss-key-report?))
+    (endless-sequence/c custom-gloss-key-report?))
   (in-cycle /list /constant-custom-gloss-key-report
     #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable))
-
-(define/own-contract (sequence-first s)
-  (-> sequence? any)
-  (sequence-ref s 0))
 
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
@@ -1385,7 +1369,7 @@
     #:get-custom-gloss-key-reports get-custom-gloss-key-reports)
   (->
     #:get-custom-gloss-key-reports
-    (-> any/c any/c (sequence/c custom-gloss-key-report?))
+    (-> any/c any/c (endless-sequence/c custom-gloss-key-report?))
     
     expressly-custom-gloss-key-dynamic-type-impl?)
   (make-expressly-custom-gloss-key-dynamic-type-impl-from-various-unkeyworded
@@ -1398,7 +1382,7 @@
   ; along that one's `==` but also, only if they do, smooshes their
   ; information ordering representatives along their information
   ; ordering.
-  (-> any/c any/c (sequence/c custom-gloss-key-report?))
+  (-> any/c any/c (endless-sequence/c custom-gloss-key-report?))
   (if (expressly-custom-gloss-key-dynamic-type? dt)
     (expressly-custom-gloss-key-dynamic-type-get-custom-gloss-key-reports
       dt inhabitant)
@@ -2028,7 +2012,7 @@
   (uninformative-smoosh-report-unguarded))
 
 (define/own-contract (uninformative-smoosh-reports)
-  (-> (sequence/c smoosh-report?))
+  (-> (endless-sequence/c smoosh-report?))
   (in-cycle /list /uninformative-smoosh-report))
 
 (define-imitation-simple-generics
@@ -2108,7 +2092,7 @@
 
 (define/own-contract
   (uninformative-smoosh-and-comparison-of-two-reports)
-  (-> (sequence/c smoosh-and-comparison-of-two-report?))
+  (-> (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (in-cycle /list /uninformative-smoosh-and-comparison-of-two-report))
 
 
@@ -2166,25 +2150,25 @@
   (->*
     (
       #:get-smoosh-of-zero-reports
-      (-> any/c (sequence/c smoosh-report?))
+      (-> any/c (endless-sequence/c smoosh-report?))
       
       #:get-smoosh-of-one-reports
-      (-> any/c any/c (sequence/c smoosh-report?))
+      (-> any/c any/c (endless-sequence/c smoosh-report?))
       
       #:get-smoosh-and-comparison-of-two-reports
       (or/c #f
         (-> any/c any/c any/c
-          (sequence/c smoosh-and-comparison-of-two-report?)))
+          (endless-sequence/c smoosh-and-comparison-of-two-report?)))
       
       )
     (
       #:get-smoosh-and-comparison-of-two-reports-via-first
       (-> any/c any/c any/c
-        (sequence/c smoosh-and-comparison-of-two-report?))
+        (endless-sequence/c smoosh-and-comparison-of-two-report?))
       
       #:get-smoosh-and-comparison-of-two-reports-via-second
       (-> any/c any/c any/c
-        (sequence/c smoosh-and-comparison-of-two-report?))
+        (endless-sequence/c smoosh-and-comparison-of-two-report?))
       
       )
     expressly-smooshable-dynamic-type-impl?)
@@ -2200,13 +2184,13 @@
     ; elements, first for the type's bespoke notion of ordering, then
     ; for the information ordering, then for the information ordering
     ; of the information ordering representatives, and so on.
-    (sequence/c smoosh-report?))
+    (endless-sequence/c smoosh-report?))
   (if (expressly-smooshable-dynamic-type? dt)
     (expressly-smooshable-dynamic-type-get-smoosh-of-zero-reports dt)
     (uninformative-smoosh-reports)))
 
 (define/own-contract (dynamic-type-get-smoosh-of-one-reports a-dt a)
-  (-> any/c any/c (sequence/c smoosh-report?))
+  (-> any/c any/c (endless-sequence/c smoosh-report?))
   (if (expressly-smooshable-dynamic-type? a-dt)
     (expressly-smooshable-dynamic-type-get-smoosh-of-one-reports
       a-dt a)
@@ -2220,7 +2204,7 @@
     ; not only whether they smoosh along that one's == but also, only
     ; if they do, how their information ordering representatives
     ; smoosh along their information ordering.
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (if (expressly-smooshable-dynamic-type? dt)
     (expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
       dt a b)
@@ -2234,7 +2218,7 @@
     ; not only whether they smoosh along that one's == but also, only
     ; if they do, how their information ordering representatives
     ; smoosh along their information ordering.
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (if (expressly-smooshable-dynamic-type? dt)
     (expressly-smooshable-dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
       dt a b)
@@ -2247,7 +2231,7 @@
     ; not only whether they smoosh along that one's == but also, only
     ; if they do, how their information ordering representatives
     ; smoosh along their information ordering.
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (smoosh-and-comparison-of-two-reports-joininfo /list
     (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
       dt a b)
@@ -2342,7 +2326,7 @@
 
 (define/own-contract
   (uninformative-smoosh-equal-hash-code-support-reports)
-  (-> (sequence/c smoosh-equal-hash-code-support-report?))
+  (-> (endless-sequence/c smoosh-equal-hash-code-support-report?))
   (in-cycle /list
     (uninformative-smoosh-equal-hash-code-support-report)))
 
@@ -2373,7 +2357,7 @@
     get-smoosh-equal-hash-code-support-reports)
   (->
     #:get-smoosh-equal-hash-code-support-reports
-    (-> any/c any/c (sequence/c smoosh-report?))
+    (-> any/c any/c (endless-sequence/c smoosh-report?))
     
     expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl?)
   (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-various-unkeyworded
@@ -2381,7 +2365,7 @@
 
 (define/own-contract
   (dynamic-type-get-smoosh-equal-hash-code-support-reports a-dt a)
-  (-> any/c any/c (sequence/c smoosh-report?))
+  (-> any/c any/c (endless-sequence/c smoosh-report?))
   (if
     (expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type?
       a-dt)
@@ -3395,7 +3379,7 @@
       on-path-related-hash-code-promise)))
 
 (define/own-contract (false-smoosh-and-comparison-of-two-reports)
-  (-> (sequence/c smoosh-and-comparison-of-two-report?))
+  (-> (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (smoosh-and-comparison-of-two-reports-zip*-map (list)
     #:on-check-result-yknow
     (dissectfn (list)
@@ -3439,7 +3423,7 @@
 
 (define/own-contract
   (constant-smoosh-reports result-yknow-maybe-yknow)
-  (-> (yknow/c (maybe/c yknow?)) (sequence/c smoosh-report?))
+  (-> (yknow/c (maybe/c yknow?)) (endless-sequence/c smoosh-report?))
   (in-cycle /list /constant-smoosh-report result-yknow-maybe-yknow))
 
 (define/own-contract (promise-map promise on-value)
@@ -3486,7 +3470,7 @@
   (constant-smoosh-and-comparison-of-two-reports
     result-yknow-maybe-yknow)
   (-> (yknow/c (maybe/c yknow?))
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (in-cycle /list /constant-smoosh-and-comparison-of-two-report
     result-yknow-maybe-yknow))
 
@@ -3524,7 +3508,7 @@
 (define/own-contract
   (constant-smoosh-equal-hash-code-support-reports hash-code-promise)
   (-> (promise/c fixnum?)
-    (sequence/c smoosh-equal-hash-code-support-report?))
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
   (in-cycle /list /constant-smoosh-equal-hash-code-support-report
     hash-code-promise))
 
@@ -4706,7 +4690,7 @@
       (-> any/c any/c (knowable/c boolean?))
       
       #:get-smoosh-of-zero-reports
-      (-> any/c (sequence/c smoosh-report?))
+      (-> any/c (endless-sequence/c smoosh-report?))
       
       )
     expressly-smooshable-dynamic-type-impl?)
@@ -5015,7 +4999,7 @@
       #:copy (-> any/c any/c)
       
       #:get-smoosh-of-zero-reports
-      (-> any/c (sequence/c smoosh-report?))
+      (-> any/c (endless-sequence/c smoosh-report?))
       
       )
     expressly-smooshable-dynamic-type-impl?)
@@ -5466,7 +5450,7 @@
       #:copy (-> any/c any/c)
       
       #:get-smoosh-of-zero-reports
-      (-> any/c (sequence/c smoosh-report?))
+      (-> any/c (endless-sequence/c smoosh-report?))
       
       )
     (struct-type-property/c trivial?))
@@ -7457,8 +7441,8 @@
     operands value-reports)
   (->
     (listof path-related-wrapper?)
-    (sequence/c smoosh-report?)
-    (sequence/c smoosh-report?))
+    (endless-sequence/c smoosh-report?)
+    (endless-sequence/c smoosh-report?))
   (dissect
     (smoosh-reports-map value-reports
       #:on-smoosh-result-yknow-maybe-yknow
@@ -7476,8 +7460,8 @@
     operands value-reports)
   (->
     (listof path-related-wrapper?)
-    (sequence/c smoosh-and-comparison-of-two-report?)
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?)
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (dissect
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-yknow-maybe-yknow
@@ -7495,8 +7479,8 @@
 (define/own-contract
   (path-related-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
     value-reports)
-  (-> (sequence/c smoosh-equal-hash-code-support-report?)
-    (sequence/c smoosh-equal-hash-code-support-report?))
+  (-> (endless-sequence/c smoosh-equal-hash-code-support-report?)
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
   (dissect
     (smoosh-equal-hash-code-support-reports-map value-reports
       #:on-hash-code-promise
@@ -7511,8 +7495,8 @@
 (define/own-contract
   (path-related-wrapper-custom-gloss-key-reports-from-value-reports
     value-reports)
-  (-> (sequence/c custom-gloss-key-report?)
-    (sequence/c custom-gloss-key-report?))
+  (-> (endless-sequence/c custom-gloss-key-report?)
+    (endless-sequence/c custom-gloss-key-report?))
   (dissect
     (custom-gloss-key-reports-map value-reports
       #:on-tagged-glossesque-sys-knowable
@@ -7684,8 +7668,8 @@
 (define/own-contract
   (info-wrapper-smoosh-reports-from-value-reports
     operands value-reports)
-  (-> (listof info-wrapper?) (sequence/c smoosh-report?)
-    (sequence/c smoosh-report?))
+  (-> (listof info-wrapper?) (endless-sequence/c smoosh-report?)
+    (endless-sequence/c smoosh-report?))
   (dissect
     (smoosh-reports-map value-reports
       #:on-smoosh-result-yknow-maybe-yknow
@@ -7700,8 +7684,8 @@
     operands value-reports)
   (->
     (listof info-wrapper?)
-    (sequence/c smoosh-and-comparison-of-two-report?)
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?)
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (dissect
     (smoosh-and-comparison-of-two-reports-map value-reports
       #:on-smoosh-result-yknow-maybe-yknow
@@ -7714,8 +7698,8 @@
 (define/own-contract
   (info-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
     value-reports)
-  (-> (sequence/c smoosh-equal-hash-code-support-report?)
-    (sequence/c smoosh-equal-hash-code-support-report?))
+  (-> (endless-sequence/c smoosh-equal-hash-code-support-report?)
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
   (dissect
     (smoosh-equal-hash-code-support-reports-map value-reports
       #:on-hash-code-promise on-info-wrapper-hash-code-promise)
@@ -7725,8 +7709,8 @@
 (define/own-contract
   (info-wrapper-custom-gloss-key-reports-from-value-reports
     value-reports)
-  (-> (sequence/c custom-gloss-key-report?)
-    (sequence/c custom-gloss-key-report?))
+  (-> (endless-sequence/c custom-gloss-key-report?)
+    (endless-sequence/c custom-gloss-key-report?))
   (dissect
     (custom-gloss-key-reports-map value-reports
       #:on-tagged-glossesque-sys-knowable
@@ -7997,8 +7981,8 @@
 (define/own-contract
   (indistinct-wrapper-smoosh-reports-from-value-reports
     operands value-reports)
-  (-> (listof indistinct-wrapper?) (sequence/c smoosh-report?)
-    (sequence/c smoosh-report?))
+  (-> (listof indistinct-wrapper?) (endless-sequence/c smoosh-report?)
+    (endless-sequence/c smoosh-report?))
   (smoosh-reports-with-hesitation-at-discrepancies
     #:known-distinct? #f
     (smoosh-reports-map value-reports
@@ -8012,8 +7996,8 @@
     operands value-reports)
   (->
     (listof indistinct-wrapper?)
-    (sequence/c smoosh-and-comparison-of-two-report?)
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?)
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
     #:known-distinct? #f
     (smoosh-and-comparison-of-two-reports-map value-reports
@@ -8025,16 +8009,16 @@
 (define/own-contract
   (indistinct-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
     value-reports)
-  (-> (sequence/c smoosh-equal-hash-code-support-report?)
-    (sequence/c smoosh-equal-hash-code-support-report?))
+  (-> (endless-sequence/c smoosh-equal-hash-code-support-report?)
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
   (smoosh-equal-hash-code-support-reports-map value-reports
     #:on-hash-code-promise on-indistinct-wrapper-hash-code-promise))
 
 (define/own-contract
   (indistinct-wrapper-custom-gloss-key-reports-from-value-reports
     value-reports)
-  (-> (sequence/c custom-gloss-key-report?)
-    (sequence/c custom-gloss-key-report?))
+  (-> (endless-sequence/c custom-gloss-key-report?)
+    (endless-sequence/c custom-gloss-key-report?))
   (custom-gloss-key-reports-map value-reports
     #:on-tagged-glossesque-sys-knowable
     (fn tgs-k

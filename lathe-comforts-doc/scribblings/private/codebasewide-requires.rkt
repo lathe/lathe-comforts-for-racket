@@ -4,7 +4,7 @@
 ;
 ; An import list that's useful primarily for this codebase.
 
-;   Copyright 2022 The Lathe Authors
+;   Copyright 2022, 2024 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -35,9 +35,10 @@
     (only-in racket/list append-map)
     (only-in racket/match exn:misc:match? match match-lambda)
     (only-in racket/math natural?)
+    (only-in racket/stream stream*)
     (only-in racket/struct make-constructor-style-printer)
     (only-in racket/struct-info extract-struct-info)
-    (only-in syntax/parse expr id)
+    (only-in syntax/parse expr id define-syntax-class)
     (only-in syntax/parse/define define-simple-macro)
     
     (only-in parendown pd)
@@ -49,6 +50,7 @@
     lathe-comforts/match
     lathe-comforts/maybe
     lathe-comforts/own-contract
+    lathe-comforts/sequence
     lathe-comforts/string
     lathe-comforts/struct
     lathe-comforts/trivial)

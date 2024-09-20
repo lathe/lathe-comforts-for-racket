@@ -4,7 +4,7 @@
 @;
 @; Evergreen utilities.
 
-@;   Copyright 2017-2022 The Lathe Authors
+@;   Copyright 2017-2022, 2024 The Lathe Authors
 @;
 @;   Licensed under the Apache License, Version 2.0 (the "License");
 @;   you may not use this file except in compliance with the License.
@@ -623,6 +623,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 )]{
   These procedures compare a given natural number with the length of a given list. This can be more efficient than comparing the number to @racket[(length lst)] when that length is larger than the number.
 }
+
+
+
+@include-section["lathe-comforts/sequence.scrbl"]
 
 
 

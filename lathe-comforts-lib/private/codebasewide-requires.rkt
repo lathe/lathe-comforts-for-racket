@@ -32,7 +32,7 @@
     (only-in racket/unit rename)
     (only-in syntax/contract wrap-expr/c)
     (only-in syntax/parse
-      ...+ ~! ~alt ~and ~bind ~fail ~literal ~not ~optional ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse this-syntax))
+      ...+ ~! ~alt ~and ~bind ~fail ~literal ~not ~optional ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse syntax-parser this-syntax))
   racket/base)
 
 (only-in racket/contract/base
@@ -52,7 +52,7 @@
 (only-in racket/math nan? natural?)
 (only-in racket/promise delay delay/strict force promise?)
 (only-in racket/sequence
-  in-slice sequence/c sequence-length sequence->list sequence-map sequence-ref)
+  in-slice initiate-sequence sequence/c sequence-length sequence->list sequence-map sequence-ref)
 (only-in racket/stream stream* stream-empty? stream-first stream-rest)
 (only-in racket/struct make-constructor-style-printer)
 (only-in racket/syntax format-symbol)
