@@ -412,7 +412,7 @@
   result)
 
 (begin-for-syntax /define-syntax-class
-  (own-contracted-id antecedent-land)
+  (own-contracted-id who antecedent-land)
   #:attributes (val/c)
   (pattern
     {~and var:id /~not /~or* {~literal struct} {~literal rename}}
@@ -431,9 +431,9 @@
       #:name "the ascribe-own-contract value of a variable")
     
     #:attr val/c
-    #'(begin
+    #`(begin
       (when (eq? var val/c-unguarded)
-        (raise-arguments-error 'own-contract-out
+        (raise-arguments-error '#,who
           (format "no ascribe-own-contract information for ~a" 'var)))
       val/c-unguarded.c)))
 
@@ -442,7 +442,10 @@
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-ignored-out #'antecedent-land)
+  
   (contract-ignored-out [var var.val/c] ...))
 
 (define-provide-pre-transformer-syntax-parse-rule
@@ -450,7 +453,9 @@
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-out #'antecedent-land)
   
   #:with result
   #`(
@@ -475,7 +480,9 @@
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-whenc-out #'antecedent-land)
   
   #:with result
   #`(
@@ -504,7 +511,10 @@
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-unlessc-out #'antecedent-land)
+  
   (contract-whenc-out (not next-phase-condition)
     [var var.val/c]
     ...))
