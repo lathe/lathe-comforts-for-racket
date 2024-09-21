@@ -117,10 +117,10 @@
   (knowable-bind kble /fn value
   /known /func value))
 
-(define/own-contract (knowable-if condition then)
+(define/own-contract (knowable-if condition get-value)
   (-> boolean? (-> any/c) knowable?)
   (if condition
-    (known /then)
+    (known /get-value)
     (unknown)))
 
 (define/own-contract (knowable->falsable kble)
@@ -147,9 +147,7 @@
 (ascribe-own-contract prop:expressly-knowable-predicate
   (struct-type-property/c expressly-knowable-predicate-impl?))
 (ascribe-own-contract make-expressly-knowable-predicate-impl
-  (->
-    (-> expressly-knowable-predicate?
-      (unconstrained-domain-> knowable?))
+  (-> (-> any/c (unconstrained-domain-> knowable?))
     expressly-knowable-predicate-impl?))
 
 (define/own-contract call-knowable

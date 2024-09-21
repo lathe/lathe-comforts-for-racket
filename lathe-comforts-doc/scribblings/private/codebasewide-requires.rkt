@@ -25,8 +25,9 @@
 (for-label /combine-in/fallback
   
   (combine-in
+    (only-in racket/contract struct-type-property/c)
     (only-in racket/contract/base
-      -> </c and/c any any/c cons/c contract-out chaperone-contract? contract? contract-name flat-contract? listof or/c recursive-contract struct/c)
+      -> </c and/c any any/c cons/c contract-out chaperone-contract? contract? contract-name flat-contract? listof or/c recursive-contract struct/c unconstrained-domain->)
     (only-in racket/contract/combinator
       coerce-chaperone-contract coerce-contract coerce-flat-contract make-chaperone-contract make-contract make-flat-contract)
     (only-in racket/contract/region
