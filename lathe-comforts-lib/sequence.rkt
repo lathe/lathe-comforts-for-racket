@@ -108,12 +108,18 @@
                   [elem-value (in-list elem-values)])
                 (element-value/c-projection elem-value missing-party))
             /list elem-values next))
-        /make-do-sequence /fn /initiate-sequence
+        ; TODO: After we depend on Racket 8.11 for more things, we can
+        ; also use `initiate-sequence` here instead of `values`.
+        /make-do-sequence /fn /values
           
-          #:pos->element
+          #;#:pos->element
           (dissectfn (list elem-values next)
             (apply values elem-values))
           
-          #:early-next-pos (dissectfn (list elem-values next) next)
-          #:next-pos (fn next /next-pos /fn /next)
-          #:init-pos (next-pos /fn /sequence-generate* v))))))
+          #;#:early-next-pos (dissectfn (list elem-values next) next)
+          #;#:next-pos (fn next /next-pos /fn /next)
+          #;#:init-pos (next-pos /fn /sequence-generate* v)
+          #;#:continue-with-pos? #f
+          #;#:continue-with-val? #f
+          #;#:continue-after-pos+val? #f
+          )))))
