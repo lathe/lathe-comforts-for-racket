@@ -1123,3 +1123,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 
 
 @include-section["lathe-comforts/own-contract.scrbl"]
+
+
+
+@include-section["lathe-comforts/knowable.scrbl"]

@@ -1,0 +1,222 @@
+#lang parendown/slash racket/base
+
+; lathe-comforts/knowable
+;
+; A pair of types, `unknown` and `known`, intended for values
+; that may or may not have been established yet in the contemporary
+; state of the library ecosystem.
+
+;   Copyright 2024 The Lathe Authors
+;
+;   Licensed under the Apache License, Version 2.0 (the "License");
+;   you may not use this file except in compliance with the License.
+;   You may obtain a copy of the License at
+;
+;       http://www.apache.org/licenses/LICENSE-2.0
+;
+;   Unless required by applicable law or agreed to in writing,
+;   software distributed under the License is distributed on an
+;   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+;   either express or implied. See the License for the specific
+;   language governing permissions and limitations under the License.
+
+
+(require lathe-comforts/private/shim)
+(init-shim)
+
+(require lathe-comforts)
+(require lathe-comforts/match)
+(require lathe-comforts/struct)
+
+
+(provide /own-contract-out
+  expressly-possibly-unknown-impl?
+  prop:expressly-possibly-unknown
+  make-expressly-possibly-unknown-impl
+  unknown?
+  example-unknown?)
+(provide
+  example-unknown)
+(provide /own-contract-out
+  unknown
+  known?
+  known-value)
+(provide
+  known)
+(provide /own-contract-out
+  knowable?
+  knowable/c
+  knowable-bind
+  knowable-map
+  knowable-if
+  knowable->falsable
+  falsable->uninformative-knowable
+  expressly-knowable-predicate-impl?
+  prop:expressly-knowable-predicate
+  make-expressly-knowable-predicate-impl
+  call-knowable
+  make-procedure-impl-for-knowable-predicate
+  make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
+  makeshift-knowable-predicate)
+
+
+(define-imitation-simple-generics
+  expressly-possibly-unknown? expressly-possibly-unknown-impl?
+  (#:method expressly-possibly-unknown-is-indeed? (#:this))
+  prop:expressly-possibly-unknown make-expressly-possibly-unknown-impl
+  'expressly-possibly-unknown 'expressly-possibly-unknown-impl (list))
+(ascribe-own-contract expressly-possibly-unknown-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract prop:expressly-possibly-unknown
+  (struct-type-property/c expressly-possibly-unknown-impl?))
+(ascribe-own-contract make-expressly-possibly-unknown-impl
+  (-> (-> any/c boolean?) expressly-possibly-unknown-impl?))
+
+
+(define/own-contract (unknown? v)
+  (-> any/c boolean?)
+  (and
+    (expressly-possibly-unknown? v)
+    (expressly-possibly-unknown-is-indeed? v)))
+
+(define-imitation-simple-struct (example-unknown?) example-unknown
+  'unknown (current-inspector) (auto-write)
+  (#:prop prop:expressly-possibly-unknown
+    (make-expressly-possibly-unknown-impl /fn self
+      #t)))
+(ascribe-own-contract example-unknown? (-> any/c boolean?))
+
+(define/own-contract (unknown)
+  (-> example-unknown?)
+  (example-unknown))
+
+(define-imitation-simple-struct (known? known-value) known
+  'known (current-inspector) (auto-write) (auto-equal))
+(ascribe-own-contract known? (-> any/c boolean?))
+(ascribe-own-contract known-value (-> known? any/c))
+
+(define/own-contract (knowable? v)
+  (-> any/c boolean?)
+  (or (known? v) (unknown? v)))
+
+; TODO: Give the resulting contract a better name, check that it has
+; good `contract-stronger?` behavior, etc.
+(define/own-contract (knowable/c c)
+  (-> contract? contract?)
+  (w- c (coerce-contract 'knowable/c c)
+  /rename-contract (or/c unknown? /match/c known c)
+    `(knowable/c ,(contract-name c))))
+
+(define/own-contract (knowable-bind kble func)
+  (-> knowable? (-> any/c knowable?) knowable?)
+  (expect kble (known value) kble
+  /func value))
+
+(define/own-contract (knowable-map kble func)
+  (-> knowable? (-> any/c any/c) knowable?)
+  (knowable-bind kble /fn value
+  /known /func value))
+
+(define/own-contract (knowable-if condition then)
+  (-> boolean? (-> any/c) knowable?)
+  (if condition
+    (known /then)
+    (unknown)))
+
+(define/own-contract (knowable->falsable kble)
+  (-> knowable? any/c)
+  (mat kble (known value)
+    value
+    #f))
+
+(define/own-contract (falsable->uninformative-knowable fble)
+  (-> any/c knowable?)
+  (knowable-if fble /fn fble))
+
+
+(define-imitation-simple-generics
+  expressly-knowable-predicate? expressly-knowable-predicate-impl?
+  (#:method expressly-knowable-predicate-get-accepts?-knowable
+    (#:this))
+  prop:expressly-knowable-predicate
+  make-expressly-knowable-predicate-impl
+  'expressly-knowable-predicate
+  'expressly-knowable-predicate-impl (list))
+(ascribe-own-contract expressly-knowable-predicate-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract prop:expressly-knowable-predicate
+  (struct-type-property/c expressly-knowable-predicate-impl?))
+(ascribe-own-contract make-expressly-knowable-predicate-impl
+  (->
+    (-> expressly-knowable-predicate?
+      (unconstrained-domain-> knowable?))
+    expressly-knowable-predicate-impl?))
+
+(define/own-contract call-knowable
+  (unconstrained-domain-> knowable?)
+  (procedure-reduce-arity
+    (make-keyword-procedure
+      (lambda (ks vs f . positional-args)
+        (if (expressly-knowable-predicate? f)
+          (w- accepts?-knowable
+            (expressly-knowable-predicate-get-accepts?-knowable f)
+          /keyword-apply accepts?-knowable ks vs positional-args)
+        /if (procedure? f)
+          (falsable->uninformative-knowable
+            (keyword-apply f ks vs positional-args))
+          (raise-arguments-error 'call-knowable
+            "expected the called value to be a prop:expressly-knowable-predicate instance or a procedure"
+            "f" f)))
+      (lambda (f . positional-args)
+        (if (expressly-knowable-predicate? f)
+          (w- accepts?-knowable
+            (expressly-knowable-predicate-get-accepts?-knowable f)
+          /apply accepts?-knowable positional-args)
+        /if (procedure? f)
+          (falsable->uninformative-knowable /apply f positional-args)
+          (raise-arguments-error 'call-knowable
+            "expected the called value to be a prop:expressly-knowable-predicate instance or a procedure"
+            "f" f))))
+    (arity-at-least 1)))
+
+; Returns a value that makes an appropriate `prop:procedure`
+; implementation for a structure type that implements
+; `prop:expressly-knowable-predicate`. It will often be preferable to
+; pass this result through `procedure-reduce-arity`.
+;
+(define/own-contract (make-procedure-impl-for-knowable-predicate)
+  (-> (unconstrained-domain-> any/c))
+  (compose knowable->falsable call-knowable))
+
+(define/own-contract
+  (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
+    p)
+  (-> procedure? (unconstrained-domain-> any/c))
+  (define-values (required-kws allowed-kws) (procedure-keywords p))
+  (procedure-reduce-keyword-arity-mask
+    (make-procedure-impl-for-knowable-predicate)
+    (arithmetic-shift (procedure-arity-mask p) 1)
+    required-kws
+    allowed-kws))
+
+(define makeshift-knowable-predicate-inspector (current-inspector))
+
+(define/own-contract (makeshift-knowable-predicate accepts?-knowable)
+  (-> (unconstrained-domain-> knowable?)
+    (unconstrained-domain-> any/c))
+  (define-imitation-simple-struct
+    (makeshift-knowable-predicate?
+      makeshift-knowable-predicate-get-accepts?-direct)
+    makeshift-knowable-predicate
+    'makeshift-knowable-predicate
+    makeshift-knowable-predicate-inspector
+    (auto-write)
+    (auto-equal)
+    (#:prop prop:procedure
+      (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
+        accepts?-knowable))
+    (#:prop prop:expressly-knowable-predicate
+      (make-expressly-knowable-predicate-impl
+        (dissectfn (makeshift-knowable-predicate accepts?-knowable)
+          accepts?-knowable))))
+  (makeshift-knowable-predicate accepts?-knowable))

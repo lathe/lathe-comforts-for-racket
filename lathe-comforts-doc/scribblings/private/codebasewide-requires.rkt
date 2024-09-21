@@ -46,6 +46,7 @@
     lathe-comforts
     lathe-comforts/contract
     lathe-comforts/hash
+    lathe-comforts/knowable
     lathe-comforts/list
     lathe-comforts/match
     lathe-comforts/maybe

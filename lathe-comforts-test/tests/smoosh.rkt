@@ -28,6 +28,7 @@
 (init-shim)
 
 (require lathe-comforts)
+(require lathe-comforts/knowable)
 (require lathe-comforts/maybe)
 (require lathe-comforts/private/smoosh)
 (require /only-in lathe-comforts/private/smoosh
