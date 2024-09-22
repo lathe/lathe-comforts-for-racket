@@ -36,6 +36,7 @@
     (only-in racket/list append-map)
     (only-in racket/match exn:misc:match? match match-lambda)
     (only-in racket/math natural?)
+    (only-in racket/promise promise?)
     (only-in racket/stream stream*)
     (only-in racket/struct make-constructor-style-printer)
     (only-in racket/struct-info extract-struct-info)
@@ -52,9 +53,11 @@
     lathe-comforts/match
     lathe-comforts/maybe
     lathe-comforts/own-contract
+    lathe-comforts/promise
     lathe-comforts/sequence
     lathe-comforts/string
     lathe-comforts/struct
-    lathe-comforts/trivial)
+    lathe-comforts/trivial
+    lathe-comforts/yknow)
   
   racket/base)

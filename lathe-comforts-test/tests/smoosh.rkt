@@ -36,6 +36,7 @@
   [path-related-wrapper pw])
 (require lathe-comforts/sequence)
 (require lathe-comforts/trivial)
+(require lathe-comforts/yknow)
 
 ; (We provide nothing from this module.)
 

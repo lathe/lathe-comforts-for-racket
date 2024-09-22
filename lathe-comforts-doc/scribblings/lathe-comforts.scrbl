@@ -374,6 +374,10 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 
 
+@include-section["lathe-comforts/promise.scrbl"]
+
+
+
 @section[#:tag "maybe"]{Maybe Values}
 
 @defmodule[lathe-comforts/maybe]
@@ -1127,3 +1131,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 
 
 @include-section["lathe-comforts/knowable.scrbl"]
+
+
+
+@include-section["lathe-comforts/yknow.scrbl"]
