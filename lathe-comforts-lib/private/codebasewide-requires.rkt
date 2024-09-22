@@ -50,7 +50,7 @@
 (only-in racket/match
   define-match-expander match match-define match/derived match-lambda)
 (only-in racket/math nan? natural?)
-(only-in racket/promise delay delay/strict force promise?)
+(only-in racket/promise delay delay/strict force)
 (only-in racket/sequence
   in-slice sequence/c sequence-length sequence->list sequence-map sequence-ref)
 (only-in racket/stream stream* stream-empty? stream-first stream-rest)

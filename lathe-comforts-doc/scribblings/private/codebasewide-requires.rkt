@@ -27,7 +27,7 @@
   (combine-in
     (only-in racket/contract struct-type-property/c)
     (only-in racket/contract/base
-      -> </c and/c any any/c cons/c contract-out chaperone-contract? contract? contract-name flat-contract? listof or/c recursive-contract struct/c unconstrained-domain->)
+      -> </c and/c any any/c cons/c contract-out chaperone-contract? contract? contract-name flat-contract? listof none/c or/c promise/c recursive-contract struct/c unconstrained-domain->)
     (only-in racket/contract/combinator
       coerce-chaperone-contract coerce-contract coerce-flat-contract make-chaperone-contract make-contract make-flat-contract)
     (only-in racket/contract/region
@@ -36,7 +36,7 @@
     (only-in racket/list append-map)
     (only-in racket/match exn:misc:match? match match-lambda)
     (only-in racket/math natural?)
-    (only-in racket/promise promise?)
+    (only-in racket/promise force promise?)
     (only-in racket/stream stream*)
     (only-in racket/struct make-constructor-style-printer)
     (only-in racket/struct-info extract-struct-info)

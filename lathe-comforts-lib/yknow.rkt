@@ -36,11 +36,7 @@
   yknow?
   yknow-value-promise-maybe-knowable-promise
   yknow/c
-  make-yknow-from-value-promise-maybe-knowable-promise)
-(provide
-  ; TODO: Stop exporting this.
-  yknow-augment)
-(provide /own-contract-out
+  make-yknow-from-value-promise-maybe-knowable-promise
   make-yknow-from-value-knowable-promise
   make-yknow-from-value
   uninformative-yknow
@@ -52,22 +48,14 @@
   yknow-value-promise-maybe-knowable-map
   yknow-map
   yknow-map/knowable
+  yknow-joininfo*-resumably
   yknow-joininfo*
   yknow-maybe-yknow-joininfo*)
 
 
-; NOTE: When we want to debug where a `yknow?` value came from, we can
-; configure this.
-(define-for-syntax debugging-yknow #f)
-(ifc debugging-yknow
-  (define-imitation-simple-struct
-    (yknow?
-      yknow-debug-info
-      yknow-value-promise-maybe-knowable-promise)
-    yknow 'yknow (current-inspector) (auto-write))
-  (define-imitation-simple-struct
-    (yknow? yknow-value-promise-maybe-knowable-promise)
-    yknow 'yknow (current-inspector) (auto-write)))
+(define-imitation-simple-struct
+  (yknow? yknow-value-promise-maybe-knowable-promise)
+  yknow 'yknow (current-inspector) (auto-write))
 (ascribe-own-contract yknow? (-> any/c boolean?))
 (ascribe-own-contract yknow-value-promise-maybe-knowable-promise
   (-> yknow? (promise/c (knowable/c (maybe/c (promise/c any/c))))))
@@ -78,51 +66,30 @@
   (-> contract? contract?)
   (w- c (coerce-contract 'yknow/c c)
   /rename-contract
-    (ifc debugging-yknow
-      (match/c yknow any/c
-        (promise/c /knowable/c /maybe/c /promise/c c))
-      (match/c yknow /promise/c /knowable/c /maybe/c /promise/c c))
+    (match/c yknow /promise/c /knowable/c /maybe/c /promise/c c)
     `(yknow/c ,(contract-name c))))
 
 (define/own-contract
   (make-yknow-from-value-promise-maybe-knowable-promise value-pmkp)
   (-> (promise/c (knowable/c (maybe/c (promise/c any/c)))) yknow?)
-  (ifc debugging-yknow
-    (yknow
-      `(
-         (make-yknow-from-value-promise-maybe-knowable-promise
-           ,value-pmkp))
-      value-pmkp)
-    (yknow value-pmkp)))
-
-(ifc debugging-yknow
-  (define (yknow-augment debug-info y)
-    (dissect y (yknow d pmkp)
-    /yknow (cons debug-info d) pmkp))
-  (define-syntax-parse-rule (yknow-augment debug-info:expr y:expr)
-    (begin
-      (fn debug-info)
-      y)))
+  (yknow value-pmkp))
 
 (define/own-contract (make-yknow-from-value-knowable-promise value-kp)
   (-> (promise/c (knowable/c any/c)) yknow?)
-  (yknow-augment `(make-yknow-from-value-knowable-promise ,value-kp)
-  /make-yknow-from-value-promise-maybe-knowable-promise
+  (make-yknow-from-value-promise-maybe-knowable-promise
     (promise-map value-kp /fn value-k
       (knowable-map value-k /fn value /just /delay/strict value))))
 
 (define/own-contract (make-yknow-from-value value)
   (-> any/c yknow?)
-  (yknow-augment `(make-yknow-from-value ,value)
-  /make-yknow-from-value-knowable-promise /delay/strict /known value))
+  (make-yknow-from-value-knowable-promise /delay/strict /known value))
 
 (define/own-contract (uninformative-yknow)
   (-> (yknow/c none/c))
-  (yknow-augment `(uninformative-yknow)
-  /make-yknow-from-value-knowable-promise /delay/strict /unknown))
+  (make-yknow-from-value-knowable-promise /delay/strict /unknown))
 
 (define/own-contract (yknow-value-promise-knowable y)
-  (-> yknow? (knowable/c promise?))
+  (-> yknow? (knowable/c (promise/c any/c)))
   (w- pmkp (yknow-value-promise-maybe-knowable-promise y)
   /knowable-bind (force pmkp) /fn pm
   /expect pm (just p) (unknown)
@@ -147,8 +114,7 @@
     (-> (promise/c (knowable/c (maybe/c (promise/c any/c))))
       (promise/c (knowable/c (maybe/c (promise/c any/c)))))
     yknow?)
-  (yknow-augment `(yknow-value-promise-maybe-knowable-promise-map ,y ,on-value-pmkp)
-  /make-yknow-from-value-promise-maybe-knowable-promise
+  (make-yknow-from-value-promise-maybe-knowable-promise
     (on-value-pmkp /yknow-value-promise-maybe-knowable-promise y)))
 
 (define/own-contract
@@ -158,15 +124,13 @@
     (-> (knowable/c (maybe/c (promise/c any/c)))
       (knowable/c (maybe/c (promise/c any/c))))
     yknow?)
-  (yknow-augment `(yknow-value-promise-maybe-knowable-map ,y ,on-value-pmk)
-  /yknow-value-promise-maybe-knowable-promise-map y /fn pmkp
+  (yknow-value-promise-maybe-knowable-promise-map y /fn pmkp
     (promise-map pmkp /fn pmk
       (on-value-pmk pmk))))
 
 (define/own-contract (yknow-map y on-value)
   (-> yknow? (-> any/c any/c) yknow?)
-  (yknow-augment `(yknow-map ,y ,on-value)
-  /yknow-value-promise-maybe-knowable-map y /fn pmk
+  (yknow-value-promise-maybe-knowable-map y /fn pmk
     (knowable-map pmk /fn pm
       (maybe-map pm /fn p
         (promise-map p /fn value
@@ -174,38 +138,37 @@
 
 (define/own-contract (yknow-map/knowable y on-value-knowable)
   (-> yknow? (-> any/c knowable?) yknow?)
-  (yknow-augment `(yknow-map/knowable ,y ,on-value-knowable)
-  /yknow-value-promise-maybe-knowable-map y /fn pmk
+  (yknow-value-promise-maybe-knowable-map y /fn pmk
     (knowable-bind pmk /fn pm
       (expect pm (just p) (unknown)
       /knowable-map (on-value-knowable /force p) /fn value
         (just /delay/strict value)))))
 
-(define/own-contract (yknow-joininfo*-on-promise y-list on-promise)
-  (-> (listof yknow?) (-> (listof yknow?) promise? promise?) yknow?)
-  (yknow-augment `(yknow-joininfo*-on-promise ,y-list ,on-promise)
-  /make-yknow-from-value-promise-maybe-knowable-promise /delay
+(define/own-contract
+  (yknow-joininfo*-resumably y-list on-known-specified)
+  (->
+    (listof yknow?)
+    (-> (promise/c any/c) (listof yknow?) (promise/c any/c))
+    yknow?)
+  (make-yknow-from-value-promise-maybe-knowable-promise /delay
     (w-loop next y-list y-list
       (expect y-list (cons y y-list) (known /nothing)
       /w- pmkp (yknow-value-promise-maybe-knowable-promise y)
       /knowable-bind (force pmkp) /fn pm
       /expect pm (just p) (next y-list)
-      /known /just /on-promise y-list p))))
+      /known /just /on-known-specified p y-list))))
 
 (define/own-contract (yknow-joininfo* y-list)
   (-> (listof yknow?) yknow?)
-  (yknow-augment `(yknow-joininfo* ,y-list)
-  /yknow-joininfo*-on-promise y-list /fn y-list p p))
+  (yknow-joininfo*-resumably y-list /fn p y-list p))
 
 (define/own-contract (yknow-maybe-yknow-joininfo* ymy-list)
   (-> (listof (yknow/c (maybe/c (yknow/c any/c))))
     (yknow/c (maybe/c (yknow/c any/c))))
-  (yknow-augment `(yknow-maybe-yknow-joininfo* ,ymy-list)
-  /yknow-joininfo*-on-promise ymy-list /fn ymy-list ymp
+  (yknow-joininfo*-resumably ymy-list /fn ymp ymy-list
     (promise-map ymp /fn ym
       (maybe-map ym /fn y
-        (yknow-augment `(yknow-maybe-yknow-joininfo*/inner ,ymy-list ,y)
-        /yknow-joininfo*
+        (yknow-joininfo*
           (cons y
             (list-map ymy-list /fn ymy
               (yknow-value-promise-maybe-knowable-map ymy /fn ympmk

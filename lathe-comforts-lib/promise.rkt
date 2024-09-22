@@ -28,5 +28,5 @@
 
 
 (define/own-contract (promise-map promise on-value)
-  (-> promise? (-> any/c any/c) promise?)
+  (-> (promise/c any/c) (-> any/c any/c) (promise/c any/c))
   (delay /on-value /force promise))

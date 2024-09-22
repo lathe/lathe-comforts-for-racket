@@ -29,8 +29,10 @@
 
 
 @defproc[
-  (promise-map [promise promise?] [on-value (-> any/c any/c)])
-  promise?
+  (promise-map
+    [promise (promise/c any/c)]
+    [on-value (-> any/c any/c)])
+  (promise/c any/c)
 ]{
   Returns a promise that first forces the given one and then transforms its result using @racket[on-value].
 }

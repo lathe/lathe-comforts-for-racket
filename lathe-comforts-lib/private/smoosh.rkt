@@ -1035,13 +1035,12 @@
     (cons element element-list)))
 
 (define/own-contract (promise-zip*-map p-list on-value)
-  (-> (listof promise?) (-> any/c any/c) promise?)
+  (-> (listof (promise/c any/c)) (-> any/c any/c) (promise/c any/c))
   (delay /on-value /list-map p-list /fn p /force p))
 
 (define/own-contract (yknow-zip*-map y-list on-value)
   (-> (listof yknow?) (-> any/c any/c) yknow?)
-  (yknow-augment `(yknow-zip*-map ,y-list ,on-value)
-  /make-yknow-from-value-knowable-promise /delay
+  (make-yknow-from-value-knowable-promise /delay
     (knowable-if (list-all y-list /fn y /yknow-known-specified? y) /fn
       (on-value /list-map y-list /fn y /yknow-value y))))
 
@@ -1057,8 +1056,7 @@
 
 (define/own-contract (boolean-and-yknow-zip* y-list)
   (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
-  (yknow-augment `(boolean-and-yknow-zip* ,y-list)
-  /make-yknow-from-value-knowable-promise
+  (make-yknow-from-value-knowable-promise
     (boolean-and-knowable-promise-zip* /list-map y-list /fn y
       (delay /yknow-value-knowable y))))
 
@@ -1078,8 +1076,7 @@
 
 (define/own-contract (maybe-min-yknow-zip*-map my-list on-value)
   (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
-  (yknow-augment `(maybe-min-yknow-zip*-map ,my-list ,on-value)
-  /make-yknow-from-value-promise-maybe-knowable-promise /delay
+  (make-yknow-from-value-promise-maybe-knowable-promise /delay
     (if
       (list-any my-list /fn my
         (mat (yknow-value-knowable my) (known /nothing) #t #f))
@@ -3201,8 +3198,7 @@
   (if (and known-distinct? known-discrete?) reports
   /w- my->known-true
     (fn my
-      (yknow-augment `(smoosh-reports-with-hesitation-at-discrepancies/inner/my->known-true ,my)
-      /yknow-map/knowable my /fn m /knowable-if (just? m) /fn m))
+      (yknow-map/knowable my /fn m /knowable-if (just? m) /fn m))
   /if (not known-distinct?)
     (smoosh-reports-map reports
       #:on-smoosh-result-yknow-maybe-yknow my->known-true)
@@ -3233,12 +3229,10 @@
         /knowable-if result /fn result)))
   /w- y->known-true
     (fn y
-      (yknow-augment `(smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies/inner/y->known-true ,y)
-      /yknow-map/knowable y /fn r /knowable-if r /fn r))
+      (yknow-map/knowable y /fn r /knowable-if r /fn r))
   /w- my->known-true
     (fn my
-      (yknow-augment `(smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies/inner/my->known-true ,my)
-      /yknow-map/knowable my /fn m /knowable-if (just? m) /fn m))
+      (yknow-map/knowable my /fn m /knowable-if (just? m) /fn m))
   /if (not known-distinct?)
     (smoosh-and-comparison-of-two-reports-map reports
       #:on-check-result-yknow y->known-true
@@ -4657,8 +4651,7 @@
       /w- on-smoosh-result-yknow-maybe-yknow
         (fn result-needs-to-be-chaperone-of?
           (fn result-list-ymy
-            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism/inner/get-smoosh-of-one-reports/on-smoosh-result-yknow-maybe-yknow ,result-list-ymy)
-            /yknow-map/knowable result-list-ymy /fn list-ym
+            (yknow-map/knowable result-list-ymy /fn list-ym
               (expect list-ym (just list-y) (known /nothing)
               /knowable-bind (yknow-value-knowable list-y)
               /fn result-list
@@ -4772,8 +4765,7 @@
       /w- on-check-result-yknow
         (fn should-a-be-small? should-b-be-small?
           (fn y
-            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism/inner/on-check-result-yknow ,y)
-            /yknow-map/knowable y /fn result
+            (yknow-map/knowable y /fn result
               (boolean-and-knowable-thunk-zip* /list
                 (fn /known result)
                 (fn /boolean-or-knowable-thunk-zip* /list
@@ -4787,8 +4779,7 @@
       /w- on-smoosh-result-yknow-maybe-yknow
         (fn acceptable-result?
           (fn result-list-ymy
-            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism/inner/on-smoosh-result-yknow-maybe-yknow ,result-list-ymy)
-            /yknow-map/knowable result-list-ymy /fn list-ym
+            (yknow-map/knowable result-list-ymy /fn list-ym
               (expect list-ym (just list-y) (known /nothing)
               /knowable-bind (yknow-value-knowable list-y)
               /fn result-list
@@ -5247,8 +5238,7 @@
         #:known-distinct? known-distinct?
         #:known-discrete? known-discrete?
         (constant-smoosh-and-comparison-of-two-reports
-          (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom/inner)
-          /make-yknow-from-value-knowable-promise /delay /known
+          (make-yknow-from-value-knowable-promise /delay /known
             (maybe-if (==? a b) /fn /make-yknow-from-value a)))))
     
     ))
@@ -5407,8 +5397,7 @@
       /w- on-check-result-yknow
         (fn should-a-be-small? should-b-be-small?
           (dissectfn (list)
-            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom/inner/on-check-result-yknow)
-            /make-yknow-from-value-knowable-promise /delay
+            (make-yknow-from-value-knowable-promise /delay
               (boolean-and-knowable-thunk-zip* /list
                 (fn /boolean-or-knowable-thunk-zip* /list
                   (fn /known /not should-a-be-small?)
@@ -5421,8 +5410,7 @@
       /w- on-smoosh-result-yknow-maybe-yknow
         (fn acceptable-result?
           (dissectfn (list)
-            (yknow-augment `(make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom/inner/on-smoosh-result-yknow-maybe-yknow)
-            /make-yknow-from-value-knowable-promise /delay/strict
+            (make-yknow-from-value-knowable-promise /delay/strict
               (if (acceptable-result? a)
                 (known /just /make-yknow-from-value a)
               /if (acceptable-result? b)
@@ -5974,8 +5962,7 @@
           (uninformative-smoosh-and-comparison-of-two-reports)
         /w- report-1+
           (constant-smoosh-and-comparison-of-two-reports
-            (yknow-augment `(non-nan-number-dynamic-type/inner/report-1+)
-            /make-yknow-from-value-knowable-promise /delay /known
+            (make-yknow-from-value-knowable-promise /delay /known
               (maybe-if (equal-always? a b) /fn
                 (make-yknow-from-value a))))
         /if (= a b)
@@ -6002,8 +5989,7 @@
           (yknow-map <=?-yknow /fn result
             (just /make-yknow-from-value /if result a b))
         /w- path-related-yknow-maybe-yknow
-          (yknow-augment `(non-nan-number-dynamic-type/inner/path-related-yknow-maybe-yknow)
-          /make-yknow-from-value-knowable-promise
+          (make-yknow-from-value-knowable-promise
             (promise-map real?-promise /fn real?
               (knowable-if real? /fn
                 (just /make-yknow-from-value a))))
@@ -6153,8 +6139,7 @@
           (uninformative-smoosh-and-comparison-of-two-reports)
         /w- report-1+
           (constant-smoosh-and-comparison-of-two-reports
-            (yknow-augment `(non-nan-extflonum-dynamic-type/inner/report-1+)
-            /make-yknow-from-value-knowable-promise /delay /known
+            (make-yknow-from-value-knowable-promise /delay /known
               (maybe-if (equal-always? a b) /fn
                 (make-yknow-from-value a))))
         /if (extfl= a b)
