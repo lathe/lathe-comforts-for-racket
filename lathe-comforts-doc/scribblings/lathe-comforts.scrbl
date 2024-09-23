@@ -1091,6 +1091,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   When writing contracts for values whose design isn't easy to change, another approach is to intercept those values at the boundaries of a program and convert them into a custom structure type whose design is easier to control.
 }
 
+@defproc[(uninformative-hash-code) fixnum?]{
+  Returns a hash code suitable for returning from the @tt{hash-mode-proc} of a @racket[gen:equal-mode+hash] instance or the @tt{hash-proc} or @tt{hash2-proc} of a @racket[gen:equal+hash] or @racket[prop:equal+hash] instance, if it has no information at all to differentiate hashes by. This is similar to using @racket[(hash-code-combine)] or @racket[(hash-code-combine-unordered)], but without implying that orderedness or unorderedness is part of the programmer's intent.
+}
+
 
 
 @section[#:tag "match"]{Utilities for Match Expanders}

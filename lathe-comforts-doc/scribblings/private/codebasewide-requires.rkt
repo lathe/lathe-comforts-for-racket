@@ -33,6 +33,8 @@
     (only-in racket/contract/region
       define/contract invariant-assertion)
     (only-in racket/generic define-generics)
+    (only-in racket/hash-code
+      hash-code-combine hash-code-combine-unordered)
     (only-in racket/list append-map)
     (only-in racket/match exn:misc:match? match match-lambda)
     (only-in racket/math natural?)

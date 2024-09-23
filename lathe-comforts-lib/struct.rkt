@@ -83,6 +83,8 @@
   auto-equal
   define-imitation-simple-generics
   )
+(provide #/own-contract-out
+  uninformative-hash-code)
 
 
 
@@ -927,3 +929,8 @@
             (make-inst-impl method-impl ...))
           (values
             inst? inst-impl? method ... prop-inst build-inst-impl)))))
+
+
+(define/own-contract (uninformative-hash-code)
+  (-> fixnum?)
+  0)

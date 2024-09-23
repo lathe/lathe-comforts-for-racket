@@ -37,10 +37,7 @@
 (require lathe-comforts/promise)
 (require lathe-comforts/sequence)
 (require /only-in lathe-comforts/string immutable-string?)
-(require /only-in lathe-comforts/struct
-  auto-equal auto-write define-imitation-simple-generics
-  define-imitation-simple-struct immutable-prefab-struct?
-  mutable-prefab-struct?)
+(require lathe-comforts/struct)
 (require /only-in lathe-comforts/trivial trivial trivial?)
 (require lathe-comforts/yknow)
 
@@ -148,7 +145,6 @@
   dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
   dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
   dynamic-type-get-smoosh-and-comparison-of-two-reports
-  uninformative-hash-code
   smoosh-equal-hash-code-support-report?
   smoosh-equal-hash-code-support-report-impl?
   smoosh-equal-hash-code-support-report-==-hash-code-promise
@@ -1785,11 +1781,6 @@
       dt a b)
     (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
       dt a b)))
-
-
-(define/own-contract (uninformative-hash-code)
-  (-> fixnum?)
-  0)
 
 
 (define-imitation-simple-generics
