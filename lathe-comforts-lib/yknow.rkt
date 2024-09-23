@@ -47,9 +47,11 @@
   yknow-value-promise-maybe-knowable-promise-map
   yknow-value-promise-maybe-knowable-map
   yknow-map
+  yknow-zip*-map
   yknow-map/knowable
   yknow-joininfo*-resumably
   yknow-joininfo*
+  maybe-min-yknow-zip*-map
   yknow-maybe-yknow-joininfo*)
 
 
@@ -136,6 +138,12 @@
         (promise-map p /fn value
           (on-value value))))))
 
+(define/own-contract (yknow-zip*-map y-list on-value)
+  (-> (listof yknow?) (-> list? any/c) yknow?)
+  (make-yknow-from-value-knowable-promise /delay
+    (knowable-if (list-all y-list /fn y /yknow-known-specified? y) /fn
+      (on-value /list-map y-list /fn y /yknow-value y))))
+
 (define/own-contract (yknow-map/knowable y on-value-knowable)
   (-> yknow? (-> any/c knowable?) yknow?)
   (yknow-value-promise-maybe-knowable-map y /fn pmk
@@ -161,6 +169,17 @@
 (define/own-contract (yknow-joininfo* y-list)
   (-> (listof yknow?) yknow?)
   (yknow-joininfo*-resumably y-list /fn p y-list p))
+
+(define/own-contract (maybe-min-yknow-zip*-map my-list on-value)
+  (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
+  (make-yknow-from-value-promise-maybe-knowable-promise /delay
+    (if
+      (list-any my-list /fn my
+        (mat (yknow-value-knowable my) (known /nothing) #t #f))
+      (known /just /delay/strict /nothing)
+    /force /yknow-value-promise-maybe-knowable-promise
+      (yknow-zip*-map my-list /fn m-list
+        (just /on-value /list-map m-list /fn m /just-value m)))))
 
 (define/own-contract (yknow-maybe-yknow-joininfo* ymy-list)
   (-> (listof (yknow/c (maybe/c (yknow/c any/c))))

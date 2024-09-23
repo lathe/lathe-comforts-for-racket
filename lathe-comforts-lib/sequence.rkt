@@ -26,34 +26,15 @@
 (require lathe-comforts/list)
 
 
+(provide /own-contract-out
+  endless-sequence/c)
 (provide
   sequence*)
 (provide /own-contract-out
   sequence-first
-  endless-sequence/c)
+  sequence-zip*-map
+  endless-sequence-zip*-map)
 
-
-(begin-for-syntax /define-syntax-class multi-value-expr
-  (pattern ({~literal values} _:expr ...))
-  (pattern _:expr))
-
-(define-match-expander sequence*
-  ; TODO: Use a syntax class for match patterns rather than `expr`
-  ; here, if one ever exists.
-  (syntax-parser / (_ elem:multi-value-expr ... rest:expr)
-    #'(app sequence->stream /stream* elem ... rest))
-  (syntax-parser / (_ elem:multi-value-expr ... rest)
-    #:declare rest (expr/c #'sequence? #:name "rest argument")
-    #'(stream* elem ... /sequence->stream rest.c)))
-
-(define/own-contract (sequence-first s)
-  (-> sequence? any)
-  (define-values (elem-values next) (sequence-generate* s))
-  (unless elem-values
-    (raise-arguments-error 'sequence-first
-      "expected a non-empty sequence"
-      "s" s))
-  (apply values elem-values))
 
 (define/own-contract (endless-sequence/c . element-value/cs)
   (-> contract? contract?)
@@ -89,7 +70,7 @@
           (raise-blame-error blame #:missing-party missing-party v
             '(expected: "a sequence" given: "~e")
             v)
-        /w- next-pos
+        /w- next-possible-pos
           (fn get-pos
             (begin (define-values (elem-values next) (get-pos))
             /mat elem-values #f
@@ -108,18 +89,123 @@
                   [elem-value (in-list elem-values)])
                 (element-value/c-projection elem-value missing-party))
             /list elem-values next))
-        ; TODO: After we depend on Racket 8.11 for more things, we can
-        ; also use `initiate-sequence` here instead of `values`.
-        /make-do-sequence /fn /values
+        /make-do-sequence /fn /lathe-initiate-sequence
           
-          #;#:pos->element
+          #:init-possible-pos
+          (next-possible-pos /fn /sequence-generate* v)
+          
+          #:pos->element
           (dissectfn (list elem-values next)
             (apply values elem-values))
           
-          #;#:early-next-pos (dissectfn (list elem-values next) next)
-          #;#:next-pos (fn next /next-pos /fn /next)
-          #;#:init-pos (next-pos /fn /sequence-generate* v)
-          #;#:continue-with-pos? #f
-          #;#:continue-with-val? #f
-          #;#:continue-after-pos+val? #f
-          )))))
+          #:pos->lightweight-pos
+          (dissectfn (list elem-values next)
+            next)
+          
+          #:next-possible-pos-for-lightweight-pos
+          (fn next
+            (next-possible-pos /fn /next)))))))
+
+(begin-for-syntax /define-syntax-class multi-value-expr
+  (pattern ({~literal values} _:expr ...))
+  (pattern _:expr))
+
+(define-match-expander sequence*
+  ; TODO: Use a syntax class for match patterns rather than `expr`
+  ; here, if one ever exists.
+  (syntax-parser / (_ elem:multi-value-expr ... rest:expr)
+    #'(app sequence->stream /stream* elem ... rest))
+  (syntax-parser / (_ elem:multi-value-expr ... rest)
+    #:declare rest (expr/c #'sequence? #:name "rest argument")
+    #'(stream* elem ... /sequence->stream rest.c)))
+
+(define/own-contract (sequence-first s)
+  (-> sequence? any)
+  (define-values (elem-values next) (sequence-generate* s))
+  (unless elem-values
+    (raise-arguments-error 'sequence-first
+      "expected a non-empty sequence"
+      "s" s))
+  (apply values elem-values))
+
+; TODO: See if we'll want to export this.
+(define
+  (lathe-initiate-sequence
+    #:init-possible-pos init-possible-pos
+    #:continue-with-possible-pos? [continue-with-possible-pos? #f]
+    #:pos->element pos->element
+    #:pos->lightweight-pos [pos->lightweight-pos (fn pos pos)]
+    #:continue-with-element? [continue-with-element? #f]
+    
+    #:continue-after-lightweight-pos+element?
+    [continue-after-lightweight-pos+element? #f]
+    
+    #:next-possible-pos-for-lightweight-pos
+    next-possible-pos-for-lightweight-pos
+    
+    )
+  ; TODO: After we depend on Racket 8.11 for more things, we can use
+  ; `initiate-sequence` instead of `values` here.
+  (values
+    #;#:pos->element pos->element
+    #;#:early-next-pos pos->lightweight-pos
+    #;#:next-pos next-possible-pos-for-lightweight-pos
+    #;#:init-pos init-possible-pos
+    #;#:continue-with-pos? continue-with-possible-pos?
+    #;#:continue-with-val? continue-with-element?
+    #;#:continue-after-pos+element? continue-after-lightweight-pos+element?))
+
+(define/own-contract (sequence-zip*-map sequences on-element)
+  (->
+    (non-empty-listof (sequence/c any/c))
+    (-> (non-empty-listof any/c) any/c)
+    (sequence/c any/c))
+  ; NOTE: If `in-parallel` asserted that its given sequences were the
+  ; same length, we could do this. Instead, `in-parallel` doesn't
+  ; document what happens if its sequences are differing lengths. In
+  ; practice, it stops once any one of them stops, and `(in-parallel)`
+  ; with no arguments never stops, but we probably shouldn't rely on
+  ; either of these facts.
+;  (sequence-map
+;    (lambda elements /on-element elements)
+;    (apply in-parallel sequences)))
+  (define (next-possible-pos entries next-entry)
+    (w- result
+      (list-map entries /fn entry
+        (begin (define-values (elem-values next) (next-entry entry))
+        /and elem-values
+        /dissect elem-values (list elem)
+        /list elem next))
+    /if (list-all result /fn entry entry)
+      result
+    /if (not /list-any result /fn entry entry)
+      #f
+    ; TODO: See if we can add relevant information to this error message.
+    /raise-arguments-error 'sequence-zip*-map
+      "expected the given sequences to be of the same length"))
+  (make-do-sequence /fn /lathe-initiate-sequence
+    
+    #:init-possible-pos
+    (next-possible-pos sequences /fn s /sequence-generate* s)
+    
+    #:continue-with-possible-pos? (fn possible-pos possible-pos)
+    
+    #:pos->element
+    (fn pos
+      (on-element /list-map pos /dissectfn (list elem next) elem))
+    
+    #:pos->lightweight-pos
+    (fn pos
+      (list-map pos /dissectfn (list elem next) next))
+    
+    #:next-possible-pos-for-lightweight-pos
+    (fn nexts
+      (next-possible-pos nexts /fn next /next))))
+
+(define/own-contract (endless-sequence-zip*-map sequences on-element)
+  (-> (listof (endless-sequence/c any/c)) (-> list? any/c)
+    (endless-sequence/c any/c))
+  (mat sequences (list)
+    (sequence-zip*-map (list /in-cycle /list #f) /dissectfn (list #f)
+      (on-element /list))
+  /sequence-zip*-map sequences on-element))

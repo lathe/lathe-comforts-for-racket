@@ -120,6 +120,17 @@
 }
 
 @defproc[
+  (yknow-zip*-map
+    [y-list (listof yknow?)]
+    [on-value (-> list? any/c)])
+  yknow?
+]{
+  Given a list of @tech{yknow objects}, returns a new one obtained by updating their fully specified result values (if they all have them) according to the given function. If any of the given yknow objects has a result that's not-yet-specified or user-specified, then the resulting yknow object has a not-yet-specified result. The function won't be called until the resulting yknow object's computation is fully forced.
+  
+  Note that this flattens the sometimes useful distinction between a yknow object with a not-yet-specified result and a yknow object with a user-specified result.
+}
+
+@defproc[
   (yknow-map/knowable
     [y yknow?]
     [on-value-knowable (-> any/c knowable?)])
@@ -148,6 +159,17 @@
   This is a way of exercising one's prerogative as a user to replace a user-specified result with a fully specified one.
   
   This operation is idempotent and associative. If no more than one yknow object in the list has a fully specified result, or if their fully specified results are equivalent to each other, then this operation is also commutative.
+}
+
+@defproc[
+  (maybe-min-yknow-zip*-map
+    [y-list (listof (yknow/c maybe?))]
+    [on-value (-> list? any/c)])
+  (yknow/c maybe?)
+]{
+  Given a list of @tech{yknow objects} possibly resulting in @tech{maybe values}, returns a new one obtained by updating their fully specified @racket[just-value] result values (if they all have them) according to the given function. If any of the given yknow objects has a result that's a fully specified @racket[nothing?] value, then the resulting yknow object does as well. Otherwise, if any of them has a result that's not-yet-specified or user-specified, then the resulting yknow object has a not-yet-specified result. The function won't be called until the resulting yknow object's computation is fully forced.
+  
+  Note that this flattens the sometimes useful distinction between a yknow object with a not-yet-specified result and a yknow object with a user-specified result.
 }
 
 @defproc[

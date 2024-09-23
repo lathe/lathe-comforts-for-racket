@@ -25,6 +25,7 @@
 (init-shim)
 
 (require lathe-comforts)
+(require lathe-comforts/list)
 (require lathe-comforts/match)
 (require lathe-comforts/struct)
 
@@ -49,8 +50,12 @@
   knowable-bind
   knowable-map
   knowable-if
+  knowable-zip*
   knowable->falsable
   falsable->uninformative-knowable
+  boolean-and-knowable-promise-zip*
+  boolean-and-knowable-thunk-zip*
+  boolean-or-knowable-thunk-zip*
   expressly-knowable-predicate-impl?
   prop:expressly-knowable-predicate
   make-expressly-knowable-predicate-impl
@@ -123,6 +128,13 @@
     (known /get-value)
     (unknown)))
 
+(define/own-contract (knowable-zip* knowable-list)
+  (-> (listof knowable?) (knowable/c list?))
+  (expect knowable-list (cons knowable knowable-list) (known /list)
+  /knowable-bind knowable /fn element
+  /knowable-map (knowable-zip* knowable-list) /fn element-list
+    (cons element element-list)))
+
 (define/own-contract (knowable->falsable kble)
   (-> knowable? any/c)
   (mat kble (known value)
@@ -132,6 +144,30 @@
 (define/own-contract (falsable->uninformative-knowable fble)
   (-> any/c knowable?)
   (knowable-if fble /fn fble))
+
+(define/own-contract (boolean-and-knowable-promise-zip* kp-list)
+  (-> (listof (promise/c (knowable/c boolean?)))
+    (promise/c (knowable/c boolean?)))
+  (delay
+    (if
+      (list-any kp-list /fn kp
+        (mat (force kp) (known #f) #t #f))
+      (known #f)
+    /knowable-if (list-all kp-list /fn kp /known? /force kp) /fn #t)))
+
+(define/own-contract (boolean-and-knowable-thunk-zip* kble-thunk-list)
+  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
+  (force /boolean-and-knowable-promise-zip*
+    (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)))
+
+(define/own-contract (boolean-or-knowable-thunk-zip* kble-thunk-list)
+  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
+  (w- boolean-knowable-not
+    (fn k
+      (knowable-map k /fn result /not result))
+  /boolean-knowable-not /boolean-and-knowable-thunk-zip*
+    (list-map kble-thunk-list /fn kble-thunk
+      (fn /boolean-knowable-not /kble-thunk))))
 
 
 (define-imitation-simple-generics

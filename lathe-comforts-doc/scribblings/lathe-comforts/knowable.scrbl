@@ -122,6 +122,13 @@ There's a little bit of hubris in being so explicit about this intent, since man
   Creates a @tech{knowable value} that's @racket[known?] if and only if the given @racket[condition] is not @racket[#f]. The element is computed by calling the given function @racket[get-value] with no arguments.
 }
 
+@defproc[
+  (knowable-zip* [knowable-list (listof knowable?)])
+  (knowable/c list?)
+]{
+  Converts a list of @tech{knowable values} into a single knowable value that possibly contains a list. If any of the inputs is @racket[unknown?], the result is @racket[unknown?]. Otherwise, the result is a @racket[known?] containing a list of their @racket[known-value]s.
+}
+
 @defproc[(knowable->falsable [kble knowable?]) (or/c #f any/c)]{
   Converts the given value from a @tech{knowable value} that may be @racket[unknown?] to an arbitrary value that may be @racket[#f]. The inputs @racket[(known #f)] and @racket[(unknown)] both result in @racket[#f], so some information may be lost this way.
   
@@ -130,6 +137,30 @@ There's a little bit of hubris in being so explicit about this intent, since man
 
 @defproc[(falsable->uninformative-knowable [fble (or/c #f any/c)]) knowable?]{
   Converts the given value from an arbitrary value that may be @racket[#f] to a @tech{knowable value} that may be @racket[unknown?]. There is no way for this to produce the result @racket[(known #f)], so this may not always be able to restore a @racket[knowable->falsable] result to its original form.
+}
+
+@defproc[
+  (boolean-and-knowable-promise-zip*
+    [kp-list (listof (promise/c (knowable/c boolean?)))])
+  (promise/c (knowable/c boolean?))
+]{
+  Converts a list of @racket[promise?] objects resulting in @tech{knowable values} possibly containing booleans into a single one that works by forcing the promises one by one and concluding the result is @racket[(known #f)] if that's the result of any of the given ones. Otherwise, the result is @racket[unknown?] if the result of any of the given ones is @racket[unknown?]. Otherwise, the result is @racket[(known #t)].
+}
+
+@defproc[
+  (boolean-and-knowable-thunk-zip*
+    [kp-list (listof (-> (knowable/c boolean?)))])
+  (knowable/c boolean?)
+]{
+  Converts a list of thunks resulting in @tech{knowable values} possibly containing booleans into a single knowable value obtained by calling the thunks one by one and concluding the result is @racket[(known #f)] if that's the result of any of the given ones. Otherwise, the result is @racket[unknown?] if the result of any of the given ones is @racket[unknown?]. Otherwise, the result is @racket[(known #t)].
+}
+
+@defproc[
+  (boolean-or-knowable-thunk-zip*
+    [kp-list (listof (-> (knowable/c boolean?)))])
+  (knowable/c boolean?)
+]{
+  Converts a list of thunks resulting in @tech{knowable values} possibly containing booleans into a single knowable value obtained by calling the thunks one by one and concluding the result is @racket[(known #t)] if that's the result of any of the given ones. Otherwise, the result is @racket[unknown?] if the result of any of the given ones is @racket[unknown?]. Otherwise, the result is @racket[(known #f)].
 }
 
 

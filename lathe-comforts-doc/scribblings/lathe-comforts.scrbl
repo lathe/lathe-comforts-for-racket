@@ -428,6 +428,13 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Creates a @tech{maybe value} that has an element if and only if the given @racket[condition] is not @racket[#f]. The element is computed by calling the given function @racket[get-value] with no arguments.
 }
 
+@defproc[
+  (maybe-min-zip* [maybe-list (listof maybe?)])
+  (maybe/c list?)
+]{
+  Converts a list of @tech{maybe values} into a single maybe value that possibly contains a list. If any of the inputs is @racket[nothing?], the result is @racket[nothing?]. Otherwise, the result is a @racket[just?] containing a list of their @racket[just-value]s.
+}
+
 
 
 @section[#:tag "string"]{Utilities for Strings}

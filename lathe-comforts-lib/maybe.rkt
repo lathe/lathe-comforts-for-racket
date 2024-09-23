@@ -40,7 +40,8 @@
   maybe/c
   maybe-bind
   maybe-map
-  maybe-if)
+  maybe-if
+  maybe-min-zip*)
 
 
 (define-imitation-simple-struct (nothing?) nothing
@@ -79,3 +80,10 @@
   (if condition
     (just #/get-value)
     (nothing)))
+
+(define/own-contract (maybe-min-zip* maybe-list)
+  (-> (listof maybe?) (maybe/c list?))
+  (expect maybe-list (cons maybe maybe-list) (just #/list)
+  #/maybe-bind maybe #/fn element
+  #/maybe-map (maybe-min-zip* maybe-list) #/fn element-list
+    (cons element element-list)))

@@ -36,3 +36,12 @@
 ]{
   Returns a promise that first forces the given one and then transforms its result using @racket[on-value].
 }
+
+@defproc[
+  (promise-zip*-map
+    [p-list (listof (promise/c any/c))]
+    [on-value (-> list? any/c)])
+  (promise/c any/c)
+]{
+  Returns a promise that first forces the given ones and then transforms their list of results into a single result using @racket[on-value].
+}

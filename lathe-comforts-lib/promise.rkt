@@ -22,11 +22,19 @@
 (require lathe-comforts/private/shim)
 (init-shim)
 
+(require lathe-comforts)
+(require lathe-comforts/list)
+
 
 (provide /own-contract-out
-  promise-map)
+  promise-map
+  promise-zip*-map)
 
 
 (define/own-contract (promise-map promise on-value)
   (-> (promise/c any/c) (-> any/c any/c) (promise/c any/c))
   (delay /on-value /force promise))
+
+(define/own-contract (promise-zip*-map p-list on-value)
+  (-> (listof (promise/c any/c)) (-> list? any/c) (promise/c any/c))
+  (delay /on-value /list-map p-list /fn p /force p))

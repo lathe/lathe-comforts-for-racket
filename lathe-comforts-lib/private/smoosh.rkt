@@ -33,12 +33,9 @@
 (require /only-in lathe-comforts/list
   list-all list-any list-foldl list-length=nat? list-map list-zip-map)
 (require /only-in lathe-comforts/match match/c)
-(require /only-in lathe-comforts/maybe
-  just just? just-value maybe? maybe-bind maybe/c maybe-if maybe-map
-  nothing nothing?)
+(require lathe-comforts/maybe)
 (require lathe-comforts/promise)
-(require /only-in lathe-comforts/sequence
-  endless-sequence/c sequence* sequence-first)
+(require lathe-comforts/sequence)
 (require /only-in lathe-comforts/string immutable-string?)
 (require /only-in lathe-comforts/struct
   auto-equal auto-write define-imitation-simple-generics
@@ -99,15 +96,6 @@
   prop:expressly-custom-gloss-key-dynamic-type
   make-expressly-custom-gloss-key-dynamic-type-impl
   dynamic-type-get-custom-gloss-key-reports
-  knowable-zip*
-  maybe-min-zip*
-  promise-zip*-map
-  yknow-zip*-map
-  boolean-and-knowable-promise-zip*
-  boolean-and-knowable-thunk-zip*
-  boolean-or-knowable-thunk-zip*
-  maybe-min-yknow-zip*-map
-  sequence-zip*-map
   gloss?
   list-map-foldl-knowable
   rider-and-hash-update-maybe-knowable
@@ -719,7 +707,7 @@
     
     )
   (->*
-    ((sequence/c custom-gloss-key-report?))
+    ((endless-sequence/c custom-gloss-key-report?))
     (
       #:on-tagged-glossesque-sys-knowable
       (-> (knowable/c tagged-glossesque-sys?)
@@ -734,7 +722,7 @@
         (knowable/c tagged-glossesque-sys?))
       
       )
-    (sequence/c custom-gloss-key-report?))
+    (endless-sequence/c custom-gloss-key-report?))
   (sequence-map
     (fn report
       (custom-gloss-key-report-map report
@@ -844,7 +832,7 @@
     
     )
   (->*
-    ((listof (sequence/c custom-gloss-key-report?)))
+    ((listof (endless-sequence/c custom-gloss-key-report?)))
     (
       #:on-tagged-glossesque-sys-knowable
       (-> (listof (knowable/c tagged-glossesque-sys?))
@@ -859,8 +847,8 @@
         (knowable/c tagged-glossesque-sys?))
       
       )
-    (sequence/c custom-gloss-key-report?))
-  (sequence-zip*-map reports-list /fn report-list
+    (endless-sequence/c custom-gloss-key-report?))
+  (endless-sequence-zip*-map reports-list /fn report-list
     (custom-gloss-key-report-zip*-map report-list
       
       #:on-==-tagged-glossesque-sys-knowable
@@ -1020,79 +1008,11 @@
   /uninformative-custom-gloss-key-reports))
 
 
-(define/own-contract (knowable-zip* knowable-list)
-  (-> (listof knowable?) (knowable/c list?))
-  (expect knowable-list (cons knowable knowable-list) (known /list)
-  /knowable-bind knowable /fn element
-  /knowable-map (knowable-zip* knowable-list) /fn element-list
-    (cons element element-list)))
-
-(define/own-contract (maybe-min-zip* maybe-list)
-  (-> (listof maybe?) (maybe/c list?))
-  (expect maybe-list (cons maybe maybe-list) (just /list)
-  /maybe-bind maybe /fn element
-  /maybe-map (maybe-min-zip* maybe-list) /fn element-list
-    (cons element element-list)))
-
-(define/own-contract (promise-zip*-map p-list on-value)
-  (-> (listof (promise/c any/c)) (-> any/c any/c) (promise/c any/c))
-  (delay /on-value /list-map p-list /fn p /force p))
-
-(define/own-contract (yknow-zip*-map y-list on-value)
-  (-> (listof yknow?) (-> any/c any/c) yknow?)
-  (make-yknow-from-value-knowable-promise /delay
-    (knowable-if (list-all y-list /fn y /yknow-known-specified? y) /fn
-      (on-value /list-map y-list /fn y /yknow-value y))))
-
-(define/own-contract (boolean-and-knowable-promise-zip* kp-list)
-  (-> (listof (promise/c (knowable/c boolean?)))
-    (promise/c (knowable/c boolean?)))
-  (delay
-    (if
-      (list-any kp-list /fn kp
-        (mat (force kp) (known #f) #t #f))
-      (known #f)
-    /knowable-if (list-all kp-list /fn kp /known? /force kp) /fn #t)))
-
 (define/own-contract (boolean-and-yknow-zip* y-list)
   (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
   (make-yknow-from-value-knowable-promise
     (boolean-and-knowable-promise-zip* /list-map y-list /fn y
       (delay /yknow-value-knowable y))))
-
-(define/own-contract (boolean-and-knowable-thunk-zip* kble-thunk-list)
-  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (force /boolean-and-knowable-promise-zip*
-    (list-map kble-thunk-list /fn kble-thunk /delay /kble-thunk)))
-
-(define/own-contract (boolean-or-knowable-thunk-zip* kble-thunk-list)
-  (-> (listof (-> (knowable/c boolean?))) (knowable/c boolean?))
-  (w- boolean-knowable-not
-    (fn k
-      (knowable-map k /fn result /not result))
-  /boolean-knowable-not /boolean-and-knowable-thunk-zip*
-    (list-map kble-thunk-list /fn kble-thunk
-      (fn /boolean-knowable-not /kble-thunk))))
-
-(define/own-contract (maybe-min-yknow-zip*-map my-list on-value)
-  (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
-  (make-yknow-from-value-promise-maybe-knowable-promise /delay
-    (if
-      (list-any my-list /fn my
-        (mat (yknow-value-knowable my) (known /nothing) #t #f))
-      (known /just /delay/strict /nothing)
-    /force /yknow-value-promise-maybe-knowable-promise
-      (yknow-zip*-map my-list /fn m-list
-        (just /on-value /list-map m-list /fn m /just-value m)))))
-
-(define/own-contract (sequence-zip*-map sequences on-element)
-  (->
-    (non-empty-listof (sequence/c any/c))
-    (-> (non-empty-listof any/c) any/c)
-    (sequence/c any/c))
-  (sequence-map
-    (lambda elements /on-element elements)
-    (apply in-parallel sequences)))
 
 (define/own-contract
   (gloss-equal-always?-knowable a b value-equal-always?-knowable)
@@ -2140,7 +2060,7 @@
     
     )
   (->*
-    ((sequence/c smoosh-report?))
+    ((endless-sequence/c smoosh-report?))
     (
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
@@ -2158,7 +2078,7 @@
       (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
       )
-    (sequence/c smoosh-report?))
+    (endless-sequence/c smoosh-report?))
   (sequence-map
     (fn report
       (smoosh-report-map report
@@ -2329,7 +2249,7 @@
     
     )
   (->*
-    ((listof (sequence/c smoosh-report?)))
+    ((listof (endless-sequence/c smoosh-report?)))
     (
       #:on-smoosh-result-knowable-promise-maybe-knowable-promise
       (-> (listof (yknow/c (maybe/c yknow?)))
@@ -2352,8 +2272,8 @@
         (yknow/c (maybe/c yknow?)))
       
       )
-    (sequence/c smoosh-report?))
-  (sequence-zip*-map reports-list /fn report-list
+    (endless-sequence/c smoosh-report?))
+  (endless-sequence-zip*-map reports-list /fn report-list
     (smoosh-report-zip*-map report-list
       #:on-join-yknow-maybe-yknow on-join-yknow-maybe-yknow
       #:on-meet-yknow-maybe-yknow on-meet-yknow-maybe-yknow
@@ -2523,7 +2443,7 @@
     
     )
   (->*
-    ((sequence/c smoosh-and-comparison-of-two-report?))
+    ((endless-sequence/c smoosh-and-comparison-of-two-report?))
     (
       #:on-check-result-yknow
       (-> (yknow/c boolean?) (yknow/c boolean?))
@@ -2547,7 +2467,7 @@
       (-> (yknow/c (maybe/c yknow?)) (yknow/c (maybe/c yknow?)))
       
       )
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (sequence-map
     (fn report
       (smoosh-and-comparison-of-two-report-map report
@@ -2741,7 +2661,9 @@
     
     )
   (->*
-    ((listof (sequence/c smoosh-and-comparison-of-two-report?)))
+    (
+      (listof
+        (endless-sequence/c smoosh-and-comparison-of-two-report?)))
     (
       #:on-check-result-yknow
       (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
@@ -2773,8 +2695,8 @@
         (yknow/c (maybe/c yknow?)))
       
       )
-    (sequence/c smoosh-and-comparison-of-two-report?))
-  (sequence-zip*-map reports-list /fn report-list
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
+  (endless-sequence-zip*-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-zip*-map report-list
       #:on-<=?-yknow on-<=?-yknow
       #:on->=?-yknow on->=?-yknow
@@ -2869,7 +2791,7 @@
     
     )
   (->*
-    ((sequence/c smoosh-equal-hash-code-support-report?))
+    ((endless-sequence/c smoosh-equal-hash-code-support-report?))
     (
       #:on-hash-code-promise
       (-> (promise/c fixnum?) (promise/c fixnum?))
@@ -2881,7 +2803,7 @@
       (-> (promise/c fixnum?) (promise/c fixnum?))
       
       )
-    (sequence/c smoosh-equal-hash-code-support-report?))
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
   (sequence-map
     (fn report
       (smoosh-equal-hash-code-support-report-map report
@@ -2986,7 +2908,9 @@
     
     )
   (->*
-    ((listof (sequence/c smoosh-equal-hash-code-support-report?)))
+    (
+      (listof
+        (endless-sequence/c smoosh-equal-hash-code-support-report?)))
     (
       #:on-hash-code-promise
       (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
@@ -2998,8 +2922,8 @@
       (-> (listof (promise/c fixnum?)) (promise/c fixnum?))
       
       )
-    (sequence/c smoosh-equal-hash-code-support-report?))
-  (sequence-zip*-map reports-list /fn report-list
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
+  (endless-sequence-zip*-map reports-list /fn report-list
     (smoosh-equal-hash-code-support-report-zip*-map report-list
       #:on-==-hash-code-promise on-==-hash-code-promise
       
@@ -3182,9 +3106,10 @@
 
 (define/own-contract
   (smoosh-and-comparison-of-two-reports-joininfo reports-list)
-  (-> (listof (sequence/c smoosh-and-comparison-of-two-report?))
-    (sequence/c smoosh-and-comparison-of-two-report?))
-  (sequence-zip*-map reports-list /fn report-list
+  (->
+    (listof (endless-sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
+  (endless-sequence-zip*-map reports-list /fn report-list
     (smoosh-and-comparison-of-two-report-joininfo report-list)))
 
 (define/own-contract
@@ -3192,9 +3117,9 @@
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f])
   (->*
-    ((sequence/c smoosh-report?))
+    ((endless-sequence/c smoosh-report?))
     (#:known-distinct? boolean? #:known-discrete? boolean?)
-    (sequence/c smoosh-report?))
+    (endless-sequence/c smoosh-report?))
   (if (and known-distinct? known-discrete?) reports
   /w- my->known-true
     (fn my
@@ -3218,9 +3143,9 @@
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f])
   (->*
-    ((sequence/c smoosh-and-comparison-of-two-report?))
+    ((endless-sequence/c smoosh-and-comparison-of-two-report?))
     (#:known-distinct? boolean? #:known-discrete? boolean?)
-    (sequence/c smoosh-and-comparison-of-two-report?))
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
   (if (and known-distinct? known-discrete?) reports
   /w- kp->known-true
     (fn kp
