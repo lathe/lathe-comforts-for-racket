@@ -24,7 +24,7 @@
 @(init-shim)
 
 
-@title[#:tag "yknow"]{Yknow Objects, for Sometimes-User-Specified Computations}
+@title[#:tag "yknow"]{Yknow Objects: Sometimes-User-Specified Computations}
 
 @defmodule[lathe-comforts/yknow]
 

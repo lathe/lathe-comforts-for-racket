@@ -32,6 +32,7 @@
       coerce-chaperone-contract coerce-contract coerce-flat-contract make-chaperone-contract make-contract make-flat-contract)
     (only-in racket/contract/region
       define/contract invariant-assertion)
+    (only-in racket/extflonum extfl= extflonum?)
     (only-in racket/generic define-generics)
     (only-in racket/hash-code
       hash-code-combine hash-code-combine-unordered)
@@ -54,6 +55,7 @@
     lathe-comforts/knowable
     lathe-comforts/list
     lathe-comforts/match
+    lathe-comforts/math
     lathe-comforts/maybe
     lathe-comforts/own-contract
     lathe-comforts/promise

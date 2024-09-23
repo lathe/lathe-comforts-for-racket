@@ -25,7 +25,7 @@
 @(init-shim)
 
 
-@title[#:tag "knowable"]{Knowable Values, for Not-Yet-Specified Results}
+@title[#:tag "knowable"]{Knowable Values: Sometimes-Not-Yet-Specified Results}
 
 @defmodule[lathe-comforts/knowable]
 

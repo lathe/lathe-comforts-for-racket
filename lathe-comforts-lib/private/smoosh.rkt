@@ -25,20 +25,17 @@
 (require lathe-comforts/private/shim)
 (init-shim)
 
-(require /only-in lathe-comforts
-  dissect dissectfn expect fn mat w- w-loop)
-(require /only-in lathe-comforts/hash
-  hash-ref-maybe hash-set-maybe hash-v-map make-similar-hash)
+(require lathe-comforts)
+(require lathe-comforts/hash)
 (require lathe-comforts/knowable)
-(require /only-in lathe-comforts/list
-  list-all list-any list-foldl list-length=nat? list-map list-zip-map)
-(require /only-in lathe-comforts/match match/c)
+(require lathe-comforts/list)
+(require lathe-comforts/math)
 (require lathe-comforts/maybe)
 (require lathe-comforts/promise)
 (require lathe-comforts/sequence)
-(require /only-in lathe-comforts/string immutable-string?)
+(require lathe-comforts/string)
 (require lathe-comforts/struct)
-(require /only-in lathe-comforts/trivial trivial trivial?)
+(require lathe-comforts/trivial)
 (require lathe-comforts/yknow)
 
 
@@ -221,10 +218,6 @@
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-for-atom
   make-expressly-smooshable-bundle-property-for-atom
   non-nan-number-glossesque-sys
-  nan-number?
-  non-nan-number?
-  non-nan-extflonum?
-  nan-extflonum?
   dynamic-type-case-by-cases
   gloss-ref
   gloss-set
@@ -5779,32 +5772,9 @@
       #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
     (trivial)))
 
-(define (normalize-non-nan-number a)
-  (define (normalize-real a)
-    (if (not /rational? a)
-      ; If the real number to normalize is infinity or negative
-      ; infinity, we return it unchanged.
-      a
-    /inexact->exact a))
-  (make-rectangular
-    (normalize-real /real-part a)
-    (normalize-real /imag-part a)))
-
 (define/own-contract (non-nan-number-glossesque-sys)
   (-> glossesque-sys?)
   (normalized-glossesque-sys /fn k /normalize-non-nan-number k))
-
-(define/own-contract (nan-number? v)
-  (-> any/c boolean?)
-  (and
-    (number? v)
-    (or
-      (nan? /real-part v)
-      (nan? /imag-part v))))
-
-(define/own-contract (non-nan-number? v)
-  (-> any/c boolean?)
-  (and (number? v) (not /nan-number? v)))
 
 ; Level 0:
 ;   path-related:
@@ -5978,19 +5948,6 @@
       ))
   
   )
-
-(define (normalize-non-nan-extflonum a)
-  (if (equal-always? a -0t0)
-    0t0
-    a))
-
-(define/own-contract (non-nan-extflonum? v)
-  (-> any/c boolean?)
-  (and (extflonum? v) (extfl= v v)))
-
-(define/own-contract (nan-extflonum? v)
-  (-> any/c boolean?)
-  (and (extflonum? v) (not /non-nan-extflonum? v)))
 
 ; Level 0:
 ;   path-related:

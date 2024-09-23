@@ -378,7 +378,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 
 
-@section[#:tag "maybe"]{Maybe Values}
+@section[#:tag "maybe"]{Maybe Values: Sometimes-Decisively-Omitted Results}
 
 @defmodule[lathe-comforts/maybe]
 
@@ -434,6 +434,10 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 ]{
   Converts a list of @tech{maybe values} into a single maybe value that possibly contains a list. If any of the inputs is @racket[nothing?], the result is @racket[nothing?]. Otherwise, the result is a @racket[just?] containing a list of their @racket[just-value]s.
 }
+
+
+
+@include-section["lathe-comforts/math.scrbl"]
 
 
 
