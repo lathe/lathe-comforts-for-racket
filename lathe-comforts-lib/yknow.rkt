@@ -101,9 +101,9 @@
   (-> yknow? knowable?)
   (knowable-map (yknow-value-promise-knowable y) /fn p /force p))
 
-(define/own-contract (yknow-known-specified? y)
+(define/own-contract (yknow-known-specified? v)
   (-> any/c boolean?)
-  (and (yknow? y) (known? /yknow-value-promise-knowable y)))
+  (and (yknow? v) (known? /yknow-value-promise-knowable v)))
 
 (define/own-contract (yknow-value y)
   (-> yknow-known-specified? any/c)

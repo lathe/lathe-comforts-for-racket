@@ -82,7 +82,7 @@
   Note that this flattens the sometimes useful distinction between a yknow object with a not-yet-specified result and a yknow object with a user-specified result.
 }
 
-@defproc[(yknow-known-specified? [y any/c]) boolean?]{
+@defproc[(yknow-known-specified? [v any/c]) boolean?]{
   Given a value, checks whether it's a @tech{yknow object} (returning @racket[#f] if it isn't), runs part of its computation if it is one, and returns whether that computation's result is fully specified.
 }
 
