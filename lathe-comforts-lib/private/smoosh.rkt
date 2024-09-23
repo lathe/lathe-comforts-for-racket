@@ -3691,7 +3691,7 @@
           ; encodings as ordered lists (namely, `hash?` and `gloss?`
           ; values), we have to use a more exhaustive method of
           ; inserting each value of one trie into the other,
-          ; relistifying each key we insert in in terms of the other
+          ; relistifying each key we insert in terms of the other
           ; trie's listifier. Technically, the asymptotic time
           ; complexity of both this and the usual merging are probably
           ; about O(n), but this "more exhaustive method" makes O(n)
@@ -7877,7 +7877,17 @@
 ;       than any `unknown?` value, and any `example-unknown?` value is
 ;       considered equal to any `unknown?` value.
 ;
-;     - (TODO SMOOSH) `yknow?` values.
+;     - (NOTE: We won't be defining smooshability for `yknow?`
+;       objects. These are more like codata (computation types) than
+;       data (concrete types), and while we often represent specific
+;       instances of codata using concrete representations, different
+;       representations of the same type of codata may potentially be
+;       designed to work best with different smooshing algorithms.
+;       Rather than presuming to be able to mediate collaboration
+;       between all of these different algorithms, we choose to leave
+;       it up to users who want to smoosh `yknow?` objects to define
+;       what "a `yknow?` object that can be smooshed" means for their
+;       own purposes.)
 ;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
 ;       whether elements are path-related according to the "any"
@@ -7902,76 +7912,26 @@
 ;       treats known false results as though they were unknown
 ;       results.
 ;
-;     - (TODO SMOOSH) Perhaps the types of types, ideally allowing an
-;       expressive subset of types of types to be related by
-;       subtyping, namely when they don't have identities with
-;       meaningful details independent of the set of inhabitants they
-;       have. This smooshability would be relevant mainly when types
-;       appear as elements of data structures that would be otherwise
-;       smooshable.
-;
-;       - `uninformative-dynamic-type?`
-;
-;       - `flvector-dynamic-type?`
-;
-;       - `fxvector-dynamic-type?`
-;
-;       - `base-syntactic-atom-dynamic-type?`
-;
-;       - `boolean-dynamic-type?`
-;
-;       - `char-dynamic-type?`
-;
-;       - `immutable-string-dynamic-type?`
-;
-;       - `immutable-bytes-dynamic-type?`
-;
-;       - `non-nan-number-dynamic-type?`
-;
-;       - `non-nan-extflonum-dynamic-type?`
-;
-;       - `cons-dynamic-type?`
-;
-;       - `immutable-vector-dynamic-type?`
-;
-;       - `base-mutable-readable-dynamic-type?`
-;
-;       - `immutable-box-dynamic-type?`
-;
-;       - `immutable-prefab-struct-dynamic-type?`
-;
-;       - `immutable-hash-dynamic-type?`
-;
-;       - `base-literal-dynamic-type?` (the type belonging to
-;         `base-literal-dynamic-type-case`)
-;
-;       - `base-readable-dynamic-type?` (the type constructed by
-;         `base-readable-dynamic-type`)
-;
-;       - `nothing-dynamic-type?`
-;
-;       - `just-dynamic-type?`
-;
-;       - `knowable-dynamic-type?`
-;
-;       - `path-related-wrapper-dynamic-type?`
-;
-;       - `info-wrapper-dynamic-type?`
-;
-;       - `gloss-dynamic-type?`
-;
-;       - `equal-always-wrapper-dynamic-type?`
-;
-;       - `indistinct-wrapper-dynamic-type?`
-;
-;       - `maybe-dynamic-type?` (a type used in an intermediate way in
-;         the definition of
-;         `known-to-lathe-comforts-data-dynamic-type`)
-;
-;       - `known-to-lathe-comforts-data-dynamic-type?` (the type
-;         constructed by `known-to-lathe-comforts-data-dynamic-type`)
-;
-;       - `default-any-dynamic-type?`
+;     - (NOTE: Someday we may be interested in smooshing type-objects
+;       that implement `gen:expressly-smooshable-dynamic-type`, or
+;       even other type-objects like `(uninformative-dynamic-type)`
+;       that don't expressly implement that interface. Ideally, this
+;       smooshing might allow an expressive set of smooshed
+;       type-objects to report that they're `<=` when they're related
+;       by subtyping. These type-objects would tend not to have
+;       meaningful details independent of the set of values that
+;       inhabit them. This smooshability would be relevant mainly when
+;       these type-objects appear as elements of data structures that
+;       would be otherwise smooshable. However, type-objects like
+;       these are really more like codata (computation types) than
+;       data (concrete types). While we often represent specific
+;       instances of codata using concrete representations, different
+;       representations of the same codata may potentially be designed
+;       to work best with different smooshing algorithms. Rather than
+;       presuming to be able to mediate collaboration between all of
+;       these different algorithms, we choose to leave it up to users
+;       who want to smoosh type-objects to define what "a type-object
+;       that can be smooshed" means for their own purposes.)
 ;
 ;   - (TODO) Types defined by Lathe Comforts even if this smooshing
 ;     framework doesn't use them. The following are indistinct from
@@ -8017,4 +7977,11 @@
 ; TODO SMOOSH: Consider getting rid of the
 ; `glossesque-sys-glossesque-skm-union-of-two-knowable` method because
 ; it doesn't seem like it would help make merging glosses more
-; efficient.
+; efficient. The problem is that it always has to call the callback on
+; each entry of each of the given glossesques, so even if there's a
+; possibility that two merged glossesques could share some
+; substructures, those substructures still have to be recursively
+; copied to replace each value they contain. What we need is a method
+; that only drills into those substructures that are potentially
+; overlapping, and hence at most has a callback to process the entries
+; for a coinciding key.
