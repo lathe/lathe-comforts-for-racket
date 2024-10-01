@@ -509,9 +509,9 @@
 
 (define/own-contract (glossesque-sys-glossesque-empty? gs g)
   (-> glossesque-sys? any/c boolean?)
-  (not /for/first
+  (for/and
     ([(k v) (glossesque-sys-glossesque-iteration-sequence gs g)])
-    #t))
+    #f))
 
 (define/own-contract
   (make-glossesque-sys-impl
