@@ -26,9 +26,11 @@
 (init-shim)
 
 (require lathe-comforts)
+(require lathe-comforts/contract)
 (require lathe-comforts/hash)
 (require lathe-comforts/knowable)
 (require lathe-comforts/list)
+(require lathe-comforts/match)
 (require lathe-comforts/math)
 (require lathe-comforts/maybe)
 (require lathe-comforts/promise)
@@ -40,28 +42,61 @@
 
 
 (provide /own-contract-out
+  glossesque-summary-sys?
+  glossesque-summary-sys-summarize-zero
+  glossesque-summary-sys-summarize-one-entry
+  glossesque-summary-sys-summary-plus
+  glossesque-summary-sys-summary-minus
+  prop:glossesque-summary-sys
+  make-glossesque-summary-sys-impl
+  trivial-glossesque-summary-sys
+  forwarding-glossesque-summary-sys
+  counted?
+  counted-count
+  counted-original)
+(provide
+  counted)
+(provide /own-contract-out
+  counted-glossesque-summary-sys
+  summarized?
+  summarized-summary
+  summarized-original)
+(provide
+  summarized)
+(provide /own-contract-out
   glossesque-sys?
   glossesque-sys-impl?
+  glossesque-sys-get-summary-sys
   glossesque-sys-glossesque-union-of-zero
-  glossesque-sys-glossesque-skm-union-of-two-knowable
+  glossesque-sys-glossesque-skv-union-of-two-knowable
   glossesque-sys-glossesque-ref-maybe-knowable
   glossesque-sys-rider-and-glossesque-update-maybe-knowable
-  glossesque-sys-glossesque-empty?
-  glossesque-sys-glossesque-count
+  glossesque-sys-glossesque-summarize
   glossesque-sys-glossesque-iteration-sequence
   prop:glossesque-sys
   glossesque-sys-glossesque-set-maybe-knowable
+  glossesque-sys-glossesque-empty?
   ; TODO: When we document this, make sure we document its keyword
   ; arguments.
   make-glossesque-sys-impl
+  glossesque-summary-sys-map-summary
+  glossesque-sys-map-summary
   glossesque-sys-map-glossesque
   glossesque-sys-map-key
+  maybe-nonempty-glossesque-sys
   tagged-glossesque-sys?
+  tagged-glossesque-sys-tag
   tagged-glossesque-sys-get-inhabitant?
-  tagged-glossesque-sys-get-glossesque-sys)
+  tagged-glossesque-sys-get-get-glossesque-sys)
 (provide
-  tagged-glossesque-sys)
+  tagged-glossesque-sys
+  lift
+  make-tagged-glossesque-sys
+  derive-tagged-glossesque-sys)
 (provide /own-contract-out
+  tagged-glossesque-sys=?
+  tagged-glossesque-sys-inhabitant?-knowable
+  tagged-glossesque-sys-get-glossesque-sys-for-ladder
   custom-gloss-key-report?
   custom-gloss-key-report-impl?
   custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
@@ -90,23 +125,21 @@
   prop:expressly-custom-gloss-key-dynamic-type
   make-expressly-custom-gloss-key-dynamic-type-impl
   dynamic-type-get-custom-gloss-key-reports
+  boolean-and-yknow-zip*
   gloss?
   list-map-foldl-knowable
   rider-and-hash-update-maybe-knowable
   hash-skv-map-maybe-knowable
-  hash-skm-union-of-two-knowable
-  rider-and-maybe-update-knowable
-  count-and-rider-and-maybe-update-maybe-knowable
-  maybe-or-sm-union-of-two-knowable
-  maybe-left-count-sm-union-of-two-knowable
+  summarized-hash-skv-union-of-two-knowable
+  entry-maybe-skv-union-of-two-knowable
   gloss-union-of-zero
-  gloss-skm-union-of-two-knowable
   gloss-iteration-sequence
+  summarized-gloss-skv-union-of-two-knowable
   gloss-ref-maybe-knowable
   gloss-count
   gloss-empty?
   rider-and-gloss-update-maybe-knowable
-  make-gloss-glossesque-sys
+  make-summarized-gloss-glossesque-sys
   gloss-set-maybe-knowable
   uninformative-dynamic-type
   expressly-has-dynamic-type-impl?
@@ -189,10 +222,12 @@
   smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
   list-rev-append
   list-rem-first-maybe-knowable
-  assoc-list-skm-union-of-two-knowable
-  assoc-list-ref-maybe-knowable
-  rider-and-assoc-list-update-maybe-knowable
-  counted-glossesque-sys
+  summarized-assoc-list/c
+  summarized-assoc-list-nil
+  summarized-assoc-list-cons
+  summarized-assoc-list-skv-union-of-two-knowable
+  summarized-assoc-list-ref-maybe-knowable
+  rider-and-summarized-assoc-list-update-maybe-knowable
   equality-check-atom-glossesque-sys
   equal-always-atom-glossesque-sys
   equality-check-indistinct-atom-glossesque-sys
@@ -233,10 +268,185 @@
 
 
 (define-imitation-simple-generics
+  glossesque-summary-sys? glossesque-summary-sys-impl?
+  (#:method glossesque-summary-sys-summarize-zero (#:this))
+  (#:method glossesque-summary-sys-summarize-one-entry (#:this) () ())
+  (#:method glossesque-summary-sys-summary-plus (#:this) () ())
+  (#:method glossesque-summary-sys-summary-minus (#:this) () ())
+  prop:glossesque-summary-sys
+  make-glossesque-summary-sys-impl-from-various-unkeyworded
+  'glossesque-summary-sys 'glossesque-summary-sys-impl (list))
+(ascribe-own-contract glossesque-summary-sys? (-> any/c boolean?))
+(ascribe-own-contract glossesque-summary-sys-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract glossesque-summary-sys-summarize-zero
+  (-> glossesque-sys? any/c))
+(ascribe-own-contract glossesque-summary-sys-summarize-one-entry
+  (-> glossesque-sys? any/c any/c any/c))
+(ascribe-own-contract glossesque-summary-sys-summary-plus
+  (-> glossesque-sys? any/c any/c any/c))
+(ascribe-own-contract glossesque-summary-sys-summary-minus
+  (-> glossesque-sys? any/c any/c any/c))
+(ascribe-own-contract prop:glossesque-summary-sys
+  (struct-type-property/c glossesque-summary-sys-impl?))
+
+(define/own-contract
+  (make-glossesque-summary-sys-impl
+    #:summarize-zero summarize-zero
+    #:summarize-one-entry summarize-one-entry
+    #:summary-plus summary-plus
+    #:summary-minus summary-minus)
+  (->
+    #:summarize-zero (-> glossesque-sys? any/c)
+    #:summarize-one-entry (-> glossesque-sys? any/c any/c any/c)
+    #:summary-plus (-> glossesque-sys? any/c any/c any/c)
+    #:summary-minus (-> glossesque-sys? any/c any/c any/c)
+    glossesque-summary-sys-impl?)
+  (make-glossesque-summary-sys-impl-from-various-unkeyworded
+    summarize-zero
+    summarize-one-entry
+    summary-plus
+    summary-minus))
+
+(define-imitation-simple-struct
+  (trivial-glossesque-summary-sys?)
+  trivial-glossesque-summary-sys-unguarded
+  'trivial-glossesque-summary-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-summary-sys
+    (make-glossesque-summary-sys-impl
+      #:summarize-zero (fn gss /trivial)
+      #:summarize-one-entry (fn gss k v /trivial)
+      #:summary-plus (fn gss a b /trivial)
+      #:summary-minus (fn gs a b /trivial)))
+  
+  )
+
+(define/own-contract (trivial-glossesque-summary-sys)
+  (-> glossesque-summary-sys?)
+  (trivial-glossesque-summary-sys-unguarded))
+
+(define-imitation-simple-struct
+  (forwarding-glossesque-summary-sys?
+    forwarding-glossesque-summary-sys-summarize-one-entry
+    forwarding-glossesque-summary-sys-original)
+  forwarding-glossesque-summary-sys-unguarded
+  'forwarding-glossesque-summary-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-summary-sys
+    (make-glossesque-summary-sys-impl
+      
+      #:summarize-zero
+      (dissectfn
+        (forwarding-glossesque-summary-sys-unguarded
+          summarize-one-entry original)
+        (glossesque-summary-sys-summarize-zero original))
+      
+      #:summarize-one-entry
+      (fn gss k v
+        (dissect gss
+          (forwarding-glossesque-summary-sys-unguarded
+            summarize-one-entry original)
+        /summarize-one-entry k v))
+      
+      #:summary-plus
+      (fn gss a b
+        (dissect gss
+          (forwarding-glossesque-summary-sys-unguarded
+            summarize-one-entry original)
+        /glossesque-summary-sys-summary-plus original a b))
+      
+      #:summary-minus
+      (fn gss a b
+        (dissect gss
+          (forwarding-glossesque-summary-sys-unguarded
+            summarize-one-entry original)
+        /glossesque-summary-sys-summary-minus original a b))
+      
+      ))
+  
+  )
+
+(define/own-contract
+  (forwarding-glossesque-summary-sys gss
+    #:summarize-one-entry summarize-one-entry)
+  (->
+    glossesque-summary-sys?
+    #:summarize-one-entry (-> any/c any/c any/c)
+    glossesque-summary-sys?)
+  (forwarding-glossesque-summary-sys-unguarded
+    summarize-one-entry gss))
+
+(define-imitation-simple-struct
+  (counted? counted-count counted-original)
+  counted 'counted (current-inspector) (auto-write) (auto-equal))
+(ascribe-own-contract counted? (-> any/c boolean?))
+(ascribe-own-contract counted-count (-> counted? any/c))
+(ascribe-own-contract counted-original (-> counted? any/c))
+
+(define-imitation-simple-struct
+  (counted-glossesque-summary-sys?
+    counted-glossesque-summary-sys-original)
+  counted-glossesque-summary-sys-unguarded
+  'counted-glossesque-summary-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-summary-sys
+    (make-glossesque-summary-sys-impl
+      
+      #:summarize-zero
+      (dissectfn (counted-glossesque-summary-sys-unguarded original)
+        (counted 0 /glossesque-summary-sys-summarize-zero original))
+      
+      #:summarize-one-entry
+      (fn gss k v
+        (dissect gss
+          (counted-glossesque-summary-sys-unguarded original)
+        /counted 1
+          (glossesque-summary-sys-summarize-one-entry original k v)))
+      
+      #:summary-plus
+      (fn gss a b
+        (dissect gss
+          (counted-glossesque-summary-sys-unguarded gss-original)
+        /dissect a (counted a-count a-original)
+        /dissect b (counted b-count b-original)
+        /counted (+ a-count b-count)
+          (glossesque-summary-sys-summary-plus
+            gss-original a-original b-original)))
+      
+      #:summary-minus
+      (fn gss a b
+        (dissect gss
+          (counted-glossesque-summary-sys-unguarded gss-original)
+        /dissect a (counted a-count a-original)
+        /dissect b (counted b-count b-original)
+        /counted (- a-count b-count)
+          (glossesque-summary-sys-summary-minus
+            gss-original a-original b-original)))
+      
+      )))
+
+(define/own-contract (counted-glossesque-summary-sys gss)
+  (-> glossesque-summary-sys? glossesque-summary-sys?)
+  (counted-glossesque-summary-sys-unguarded gss))
+
+(define-imitation-simple-struct
+  (summarized? summarized-summary summarized-original)
+  summarized
+  'summarized (current-inspector) (auto-write) (auto-equal))
+(ascribe-own-contract summarized? (-> any/c boolean?))
+(ascribe-own-contract summarized-summary (-> summarized? any/c))
+(ascribe-own-contract summarized-original (-> summarized? any/c))
+
+(define-imitation-simple-generics
   glossesque-sys? glossesque-sys-impl?
+  (#:method glossesque-sys-get-summary-sys (#:this))
   (#:method glossesque-sys-glossesque-union-of-zero (#:this))
-  (#:method glossesque-sys-glossesque-skm-union-of-two-knowable
+  (#:method glossesque-sys-glossesque-skv-union-of-two-knowable
     (#:this)
+    ()
+    ()
+    ()
     ()
     ()
     ()
@@ -248,20 +458,22 @@
     ()
     ()
     ())
-  (#:method glossesque-sys-glossesque-empty? (#:this) ())
-  (#:method glossesque-sys-glossesque-count (#:this) ())
+  (#:method glossesque-sys-glossesque-summarize (#:this) ())
   (#:method glossesque-sys-glossesque-iteration-sequence (#:this) ())
   prop:glossesque-sys
   make-glossesque-sys-impl-from-various-unkeyworded
   'glossesque-sys 'glossesque-sys-impl (list))
 (ascribe-own-contract glossesque-sys? (-> any/c boolean?))
 (ascribe-own-contract glossesque-sys-impl? (-> any/c boolean?))
+(ascribe-own-contract glossesque-sys-get-summary-sys
+  (-> glossesque-sys? glossesque-summary-sys?))
 (ascribe-own-contract glossesque-sys-glossesque-union-of-zero
   (-> glossesque-sys? any/c))
 (ascribe-own-contract
-  glossesque-sys-glossesque-skm-union-of-two-knowable
-  (-> glossesque-sys? any/c any/c any/c
-    (-> any/c any/c maybe? maybe? (knowable/c (list/c any/c maybe?)))
+  glossesque-sys-glossesque-skv-union-of-two-knowable
+  (-> glossesque-sys? any/c any/c any/c boolean? boolean?
+    (-> any/c any/c any/c)
+    (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c any/c))))
 (ascribe-own-contract glossesque-sys-glossesque-ref-maybe-knowable
   (-> glossesque-sys? any/c any/c (knowable/c maybe?)))
@@ -270,10 +482,8 @@
   (-> glossesque-sys? (list/c any/c any/c) any/c
     (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c any/c))))
-(ascribe-own-contract glossesque-sys-glossesque-empty?
-  (-> glossesque-sys? any/c boolean?))
-(ascribe-own-contract glossesque-sys-glossesque-count
-  (-> glossesque-sys? any/c natural?))
+(ascribe-own-contract glossesque-sys-glossesque-summarize
+  (-> glossesque-sys? any/c any/c))
 (ascribe-own-contract glossesque-sys-glossesque-iteration-sequence
   (-> glossesque-sys? any/c (sequence/c any/c any/c)))
 (ascribe-own-contract prop:glossesque-sys
@@ -285,32 +495,47 @@
   (knowable-map
     (glossesque-sys-rider-and-glossesque-update-maybe-knowable
       gs (list (trivial) g) k
+      (fn state-and-old-m
+        (expect state-and-old-m (list (trivial) old-m)
+          (raise-arguments-error 'glossesque-sys-glossesque-set-maybe-knowable
+            "internal error: state wasn't (trivial)"
+            "gs" gs
+            "state-and-old-m" state-and-old-m)
+        /known /list (trivial) m))
+      #;
       (dissectfn (list (trivial) old-m) (known /list (trivial) m)))
   /dissectfn (list (trivial) g)
     g))
 
+(define/own-contract (glossesque-sys-glossesque-empty? gs g)
+  (-> glossesque-sys? any/c boolean?)
+  (not /for/first
+    ([(k v) (glossesque-sys-glossesque-iteration-sequence gs g)])
+    #t))
+
 (define/own-contract
   (make-glossesque-sys-impl
+    #:get-summary-sys get-summary-sys
     #:glossesque-union-of-zero glossesque-union-of-zero
     
-    #:glossesque-skm-union-of-two-knowable
-    glossesque-skm-union-of-two-knowable
+    #:glossesque-skv-union-of-two-knowable
+    glossesque-skv-union-of-two-knowable
     
     #:glossesque-ref-maybe-knowable glossesque-ref-maybe-knowable
     
     #:rider-and-glossesque-update-maybe-knowable
     rider-and-glossesque-update-maybe-knowable
     
-    #:glossesque-empty? glossesque-empty?
-    #:glossesque-count glossesque-count
+    #:glossesque-summarize glossesque-summarize
     #:glossesque-iteration-sequence glossesque-iteration-sequence)
   (->
+    #:get-summary-sys (-> glossesque-sys? glossesque-summary-sys?)
     #:glossesque-union-of-zero (-> glossesque-sys? any/c)
     
-    #:glossesque-skm-union-of-two-knowable
-    (-> glossesque-sys? any/c any/c any/c
-      (-> any/c any/c maybe? maybe?
-        (knowable/c (list/c any/c maybe?)))
+    #:glossesque-skv-union-of-two-knowable
+    (-> glossesque-sys? any/c any/c any/c boolean? boolean?
+      (-> any/c any/c any/c)
+      (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
       (knowable/c (list/c any/c any/c)))
     
     #:glossesque-ref-maybe-knowable
@@ -321,21 +546,138 @@
       (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
       (knowable/c (list/c any/c any/c)))
     
-    #:glossesque-empty? (-> glossesque-sys? any/c boolean?)
-    #:glossesque-count (-> glossesque-sys? any/c natural?)
+    #:glossesque-summarize (-> glossesque-sys? any/c any/c)
     
     #:glossesque-iteration-sequence
     (-> glossesque-sys? any/c (sequence/c any/c any/c))
     
     glossesque-sys-impl?)
   (make-glossesque-sys-impl-from-various-unkeyworded
+    get-summary-sys
     glossesque-union-of-zero
-    glossesque-skm-union-of-two-knowable
+    glossesque-skv-union-of-two-knowable
     glossesque-ref-maybe-knowable
     rider-and-glossesque-update-maybe-knowable
-    glossesque-empty?
-    glossesque-count
+    glossesque-summarize
     glossesque-iteration-sequence))
+
+(define-imitation-simple-struct
+  (mapped-summary-glossesque-summary-sys?
+    mapped-summary-glossesque-summary-sys-granted-summary
+    mapped-summary-glossesque-summary-sys-on-summary
+    mapped-summary-glossesque-summary-sys-original)
+  mapped-summary-glossesque-summary-sys
+  'mapped-summary-glossesque-summary-sys (current-inspector)
+  (auto-write)
+  
+  (#:prop prop:glossesque-summary-sys
+    (make-glossesque-summary-sys-impl
+      
+      #:summarize-zero
+      (dissectfn
+        (mapped-summary-glossesque-summary-sys >s< <s> original)
+        (<s> /glossesque-summary-sys-summarize-zero original))
+      
+      #:summarize-one-entry
+      (fn gss k v
+        (dissect gss
+          (mapped-summary-glossesque-summary-sys >s< <s> original)
+        /<s> /glossesque-summary-sys-summarize-one-entry original k v))
+      
+      #:summary-plus
+      (fn gss a b
+        (dissect gss
+          (mapped-summary-glossesque-summary-sys >s< <s> original)
+        /<s> /glossesque-summary-sys-summary-plus original
+          (>s< a)
+          (>s< b)))
+      
+      #:summary-minus
+      (fn gss a b
+        (dissect gss
+          (mapped-summary-glossesque-summary-sys >s< <s> original)
+        /<s> /glossesque-summary-sys-summary-minus original
+          (>s< a)
+          (>s< b)))
+      
+      )))
+
+(define/own-contract
+  (glossesque-summary-sys-map-summary gs
+    #:granted-summary [granted-summary (fn s s)]
+    #:on-summary [on-summary (fn s s)])
+  (->*
+    (glossesque-summary-sys?)
+    (
+      #:granted-summary (-> any/c any/c)
+      #:on-summary (-> any/c any/c))
+    glossesque-summary-sys?)
+  (mapped-summary-glossesque-summary-sys
+    granted-summary on-summary gs))
+
+(define-imitation-simple-struct
+  (mapped-summary-glossesque-sys?
+    mapped-summary-glossesque-sys-granted-summary
+    mapped-summary-glossesque-sys-on-summary
+    mapped-summary-glossesque-sys-original)
+  mapped-summary-glossesque-sys
+  'mapped-summary-glossesque-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl
+    
+    #:get-summary-sys
+    (dissectfn (mapped-summary-glossesque-sys >s< <s> original)
+      (glossesque-summary-sys-map-summary
+        #:granted-summary >s<
+        #:on-summary <s>
+        (glossesque-sys-get-summary-sys original)))
+    
+    #:glossesque-union-of-zero
+    (dissectfn (mapped-summary-glossesque-sys >s< <s> original)
+      (glossesque-sys-glossesque-union-of-zero original))
+    
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
+      (dissect gs (mapped-summary-glossesque-sys >s< <s> original)
+      /glossesque-sys-glossesque-skv-union-of-two-knowable
+        original state a b a-keeping? b-keeping?
+        (fn state summary /on-keep state /<s> summary)
+        skv-union-knowable))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (dissect gs (mapped-summary-glossesque-sys >s< <s> original)
+      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+    
+    #:rider-and-glossesque-update-maybe-knowable
+    (fn gs rider-and-g k on-rider-and-m-knowable
+      (dissect gs (mapped-summary-glossesque-sys >s< <s> original)
+      /glossesque-sys-rider-and-glossesque-update-maybe-knowable
+        original rider-and-g k on-rider-and-m-knowable))
+    
+    #:glossesque-summarize
+    (fn gs g
+      (dissect gs (mapped-summary-glossesque-sys >s< <s> original)
+      /<s> /glossesque-sys-glossesque-summarize original g))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (dissect gs (mapped-summary-glossesque-sys >s< <s> original)
+      /glossesque-sys-glossesque-iteration-sequence original g))
+    
+    )
+  
+  )
+
+(define/own-contract
+  (glossesque-sys-map-summary gs
+    #:granted-summary [granted-summary (fn s s)]
+    #:on-summary [on-summary (fn s s)])
+  (->*
+    (glossesque-sys?)
+    (#:granted-summary (-> any/c any/c) #:on-summary (-> any/c any/c))
+    glossesque-sys?)
+  (mapped-summary-glossesque-sys granted-summary on-summary gs))
 
 (define-imitation-simple-struct
   (mapped-glossesque-glossesque-sys?
@@ -347,16 +689,21 @@
   
   (#:prop prop:glossesque-sys /make-glossesque-sys-impl
     
+    #:get-summary-sys
+    (dissectfn (mapped-glossesque-glossesque-sys >g< <g> original)
+      (glossesque-sys-get-summary-sys original))
+    
     #:glossesque-union-of-zero
     (dissectfn (mapped-glossesque-glossesque-sys >g< <g> original)
       (<g> /glossesque-sys-glossesque-union-of-zero original))
     
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
       (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
       /knowable-map
-        (glossesque-sys-glossesque-skm-union-of-two-knowable
-          original state (>g< a) (>g< b) skm-union-knowable)
+        (glossesque-sys-glossesque-skv-union-of-two-knowable
+          original state (>g< a) (>g< b) a-keeping? b-keeping? on-keep
+          skv-union-knowable)
       /fn result
         (<g> result)))
     
@@ -377,15 +724,10 @@
       /dissectfn (list rider g)
         (list rider /<g> g)))
     
-    #:glossesque-empty?
+    #:glossesque-summarize
     (fn gs g
       (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
-      /glossesque-sys-glossesque-empty? original />g< g))
-    
-    #:glossesque-count
-    (fn gs g
-      (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
-      /glossesque-sys-glossesque-count original />g< g))
+      /glossesque-sys-glossesque-summarize original />g< g))
     
     #:glossesque-iteration-sequence
     (fn gs g
@@ -418,27 +760,23 @@
   
   (#:prop prop:glossesque-sys /make-glossesque-sys-impl
     
+    #:get-summary-sys
+    (dissectfn (mapped-key-glossesque-sys >k<-knowable original)
+      (glossesque-sys-get-summary-sys original))
+    
     #:glossesque-union-of-zero
     (dissectfn (mapped-key-glossesque-sys >k<-knowable original)
       (glossesque-sys-glossesque-union-of-zero original))
     
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
       (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
-      /glossesque-sys-glossesque-skm-union-of-two-knowable
-        original state a b
-      /fn state internal-k a-entry-m b-entry-m
-        (w- k
-          (mat a-entry-m (just a-entry)
-            (dissect a-entry (list k v)
-              k)
-          /dissect b-entry-m (just b-entry)
-            (dissect b-entry (list k v)
-              k))
-        /knowable-map
-          (skm-union-knowable state k
-            (maybe-map a-entry-m /dissectfn (list k v) v)
-            (maybe-map b-entry-m /dissectfn (list k v) v))
+      /glossesque-sys-glossesque-skv-union-of-two-knowable
+        original state a b a-keeping? b-keeping? on-keep
+      /fn state internal-k a-entry b-entry
+        (dissect a-entry (list k a-v)
+        /dissect b-entry (list _ b-v)
+        /knowable-map (skv-union-knowable state k a-v b-v)
         /dissectfn (list state m)
           (list state /maybe-map m /fn v /list k v))))
     
@@ -468,15 +806,10 @@
         /dissectfn (list rider v-m)
           (list rider /maybe-map v-m /fn v /list k v))))
     
-    #:glossesque-empty?
+    #:glossesque-summarize
     (fn gs g
       (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
-      /glossesque-sys-glossesque-empty? original g))
-    
-    #:glossesque-count
-    (fn gs g
-      (dissect gs (mapped-key-glossesque-sys >k<-knowable original)
-      /glossesque-sys-glossesque-count original g))
+      /glossesque-sys-glossesque-summarize original g))
     
     #:glossesque-iteration-sequence
     (fn gs g
@@ -522,17 +855,85 @@
 
 (define-imitation-simple-struct
   (tagged-glossesque-sys?
+    tagged-glossesque-sys-tag
     tagged-glossesque-sys-get-inhabitant?
-    tagged-glossesque-sys-get-glossesque-sys)
+    tagged-glossesque-sys-get-get-glossesque-sys)
   tagged-glossesque-sys
   'tagged-glossesque-sys (current-inspector)
   (auto-write)
   (auto-equal))
 (ascribe-own-contract tagged-glossesque-sys? (-> any/c boolean?))
+(ascribe-own-contract tagged-glossesque-sys-tag
+  (-> tagged-glossesque-sys? any/c))
 (ascribe-own-contract tagged-glossesque-sys-get-inhabitant?
   (-> tagged-glossesque-sys? (-> any/c boolean?)))
-(ascribe-own-contract tagged-glossesque-sys-get-glossesque-sys
-  (-> tagged-glossesque-sys? glossesque-sys?))
+(ascribe-own-contract tagged-glossesque-sys-get-get-glossesque-sys
+  (-> tagged-glossesque-sys?
+    (-> glossesque-summary-sys? glossesque-sys?)))
+
+(define-syntax (lift stx)
+  (syntax-parse stx / (_ result:expr)
+  /syntax-local-lift-expression #'result))
+
+(define-syntax-parse-rule
+  (make-tagged-glossesque-sys gss:id inhabitant?:expr gs:expr)
+  (w- make-tag
+    (lift /let ()
+      (define-imitation-simple-struct (tag-for-tagged-glossesque-sys?)
+        tag-for-tagged-glossesque-sys
+        'tag-for-tagged-glossesque-sys (current-inspector)
+        (auto-write)
+        (auto-equal))
+      tag-for-tagged-glossesque-sys)
+  /tagged-glossesque-sys
+    (make-tag)
+    inhabitant?
+    (fn gss
+      gs)))
+
+(define-syntax-parse-rule
+  (derive-tagged-glossesque-sys
+    orig-inhabitant?:id gs:id new-inhabitant?:expr new-gs:expr)
+  (fn tgs-k
+    (knowable-map tgs-k
+      (dissectfn
+        (tagged-glossesque-sys tag local-inhabitant? local-get-gs)
+        (w- make-tag
+          (lift /let ()
+            (define-imitation-simple-struct
+              (derived-tag-for-tagged-glossesque-sys?
+                derived-tag-for-tagged-glossesque-sys-value)
+              derived-tag-for-tagged-glossesque-sys
+              'derived-tag-for-tagged-glossesque-sys
+              (current-inspector)
+              (auto-write)
+              (auto-equal))
+            derived-tag-for-tagged-glossesque-sys)
+        /tagged-glossesque-sys
+          (make-tag tag)
+          (w- orig-inhabitant? local-inhabitant?
+            new-inhabitant?)
+          (fn gss
+            (w- gs (local-get-gs gss)
+              new-gs)))))))
+
+(define/own-contract (tagged-glossesque-sys=? a b)
+  (-> tagged-glossesque-sys? tagged-glossesque-sys? boolean?)
+  (dissect a (tagged-glossesque-sys a-tag _ _)
+  /dissect b (tagged-glossesque-sys b-tag _ _)
+  /equal-always? a b))
+
+(define/own-contract
+  (tagged-glossesque-sys-inhabitant?-knowable tgs v)
+  (-> tagged-glossesque-sys? any/c (knowable/c boolean?))
+  (dissect tgs (tagged-glossesque-sys _ inhabitant? _)
+  /call-knowable inhabitant? v))
+
+(define/own-contract
+  (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
+  (-> glossesque-summary-sys? tagged-glossesque-sys? glossesque-sys?)
+  (dissect tgs (tagged-glossesque-sys _ _ get-gs)
+  /get-gs /counted-glossesque-summary-sys gss))
 
 
 (define-imitation-simple-generics
@@ -997,6 +1398,313 @@
   /uninformative-custom-gloss-key-reports))
 
 
+(define-imitation-simple-struct (ladder-empty?) ladder-empty
+  'ladder-empty (current-inspector) (auto-write))
+(define-imitation-simple-struct
+  (ladder-populated?
+    
+    ; A combined summary of the `ladder-populated-then` glossesque and
+    ; the `ladder-populated-else` ladder.
+    ladder-populated-count
+    
+    ; A `tagged-glossesque-sys?`.
+    ladder-populated-tagged-glossesque-sys
+    
+    ; A glossesque of the `(counted-glossesque-summary-sys gss)`
+    ; variant of that system (where `gss` is the
+    ; `glossesque-summary-sys?` used when manipulating this ladder),
+    ; containing each entry that has a known true result for its
+    ; `inhabitant?` predicate.
+    ladder-populated-then
+    
+    ; A ladder of entries that have a known false result.
+    ladder-populated-else
+    
+    )
+  ladder-populated
+  'ladder-populated (current-inspector) (auto-write))
+
+(define (ladder-summarize gss g)
+  (expect g (ladder-populated summary _ _ _)
+    (glossesque-summary-sys-summarize-zero gss)
+    summary))
+
+(define (build-ladder gss tgs then else)
+  (w- gs (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
+  /dissect (glossesque-sys-glossesque-summarize gs then)
+    (counted _ then-summary)
+  /w- else-summary (ladder-summarize gss else)
+  /w- summary
+    (glossesque-summary-sys-summary-plus
+      gss then-summary else-summary)
+  /ladder-populated summary tgs then else))
+
+(define
+  (rider-and-ladder-update-maybe-knowable
+    gss rider-and-g k on-rider-and-m-knowable)
+  (w- gs (ladder-glossesque-sys gss)
+  /dissect rider-and-g (list rider g)
+  /w-loop next g g
+    (expect g (ladder-populated _ tgs then else)
+      (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
+      /dissectfn (list rider m)
+      /expect m (just v) (known /list rider /ladder-empty)
+      ; TODO FORWARD: This use of `any-dynamic-type` is a forward
+      ; reference. See if we can untangle it.
+      /knowable-bind
+        (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+          (sequence-first
+            (dynamic-type-get-custom-gloss-key-reports
+              (any-dynamic-type)
+              k)))
+      /fn tgs
+      /w- gs
+        (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
+      /knowable-bind
+        (tagged-glossesque-sys-inhabitant?-knowable tgs k)
+      /fn k-inhabits?
+      /expect k-inhabits? #t (unknown)
+      /w- then (glossesque-sys-glossesque-union-of-zero gs)
+      /knowable-bind
+        (glossesque-sys-glossesque-set-maybe-knowable
+          gs then k (just v))
+      /fn then
+      /known /list rider /build-ladder gss tgs then /ladder-empty)
+    /w- gs
+      (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
+    /knowable-bind (tagged-glossesque-sys-inhabitant?-knowable tgs k)
+    /fn k-inhabits?
+    /if k-inhabits?
+      (knowable-map
+        (glossesque-sys-rider-and-glossesque-update-maybe-knowable
+          gs (list rider then) k on-rider-and-m-knowable)
+      /dissectfn (list rider then)
+        (list rider
+          (dissect (glossesque-sys-glossesque-summarize gs then)
+            (counted then-count _)
+          /mat then-count 0
+            else
+            (build-ladder gss tgs then else))))
+      (knowable-map (next else) /dissectfn (list rider else)
+        (list rider /build-ladder gss tgs then else)))))
+
+(define
+  (ladder-skv-union-of-two-knowable
+    gss state a b a-keeping? b-keeping? on-keep skv-union-knowable)
+  (dissect a (summarized a-summary /gloss a-rep)
+  /dissect b (summarized b-summary /gloss b-rep)
+  /expect a (ladder-populated a-summary a-tgs a-then a-else)
+    (if b-keeping?
+      (known /list (on-keep state (ladder-summarize b)) b)
+      (known /list state /ladder-empty))
+  /expect b (ladder-populated b-summary b-tgs b-then b-else)
+    (if a-keeping?
+      (known /list (on-keep state a-summary) a)
+      (known /list state /ladder-empty))
+  /if (tagged-glossesque-sys=? a-tgs b-tgs)
+    (w- tgs a-tgs
+    /w- gs
+      (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
+    /knowable-bind
+      (glossesque-sys-glossesque-skv-union-of-two-knowable
+        gs state a-then b-then a-keeping? b-keeping?
+        (fn state summary
+          (dissect summary (counted _ summary)
+          /on-keep state summary))
+        (fn state k a-v b-v
+          (skv-union-knowable state k a-v b-v)))
+    /dissectfn (list state then)
+    /knowable-bind
+      (ladder-skv-union-of-two-knowable
+        gss state a-else b-else a-keeping? b-keeping? on-keep
+        skv-union-knowable)
+    /dissectfn (list state else)
+    /known /list state /build-ladder gss tgs then else)
+  /w- a-gs
+    (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss a-tgs)
+  /w- b-gs
+    (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss b-tgs)
+  /dissect (glossesque-sys-glossesque-summarize a-gs a-then)
+    (counted a-then-count _)
+  /dissect (glossesque-sys-glossesque-summarize b-gs b-then)
+    (counted b-then-count _)
+  
+  ; If the `then` glossesques don't match, we skip whichever one has
+  ; the fewest entries, and add its entries one at a time after we've
+  ; merged the rest. At call sites which primarily merge ladders keyed
+  ; by a single type with its own well optimized merging algorithm,
+  ; this approach gets out of that algorithm's way.
+  ;
+  ; NOTE: A more sophisticated approach would detect when the `then`
+  ; of one ladder matches a glossesque deeper within another one,
+  ; instead of just checking the `then` glossesques at the base. It
+  ; would try to optimize a global property of the algorithm: Any
+  ; glossesque we skip over because we can't merge it recursively
+  ; means we have to perform all its elements' insertions individually
+  ; (in order to check whether they need to belong to the other
+  ; ladder's `then`; we can't just add them deeper within because that
+  ; would break an invariant). Furthermore, when the tails have
+  ; nothing in common, we have to skip everything from one or the
+  ; other, incurring the cost of all its individual entry insertions.
+  ; We're trying to minimize the overall number of individual entry
+  ; insertions performed. Planning out a path of actions of the form
+  ; "skip the `then` on the left," "skip the `then` on the right,"
+  ; "merge the `then`s," and
+  ; "one side is empty now, so use the other side" becomes something
+  ; like a dynamic programming problem.
+  ;
+  ; A ladder can't have more than one match for a glossesque of
+  ; another ladder If it did, the entries in its second matching
+  ; glossesque would have been inserted into the first one.
+  ;
+  ; So actually, once we take the first step of finding where all the
+  ; matching glossesques are, each ladder is roughly like a sequence
+  ; of indexes into the other, and we have something like the
+  ; "longest increasing subsequence" problem.
+  ;
+  ; https://en.wikipedia.org/wiki/Longest_increasing_subsequence
+  ;
+  ; In our case, we might not be concerned with the absolute best
+  ; algorithmic efficiency in terms of sequence lengths because we
+  ; assume the number of smooshable user-defined types, and hence the
+  ; number of glossesques they define, is a constant for any given
+  ; program. Our only goal is to avoid having the merging cost be
+  ; equivalent to inserting entries one at a time in a case where the
+  ; ladder's entries are primarily instances of a type that has its
+  ; own superior merging algorithm.
+  ;
+  ; Here's a way we can approach it for our situation:
+  ;
+  ; Choose just one of the two ladders that's been annotated with the
+  ; locations of its glossesques' matches in the other ladder. For
+  ; each of its glossesques that has a match, from tail to head, we'll
+  ; further annotate it with one of three strategies: Skip everything
+  ; else in the left-hand ladder, skip everything else in the
+  ; right-hand ladder, or skip just enough on the left and right so as
+  ; to get to some particular (and designated) other matching pair of
+  ; glossesques to be merged next. This strategy has an accumulated
+  ; cost associated with proceeding from it, which we record as part
+  ; of this annotation. The way we choose which strategy to annotate
+  ; each pair of matching glossesques with is simply by attempting all
+  ; of the possibilities.
+  ;
+  ; Once we've annotated all the pairs of matching glossesques this
+  ; way, we can put one more annotation at the root (just past the
+  ; heads of the ladders in the headward direction), chosen the same
+  ; way. This represents our overall strategy for merging the ladders,
+  ; and we proceed according to that strategy.
+  ;
+  /dissect
+    (if (< a-then-count b-then-count)
+      (list
+        a b a-keeping? b-keeping? a-gs b-gs a-then b-then
+        a-else b-else skv-union-knowable)
+      (list
+        b a b-keeping? a-keeping? b-gs a-gs b-then a-then
+        b-else a-else
+        (fn state k b-v a-v
+          (skv-union-knowable k a-v b-v))))
+    (list
+      min max min-keeping? max-keeping? min-gs max-gs
+      min-then max-then min-else max-else skv-union-knowable)
+  /knowable-bind
+    (ladder-skv-union-of-two-knowable
+      gss state max min-else max-keeping? min-keeping? on-keep
+      skv-union-knowable)
+  /dissectfn (list state result)
+  /w- min-thens
+    (in-values-sequence
+      (glossesque-sys-glossesque-iteration-sequence min-gs min-then))
+  /w-loop next state state min-thens min-thens result result
+    (expect min-thens (sequence* min-then-entry min-thens)
+      (known /list state result)
+    /dissect min-then-entry (list k min-then-v)
+    /knowable-bind
+      (rider-and-ladder-update-maybe-knowable
+        (list state result)
+        k
+        (dissectfn (list state result-v-m)
+          (expect result-v-m (just result-v)
+            (if min-keeping?
+              (known /list
+                (on-keep state
+                  (glossesque-summary-sys-summarize-one-entry
+                    gss k min-then-v))
+                (just min-then-v))
+              (known /list state (nothing)))
+          /skv-union-knowable state k min-then-v result-v)))
+    /dissectfn (list state result)
+    /next state min-thens result)))
+
+(define-imitation-simple-struct
+  (ladder-glossesque-sys? ladder-glossesque-sys-get-summary-sys)
+  ladder-glossesque-sys-unguarded
+  'ladder-glossesque-sys (current-inspector) (auto-write)
+  
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl
+    
+    #:get-summary-sys
+    (dissectfn (ladder-glossesque-sys-unguarded gss)
+      gss)
+    
+    #:glossesque-union-of-zero
+    (fn gs
+      (ladder-empty))
+    
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
+      (dissect gs (ladder-glossesque-sys-unguarded gss)
+      /ladder-skv-union-of-two-knowable
+        gss state a b a-keeping? b-keeping? on-keep
+        skv-union-knowable))
+    
+    #:glossesque-ref-maybe-knowable
+    (fn gs g k
+      (dissect gs (ladder-glossesque-sys-unguarded gss)
+      /w-loop next g g
+        (expect g (ladder-populated _ tgs then else) (known /nothing)
+        /w- gs
+          (tagged-glossesque-sys-get-glossesque-sys-for-ladder
+            gss tgs)
+        /knowable-bind
+          (tagged-glossesque-sys-inhabitant?-knowable tgs k)
+        /fn k-inhabits?
+        /if k-inhabits?
+          (glossesque-sys-glossesque-ref-maybe-knowable gs then k)
+          (next else))))
+    
+    #:rider-and-glossesque-update-maybe-knowable
+    (fn gs rider-and-g k on-rider-and-m-knowable
+      (dissect gs (ladder-glossesque-sys-unguarded gss)
+      /rider-and-ladder-update-maybe-knowable
+        gss rider-and-g k on-rider-and-m-knowable))
+    
+    #:glossesque-summarize
+    (fn gs g
+      (dissect gs (ladder-glossesque-sys-unguarded gss)
+      /ladder-summarize gss g))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (dissect gs (ladder-glossesque-sys-unguarded gss)
+      /w-loop next g g
+        (expect g (ladder-populated _ tgs then else) (list)
+        /w- gs
+          (tagged-glossesque-sys-get-glossesque-sys-for-ladder
+            gss tgs)
+        /in-sequences
+          (glossesque-sys-glossesque-iteration-sequence gs then)
+          (next else))))
+    
+    )
+  
+  )
+
+(define/own-contract (ladder-glossesque-sys gss)
+  (-> glossesque-summary-sys? glossesque-sys?)
+  (ladder-glossesque-sys-unguarded gss))
+
+
 (define/own-contract (boolean-and-yknow-zip* y-list)
   (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
   (make-yknow-from-value-knowable-promise
@@ -1023,31 +1731,8 @@
   /expect (maybe-min-zip* v=?-kpm-list) (just v=?-kp-list) (known #f)
   /force /boolean-and-knowable-promise-zip* v=?-kp-list))
 
-(define-imitation-simple-struct (gloss-rep-empty?) gloss-rep-empty
-  'gloss-rep-empty (current-inspector) (auto-write))
 (define-imitation-simple-struct
-  (gloss-rep-glossesque?
-    
-    ; A `natural?` summarizing the combined size of the
-    ; `gloss-rep-glossesque-then` glossesque and the
-    ; `gloss-rep-glossesque-else` gloss.
-    gloss-rep-glossesque-count
-    
-    ; A `tagged-glossesque-sys?`.
-    gloss-rep-glossesque-tagged-glossesque-sys
-    
-    ; A glossesque of that system containing entries with a known true
-    ; result for its `inhabitant?` predicate.
-    gloss-rep-glossesque-then
-    
-    ; A gloss of entries with a known false result.
-    gloss-rep-glossesque-else
-    
-    )
-  gloss-rep-glossesque
-  'gloss-rep-glossesque (current-inspector) (auto-write))
-(define-imitation-simple-struct
-  (gloss? gloss-rep)
+  (gloss? gloss-ladder)
   gloss 'gloss (current-inspector)
   
   (#:gen gen:custom-write
@@ -1132,49 +1817,51 @@
     (list state /make-similar-hash h /append* kv-list-list)))
 
 (define/own-contract
-  (hash-skm-union-of-two-knowable state a b skm-union-knowable)
-  (-> any/c (and/c hash? immutable?) (and/c hash? immutable?)
-    (-> any/c any/c maybe? maybe?
-      (knowable/c (list/c any/c maybe?)))
+  (summarized-hash-skv-union-of-two-knowable
+    gss state a b a-keeping? b-keeping? on-keep skv-union-knowable)
+  (->
+    glossesque-summary-sys?
+    any/c
+    (match/c summarized any/c (and/c hash? immutable?))
+    (match/c summarized any/c (and/c hash? immutable?))
+    boolean?
+    boolean?
+    (-> any/c any/c any/c)
+    (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c (and/c hash? immutable?))))
-  (hash-skv-map-maybe-knowable state
-    (hash-union a b #:combine /fn a b a)
-    (fn state k v
-      (skm-union-knowable
-        state k (hash-ref-maybe a k) (hash-ref-maybe b k)))))
-
-(define/own-contract
-  (rider-and-maybe-update-knowable
-    rider-and-m on-rider-and-v-knowable)
-  (-> (list/c any/c maybe?)
-    (-> (list/c any/c any/c) (knowable/c (list/c any/c any/c)))
-    (knowable/c (list/c any/c maybe?)))
-  (dissect rider-and-m (list rider m)
-  /expect m (just v) (known rider-and-m)
-  /knowable-bind (on-rider-and-v-knowable /list rider v)
-    (dissectfn (list rider v)
-      (known /list rider /just v))))
-
-; Given a `maybe?` value and a stateful way of updating it, this is a
-; stateful way of updating it that maintains a count included in the
-; state. The operand is considered to have contributed 1 to the count
-; if it's a `just?` and 0 otherwise. With the way this operation
-; maintains the count, the result will be contributing 1 or 0 in the
-; same way in its place. This can reduce or increase the count by no
-; more than 1.
-;
-(define/own-contract
-  (count-and-rider-and-maybe-update-maybe-knowable
-    crm on-rider-and-m-knowable)
-  (-> (list/c (list/c natural? any/c) maybe?)
-    (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
-    (knowable/c (and/c (list/c natural? any/c) maybe?)))
-  (dissect crm (list (list count rider) m)
-  /knowable-map (on-rider-and-m-knowable /list rider m)
-    (dissectfn (list rider new-m)
-      (w- count
-        (+ count (- (if (just? new-m) 1 0) (if (just? m) 1 0)))
-      /list (list count rider) new-m))))
+  (dissect a (summarized _ a)
+  /dissect b (summarized _ b)
+  /knowable-map
+    (hash-skv-map-maybe-knowable
+      (summarized (glossesque-summary-sys-summarize-zero gss) state)
+      (hash-union a b #:combine /fn a b a)
+      (fn summary-and-state k v
+        (dissect summary-and-state (summarized summary state)
+        /w- a-v-m (hash-ref-maybe a k)
+        /w- b-v-m (hash-ref-maybe b k)
+        /w- add-entry
+          (fn k v
+            (w- entry-summary
+              (glossesque-summary-sys-summarize-one-entry gss k v)
+            /known /list
+              (summarized
+                (glossesque-summary-sys-summary-plus
+                  summary entry-summary)
+                (on-keep state entry-summary))
+              (just v)))
+        /expect a-v-m (just a-v)
+          (expect (list b-keeping? b-v-m) (list #t (just b-v))
+            (known /list summary-and-state (nothing))
+            (add-entry k b-v))
+        /expect b-v-m (just b-v)
+          (expect a-keeping? #t
+            (known /list summary-and-state (nothing))
+            (add-entry k a-v))
+        /knowable-map (skv-union-knowable state k a-v b-v)
+        /dissectfn (list state m)
+          (list (summarized summary state) m))))
+  /dissectfn (list (summarized summary state) h)
+    (list state /summarized summary h)))
 
 ; Given two `maybe?` values and a stateful way of taking their union,
 ; this is a stateful way of taking their union that skips actually
@@ -1182,117 +1869,73 @@
 ; just returns a `nothing?` in that case.
 ;
 (define/own-contract
-  (maybe-or-sm-union-of-two-knowable state a b sm-union-knowable)
-  (-> any/c maybe? maybe?
-    (-> any/c maybe? maybe? (knowable/c (list/c any/c maybe?)))
-    (knowable/c (list/c any/c maybe?)))
-  (mat a (just _) (sm-union-knowable state a b)
-  /mat b (just _) (sm-union-knowable state a b)
-  /known /list state /nothing))
-
-; Given two `maybe?` values and a stateful way of taking their union,
-; this is a stateful way of taking their union that maintains a count
-; included in the state. The left-hand-side operand is considered to
-; have contributed 1 to the count if it's a `just?` and 0 otherwise.
-; With the way this operation maintains the count, the result will be
-; contributing 1 or 0 in the same way in its place. This can reduce or
-; increase the count by no more than 1.
-;
-(define/own-contract
-  (maybe-left-count-sm-union-of-two-knowable cs a b sm-union-knowable)
-  (-> (list/c natural? any/c) maybe? maybe?
-    (-> any/c maybe? maybe? (knowable/c (list/c any/c maybe?)))
-    (knowable/c (list/c (list/c natural? any/c) maybe?)))
-  (count-and-rider-and-maybe-update-maybe-knowable (list cs a)
-    (dissectfn (list state a)
-      (sm-union-knowable state a b))))
+  (entry-maybe-skv-union-of-two-knowable
+    gss state a b a-keeping? b-keeping? on-keep skv-union-knowable)
+  (->
+    glossesque-summary-sys?
+    any/c
+    (maybe/c (list/c any/c any/c))
+    (maybe/c (list/c any/c any/c))
+    boolean?
+    boolean?
+    (-> any/c any/c any/c)
+    (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
+    (knowable/c (list/c any/c (maybe/c (list/c any/c any/c)))))
+  (expect a (just a-kv)
+    (expect (list b-keeping? b) (list #t (just b-kv))
+      (known /list state /nothing)
+    /dissect b-kv (list b-k b-v)
+    /known /list
+      (on-keep state
+        (glossesque-summary-sys-summarize-one-entry gss b-k b-v))
+      b)
+  /dissect a-kv (list a-k a-v)
+  /expect b (just b-kv)
+    (expect a-keeping? #t
+      (known /list state /nothing)
+    /known /list
+      (on-keep state
+        (glossesque-summary-sys-summarize-one-entry gss a-k a-v))
+      a)
+  /dissect b-kv (list b-k b-v)
+  /knowable-map (skv-union-knowable state a-k a-v b-v)
+  /dissectfn (list state m)
+    (list state /maybe-map m /fn v /list a-k v)))
 
 (define/own-contract (gloss-union-of-zero)
   (-> gloss?)
-  (gloss /gloss-rep-empty))
+  (gloss /ladder-empty))
+
+(define (gloss-ladder-glossesque-sys)
+  (glossesque-sys-map-glossesque
+    #:granted-glossesque (dissectfn (gloss rep) rep)
+    #:on-glossesque (fn rep /gloss rep)
+    (ladder-glossesque-sys
+      (counted-glossesque-summary-sys
+        (trivial-glossesque-summary-sys)))))
 
 (define/own-contract (gloss-iteration-sequence g)
   (-> gloss? (sequence/c any/c any/c))
-  (dissect g (gloss rep)
-  /mat rep (gloss-rep-empty) (list)
-  /dissect rep
-    (gloss-rep-glossesque _ (tagged-glossesque-sys _ gs) then else)
-  /in-sequences
-    (glossesque-sys-glossesque-iteration-sequence gs then)
-    (gloss-iteration-sequence else)))
-
-(define/own-contract
-  (gloss-skm-union-of-two-knowable state a b skm-union-knowable)
-  (-> any/c gloss? gloss?
-    (-> any/c any/c maybe? maybe? (knowable/c (list/c any/c maybe?)))
-    (knowable/c (list/c any/c gloss?)))
-  ; Without loss of generality, we suppose `a` is at least `b`'s size.
-  (dissect
-    (if (< (gloss-count a) (gloss-count b)) (list b a) (list a b))
-    (list a b)
-  /w- as (in-values-sequence /gloss-iteration-sequence a)
-  /w-loop next state state as as b b result (gloss-union-of-zero)
-    (expect as (sequence* a-entry as)
-      (w- bs (in-values-sequence /gloss-iteration-sequence b)
-      /w-loop next state state bs bs result result
-        (expect bs (sequence* b-entry bs)
-          (known /list state result)
-        /dissect b-entry (list k b-v)
-        /knowable-bind
-          (skm-union-knowable state k (nothing) (just b-v))
-        /dissectfn (list state m)
-        ; TODO FORWARD: This use of `gloss-set-maybe-knowable` is a
-        ; forward reference. See if we can untangle it.
-        /knowable-bind (gloss-set-maybe-knowable result k m)
-        /fn result
-        /next state bs result))
-    /dissect a-entry (list k a-v)
-    ; TODO FORWARD: This use of
-    ; `rider-and-gloss-update-maybe-knowable` is a forward reference.
-    ; See if we can untangle it.
-    /knowable-bind
-      (rider-and-gloss-update-maybe-knowable
-        (list (trivial) b)
-        k
-        (dissectfn (list (trivial) b-v-m)
-          (known /list b-v-m /nothing)))
-    /dissectfn (list b-v-m b)
-    /knowable-bind (skm-union-knowable state k (just a-v) b-v-m)
-    /dissectfn (list state m)
-    ; TODO FORWARD: This use of `gloss-set-maybe-knowable` is a
-    ; forward reference. See if we can untangle it.
-    /knowable-bind (gloss-set-maybe-knowable result k m) /fn result
-    /next state as b result)))
+  (w- gs (gloss-ladder-glossesque-sys)
+  /glossesque-sys-glossesque-iteration-sequence gs g))
 
 (define/own-contract (gloss-ref-maybe-knowable g k)
   (-> gloss? any/c (knowable/c maybe?))
-  (dissect g (gloss rep)
-  /mat rep (gloss-rep-empty) (known /nothing)
-  /dissect rep (gloss-rep-glossesque _ tgs then else)
-  /dissect tgs (tagged-glossesque-sys inhabitant? gs)
-  /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
-  /if k-inhabits?
-    (glossesque-sys-glossesque-ref-maybe-knowable gs then k)
-    (gloss-ref-maybe-knowable else k)))
+  (w- gs (gloss-ladder-glossesque-sys)
+  /glossesque-sys-glossesque-ref-maybe-knowable gs g k))
 
 (define/own-contract (gloss-count g)
   (-> gloss? natural?)
-  (dissect g (gloss rep)
-  /mat rep (gloss-rep-empty) 0
-  /dissect rep (gloss-rep-glossesque count tgs then else)
-    count))
+  (w- gs (gloss-ladder-glossesque-sys)
+  /dissect (glossesque-sys-glossesque-summarize gs g)
+    (counted result /trivial)
+    result))
 
 (define/own-contract (gloss-empty? g)
   (-> gloss? boolean?)
   (dissect g (gloss rep)
-  /mat rep (gloss-rep-empty) #t
+  /mat rep (ladder-empty) #t
     #f))
-
-(define (build-gloss tgs then else)
-  (dissect tgs (tagged-glossesque-sys inhabitant? gs)
-  /w- count
-    (+ (glossesque-sys-glossesque-count gs then) (gloss-count else))
-  /gloss /gloss-rep-glossesque count tgs then else))
 
 (define/own-contract
   (rider-and-gloss-update-maybe-knowable
@@ -1300,88 +1943,162 @@
   (-> (list/c any/c gloss?) any/c
     (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c gloss?)))
-  (dissect rider-and-g (list rider (gloss rep))
-  /mat rep (gloss-rep-empty)
-    (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
-    /dissectfn (list rider m)
-    /expect m (just v) (known /list rider /gloss /gloss-rep-empty)
-    ; TODO FORWARD: This use of `any-dynamic-type` is a forward
-    ; reference. See if we can untangle it.
+  (w- gs (gloss-ladder-glossesque-sys)
+  /glossesque-sys-rider-and-glossesque-update-maybe-knowable
+    gs rider-and-g k on-rider-and-m-knowable))
+
+(define/own-contract
+  (summarized-gloss-skv-union-of-two-knowable
+    gss state a b a-keeping? b-keeping? on-keep skv-union-knowable)
+  (->
+    glossesque-summary-sys?
+    any/c
+    (match/c summarized any/c gloss?)
+    (match/c summarized any/c gloss?)
+    boolean?
+    boolean?
+    (-> any/c any/c any/c)
+    (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
+    (knowable/c (list/c any/c gloss?)))
+  (dissect a (summarized _ a)
+  /dissect b (summarized _ b)
+  /w- add-entry-knowable
+    (fn state summary result on-keep k v then
+      (knowable-bind
+        (rider-and-gloss-update-maybe-knowable (list (trivial) result)
+          k
+          (dissectfn (list (trivial) /nothing)
+            (known /list (trivial) /just v)))
+      /dissectfn (list (trivial) result)
+      /w- entry-summary
+        (glossesque-summary-sys-summarize-one-entry gss k v)
+      /w- state (on-keep state entry-summary)
+      /w- summary
+        (glossesque-summary-sys-summary-plus summary entry-summary)
+      /then state summary result))
+  /w-loop next
+    state state
+    summary (glossesque-summary-sys-summarize-zero gss)
+    a (in-values-sequence /gloss-iteration-sequence a)
+    b b
+    result (gloss-union-of-zero)
+    
+    (expect a (sequence* entry a)
+      (expect b-keeping? #t
+        (known /list state /summarized summary result)
+      /w-loop next
+        state state
+        summary summary
+        b (in-values-sequence /gloss-iteration-sequence b)
+        result result
+        
+        (expect b (sequence* entry b)
+          (known /list state /summarized summary result)
+        /dissect entry (list k b-v)
+        /add-entry-knowable state summary result on-keep k b-v
+        /fn state summary result
+        /next state summary b result))
+    /dissect entry (list k a-v)
     /knowable-bind
-      (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
-        (sequence-first
-          (dynamic-type-get-custom-gloss-key-reports
-            (any-dynamic-type)
-            k)))
-    /fn tgs
-    /dissect tgs (tagged-glossesque-sys inhabitant? gs)
-    /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
-    /expect k-inhabits? #t (unknown)
-    /w- then (glossesque-sys-glossesque-union-of-zero gs)
-    /knowable-bind
-      (glossesque-sys-glossesque-set-maybe-knowable
-        gs then k (just v))
-    /fn then
-    /known
-      (list rider
-        (gloss
-          (gloss-rep-glossesque 1 tgs then (gloss-union-of-zero)))))
-  /dissect rep (gloss-rep-glossesque _ tgs then else)
-  /dissect tgs (tagged-glossesque-sys inhabitant? gs)
-  /knowable-bind (call-knowable inhabitant? k) /fn k-inhabits?
-  /if k-inhabits?
-    (knowable-map
-      (glossesque-sys-rider-and-glossesque-update-maybe-knowable
-        gs (list rider then) k on-rider-and-m-knowable)
-    /dissectfn (list rider then)
-      (if (glossesque-sys-glossesque-empty? gs then)
-        (list rider else)
-        (list rider /build-gloss tgs then else)))
-    (knowable-map
-      (rider-and-gloss-update-maybe-knowable
-        gs (list rider else) k on-rider-and-m-knowable)
-    /dissectfn (list rider else)
-      (list rider /build-gloss tgs then else))))
+      (rider-and-gloss-update-maybe-knowable (list (trivial) b) k
+        (dissectfn (list (trivial) b-v-m)
+          (known /list b-v-m /nothing)))
+    /dissectfn (list b-v-m b)
+    /expect b-v-m (just b-v)
+      (if a-keeping?
+        (add-entry-knowable state summary result on-keep k a-v
+        /fn state summary result
+        /next state summary a b result)
+        (next state summary a b result))
+    /knowable-bind (skv-union-knowable state k a-v b-v)
+    /dissectfn (list state m)
+    /expect m (just v)
+      (next state summary a b result)
+    /w- on-keep-do-nothing (fn state summary state)
+    /add-entry-knowable state summary result on-keep-do-nothing k v
+    /fn state summary result
+    /next state summary a b result)))
 
 (define-imitation-simple-struct
-  (gloss-glossesque-sys?)
-  gloss-glossesque-sys
-  'gloss-glossesque-sys (current-inspector) (auto-write) (auto-equal)
+  (summarized-gloss-glossesque-sys?
+    summarized-gloss-glossesque-sys-get-summary-sys)
+  summarized-gloss-glossesque-sys
+  'summarized-gloss-glossesque-sys (current-inspector) (auto-write)
   
   (#:prop prop:glossesque-sys /make-glossesque-sys-impl
     
-    #:glossesque-union-of-zero (fn gs /gloss-union-of-zero)
+    #:get-summary-sys
+    (dissectfn (summarized-gloss-glossesque-sys gss)
+      gss)
     
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
-      (gloss-skm-union-of-two-knowable state a b skm-union-knowable))
+    #:glossesque-union-of-zero
+    (dissectfn (summarized-gloss-glossesque-sys gss)
+      (summarized (glossesque-summary-sys-summarize-zero gss)
+        (gloss-union-of-zero)))
+    
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
+      (dissect gs (summarized-gloss-glossesque-sys gss)
+      /summarized-gloss-skv-union-of-two-knowable
+        gss state a b a-keeping? b-keeping? on-keep
+        skv-union-knowable))
     
     #:glossesque-ref-maybe-knowable
-    (fn gs g k /gloss-ref-maybe-knowable g k)
+    (fn gs g k
+      (dissect g (summarized summary gloss)
+      /gloss-ref-maybe-knowable gloss k))
     
     #:rider-and-glossesque-update-maybe-knowable
-    (fn gs rider-and-g k on-rider-and-m
-      (rider-and-gloss-update-maybe-knowable
-        rider-and-g k on-rider-and-m))
+    (fn gs rider-and-g k on-rider-and-m-knowable
+      (dissect gs (summarized-gloss-glossesque-sys gss)
+      /dissect rider-and-g (list rider /summarized summary gloss)
+      /knowable-map
+        (rider-and-gloss-update-maybe-knowable
+          (list (summarized summary rider) gloss)
+          k
+        /dissectfn (list (summarized summary rider) m)
+          (w- summary
+            (expect m (just v) summary
+            /glossesque-summary-sys-summary-minus gss summary
+              (glossesque-summary-sys-summarize-one-entry gss k v))
+          /knowable-map (on-rider-and-m-knowable /list rider m)
+          /dissectfn (list rider m)
+            (w- summary
+              (expect m (just v) summary
+              /glossesque-summary-sys-summary-plus gss summary
+                (glossesque-summary-sys-summarize-one-entry gss k v))
+            /list (summarized summary rider) m)))
+      /dissectfn (list (summarized summary rider) gloss)
+        (list rider /summarized summary gloss)))
     
-    #:glossesque-empty? (fn gs g /gloss-empty? g)
-    #:glossesque-count (fn gs g /gloss-count g)
+    #:glossesque-summarize
+    (fn gs g
+      (dissect g (summarized summary gloss)
+        summary))
     
     #:glossesque-iteration-sequence
-    (fn gs g /gloss-iteration-sequence g)
+    (fn gs g
+      (dissect g (summarized summary gloss)
+      /gloss-iteration-sequence gloss))
     
     )
   
   )
 
-(define/own-contract (make-gloss-glossesque-sys)
-  (-> glossesque-sys?)
-  (gloss-glossesque-sys))
+(define/own-contract (make-summarized-gloss-glossesque-sys gss)
+  (-> glossesque-summary-sys? glossesque-sys?)
+  (summarized-gloss-glossesque-sys gss))
 
 (define/own-contract (gloss-set-maybe-knowable g k m)
   (-> gloss? any/c maybe? (knowable/c gloss?))
-  (w- gs (make-gloss-glossesque-sys)
-  /glossesque-sys-glossesque-set-maybe-knowable gs g k m))
+  (w- gs
+    (make-summarized-gloss-glossesque-sys
+      (trivial-glossesque-summary-sys))
+  /knowable-map
+    (glossesque-sys-glossesque-set-maybe-knowable
+      gs (summarized (trivial) g) k m)
+  /dissectfn (summarized (trivial) g)
+    g))
 
 
 (define-imitation-simple-struct (uninformative-dynamic-type?)
@@ -3158,28 +3875,67 @@
     report-1+))
 
 (define/own-contract
-  (make-glossesque-sys-impl-for-hash make-empty-hash)
-  (-> (-> (and/c hash? immutable?)) glossesque-sys-impl?)
+  (make-glossesque-sys-impl-for-hash get-summary-sys make-empty-hash)
+  (->
+    (-> glossesque-sys? glossesque-summary-sys?)
+    (-> (and/c hash? immutable?))
+    glossesque-sys-impl?)
   (make-glossesque-sys-impl
     
-    #:glossesque-union-of-zero (fn gs /make-empty-hash)
+    #:get-summary-sys
+    (fn gs
+      (get-summary-sys gs))
     
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
-      (hash-skm-union-of-two-knowable state a b skm-union-knowable))
+    #:glossesque-union-of-zero
+    (fn gs
+      (w- gss (get-summary-sys gs)
+      /summarized (glossesque-summary-sys-summarize-zero gss)
+        (make-empty-hash)))
+    
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
+      (w- gss (get-summary-sys gs)
+      /summarized-hash-skv-union-of-two-knowable
+        gss state a b a-keeping? b-keeping? on-keep
+        skv-union-knowable))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
-      (known /hash-ref-maybe g k))
+      (dissect g (summarized summary h)
+      /known /hash-ref-maybe h k))
     
     #:rider-and-glossesque-update-maybe-knowable
-    (fn gs rider-and-g k on-rider-and-m
-      (rider-and-hash-update-maybe-knowable
-        rider-and-g k on-rider-and-m))
+    (fn gs rider-and-g k on-rider-and-m-knowable
+      (w- gss (get-summary-sys gs)
+      /dissect rider-and-g (list rider /summarized summary h)
+      /knowable-map
+        (rider-and-hash-update-maybe-knowable
+          (list (summarized summary rider) h)
+          k
+        /dissectfn (list (summarized summary rider) m)
+          (w- summary
+            (expect m (just v) summary
+            /glossesque-summary-sys-summary-minus gss summary
+              (glossesque-summary-sys-summarize-one-entry gss k v))
+          /knowable-map (on-rider-and-m-knowable /list rider m)
+          /dissectfn (list rider m)
+            (w- summary
+              (expect m (just v) summary
+              /glossesque-summary-sys-summary-plus gss summary
+                (glossesque-summary-sys-summarize-one-entry gss k v))
+            /list (summarized summary rider) m)))
+      /dissectfn (list (summarized summary rider) h)
+        (list rider /summarized summary h)))
     
-    #:glossesque-empty? (fn gs g /hash-empty? g)
-    #:glossesque-count (fn gs g /hash-count g)
-    #:glossesque-iteration-sequence (fn gs g /in-hash g)
+    #:glossesque-summarize
+    (fn gs g
+      (dissect g (summarized summary h)
+        summary))
+    
+    #:glossesque-iteration-sequence
+    (fn gs g
+      (dissect g (summarized summary h)
+      /in-hash h))
     
     ))
 
@@ -3203,67 +3959,134 @@
       (known /just /list elem (list-rev-append rev-past lst))
     /next (cons elem rev-past) lst)))
 
-(define/own-contract
-  (assoc-list-skm-union-of-two-knowable
-    ==?-knowable state a b skm-union-knowable)
+; TODO: Give the resulting contract a better name, check that it has
+; good `contract-stronger?` behavior, etc.
+; TODO: Let the result be a chaperone contract if the given contracts
+; are chaperone contracts.
+(define/own-contract (summarized-assoc-list/c summary/c k/c v/c)
+  (-> contract? contract? contract? contract?)
+  (w- summary/c (coerce-contract 'summarized-assoc-list/c summary/c)
+  /w- k/c (coerce-contract 'summarized-assoc-list/c k/c)
+  /w- v/c (coerce-contract 'summarized-assoc-list/c v/c)
+  /rename-contract
+    (fix/c (self/c) /match/c summarized summary/c /or/c (list/c)
+      (cons/c (cons/c k/c v/c) /self/c))
+    `(summarized-assoc-list/c
+      ,(contract-name summary/c)
+      ,(contract-name k/c)
+      ,(contract-name v/c))))
+
+(define/own-contract (summarized-assoc-list-nil gss)
+  (-> glossesque-summary-sys?
+    (summarized-assoc-list/c any/c any/c any/c))
+  (summarized (glossesque-summary-sys-summarize-zero gss) (list)))
+
+(define/own-contract (summarized-assoc-list-cons gss k v rest)
   (->
-    (-> any/c any/c (knowable/c boolean?))
+    glossesque-summary-sys?
     any/c
-    (listof pair?)
-    (listof pair?)
-    (-> any/c any/c maybe? maybe? (knowable/c (list/c any/c maybe?)))
-    (knowable/c (list/c any/c (listof pair?))))
-  (w-loop next state state a a b b rev-result (list)
-    (w- entry-and-next
-      (fn state a b rev-result k a-v-m b-v-m
-        (knowable-bind (skm-union-knowable state k a-v-m b-v-m)
-        /dissectfn (list state v-m)
-        /next state a b
-          (expect v-m (just v) rev-result
-          /cons (cons k v) rev-result)))
-    /expect a (cons a-entry a)
-      (expect b (cons b-entry b)
-        (known /list state /reverse rev-result)
-      /dissect b-entry (cons b-k b-v)
-      /entry-and-next state a b rev-result b-k (nothing) (just b-v))
-    /dissect a-entry (cons a-k a-v)
-    /knowable-bind
-      (list-rem-first-maybe-knowable b /dissectfn (cons b-k b-v)
-        (==?-knowable a-k b-k))
-    /fn maybe-b-entry-and-b
-    /expect maybe-b-entry-and-b (just b-entry-and-b)
-      (entry-and-next state a b rev-result a-k (just a-v) (nothing))
-    /dissect b-entry-and-b (list (cons b-k b-v) b)
-    /entry-and-next state a b rev-result a-k (just a-v) (just b-v))))
+    any/c
+    (summarized-assoc-list/c any/c any/c any/c)
+    (summarized-assoc-list/c any/c any/c any/c))
+  (dissect rest (summarized rest-summary rest-unsummarized)
+  /summarized
+    (glossesque-summary-sys-summary-plus
+      (glossesque-summary-sys-summarize-one-entry gss k v)
+      rest-summary)
+    (cons (cons k v) rest)))
 
 (define/own-contract
-  (assoc-list-ref-maybe-knowable ==?-knowable a k)
-  (-> (-> any/c any/c (knowable/c boolean?)) (listof pair?) any/c
+  (summarized-assoc-list-skv-union-of-two-knowable
+    gss ==?-knowable state a b a-keeping? b-keeping? on-keep
+    skv-union-knowable)
+  (->
+    glossesque-summary-sys?
+    (-> any/c any/c (knowable/c boolean?))
+    any/c
+    (summarized-assoc-list/c any/c any/c any/c)
+    (summarized-assoc-list/c any/c any/c any/c)
+    boolean?
+    boolean?
+    (-> any/c any/c any/c)
+    (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
+    (knowable/c
+      (list/c any/c (summarized-assoc-list/c any/c any/c any/c))))
+  (w- a (summarized-assoc-list->assoc-list a)
+  /w- b (summarized-assoc-list->assoc-list b)
+  /w-loop next
+    state state
+    a a
+    b (reverse b)
+    result (summarized-assoc-list-nil gss)
+    
+    (expect b (cons b-entry b)
+      (expect a-keeping? #t
+        (known result)
+      /w-loop next state state a (reverse a) result result
+      /expect a (cons a-entry a)
+        (known /list state result)
+      /dissect a-entry (cons a-k a-v)
+      /next
+        a
+        (on-keep state
+          (glossesque-summary-sys-summarize-one-entry gss a-k a-v))
+        (summarized-assoc-list-cons gss a-k a-v result))
+    /dissect b-entry (cons b-k b-v)
+    /knowable-bind
+      (list-rem-first-maybe-knowable a /dissectfn (cons a-k a-v)
+        (==?-knowable a-k b-k))
+    /fn maybe-a-entry-and-a
+    /expect maybe-a-entry-and-a (just a-entry-and-a)
+      (if b-keeping?
+        (w- state
+          (on-keep state
+            (glossesque-summary-sys-summarize-one-entry gss b-k b-v))
+        /next state a b
+          (summarized-assoc-list-cons gss b-k b-v result))
+        (next state a b result))
+    /dissect a-entry-and-a (list (cons a-k a-v) a)
+    /knowable-bind (skv-union-knowable state b-k a-v b-v)
+    /dissectfn (list state m)
+    /expect m (just v)
+      (next state a b result)
+    /next state a b (summarized-assoc-list-cons gss b-k v result))))
+
+(define/own-contract
+  (summarized-assoc-list-ref-maybe-knowable ==?-knowable a k)
+  (->
+    (-> any/c any/c (knowable/c boolean?))
+    (summarized-assoc-list/c any/c any/c any/c)
+    any/c
     (knowable/c maybe?))
   (w-loop next a a
-    (expect a (cons entry a) (known /nothing)
+    (dissect a (summarized _ a)
+    /expect a (cons entry a) (known /nothing)
     /dissect entry (cons a-k v)
     /knowable-bind (==?-knowable k a-k) /fn succeeded?
     /if succeeded? (known /just v)
     /next a)))
 
 (define/own-contract
-  (rider-and-assoc-list-update-maybe-knowable
-    ==?-knowable rider-and-a k on-rider-and-m-knowable)
+  (rider-and-summarized-assoc-list-update-maybe-knowable
+    gss ==?-knowable rider-and-a k on-rider-and-m-knowable)
   (->
+    glossesque-summary-sys?
     (-> any/c any/c (knowable/c boolean?))
-    (list/c any/c (listof pair?))
+    (list/c any/c (summarized-assoc-list/c any/c any/c any/c))
     any/c
     (-> (list/c any/c maybe?) (knowable/c (list/c any/c maybe?)))
-    (knowable/c (list/c any/c (listof pair?))))
+    (knowable/c
+      (list/c any/c (summarized-assoc-list/c any/c any/c any/c))))
   (dissect rider-and-a (list rider a)
   /w-loop next a a
-    (expect a (cons entry a)
+    (dissect a (summarized _ a)
+    /expect a (cons entry a)
       (knowable-map (on-rider-and-m-knowable /list rider /nothing)
       /dissectfn (list rider m)
-        (list rider
-          (expect m (just v) (list)
-          /list /cons k v)))
+        (w- snil (summarized-assoc-list-nil gss)
+        /list rider
+          (expect m (just v) snil
+          /summarized-assoc-list-cons gss k v snil)))
     /dissect entry (cons a-k v)
     /knowable-bind (==?-knowable k a-k) /fn succeeded?
     /if succeeded?
@@ -3271,143 +4094,71 @@
       /dissectfn (list rider m)
         (list rider
           (expect m (just v) a
-          /cons (cons a-k v) a)))
+          /summarized-assoc-list-cons gss a-k v a)))
     /knowable-bind (next a) /dissectfn (list rider a)
-    /known /list rider /cons entry a)))
-
-(define-imitation-simple-struct
-  (counted-glossesque?
-    counted-glossesque-count
-    counted-glossesque-original)
-  counted-glossesque
-  'counted-glossesque (current-inspector) (auto-write))
+    /known /list rider /summarized-assoc-list-cons gss a-k v a)))
 
 (define/own-contract
-  (make-glossesque-sys-impl-for-counted-glossesque-sys
-    get-uncounted-gs)
-  (-> (-> glossesque-sys? glossesque-sys?)
-    glossesque-sys-impl?)
-  (make-glossesque-sys-impl
-    
-    #:glossesque-union-of-zero
-    (fn gs
-      (w- ugs (get-uncounted-gs gs)
-      /counted-glossesque 0
-        (glossesque-sys-glossesque-union-of-zero ugs)))
-    
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
-      (w- ugs (get-uncounted-gs gs)
-      /dissect a (counted-glossesque count a)
-      /dissect b (counted-glossesque _ b)
-      /knowable-map
-        (glossesque-sys-glossesque-skm-union-of-two-knowable
-          ugs (list count state) a b
-          (fn cs k a-v-m b-v-m
-            (maybe-left-count-sm-union-of-two-knowable
-              cs a-v-m b-v-m
-              (fn state a-v-m b-v-m
-                (skm-union-knowable state k a-v-m b-v-m)))))
-      /dissectfn (list (list count state) result)
-        (list state /counted-glossesque count result)))
-    
-    #:glossesque-ref-maybe-knowable
-    (fn gs g k
-      (w- ugs (get-uncounted-gs gs)
-      /dissect g (counted-glossesque _ g)
-      /glossesque-sys-glossesque-ref-maybe-knowable ugs g k))
-    
-    #:rider-and-glossesque-update-maybe-knowable
-    (fn gs rider-and-g k on-rider-and-m-knowable
-      (w- ugs (get-uncounted-gs gs)
-      /dissect rider-and-g (list rider /counted-glossesque count g)
-      /knowable-map
-        (glossesque-sys-rider-and-glossesque-update-maybe-knowable
-          ugs (list (list count rider) g) k
-        /fn crm
-          (count-and-rider-and-maybe-update-maybe-knowable crm
-          /fn rider-and-m
-            (on-rider-and-m-knowable rider-and-m)))
-      /dissectfn (list (list count rider) result)
-        (list rider /counted-glossesque count result)))
-    
-    #:glossesque-empty?
-    (fn gs g
-      (zero? /glossesque-sys-glossesque-count gs g))
-    
-    #:glossesque-count
-    (fn gs g
-      (dissect g (counted-glossesque count g)
-        count))
-    
-    #:glossesque-iteration-sequence
-    (fn gs g
-      (w- ugs (get-uncounted-gs gs)
-      /dissect g (counted-glossesque _ g)
-      /glossesque-sys-glossesque-iteration-sequence ugs g))
-    
-    ))
-
-(define-imitation-simple-struct
-  (counted-glossesque-sys? counted-glossesque-sys-original)
-  counted-glossesque-sys-unguarded
-  'counted-glossesque-sys (current-inspector) (auto-write)
-  (#:prop prop:glossesque-sys
-    (make-glossesque-sys-impl-for-counted-glossesque-sys
-      (dissectfn (counted-glossesque-sys-unguarded original)
-        original))))
-
-(define/own-contract (counted-glossesque-sys original)
-  (-> glossesque-sys? glossesque-sys?)
-  (counted-glossesque-sys-unguarded original))
+  (summarized-assoc-list->assoc-list a)
+  (-> (summarized-assoc-list/c any/c any/c any/c) (listof pair?))
+  (dissect a (summarized _ a)
+  /expect a (cons entry a) (list)
+  /cons entry /summarized-assoc-list->assoc-list a))
 
 (define/own-contract
   (make-glossesque-sys-impl-for-equality-check-knowable
+    get-summary-sys
     get-==?-knowable)
-  (-> (-> glossesque-sys? (-> any/c any/c (knowable/c boolean?)))
+  (->
+    (-> glossesque-sys? glossesque-summary-sys?)
+    (-> glossesque-sys? (-> any/c any/c (knowable/c boolean?)))
     glossesque-sys-impl?)
   (make-glossesque-sys-impl
     
+    #:get-summary-sys
+    (fn gs
+      (get-summary-sys gs))
+    
     #:glossesque-union-of-zero
     (fn gs
-      (list))
+      (w- gss (get-summary-sys gs)
+      /summarized-assoc-list-nil gss))
     
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
-      (w- ==?-knowable (get-==?-knowable gs)
-      /assoc-list-skm-union-of-two-knowable
-        ==?-knowable state a b skm-union-knowable))
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
+      (w- gss (get-summary-sys gs)
+      /w- ==?-knowable (get-==?-knowable gs)
+      /summarized-assoc-list-skv-union-of-two-knowable
+        gss ==?-knowable state a b a-keeping? b-keeping? on-keep
+        skv-union-knowable))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
       (w- ==?-knowable (get-==?-knowable gs)
-      /assoc-list-ref-maybe-knowable ==?-knowable g k))
+      /summarized-assoc-list-ref-maybe-knowable ==?-knowable g k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
-      (w- ==?-knowable (get-==?-knowable gs)
-      /rider-and-assoc-list-update-maybe-knowable
-        ==?-knowable rider-and-g k on-rider-and-m-knowable))
+      (w- gss (get-summary-sys gs)
+      /w- ==?-knowable (get-==?-knowable gs)
+      /rider-and-summarized-assoc-list-update-maybe-knowable
+        gss ==?-knowable rider-and-g k on-rider-and-m-knowable))
     
-    #:glossesque-empty?
+    #:glossesque-summarize
     (fn gs g
-      (null? g))
-    
-    ; NOTE: Since we're using `counted-glossesque-sys` for this type
-    ; of glossesque, this method and `#:glossesque-empty?` won't
-    ; actually be called.
-    #:glossesque-count
-    (fn gs g
-      (length g))
+      (dissect g (summarized summary g)
+        summary))
     
     #:glossesque-iteration-sequence
     (fn gs g
-      (sequence-map (dissectfn (cons k v) (values k v)) g))
+      (w- g (summarized-assoc-list->assoc-list g)
+      /sequence-map (dissectfn (cons k v) (values k v)) g))
     
     ))
 
 (define-imitation-simple-struct
   (equality-check-knowable-atom-glossesque-sys?
+    equality-check-knowable-atom-glossesque-sys-get-summary-sys
     equality-check-knowable-atom-glossesque-sys-get-==?-knowable)
   equality-check-knowable-atom-glossesque-sys-unguarded
   'equality-check-knowable-atom-glossesque-sys (current-inspector)
@@ -3416,117 +4167,136 @@
     (make-glossesque-sys-impl-for-equality-check-knowable
       (dissectfn
         (equality-check-knowable-atom-glossesque-sys-unguarded
-          ==?-knowable)
+          gss ==?-knowable)
+        gss)
+      (dissectfn
+        (equality-check-knowable-atom-glossesque-sys-unguarded
+          gss ==?-knowable)
         ==?-knowable))))
 
 (define/own-contract
-  (equality-check-knowable-atom-glossesque-sys ==?-knowable)
-  (-> (-> any/c any/c (knowable/c boolean?)) glossesque-sys?)
-  (counted-glossesque-sys
-    (equality-check-knowable-atom-glossesque-sys-unguarded
-      ==?-knowable)))
+  (equality-check-knowable-atom-glossesque-sys gss ==?-knowable)
+  (-> glossesque-summary-sys? (-> any/c any/c (knowable/c boolean?))
+    glossesque-sys?)
+  (equality-check-knowable-atom-glossesque-sys-unguarded
+    gss ==?-knowable))
 
-(define/own-contract (equality-check-atom-glossesque-sys ==?)
-  (-> (-> any/c any/c boolean?) glossesque-sys?)
-  (equality-check-knowable-atom-glossesque-sys /fn a b
+(define/own-contract (equality-check-atom-glossesque-sys gss ==?)
+  (-> glossesque-summary-sys? (-> any/c any/c boolean?)
+    glossesque-sys?)
+  (equality-check-knowable-atom-glossesque-sys gss /fn a b
     (known /==? a b)))
 
 (define/own-contract
   (make-glossesque-sys-impl-for-chaperone=-atom
-    gs-for-equal-always get-gs-for-chaperone=-assuming-equal-always)
-  (-> glossesque-sys? (-> glossesque-sys? glossesque-sys?)
+    get-summary-sys
+    get-gs-for-equal-always
+    get-gs-for-chaperone=-assuming-equal-always)
+  (->
+    (-> glossesque-sys? glossesque-summary-sys?)
+    (-> glossesque-summary-sys? glossesque-sys?)
+    (-> glossesque-summary-sys? glossesque-sys? glossesque-sys?)
     glossesque-sys-impl?)
-  (w- get-bin-gs get-gs-for-chaperone=-assuming-equal-always
+  (w- get-bin-gs
+    (fn gs
+      (w- gss (get-summary-sys gs)
+      /maybe-nonempty-glossesque-sys
+        (get-gs-for-chaperone=-assuming-equal-always gss gs)))
+  /w- get-base-gs
+    (fn gs
+      (w- gss (get-summary-sys gs)
+      /w- bin-gs (get-bin-gs gs)
+      /get-gs-for-equal-always
+        (forwarding-glossesque-summary-sys gss
+          #:summarize-one-entry
+          (fn k v
+            (glossesque-sys-glossesque-summarize bin-gs v)))))
   /make-glossesque-sys-impl
+    
+    #:get-summary-sys (fn gs /get-summary-sys gs)
     
     #:glossesque-union-of-zero
     (fn gs
-      (w- bin-gs (get-bin-gs gs)
-      /glossesque-sys-glossesque-union-of-zero
-        gs-for-equal-always bin-gs))
+      (w- base-gs (get-base-gs gs)
+      /glossesque-sys-glossesque-union-of-zero base-gs))
     
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
-      (glossesque-sys-glossesque-skm-union-of-two-knowable
-        gs-for-equal-always state a b
-        (fn state k a-bin-m b-bin-m
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
+      (w- base-gs (get-base-gs gs)
+      /glossesque-sys-glossesque-skv-union-of-two-knowable
+        base-gs state a b a-keeping? b-keeping? on-keep
+        (fn state k a-bin b-bin
           (w- bin-gs (get-bin-gs gs)
-          /glossesque-sys-glossesque-skm-union-of-two-knowable
-            (maybe-nonempty-glossesque-sys bin-gs)
-            state a-bin-m b-bin-m
-            (fn state k a-v-m b-v-m
-              (skm-union-knowable state k a-v-m b-v-m))))))
+          /glossesque-sys-glossesque-skv-union-of-two-knowable
+            bin-gs state (just a-bin) (just b-bin)
+            a-keeping? b-keeping? on-keep
+            (fn state k a-v b-v
+              (skv-union-knowable state k a-v b-v))))))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
-      (knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable
-          gs-for-equal-always g k)
+      (w- base-gs (get-base-gs gs)
+      /knowable-bind
+        (glossesque-sys-glossesque-ref-maybe-knowable base-gs g k)
       /fn bin-m
       /w- bin-gs (get-bin-gs gs)
-      /glossesque-sys-glossesque-ref-maybe-knowable
-        (maybe-nonempty-glossesque-sys bin-gs)
-        bin-m
-        k))
+      /glossesque-sys-glossesque-ref-maybe-knowable bin-gs bin-m k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
-      (glossesque-sys-rider-and-glossesque-update-maybe-knowable
-        gs-for-equal-always rider-and-g k
+      (w- base-gs (get-base-gs gs)
+      /glossesque-sys-rider-and-glossesque-update-maybe-knowable
+        base-gs rider-and-g k
         (dissectfn (list rider bin-m)
           (w- bin-gs (get-bin-gs gs)
           /glossesque-sys-rider-and-glossesque-update-maybe-knowable
-            (maybe-nonempty-glossesque-sys bin-gs)
-            (list rider bin-m)
-            k
+            bin-gs (list rider bin-m) k
             (fn rider-and-m
               (on-rider-and-m-knowable rider-and-m))))))
     
-    #:glossesque-empty?
+    #:glossesque-summarize
     (fn gs g
-      (glossesque-sys-glossesque-empty? gs-for-equal-always g))
-    
-    ; NOTE: Since we're using `counted-glossesque-sys` for this type
-    ; of glossesque, this method and `#:glossesque-empty?` won't
-    ; actually be called.
-    #:glossesque-count
-    (fn gs g
-      (sequence-length
-        (glossesque-sys-glossesque-iteration-sequence gs g)))
+      (w- base-gs (get-base-gs gs)
+      /glossesque-sys-glossesque-summarize base-gs g))
     
     #:glossesque-iteration-sequence
     (fn gs g
-      (w- bin-gs (get-bin-gs gs)
+      (w- base-gs (get-base-gs gs)
+      /w- bin-gs (get-bin-gs gs)
       /apply in-sequences
         (for/list
           (
             [ (k bin)
               (in-sequences
                 (glossesque-sys-glossesque-iteration-sequence
-                  gs-for-equal-always g))])
-          (glossesque-sys-glossesque-iteration-sequence bin-gs bin))))
+                  base-gs g))])
+          (glossesque-sys-glossesque-iteration-sequence bin-gs
+            (just bin)))))
     
     ))
 
-(define-imitation-simple-struct (equal-always-atom-glossesque-sys?)
-  equal-always-atom-glossesque-sys-unguarded
+(define-imitation-simple-struct
+  (equal-always-atom-glossesque-sys?
+    equal-always-atom-glossesque-sys-get-summary-sys)
+  equal-always-atom-glossesque-sys
   'equal-always-atom-glossesque-sys (current-inspector) (auto-write)
-  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-hash /fn
-    (hashalw)))
-
-(define/own-contract (equal-always-atom-glossesque-sys)
-  (-> glossesque-sys?)
-  (equal-always-atom-glossesque-sys-unguarded))
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-hash
+    (dissectfn (equal-always-atom-glossesque-sys gss) gss)
+    (fn /hashalw)))
+(ascribe-own-contract equal-always-atom-glossesque-sys
+  (-> glossesque-summary-sys? glossesque-sys?))
 
 (define/own-contract
-  (equality-check-indistinct-atom-glossesque-sys ==?)
-  (-> (-> any/c any/c boolean?) glossesque-sys?)
-  (equality-check-knowable-atom-glossesque-sys /fn a b
+  (equality-check-indistinct-atom-glossesque-sys gss ==?)
+  (-> glossesque-summary-sys? (-> any/c any/c boolean?)
+    glossesque-sys?)
+  (equality-check-knowable-atom-glossesque-sys gss /fn a b
     (falsable->uninformative-knowable /==? a b)))
 
 (define/own-contract (indistinct-glossesque-sys original-gs)
   (-> glossesque-sys? glossesque-sys?)
-  (equality-check-knowable-atom-glossesque-sys /fn a b
+  (w- gss (glossesque-sys-get-summary-sys original-gs)
+  /equality-check-knowable-atom-glossesque-sys gss /fn a b
     (w- g (glossesque-sys-glossesque-union-of-zero original-gs)
     /knowable-bind
       (glossesque-sys-glossesque-set-maybe-knowable
@@ -3537,53 +4307,58 @@
     /fn v-m
     /known /just? v-m)))
 
-(define/own-contract (equal-always-indistinct-atom-glossesque-sys)
-  (-> glossesque-sys?)
-  (equality-check-indistinct-atom-glossesque-sys /fn a b
+(define/own-contract (equal-always-indistinct-atom-glossesque-sys gss)
+  (-> glossesque-summary-sys? glossesque-sys?)
+  (equality-check-indistinct-atom-glossesque-sys gss /fn a b
     (equal-always? a b)))
 
-(define-imitation-simple-struct (chaperone=-atom-glossesque-sys?)
-  chaperone=-atom-glossesque-sys-unguarded
+(define-imitation-simple-struct
+  (chaperone=-atom-glossesque-sys?
+    chaperone=-atom-glossesque-sys-get-summary-sys)
+  chaperone=-atom-glossesque-sys
   'chaperone=-atom-glossesque-sys (current-inspector) (auto-write)
   (#:prop prop:glossesque-sys
     (make-glossesque-sys-impl-for-chaperone=-atom
-      (equal-always-atom-glossesque-sys)
-      (equality-check-indistinct-atom-glossesque-sys /fn a b
-        (atom-chaperone=? a b)))))
-
-(define/own-contract (chaperone=-atom-glossesque-sys)
-  (-> glossesque-sys?)
-  (counted-glossesque-sys /chaperone=-atom-glossesque-sys-unguarded))
+      (dissectfn (chaperone=-atom-glossesque-sys gss)
+        gss)
+      (fn gss /equal-always-atom-glossesque-sys gss)
+      (fn gss gs
+        (equality-check-indistinct-atom-glossesque-sys gss /fn a b
+          (atom-chaperone=? a b))))))
+(ascribe-own-contract chaperone=-atom-glossesque-sys
+  (-> glossesque-summary-sys? glossesque-sys?))
 
 (define-imitation-simple-struct
-  (chaperone=-indistinct-atom-glossesque-sys?)
-  chaperone=-indistinct-atom-glossesque-sys-unguarded
+  (chaperone=-indistinct-atom-glossesque-sys?
+    chaperone=-indistinct-atom-glossesque-sys-get-summary-sys)
+  chaperone=-indistinct-atom-glossesque-sys
   'chaperone=-indistinct-atom-glossesque-sys (current-inspector)
   (auto-write)
   (#:prop prop:glossesque-sys
     (make-glossesque-sys-impl-for-chaperone=-atom
-      (equal-always-indistinct-atom-glossesque-sys)
-      (equality-check-indistinct-atom-glossesque-sys /fn a b
-        (atom-chaperone=? a b)))))
+      (dissectfn (chaperone=-indistinct-atom-glossesque-sys gss)
+        gss)
+      (fn gss /equal-always-indistinct-atom-glossesque-sys gss)
+      (fn gss gs
+        (equality-check-indistinct-atom-glossesque-sys gss /fn a b
+          (atom-chaperone=? a b))))))
+(ascribe-own-contract chaperone=-indistinct-atom-glossesque-sys
+  (-> glossesque-summary-sys? glossesque-sys?))
 
-(define/own-contract (chaperone=-indistinct-atom-glossesque-sys)
-  (-> glossesque-sys?)
-  (counted-glossesque-sys
-    (chaperone=-indistinct-atom-glossesque-sys-unguarded)))
-
-(define-imitation-simple-struct (eq-atom-glossesque-sys?)
-  eq-atom-glossesque-sys-unguarded
+(define-imitation-simple-struct
+  (eq-atom-glossesque-sys? eq-atom-glossesque-sys-get-summary-sys)
+  eq-atom-glossesque-sys
   'eq-atom-glossesque-sys (current-inspector) (auto-write)
-  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-hash /fn
-    (hasheq)))
+  (#:prop prop:glossesque-sys /make-glossesque-sys-impl-for-hash
+    (dissectfn (eq-atom-glossesque-sys gss) gss)
+    (fn /hashalw)))
+(ascribe-own-contract eq-atom-glossesque-sys
+  (-> glossesque-summary-sys? glossesque-sys?))
 
-(define/own-contract (eq-atom-glossesque-sys)
-  (-> glossesque-sys?)
-  (eq-atom-glossesque-sys-unguarded))
-
-(define/own-contract (eq-indistinct-atom-glossesque-sys)
-  (-> glossesque-sys?)
-  (equality-check-indistinct-atom-glossesque-sys /fn a b /eq? a b))
+(define/own-contract (eq-indistinct-atom-glossesque-sys gss)
+  (-> glossesque-summary-sys? glossesque-sys?)
+  (equality-check-indistinct-atom-glossesque-sys gss /fn a b
+    (eq? a b)))
 
 ; NOTE: We don't export this. It's just an implementation detail of
 ; `make-expressly-smooshable-bundle-property-from-list-isomorphism`.
@@ -3605,8 +4380,29 @@
     
     ))
 
-(define (list-injection-trie-iteration-sequence trie)
-  (dissect trie (list nil-m cons-tries)
+(define (list-injection-trie-summarize gss trie)
+  ; TODO FORWARD: This use of `get-cons-tries-gs` is a forward
+  ; reference. See if we can untangle it.
+  (w- cons-tries-gs (get-cons-tries-gs gss)
+  /dissect trie (list nil-m cons-tries)
+  /w- cons-summary
+    (glossesque-sys-glossesque-summarize cons-tries-gs cons-tries)
+  /expect nil-m (just kv)
+    cons-summary
+  /dissect kv (list k v)
+  /glossesque-summary-sys-summary-plus gss
+    (glossesque-summary-sys-summarize-one-entry gss k v)
+    cons-summary))
+
+(define (get-cons-tries-gs gss)
+  (ladder-glossesque-sys /forwarding-glossesque-summary-sys gss
+    #:summarize-one-entry
+    (fn elem trie
+      (list-injection-trie-summarize gss trie))))
+
+(define (list-injection-trie-iteration-sequence gss trie)
+  (w- cons-tries-gs (get-cons-tries-gs gss)
+  /dissect trie (list nil-m cons-tries)
   /apply in-sequences
     (expect nil-m (just kv) (list)
       (dissect kv (list k v)
@@ -3615,13 +4411,22 @@
       (
         [ (elem trie)
           (in-sequences
-            (gloss-iteration-sequence cons-tries))])
-      (list-injection-trie-iteration-sequence trie))))
+            (glossesque-sys-glossesque-iteration-sequence
+              cons-tries-gs cons-tries))])
+      (list-injection-trie-iteration-sequence gss trie))))
+
+(define (list-injection-trie-empty? gss trie)
+  (dissect trie (list nil-m cons-tries)
+  /and (nothing? nil-m)
+  /w- cons-tries-gs (get-cons-tries-gs gss)
+  /glossesque-sys-glossesque-empty? cons-tries-gs cons-tries))
 
 (define
   (rider-and-list-injection-trie-update-maybe-knowable
-    rider-and-t current-k-as-list overall-k on-rider-and-m-knowable)
-  (dissect rider-and-t (list rider /list nil-m cons-tries)
+    gss rider-and-t current-k-as-list overall-k
+    on-rider-and-m-knowable)
+  (w- cons-tries-gs (get-cons-tries-gs gss)
+  /dissect rider-and-t (list rider /list nil-m cons-tries)
   /expect current-k-as-list (cons elem current-k-as-list)
     (w- overall-k
       (expect nil-m (just old-kv) overall-k
@@ -3634,7 +4439,8 @@
       (list rider
         (list (maybe-map m /fn v /list overall-k v) cons-tries)))
   /knowable-map
-    (rider-and-gloss-update-maybe-knowable
+    (glossesque-sys-rider-and-glossesque-update-maybe-knowable
+      cons-tries-gs
       (list rider cons-tries)
       elem
       (dissectfn (list rider trie-m)
@@ -3643,6 +4449,7 @@
           /list (nothing) (gloss-union-of-zero))
         /knowable-map
           (rider-and-list-injection-trie-update-maybe-knowable
+            gss
             (list rider trie)
             current-k-as-list
             overall-k
@@ -3654,168 +4461,193 @@
 
 (define/own-contract
   (make-glossesque-sys-impl-from-list-injection
-    gs-for-shallow get-->->list-is-constant? get-->->list)
+    get-gss get-gs-for-shallow get-->->list-is-constant? get-->->list)
   (->
-    glossesque-sys?
+    (-> glossesque-sys? glossesque-summary-sys?)
+    (-> glossesque-summary-sys? glossesque-sys?)
     (-> glossesque-sys? boolean?)
     (-> glossesque-sys? (-> any/c (-> any/c list?)))
     glossesque-sys-impl?)
-  (make-glossesque-sys-impl
+  (w- get-base-gs
+    (fn gss
+      (get-gs-for-shallow
+        (forwarding-glossesque-summary-sys gss
+          #:summarize-one-entry
+          (fn k ->list-and-trie
+            (dissect ->list-and-trie (list ->list trie)
+            /list-injection-trie-summarize gss trie)))))
+  /make-glossesque-sys-impl
+    
+    #:get-summary-sys
+    (fn gs
+      (get-gss gs))
     
     #:glossesque-union-of-zero
     (fn gs
-      (glossesque-sys-glossesque-union-of-zero gs-for-shallow))
+      (w- gss (get-gss gs)
+      /w- base-gs (get-base-gs gss)
+      /glossesque-sys-glossesque-union-of-zero base-gs))
     
-    #:glossesque-skm-union-of-two-knowable
-    (fn gs state a b skm-union-knowable
-      (glossesque-sys-glossesque-skm-union-of-two-knowable
-        gs-for-shallow state a b
-        (fn state k a-->list-and-trie-m b-->list-and-trie-m
-          (w- ->list
-            (mat a-->list-and-trie-m (just a-->list-and-trie)
-              (dissect a-->list-and-trie (list a-->list a-trie)
-                a-->list)
-            /dissect b-->list-and-trie-m (just b-->list-and-trie)
-              (dissect b-->list-and-trie (list b-->list b-trie)
-                b-->list))
-          /w- a-trie-m
-            (maybe-map a-->list-and-trie-m /dissectfn
-              (list a-->list a-trie)
-              a-trie)
-          /w- b-trie-m
-            (maybe-map b-->list-and-trie-m /dissectfn
-              (list b-->list b-trie)
-              b-trie)
+    #:glossesque-skv-union-of-two-knowable
+    (fn gs state a b a-keeping? b-keeping? on-keep skv-union-knowable
+      (w- gss (get-gss gs)
+      /w- base-gs (get-base-gs gss)
+      /w- cons-tries-gs (get-cons-tries-gs gss)
+      /glossesque-sys-glossesque-skv-union-of-two-knowable
+        base-gs state a b a-keeping? b-keeping? on-keep
+        (fn state k a-->list-and-trie b-->list-and-trie
+          (dissect a-->list-and-trie (list a-->list a-trie)
+          /dissect b-->list-and-trie (list b-->list b-trie)
           /w- ->->list-is-constant? (get-->->list-is-constant? gs)
           ; NOTE OPTIMIZATION: For things that have indeterminate
           ; encodings as ordered lists (namely, `hash?` and `gloss?`
-          ; values), we have to use a more exhaustive method of
-          ; inserting each value of one trie into the other,
-          ; relistifying each key we insert in terms of the other
-          ; trie's listifier. Technically, the asymptotic time
-          ; complexity of both this and the usual merging are probably
-          ; about O(n), but this "more exhaustive method" makes O(n)
-          ; invocations to `->list`, while the usual method makes
-          ; none.
+          ; values), where `->->list-is-constant?` is `#f`, we have to
+          ; use a more exhaustive method of inserting each value of
+          ; one trie into the other, relistifying each key we insert
+          ; in terms of the other trie's listifier. Technically, the
+          ; asymptotic time complexity of both this and the usual
+          ; merging are probably about O(n), but this "more exhaustive
+          ; method" makes O(n) invocations to `->list`, while the
+          ; usual method makes none.
           /knowable-bind
-            (if
-              (and
-                (just? a-trie-m)
-                (just? b-trie-m)
-                (not ->->list-is-constant?))
-              (dissect a-->list-and-trie-m
-                (just /list a-->list a-trie)
-              /dissect b-->list-and-trie-m
-                (just /list b-->list b-trie)
-              /knowable-bind
+            (expect ->->list-is-constant? #t
+              ; This is the brute force route we use for data
+              ; structures of indeterminate ordering.
+              (knowable-bind
+                ; We start out by having the `result` be the `a-trie`.
+                ; We loop through its entries to process them by
+                ; removing them or merging them with entries from
+                ; `b-trie` as appropriate. We'll process the remaining
+                ; entries of `b-trie` later on.
                 (w-loop process-a-trie-knowable
                   state-and-b (list state b-trie)
                   result a-trie
                   
                   (dissect result (list nil-m cons-tries)
+                  ; We process the `nil-m`.
                   /knowable-bind
                     (expect nil-m (just kv)
                       (known /list state-and-b result)
                     /dissect kv (list k a-v)
                     /dissect state-and-b (list state b-trie)
+                    ; Here, we look up and remove an entry from
+                    ; `b-trie` that coincides with the entry we're
+                    ; processing from `a-trie`.
                     /knowable-bind
                       (rider-and-list-injection-trie-update-maybe-knowable
+                        gss
                         (list (trivial) b-trie)
                         (b-->list k)
                         k
                         (dissectfn (list (trivial) b-v-m)
                           (known /list b-v-m /nothing)))
                     /dissectfn (list b-v-m b-trie)
+                    ; Here, we remove, keep, or merge the entry in
+                    ; `result` we're processing that came from
+                    ; `a-trie`.
                     /rider-and-list-injection-trie-update-maybe-knowable
-                      (list (list state b-trie) result)
+                      gss
+                      (list state result)
                       (list)
                       k
                       (dissectfn (list state a-v-m)
-                        (skm-union-knowable state k a-v-m b-v-m)))
-                  /dissectfn (list state-and-b /list nil-m cons-tries)
+                        (expect b-v-m (just b-v)
+                          (expect a-keeping? #t
+                            (known /list state /nothing)
+                          /w- state
+                            (on-keep state
+                              (glossesque-summary-sys-summarize-one-entry
+                                gss k a-v))
+                          /known /list state /just a-v)
+                        /skv-union-knowable state k a-v b-v)))
+                  /dissectfn (list state /list nil-m cons-tries)
+                  ; We process the `cons-tries`, which involves a lot
+                  ; of looping as we process multiple entries of the
+                  ; `cons-tries` ladder and recursively processing the
+                  ; trie we get from each entry.
                   /w-loop process-a-trie-entries-knowable
-                    state-and-b state-and-b
+                    state-and-b (list state b-trie)
                     
                     trie-entries
                     (in-values-sequence
-                      (gloss-iteration-sequence cons-tries))
+                      (glossesque-sys-glossesque-iteration-sequence
+                        cons-tries-gs cons-tries))
                     
                     result result
                     
                     (expect trie-entries
                       (sequence* trie-entry trie-entries)
                       (known /list state-and-b result)
-                    /dissect trie-entry (cons elem trie)
+                    /dissect trie-entry (list elem trie)
                     /knowable-bind
                       (process-a-trie-knowable state-and-b trie)
                     /dissectfn (list state-and-b trie)
                     /process-a-trie-entries-knowable
                       state-and-b trie-entries trie)))
               /dissectfn (list (list state b-trie) result)
+              /expect b-keeping? #t
+                (known /list state result)
+              /w- state
+                (on-keep state
+                  (list-injection-trie-summarize gss b-trie))
               /w-loop next
                 state state
                 result result
                 
                 b
-                (sequence->stream
-                  (list-injection-trie-iteration-sequence b-trie))
+                (in-values-sequence
+                  (list-injection-trie-iteration-sequence gss b-trie))
                 
-                (if (stream-empty? b) (known /list state result)
-                /let-values ([(k b-v) (stream-first b)])
-                /w- b (stream-rest b)
+                (expect b (sequence* b-kv b)
+                  (known /list state result)
+                /dissect b-kv (list k b-v)
                 /knowable-bind
                   (rider-and-list-injection-trie-update-maybe-knowable
+                    gss
                     (list state result)
-                    (->list k)
+                    (a-->list k)
                     k
-                    (dissectfn (list state a-v-m)
-                      (skm-union-knowable state k a-v-m (just b-v))))
+                    (dissectfn (list state /nothing)
+                      (known /list state /just b-v)))
                 /dissectfn (list state result)
                 /next state result b))
-            /w-loop next
-              state state
-              a-trie-m a-trie-m
-              b-trie-m b-trie-m
-              
-              (dissect
-                (mat a-trie-m (just a-trie) a-trie
-                  (list (nothing) (gloss-union-of-zero)))
-                (list a-nil-m a-cons-tries)
-              /dissect
-                (mat b-trie-m (just b-trie) b-trie
-                  (list (nothing) (gloss-union-of-zero)))
-                (list b-nil-m b-cons-tries)
+            ; This is the divide-and-conquer route we use for data
+            ; structures of determinate ordering.
+            /w-loop next state state a-trie a-trie b-trie b-trie
+              (dissect a-trie (list a-nil-m a-cons-tries)
+              /dissect b-trie (list b-nil-m b-cons-tries)
+              ; We process the `a-nil-m` and `b-nil-m`.
               /knowable-bind
-                (maybe-or-sm-union-of-two-knowable
-                  state a-nil-m b-nil-m
-                  (fn state a-nil-m b-nil-m
-                    (w- k
-                      (mat a-nil-m (just a-kv)
-                        (dissect a-kv (list a-k a-v)
-                          a-k)
-                      /dissect b-nil-m (just b-kv)
-                        (dissect b-kv (list b-k b-v)
-                          b-k))
-                    /skm-union-knowable state k
-                      (maybe-map a-nil-m /dissectfn (list k v) v)
-                      (maybe-map b-nil-m /dissectfn (list k v) v))))
+                (entry-maybe-skv-union-of-two-knowable
+                  state a-nil-m b-nil-m a-keeping? b-keeping? on-keep
+                  (fn state a-k a-v b-v
+                    (skv-union-knowable state a-k a-v b-v)))
               /dissectfn (list state nil-m)
+              ; We process the `a-cons-tries` and `b-cons-tries`.
               /knowable-bind
-                (gloss-skm-union-of-two-knowable
-                  state a-cons-tries b-cons-tries
-                  (fn state elem a-trie-m b-trie-m
-                    (knowable-map (next state a-trie-m b-trie-m)
+                (glossesque-sys-glossesque-skv-union-of-two-knowable
+                  cons-tries-gs state a-cons-tries b-cons-tries
+                  a-keeping? b-keeping? on-keep
+                  (fn state elem a-trie b-trie
+                    (knowable-map (next state a-trie b-trie)
                     /dissectfn (list state trie)
-                      (list state /just trie))))
+                      (list state
+                        (maybe-if
+                          (not /list-injection-trie-empty? gss trie)
+                        /fn
+                          trie)))))
               /dissectfn (list state cons-tries)
               /known /list state /just /list nil-m cons-tries))
           /dissectfn (list state trie)
-          /known /list state /just /list ->list trie))))
+          /known /list state /just /list a-->list trie))))
     
     #:glossesque-ref-maybe-knowable
     (fn gs g k
-      (knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable gs-for-shallow g
+      (w- gss (get-gss gs)
+      /w- base-gs (get-base-gs gss)
+      /w- cons-tries-gs (get-cons-tries-gs gss)
+      /knowable-bind
+        (glossesque-sys-glossesque-ref-maybe-knowable base-gs g
           (shallow-wrapper k))
       /fn ->list-and-trie-maybe
       /expect ->list-and-trie-maybe (just ->list-and-trie)
@@ -3826,15 +4658,19 @@
         /expect k (cons elem k)
           (known /maybe-map nil-m /dissectfn (list k v) v)
         /knowable-bind
-          (gloss-ref-maybe-knowable cons-tries elem)
+          (glossesque-sys-glossesque-ref-maybe-knowable
+            cons-tries-gs cons-tries elem)
         /fn trie
         /next trie k)))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
-      (dissect rider-and-g (list rider g)
+      (w- gss (get-gss gs)
+      /w- base-gs (get-base-gs gss)
+      /w- cons-tries-gs (get-cons-tries-gs gss)
+      /dissect rider-and-g (list rider g)
       /glossesque-sys-rider-and-glossesque-update-maybe-knowable
-        gs-for-shallow (list rider g) (shallow-wrapper k)
+        base-gs (list rider g) (shallow-wrapper k)
         (dissectfn (list rider ->list-and-trie-m)
           (w- ->->list (get-->->list gs)
           /dissect
@@ -3842,10 +4678,14 @@
               ->list-and-trie
               (list
                 (->->list k)
-                (list (nothing) (gloss-union-of-zero))))
+                (list
+                  (nothing)
+                  (glossesque-sys-glossesque-union-of-zero
+                    cons-tries-gs))))
             (list ->list trie)
           /knowable-bind
             (rider-and-list-injection-trie-update-maybe-knowable
+              gss
               (list rider trie)
               (->list k)
               k
@@ -3855,37 +4695,36 @@
           /dissect trie (list nil-m cons-tries)
           /known /list rider
             (maybe-if
-              (not /and (nothing? nil-m) (gloss-empty? cons-tries))
+              (not /and (nothing? nil-m)
+                (glossesque-sys-glossesque-empty?
+                  cons-tries-gs cons-tries))
               (fn /list ->list trie))))))
     
-    #:glossesque-empty?
+    #:glossesque-summarize
     (fn gs g
-      (zero? /glossesque-sys-glossesque-count gs g))
-    
-    ; NOTE: Since we're using `counted-glossesque-sys` for this type
-    ; of glossesque, this method and `#:glossesque-empty?` won't
-    ; actually be called.
-    #:glossesque-count
-    (fn gs g
-      (sequence-length
-        (glossesque-sys-glossesque-iteration-sequence gs g)))
+      (w- gss (get-gss gs)
+      /w- base-gs (get-base-gs gss)
+      /glossesque-sys-glossesque-summarize base-gs g))
     
     #:glossesque-iteration-sequence
     (fn gs g
-      (apply in-sequences
+      (w- gss (get-gss gs)
+      /w- base-gs (get-base-gs gss)
+      /apply in-sequences
         (for/list
           (
             [ (tag ->list-and-trie)
               (in-sequences
                 (glossesque-sys-glossesque-iteration-sequence
-                  gs-for-shallow g))])
+                  base-gs g))])
           (dissect ->list-and-trie (list ->list trie)
-          /list-injection-trie-iteration-sequence trie))))
+          /list-injection-trie-iteration-sequence gss trie))))
     
     ))
 
 (define-imitation-simple-struct
   (equal-always-from-list-injection-glossesque-sys?
+    equal-always-from-list-injection-glossesque-sys-get-summary-sys
     equal-always-from-list-injection-glossesque-sys-->->list-is-constant?
     equal-always-from-list-injection-glossesque-sys-->->list)
   equal-always-from-list-injection-glossesque-sys-unguarded
@@ -3893,18 +4732,23 @@
   (auto-write)
   (#:prop prop:glossesque-sys
     (make-glossesque-sys-impl-from-list-injection
-      (equal-always-atom-glossesque-sys)
       (dissectfn
         (equal-always-from-list-injection-glossesque-sys-unguarded
-          ->->list-is-constant? ->->list)
+          gss ->->list-is-constant? ->->list)
+        gss)
+      (fn gss /equal-always-atom-glossesque-sys gss)
+      (dissectfn
+        (equal-always-from-list-injection-glossesque-sys-unguarded
+          gss ->->list-is-constant? ->->list)
         ->->list-is-constant?)
       (dissectfn
         (equal-always-from-list-injection-glossesque-sys-unguarded
-          ->->list-is-constant? ->->list)
+          gss ->->list-is-constant? ->->list)
         ->->list))))
 
 (define/own-contract
   (equal-always-from-list-injection-glossesque-sys
+    #:glossesque-summary-sys gss
     #:->list [->list #f]
     
     #:->->list
@@ -3916,18 +4760,17 @@
     
     )
   (->*
-    ()
+    (#:glossesque-summary-sys glossesque-summary-sys?)
     (
       #:->list (or/c #f (-> any/c list?))
       #:->->list (-> any/c (-> any/c list?)))
     glossesque-sys?)
-  (counted-glossesque-sys
-    (equal-always-from-list-injection-glossesque-sys-unguarded
-      (not /not ->list)
-      ->->list)))
+  (equal-always-from-list-injection-glossesque-sys-unguarded
+    gss (not /not ->list) ->->list))
 
 (define-imitation-simple-struct
   (equal-always-indistinct-from-list-injection-glossesque-sys?
+    equal-always-indistinct-from-list-injection-glossesque-sys-get-summary-sys
     equal-always-indistinct-from-list-injection-glossesque-sys-->->list-is-constant?
     equal-always-indistinct-from-list-injection-glossesque-sys-->->list)
   equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
@@ -3936,18 +4779,23 @@
   (auto-write)
   (#:prop prop:glossesque-sys
     (make-glossesque-sys-impl-from-list-injection
-      (equal-always-indistinct-atom-glossesque-sys)
       (dissectfn
         (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
-          ->->list-is-constant? ->->list)
+          gss ->->list-is-constant? ->->list)
+        gss)
+      (fn gss /equal-always-indistinct-atom-glossesque-sys gss)
+      (dissectfn
+        (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
+          gss ->->list-is-constant? ->->list)
         ->->list-is-constant?)
       (dissectfn
         (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
-          ->->list-is-constant? ->->list)
+          gss ->->list-is-constant? ->->list)
         ->->list))))
 
 (define/own-contract
   (equal-always-indistinct-from-list-injection-glossesque-sys
+    #:glossesque-summary-sys gss
     #:->list [->list #f]
     
     #:->->list
@@ -3959,15 +4807,13 @@
     
     )
   (->*
-    ()
+    (#:glossesque-summary-sys glossesque-summary-sys?)
     (
       #:->list (or/c #f (-> any/c list?))
       #:->->list (-> any/c (-> any/c list?)))
     glossesque-sys?)
-  (counted-glossesque-sys
-    (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
-      (not /not ->list)
-      ->->list)))
+  (equal-always-indistinct-from-list-injection-glossesque-sys-unguarded
+    gss (not /not ->list) ->->list))
 
 ; TODO: See if we should export this.
 (define/own-contract (shallowly-unchaperoned? copy v)
@@ -3976,51 +4822,67 @@
 
 (define/own-contract
   (make-glossesque-sys-impl-for-chaperone=-copiable
-    gs-for-equal-always
-    make-gs-for-wrapped-chaperone=-assuming-equal-always
+    get-summary-sys
+    get-gs-for-equal-always
+    get-gs-for-wrapped-chaperone=-assuming-equal-always
     get-copy)
   (->
-    glossesque-sys?
-    (-> (-> any/c any/c boolean?) glossesque-sys?)
+    (-> glossesque-sys? glossesque-summary-sys?)
+    (-> glossesque-summary-sys? glossesque-sys?)
+    (-> glossesque-summary-sys? (-> any/c any/c boolean?)
+      glossesque-sys?)
     (-> glossesque-sys? (-> any/c any/c))
     glossesque-sys-impl?)
   (make-glossesque-sys-impl-for-chaperone=-atom
-    gs-for-equal-always
-    (fn gs
+    (fn gs /get-summary-sys gs)
+    (fn gss /get-gs-for-equal-always gss)
+    (fn gss gs
       (w- copy (get-copy gs)
       /glossesque-sys-map-key
         #:granted-key
         (fn k
           (maybe-if (not /shallowly-unchaperoned? copy k) /fn k))
         
-        (make-gs-for-wrapped-chaperone=-assuming-equal-always /fn a b
-          (match (list a b)
-            [(list (list (nothing) _) (list (nothing) _)) #t]
-            [ (list (list (just a-value) _) (list (just b-value) _))
-              (atom-chaperone=? a-value b-value)]
-            [_ #f]))))))
+        (get-gs-for-wrapped-chaperone=-assuming-equal-always gss
+          (fn a b
+            (match (list a b)
+              [(list (list (nothing) _) (list (nothing) _)) #t]
+              [ (list (list (just a-value) _) (list (just b-value) _))
+                (atom-chaperone=? a-value b-value)]
+              [_ #f])))))))
 
 (define-imitation-simple-struct
   (chaperone=-copiable-glossesque-sys?
+    chaperone=-copiable-glossesque-sys-get-summary-sys
     chaperone=-copiable-glossesque-sys-get-copy)
   chaperone=-copiable-glossesque-sys-unguarded
   'chaperone=-copiable-glossesque-sys (current-inspector) (auto-write)
   (#:prop prop:glossesque-sys
     (make-glossesque-sys-impl-for-chaperone=-copiable
-      (equal-always-atom-glossesque-sys)
-      (fn wrapped-key=?
-        (equality-check-indistinct-atom-glossesque-sys /fn a b
+      (dissectfn
+        (chaperone=-copiable-glossesque-sys-unguarded gss copy)
+        gss)
+      (fn gss /equal-always-atom-glossesque-sys gss)
+      (fn gss wrapped-key=?
+        (equality-check-indistinct-atom-glossesque-sys gss /fn a b
           (wrapped-key=? a b)))
-      (dissectfn (chaperone=-copiable-glossesque-sys-unguarded copy)
+      (dissectfn
+        (chaperone=-copiable-glossesque-sys-unguarded gss copy)
         copy))))
 
-(define/own-contract (chaperone=-copiable-glossesque-sys #:copy copy)
-  (-> #:copy (-> any/c (-> any/c list?)) glossesque-sys?)
-  (counted-glossesque-sys
-    (chaperone=-copiable-glossesque-sys-unguarded copy)))
+(define/own-contract
+  (chaperone=-copiable-glossesque-sys
+    #:glossesque-summary-sys gss
+    #:copy copy)
+  (->
+    #:glossesque-summary-sys glossesque-summary-sys?
+    #:copy (-> any/c (-> any/c list?))
+    glossesque-sys?)
+  (chaperone=-copiable-glossesque-sys-unguarded gss copy))
 
 (define-imitation-simple-struct
   (chaperone=-indistinct-copiable-glossesque-sys?
+    chaperone=-indistinct-copiable-glossesque-sys-get-summary-sys
     chaperone=-indistinct-copiable-glossesque-sys-get-copy)
   chaperone=-indistinct-copiable-glossesque-sys-unguarded
   'chaperone=-indistinct-copiable-glossesque-sys
@@ -4028,28 +4890,37 @@
   (auto-write)
   (#:prop prop:glossesque-sys
     (make-glossesque-sys-impl-for-chaperone=-copiable
-      (equal-always-indistinct-atom-glossesque-sys)
-      (fn wrapped-key=?
-        (equality-check-indistinct-atom-glossesque-sys /fn a b
+      (dissectfn
+        (chaperone=-indistinct-copiable-glossesque-sys-unguarded
+          gss copy)
+        gss)
+      (fn gss /equal-always-indistinct-atom-glossesque-sys gss)
+      (fn gss wrapped-key=?
+        (equality-check-indistinct-atom-glossesque-sys gss /fn a b
           (wrapped-key=? a b)))
       (dissectfn
-        (chaperone=-indistinct-copiable-glossesque-sys-unguarded copy)
+        (chaperone=-indistinct-copiable-glossesque-sys-unguarded
+          gss copy)
         copy))))
 
 (define/own-contract
-  (chaperone=-indistinct-copiable-glossesque-sys #:copy copy)
-  (-> #:copy (-> any/c (-> any/c list?)) glossesque-sys?)
-  (counted-glossesque-sys
-    (chaperone=-indistinct-copiable-glossesque-sys-unguarded copy)))
+  (chaperone=-indistinct-copiable-glossesque-sys
+    #:glossesque-summary-sys gss
+    #:copy copy)
+  (->
+    #:glossesque-summary-sys glossesque-summary-sys?
+    #:copy (-> any/c (-> any/c list?))
+    glossesque-sys?)
+  (chaperone=-indistinct-copiable-glossesque-sys-unguarded gss copy))
 
-(define/own-contract (normalized-glossesque-sys granted-key)
-  (-> (-> any/c any/c) glossesque-sys?)
-  (glossesque-sys-map-key (equal-always-atom-glossesque-sys)
+(define/own-contract (normalized-glossesque-sys gss granted-key)
+  (-> glossesque-summary-sys? (-> any/c any/c) glossesque-sys?)
+  (glossesque-sys-map-key (equal-always-atom-glossesque-sys gss)
     #:granted-key (fn k /granted-key k)))
 
-(define/own-contract (terminal-glossesque-sys)
-  (-> glossesque-sys?)
-  (normalized-glossesque-sys /fn k #f))
+(define/own-contract (terminal-glossesque-sys gss)
+  (-> glossesque-summary-sys? glossesque-sys?)
+  (normalized-glossesque-sys gss /fn k #f))
 
 ; Given two lists, this checks whether they have the same length and
 ; `eq?` elements.
@@ -4871,15 +5742,17 @@
       (expect (inhabitant? a) #t
         (uninformative-custom-gloss-key-reports)
       /w- equal-always-indistinct-tgs-k
-        (known /tagged-glossesque-sys
+        (known /make-tagged-glossesque-sys gss
           inhabitant?
           (equal-always-indistinct-from-list-injection-glossesque-sys
+            #:glossesque-summary-sys gss
             #:->list ->list
             #:->->list ->->list))
       /w- equal-always-distinct-tgs-k
-        (known /tagged-glossesque-sys
+        (known /make-tagged-glossesque-sys gss
           inhabitant?
           (equal-always-from-list-injection-glossesque-sys
+            #:glossesque-summary-sys gss
             #:->list ->list
             #:->->list ->->list))
       /w- equal-always-tgs-k
@@ -4887,13 +5760,15 @@
           equal-always-distinct-tgs-k
           equal-always-indistinct-tgs-k)
       /w- chaperone=-indistinct-tgs-k
-        (known /tagged-glossesque-sys
+        (known /make-tagged-glossesque-sys gss
           inhabitant?
-          (chaperone=-indistinct-copiable-glossesque-sys #:copy copy))
+          (chaperone=-indistinct-copiable-glossesque-sys
+            #:glossesque-summary-sys gss #:copy copy))
       /w- chaperone=-distinct-tgs-k
-        (known /tagged-glossesque-sys
+        (known /make-tagged-glossesque-sys gss
           inhabitant?
-          (chaperone=-copiable-glossesque-sys #:copy copy))
+          (chaperone=-copiable-glossesque-sys
+            #:glossesque-summary-sys gss #:copy copy))
       /w- chaperone=-tgs-k
         (if known-distinct?
           chaperone=-distinct-tgs-k
@@ -5416,32 +6291,32 @@
         (uninformative-custom-gloss-key-reports)
       /w- distinct-0-tgs-k
         (if eq-matters?
-          (known /tagged-glossesque-sys
+          (known /make-tagged-glossesque-sys gss
             ; TODO SMOOSH: See if we can encompass a wider range of
             ; inhabitants with this, as an optimization.
             inhabitant?
-            (eq-atom-glossesque-sys))
-          (known /tagged-glossesque-sys
+            (eq-atom-glossesque-sys gss))
+          (known /make-tagged-glossesque-sys gss
             inhabitant?
-            (equal-always-atom-glossesque-sys)))
+            (equal-always-atom-glossesque-sys gss)))
       /w- distinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           distinct-0-tgs-k
-          (known /tagged-glossesque-sys
+          (known /make-tagged-glossesque-sys gss
             inhabitant?
-            (chaperone=-atom-glossesque-sys)))
+            (chaperone=-atom-glossesque-sys gss)))
       /w- indistinct-0-tgs-k
-        (known /tagged-glossesque-sys
+        (known /make-tagged-glossesque-sys gss
           inhabitant?
           (if eq-matters?
-            (eq-indistinct-atom-glossesque-sys)
-            (equal-always-indistinct-atom-glossesque-sys)))
+            (eq-indistinct-atom-glossesque-sys gss)
+            (equal-always-indistinct-atom-glossesque-sys gss)))
       /w- indistinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           indistinct-0-tgs-k
-          (known /tagged-glossesque-sys
+          (known /make-tagged-glossesque-sys gss
             inhabitant?
-            (chaperone=-indistinct-atom-glossesque-sys)))
+            (chaperone=-indistinct-atom-glossesque-sys gss)))
       /if (and known-distinct? known-discrete?)
         (sequence*
           (constant-custom-gloss-key-report
@@ -5772,9 +6647,9 @@
       #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
     (trivial)))
 
-(define/own-contract (non-nan-number-glossesque-sys)
-  (-> glossesque-sys?)
-  (normalized-glossesque-sys /fn k /normalize-non-nan-number k))
+(define/own-contract (non-nan-number-glossesque-sys gss)
+  (-> glossesque-summary-sys? glossesque-sys?)
+  (normalized-glossesque-sys gss /fn k /normalize-non-nan-number k))
 
 ; Level 0:
 ;   path-related:
@@ -5924,26 +6799,26 @@
           (custom-gloss-key-report-zip*-map (list)
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
-              (known /tagged-glossesque-sys
+              (known /make-tagged-glossesque-sys gss
                 non-nan-number?
                 (non-nan-number-glossesque-sys)))
             #:on-path-related-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (if (zero? /imag-part a)
-                (known /tagged-glossesque-sys
+                (known /make-tagged-glossesque-sys gss
                   (makeshift-knowable-predicate /fn v
                     (knowable-if (non-nan-number? v) /fn
                       (zero? /imag-part v)))
-                  (terminal-glossesque-sys))
-                (known /tagged-glossesque-sys
+                  (terminal-glossesque-sys gss))
+                (known /make-tagged-glossesque-sys gss
                   (makeshift-knowable-predicate /fn v
                     (knowable-if (non-nan-number? v) /fn /= a v))
-                  (terminal-glossesque-sys)))))
+                  (terminal-glossesque-sys gss)))))
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
-            (known /tagged-glossesque-sys
+            (known /make-tagged-glossesque-sys gss
               non-nan-number?
-              (equal-always-atom-glossesque-sys)))))
+              (equal-always-atom-glossesque-sys gss)))))
       
       ))
   
@@ -6075,9 +6950,9 @@
           (uninformative-custom-gloss-key-reports)
         /constant-custom-gloss-key-reports
           #:tagged-glossesque-sys-knowable
-          (known /tagged-glossesque-sys
+          (known /make-tagged-glossesque-sys gss
             non-nan-extflonum?
-            (equal-always-atom-glossesque-sys))))
+            (equal-always-atom-glossesque-sys gss))))
       
       ))
   
@@ -6813,6 +7688,24 @@
       #:get-custom-gloss-key-reports
       (fn self a
         (dissect self (path-related-wrapper-dynamic-type any-dt)
+        ; NOTE: This report is shared between the `example-unknown?`
+        ; case and the `known?` case. Whichever one of these
+        ; glossesques is used in a gloss first will take care of the
+        ; other one's duties. Inlining the `report-1-path-related`
+        ; function would change the behavior ever-so-slightly by
+        ; making the two reports not share an equal tag, and hence
+        ; making glossesques based on them not merge with each other
+        ; quite the same way when calling
+        ; `ladder-skv-union-of-two-knowable`. But actually,
+        ; since these glossesques have an unwavering size of one (1)
+        ; entry anyway, merging them in one big step for having the
+        ; same tag and merging them one entry at a time are probably
+        ; comparable in efficiency.
+        /w- report-1-path-related
+          (fn
+            (make-tagged-glossesque-sys gss
+              knowable?
+              (terminal-glossesque-sys gss)))
         /if (example-unknown? a)
           (sequence*
             (uninformative-custom-gloss-key-report)
@@ -6820,69 +7713,49 @@
               
               #:on-path-related-tagged-glossesque-sys-knowable
               (dissectfn (list)
-                ; NOTE PATH-RELATED KNOWABLE: This case is shared with
-                ; the other PATH-RELATED KNOWABLE case. Whichever one
-                ; of these glossesques is used in a gloss first will
-                ; take care of the other case.
-                (known /tagged-glossesque-sys
-                  knowable?
-                  (terminal-glossesque-sys)))
+                (known /report-1-path-related))
               
               #:on-==-tagged-glossesque-sys-knowable
               (dissectfn (list)
-                (known /tagged-glossesque-sys
+                (known /make-tagged-glossesque-sys gss
                   (makeshift-knowable-predicate /fn v
                     (knowable-if (knowable? v) /fn /unknown? v))
-                  (terminal-glossesque-sys)))
+                  (terminal-glossesque-sys gss)))
               
               )
             (constant-custom-gloss-key-reports
               #:tagged-glossesque-sys-knowable
-              (known /tagged-glossesque-sys
+              (known /make-tagged-glossesque-sys gss
                 (makeshift-knowable-predicate /fn v
                   (knowable-if (knowable? v) /fn /unknown? v))
-                (terminal-glossesque-sys))))
+                (terminal-glossesque-sys gss))))
         /expect a (known a-value)
           (uninformative-custom-gloss-key-reports)
         /dissect
           (custom-gloss-key-reports-map
             (dynamic-type-get-custom-gloss-key-reports any-dt a-value)
             #:on-tagged-glossesque-sys-knowable
-            (fn tgs-k
-              (knowable-map tgs-k
-                (dissectfn (tagged-glossesque-sys inhabitant? gs)
-                  (tagged-glossesque-sys
-                    (makeshift-knowable-predicate /fn v
-                      (expect v (path-related-wrapper v) (unknown)
-                      /call-knowable inhabitant? v))
-                    (glossesque-sys-map-key gs
-                      #:granted-key-knowable
-                    /fn k
-                      (expect k (path-related-wrapper k) (unknown)
-                      /known k)))))))
+            (derive-tagged-glossesque-sys inhabitant? gs
+              (makeshift-knowable-predicate /fn v
+                (expect v (path-related-wrapper v) (unknown)
+                /call-knowable inhabitant? v))
+              (glossesque-sys-map-key gs #:granted-key-knowable /fn k
+                (expect k (path-related-wrapper k) (unknown)
+                /known k))))
           (sequence* report-0 report-1 report-2+)
         /w- tgs-k-uninhabited-by-unknown
-          (fn tgs-k
-            (knowable-map tgs-k
-              (dissectfn (tagged-glossesque-sys inhabitant? gs)
-                (tagged-glossesque-sys
-                  (makeshift-knowable-predicate /fn v
-                    (if (unknown? v) (known #f)
-                    /call-knowable inhabitant? v))
-                  gs))))
+          (derive-tagged-glossesque-sys inhabitant? gs
+            (makeshift-knowable-predicate /fn v
+              (if (unknown? v) (known #f)
+              /call-knowable inhabitant? v))
+            gs)
         /sequence*
           report-0
           (custom-gloss-key-report-map report-1
             
             #:on-path-related-tagged-glossesque-sys-knowable
             (fn tgs-k
-              ; NOTE PATH-RELATED KNOWABLE: This case is shared with
-              ; the other PATH-RELATED KNOWABLE case. Whichever one of
-              ; these glossesques is used in a gloss first will take
-              ; care of the other case.
-              (known /tagged-glossesque-sys
-                knowable?
-                (terminal-glossesque-sys)))
+              (known /report-1-path-related))
             
             #:on-==-tagged-glossesque-sys-knowable
             tgs-k-uninhabited-by-unknown
@@ -6985,16 +7858,13 @@
   (dissect
     (custom-gloss-key-reports-map value-reports
       #:on-tagged-glossesque-sys-knowable
-      (fn tgs-k
-        (knowable-map tgs-k
-          (dissectfn (tagged-glossesque-sys inhabitant? gs)
-            (tagged-glossesque-sys
-              (makeshift-knowable-predicate /fn v
-                (expect v (path-related-wrapper v) (unknown)
-                /call-knowable inhabitant? v))
-              (glossesque-sys-map-key gs #:granted-key-knowable /fn k
-                (expect k (path-related-wrapper k) (unknown)
-                /known k)))))))
+      (derive-tagged-glossesque-sys inhabitant? gs
+        (makeshift-knowable-predicate /fn v
+          (expect v (path-related-wrapper v) (unknown)
+          /call-knowable inhabitant? v))
+        (glossesque-sys-map-key gs #:granted-key-knowable /fn k
+          (expect k (path-related-wrapper k) (unknown)
+          /known k))))
     (sequence* report-0 report-1+)
   /sequence*
     (constant-custom-gloss-key-report
@@ -7199,16 +8069,13 @@
   (dissect
     (custom-gloss-key-reports-map value-reports
       #:on-tagged-glossesque-sys-knowable
-      (fn tgs-k
-        (knowable-map tgs-k
-          (dissectfn (tagged-glossesque-sys inhabitant? gs)
-            (tagged-glossesque-sys
-              (makeshift-knowable-predicate /fn v
-                (expect v (info-wrapper v) (unknown)
-                /call-knowable inhabitant? v))
-              (glossesque-sys-map-key gs #:granted-key-knowable /fn k
-                (expect k (info-wrapper k) (unknown)
-                /known k)))))))
+      (derive-tagged-glossesque-sys inhabitant? gs
+        (makeshift-knowable-predicate /fn v
+          (expect v (info-wrapper v) (unknown)
+          /call-knowable inhabitant? v))
+        (glossesque-sys-map-key gs #:granted-key-knowable /fn k
+          (expect k (info-wrapper k) (unknown)
+          /known k))))
     (sequence* report-0 report-1+)
     report-1+))
 
@@ -7506,17 +8373,14 @@
     (endless-sequence/c custom-gloss-key-report?))
   (custom-gloss-key-reports-map value-reports
     #:on-tagged-glossesque-sys-knowable
-    (fn tgs-k
-      (knowable-map tgs-k
-        (dissectfn (tagged-glossesque-sys inhabitant? gs)
-          (tagged-glossesque-sys
-            (makeshift-knowable-predicate /fn v
-              (expect v (indistinct-wrapper v) (unknown)
-              /call-knowable inhabitant? v))
-            (indistinct-glossesque-sys
-              (glossesque-sys-map-key gs #:granted-key-knowable /fn k
-                (expect k (indistinct-wrapper k) (unknown)
-                /known k)))))))))
+    (derive-tagged-glossesque-sys inhabitant? gs
+      (makeshift-knowable-predicate /fn v
+        (expect v (indistinct-wrapper v) (unknown)
+        /call-knowable inhabitant? v))
+      (indistinct-glossesque-sys
+        (glossesque-sys-map-key gs #:granted-key-knowable /fn k
+          (expect k (indistinct-wrapper k) (unknown)
+          /known k))))))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -7973,15 +8837,3 @@
 ; really exist. When a user wants to work with the possibility that
 ; comparison results are unknown, we offer `gloss?` values as our
 ; recommended replacement for `hash?` values.
-
-; TODO SMOOSH: Consider getting rid of the
-; `glossesque-sys-glossesque-skm-union-of-two-knowable` method because
-; it doesn't seem like it would help make merging glosses more
-; efficient. The problem is that it always has to call the callback on
-; each entry of each of the given glossesques, so even if there's a
-; possibility that two merged glossesques could share some
-; substructures, those substructures still have to be recursively
-; copied to replace each value they contain. What we need is a method
-; that only drills into those substructures that are potentially
-; overlapping, and hence at most has a callback to process the entries
-; for a coinciding key.
