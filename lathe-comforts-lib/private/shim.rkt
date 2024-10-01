@@ -427,15 +427,15 @@
           this-syntax)))
     
     #:declare val/c-unguarded
-    (expr/c #'contract?
+    (expr/c #'(promise/c contract?)
       #:name "the ascribe-own-contract value of a variable")
     
     #:attr val/c
     #`(begin
-      (when (eq? var val/c-unguarded)
-        (raise-arguments-error '#,who
-          (format "no ascribe-own-contract information for ~a" 'var)))
-      val/c-unguarded.c)))
+        (when (eq? var val/c-unguarded)
+          (raise-arguments-error '#,who
+            (format "no ascribe-own-contract information for ~a" 'var)))
+        (force val/c-unguarded.c))))
 
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-ignored-out
@@ -541,7 +541,7 @@
         "not allowed in an expression context"
         this-syntax))]
   
-  (define own-contract-var val/c.c))
+  (define own-contract-var (delay val/c.c)))
 
 (begin-for-syntax /define-splicing-syntax-class lambda-param
   #:attributes (kw var default)
@@ -596,7 +596,9 @@
                     (raise-syntax-error #f
                       "expected a define-own-contract-policies definition before using the policies"
                       stx)))
-                #'(define var (invariant-assertion own-contract-var body))
+                #'(define var
+                    (invariant-assertion (force own-contract-var)
+                      body))
                 #'(define var body)))]
       [
         (_ (head . args:lambda-params) val/c:expr
