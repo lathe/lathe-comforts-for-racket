@@ -52,6 +52,7 @@
   knowable-if
   knowable-zip*
   knowable->falsable
+  falsable->knowable-by-appraisal
   falsable->uninformative-knowable
   boolean-and-knowable-promise-zip*
   boolean-and-knowable-thunk-zip*
@@ -63,7 +64,8 @@
   accepts?-knowable
   make-procedure-impl-for-knowable-predicate
   make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
-  makeshift-knowable-predicate)
+  makeshift-knowable-predicate
+  knowable-predicate-by-appraisal)
 
 
 (define-imitation-simple-generics
@@ -142,9 +144,14 @@
     value
     #f))
 
+(define/own-contract
+  (falsable->knowable-by-appraisal fble f-is-genuine?)
+  (-> any/c (-> boolean?) knowable?)
+  (knowable-if (or (not /not fble) (f-is-genuine?)) /fn fble))
+
 (define/own-contract (falsable->uninformative-knowable fble)
   (-> any/c knowable?)
-  (knowable-if fble /fn fble))
+  (falsable->knowable-by-appraisal fble /fn #f))
 
 (define/own-contract (boolean-and-knowable-promise-zip* kp-list)
   (-> (listof (promise/c (knowable/c boolean?)))
@@ -191,7 +198,7 @@
   (-> procedure? (unconstrained-domain-> knowable?))
   (if (expressly-knowable-predicate? f)
     (expressly-knowable-predicate-get-accepts?-knowable f)
-  /let-values ([(required-kws allowed-kws) (procedure-keywords p)])
+  /let-values ([(required-kws allowed-kws) (procedure-keywords f)])
   /procedure-reduce-keyword-arity-mask
     (make-keyword-procedure
       (lambda (ks vs . positional-args)
@@ -264,3 +271,10 @@
         (dissectfn (makeshift-knowable-predicate accepts?-knowable)
           accepts?-knowable))))
   (makeshift-knowable-predicate accepts?-knowable))
+
+(define/own-contract
+  (knowable-predicate-by-appraisal accepts? f-is-genuine-for?)
+  (-> (-> any/c any/c) (-> any/c boolean?) (-> any/c any/c))
+  (makeshift-knowable-predicate /fn v
+    (falsable->knowable-by-appraisal (accepts? v) /fn
+      (f-is-genuine-for? v))))

@@ -135,8 +135,17 @@ There's a little bit of hubris in being so explicit about this intent, since man
   Note that if an upgrade of libraries changes the input from @racket[unknown?] to @racket[known?], then the result of this function may change from @racket[#f] to something else.
 }
 
+@defproc[
+  (falsable->knowable-by-appraisal
+    [fble (or/c #f any/c)]
+    [f-is-genuine? (-> boolean?)])
+  knowable?
+]{
+  Converts @racket[fble] from an arbitrary value that may sometimes be @racket[#f] to a @tech{knowable value} that may sometimes be @racket[(known #f)] or @racket[(unknown)]. When @racket[fble] is @racket[#f], this calls @racket[f-is-genuine?] to determine whether the result is @racket[(known #f)] or @racket[(unknown)].
+}
+
 @defproc[(falsable->uninformative-knowable [fble (or/c #f any/c)]) knowable?]{
-  Converts the given value from an arbitrary value that may be @racket[#f] to a @tech{knowable value} that may be @racket[unknown?]. There is no way for this to produce the result @racket[(known #f)], so this may not always be able to restore a @racket[knowable->falsable] result to its original form.
+  Converts the given value from an arbitrary value that may be @racket[#f] to a @tech{knowable value} that may be @racket[(unknown)]. There is no way for this to produce the result @racket[(known #f)], so this may not always be able to restore a @racket[knowable->falsable] result to its original form.
 }
 
 @defproc[
@@ -185,7 +194,7 @@ There's a little bit of hubris in being so explicit about this intent, since man
   Given an implementation for @racket[get-accepts?-knowable], returns something a struct can use to implement the @racket[prop:expressly-knowable-predicate] interface.
 }
 
-@deftogether[
+@deftogether[(
   @defproc[
     ( (get-accepts?-knowable [f procedure?])
       [positional-arg any/c]
@@ -203,13 +212,13 @@ There's a little bit of hubris in being so explicit about this intent, since man
       ...)
     knowable?
   ]
-]{
+)]{
   Given a procedure @racket[f], invokes it with the given positional and keyword arguments to obtain a @tech{knowable value} result. If @racket[f] is not a @racket[prop:expressly-knowable-predicate] instance, then the result is obtained by calling @racket[falsable->uninformative-knowable] on the result of the @racket[procedure?] call.
 }
 
 @defproc[
   (make-procedure-impl-for-knowable-predicate)
-  (unconstrained-domain-> any/c)
+  (unconstrained-domain-> (or/c #f any/c))
 ]{
   Returns a value that makes an appropriate @racket[prop:procedure] implementation for a structure type that implements @racket[prop:expressly-knowable-predicate]. Calling the procedure will have the same result as using @racket[accepts?-knowable] followed by @racket[knowable->falsable].
   
@@ -219,7 +228,7 @@ There's a little bit of hubris in being so explicit about this intent, since man
 @defproc[
   (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
     [p procedure?])
-  (unconstrained-domain-> any/c)
+  (unconstrained-domain-> (or/c #f any/c))
 ]{
   Returns a value that makes an appropriate @racket[prop:procedure] implementation for a structure type that implements @racket[prop:expressly-knowable-predicate]. Calling the procedure will have the same result as using @racket[accepts?-knowable] followed by @racket[knowable->falsable].
   
@@ -229,7 +238,16 @@ There's a little bit of hubris in being so explicit about this intent, since man
 @defproc[
   (makeshift-knowable-predicate
     [accepts?-knowable-impl (unconstrained-domain-> knowable?)])
-  (unconstrained-domain-> any/c)
+  (unconstrained-domain-> (or/c #f any/c))
 ]{
   Returns an instance @racket[_f] of @racket[prop:procedure] and @racket[prop:expressly-knowable-predicate] such that calling @racket[(get-accepts?-knowable _f)] returns @racket[accepts?-knowable-impl], while calling @racket[(_f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(knowable->falsable (accepts?-knowable-impl _positional-arg ... #:<kw> _kw-arg ...))].
+}
+
+@defproc[
+  (knowable-predicate-by-appraisal
+    [accepts? (-> any/c (or/c #f any/c))]
+    [f-is-genuine-for? (-> any/c boolean?)])
+  (-> any/c (or/c #f any/c))
+]{
+  Returns an instance @racket[_f] of @racket[prop:procedure] and @racket[prop:expressly-knowable-predicate] such that calling @racket[(accepts?-knowable _f _v)] returns @racket[(knowable-if (is-known? v) (fn (is-known-true? v)))] and calling @racket[(_f _v)] returns @racket[(and (is-known? v) (is-known-true? v))].
 }

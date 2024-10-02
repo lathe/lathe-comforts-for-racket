@@ -205,14 +205,13 @@
 
 @defproc[
   (make-expressly-yknow-predicate-impl
-    [get-accepts?-yknow
-      (-> any/c (unconstrained-domain-> yknow?))])
+    [get-accepts?-yknow (-> any/c (unconstrained-domain-> yknow?))])
   expressly-yknow-predicate-impl?
 ]{
   Given an implementation for @racket[get-accepts?-yknow], returns something a struct can use to implement the @racket[prop:expressly-yknow-predicate] interface.
 }
 
-@deftogether[
+@deftogether[(
   @defproc[
     ( (get-accepts?-yknow [f procedure?])
       [positional-arg any/c]
@@ -230,7 +229,7 @@
       ...)
     yknow?
   ]
-]{
+)]{
   Given a procedure @racket[f], invokes it with the given positional and keyword arguments to obtain a @tech{yknow object} result. If @racket[f] is not a @racket[prop:expressly-yknow-predicate] instance, then the result is obtained by calling @racket[make-yknow-from-value-knowable] on the result of the @racket[accepts?-knowable] call.
 }
 
@@ -244,7 +243,7 @@
 @defproc[
   (makeshift-yknow-predicate
     [accepts?-yknow-impl (unconstrained-domain-> yknow?)])
-  (unconstrained-domain-> any/c)
+  (unconstrained-domain-> (or/c #f any/c))
 ]{
   Returns an instance @racket[_f] of @racket[prop:procedure], @racket[prop:expressly-knowable-predicate], and @racket[prop:expressly-yknow-predicate] such that calling @racket[(get-accepts?-yknow _f)] returns @racket[accepts?-yknow-impl], calling @racket[(accepts?-knowable _f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(yknow-value-knowable (accepts?-yknow-impl _positional-arg ... #:<kw> _kw-arg ...))], and calling @racket[(_f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(yknow-value (accepts?-yknow-impl _positional-arg ... #:<kw> _kw-arg ...))].
 }

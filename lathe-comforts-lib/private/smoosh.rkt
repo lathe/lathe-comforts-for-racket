@@ -5984,13 +5984,22 @@
 ;
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
-    #:known-distinct? [known-distinct? #t]
+    #:known-reflexive? [known-reflexive? #t]
+    #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?
-    #:==? [==? (fn a b /equal-always? a b)])
+    
+    #:==?
+    [ ==?
+      (if (not known-reflexive?)
+        (fn a b #f)
+        (fn a b /equal-always? a b))]
+    
+    )
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (
+      #:known-reflexive? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
       #:==? (-> any/c any/c boolean?))
@@ -6003,7 +6012,9 @@
     
     #:get-smoosh-of-one-reports
     (fn self a
-      (constant-smoosh-reports /delay
+      (expect known-reflexive? #t
+        (uninformative-smoosh-reports)
+      /constant-smoosh-reports /delay
         (knowable-if (inhabitant? a) /fn
           (just /delay/strict /known a))))
     
@@ -6271,9 +6282,10 @@
 
 (define/own-contract
   (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+    #:known-reflexive? [known-reflexive? #t]
     #:eq-matters? [eq-matters? #f]
     #:ignore-chaperones? [ignore-chaperones? eq-matters?]
-    #:known-distinct? [known-distinct? #t]
+    #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?)
   (->*
@@ -6287,7 +6299,7 @@
     
     #:get-custom-gloss-key-reports
     (fn self a
-      (expect (inhabitant? a) #t
+      (expect (and known-reflexive? (inhabitant? a)) #t
         (uninformative-custom-gloss-key-reports)
       /w- distinct-0-tgs-k
         (if eq-matters?
@@ -6343,21 +6355,29 @@
 
 (define/own-contract
   (make-expressly-smooshable-bundle-property-for-atom
+    #:known-reflexive? [known-reflexive? #t]
     #:eq-matters? [eq-matters? #f]
-    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
-    #:known-distinct? [known-distinct? #t]
+    
+    #:ignore-chaperones?
+    [ignore-chaperones? (or (not known-reflexive?) eq-matters?)]
+    
+    #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?
     
     #:==?
     [ ==?
-      (if eq-matters?
+      (if (not known-reflexive?)
+        (fn a b #f)
+      /if eq-matters?
         (fn a b /eq? a b)
         (fn a b /equal-always? a b))]
     
     #:hash-code
     [ hash-code
-      (if eq-matters?
+      (if (not known-reflexive?)
+        (fn a /uninformative-hash-code)
+      /if eq-matters?
         (fn a /eq-hash-code a)
         (fn a /equal-always-hash-code a))]
     
@@ -6366,6 +6386,7 @@
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (
+      #:known-reflexive? boolean?
       #:eq-matters? boolean?
       #:ignore-chaperones? boolean?
       #:known-distinct? boolean?
@@ -6408,6 +6429,7 @@
           prop:expressly-custom-gloss-key-dynamic-type
           (dissectfn (trivial)
             (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
+              #:known-reflexive? known-reflexive?
               #:eq-matters? eq-matters?
               #:ignore-chaperones? ignore-chaperones?
               #:known-distinct? known-distinct?
@@ -6417,25 +6439,21 @@
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands are not both `base-readable?` values, or if
-;     neither of them is an `flvector?` value, then unknown.
+;     If the operands are not both `flvector?` values, then unknown.
 ;     
-;     Otherwise, if at least one operand is an `flvector?` value and
-;     at least one isn't, then a known nothing (or, for a check,
-;     `#f`).
-;     
-;     Otherwise, if the operands are `eq?`, then the first operand
-;     (or, for a check, `#t`).
+;     If the operands are `eq?`, then the first operand (or, for a
+;     check, `#t`).
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands are not both `base-readable?` values, or if
-;     neither of them is an `flvector?` value, then unknown.
+;     If neither operand is an `flvector?` value, then unknown.
 ;     
-;     Otherwise, if at least one operand is an `flvector?` value and
-;     at least one isn't, then a known nothing.
+;     If either operand is a non-`flvector?` value that's
+;     `base-readable?`, then a known nothing.
 ;     
-;     Otherwise, if the operands are `eq?`, then the first operand.
+;     If the operands are not both `flvector?` values, then unknown.
+;     
+;     If the operands are `eq?`, then the first operand.
 ;     
 ;     Otherwise, a known nothing.
 ; Level 1+:
@@ -6452,33 +6470,29 @@
       #:eq-matters? #t
       
       #:inhabitant?
-      (makeshift-knowable-predicate /fn v
-        ; TODO FORWARD: This use of `base-readable?` is a forward
-        ; reference. See if we can untangle it.
-        (knowable-if (base-readable? v) /fn /flvector? v))
+      ; TODO FORWARD: This use of `base-readable?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal flvector? /fn v
+        (base-readable? v))
       
       )
     (trivial)))
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands are not both `base-readable?` values, or if
-;     neither of them is an `fxvector?` value, then unknown.
-;     
-;     Otherwise, if at least one operand is an `fxvector?` value and
-;     at least one isn't, then a known nothing (or, for a check,
-;     `#f`).
+;     If the operands are not both `fxvector?` values, then unknown.
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand
 ;     (or, for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands are not both `base-readable?` values, or if
-;     neither of them is an `fxvector?` value, then unknown.
+;     If neither operand is an `fxvector?` value, then unknown.
 ;     
-;     Otherwise, if at least one operand is an `fxvector?` value and
-;     at least one isn't, then a known nothing.
+;     If either operand is a non-`fxvector?` value that's
+;     `base-readable?`, then a known nothing.
+;     
+;     If the operands are not both `fxvector?` values, then unknown.
 ;     
 ;     Otherwise, if the operands are `eq?`, then the first operand.
 ;     
@@ -6497,10 +6511,10 @@
       #:eq-matters? #t
       
       #:inhabitant?
-      (makeshift-knowable-predicate /fn v
-        ; TODO FORWARD: This use of `base-readable?` is a forward
-        ; reference. See if we can untangle it.
-        (knowable-if (base-readable? v) /fn /fxvector? v))
+      ; TODO FORWARD: This use of `base-readable?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal fxvector? /fn v
+        (base-readable? v))
       
       )
     (trivial)))
@@ -6511,25 +6525,22 @@
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
-;     If the operands are not both `base-readable?` values, or if
-;     neither of them is a `base-syntactic-atom?` value, then
+;     If the operands are not both `base-syntactic-atom?` values, then
 ;     unknown.
-;     
-;     Otherwise, if at least one operand is a `base-syntactic-atom?`
-;     value and at least one isn't, then a known nothing (or, for a
-;     check, `#f`).
 ;     
 ;     If the operands are `equal-always?`, then the first operand (or,
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
 ;   ==:
-;     If the operands are not both `base-readable?` values, or if
-;     neither of them is a `base-syntactic-atom?` value, then
+;     If neither operand is a `base-syntactic-atom?` value, then
 ;     unknown.
 ;     
-;     Otherwise, if at least one operand is a `base-syntactic-atom?`
-;     value and at least one isn't, then a known nothing.
+;     If either operand is a non-`base-syntactic-atom?` value that's
+;     `base-readable?`, then a known nothing.
+;     
+;     If the operands are not both `base-syntactic-atom?` values, then
+;     unknown.
 ;     
 ;     If the operands are `equal-always?`, then the first operand.
 ;     
@@ -6549,10 +6560,54 @@
       #:ignore-chaperones? #t
       
       #:inhabitant?
-      (makeshift-knowable-predicate /fn v
-        ; TODO FORWARD: This use of `base-readable?` is a forward
-        ; reference. See if we can untangle it.
-        (knowable-if (base-readable? v) /fn /base-syntactic-atom? v))
+      ; TODO FORWARD: This use of `base-readable?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal base-syntactic-atom? /fn v
+        (base-readable? v))
+      
+      )
+    (trivial)))
+
+(define/own-contract (base-indistinct-literal? v)
+  (-> any/c boolean?)
+  (or
+    (nan-number? v)
+    (nan-extflonum? v)
+    (regexp? v)
+    (compiled-expression? v)))
+
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     Unknown.
+;   ==:
+;     If neither operand is a `base-indistinct-literal?` value, then
+;     unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define-imitation-simple-struct
+  (base-indistinct-literal-dynamic-type?)
+  base-indistinct-literal-dynamic-type
+  'base-indistinct-literal-dynamic-type (current-inspector)
+  (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:known-reflexive? #f
+      
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal base-indistinct-literal? /fn v
+        (base-non-literal? v))
       
       )
     (trivial)))
@@ -6566,6 +6621,11 @@
 ;     
 ;     Otherwise, unknown.
 ;   ==:
+;     If neither operand is a `boolean?` value, then unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
 ;     If the operands are not both `boolean?` values, then unknown.
 ;     
 ;     If the operands are `equal-always?`, then the first operand.
@@ -6584,17 +6644,40 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? boolean?)
+      
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal boolean? /fn v
+        (base-non-literal? v))
+      
+      )
     (trivial)))
 
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+; Level 0:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both characters, then unknown.
 ;     
 ;     If the operands are `equal-always?`, then the first operand (or,
 ;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;   ==:
+;     If neither operand is a character, then unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
+;     If the operands are not both characters, then unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (char-dynamic-type?) char-dynamic-type
   'char-dynamic-type (current-inspector) (auto-write)
@@ -6603,17 +6686,40 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
       #:known-distinct? #f
-      #:inhabitant? char?)
+      
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal char? /fn v
+        (base-non-literal? v))
+      
+      )
     (trivial)))
 
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+; Level 0:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both immutable strings, then unknown.
 ;     
-;     Otherwise, if the operands are `equal-always?`, then the first
-;     operand (or, for a check, `#t`).
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;   ==:
+;     If neither operand is an immutable string, then unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
+;     If the operands are not both immutable strings, then unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (immutable-string-dynamic-type?)
   immutable-string-dynamic-type
@@ -6623,18 +6729,42 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
       #:known-distinct? #f
-      #:inhabitant? immutable-string?)
+      
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal immutable-string? /fn v
+        (base-non-literal? v))
+      
+      )
     (trivial)))
 
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
+; Level 0:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both immutable byte strings, then
 ;     unknown.
 ;     
-;     Otherwise, if the operands are `equal-always?`, then the first
-;     operand (or, for a check, `#t`).
+;     If the operands are `equal-always?`, then the first operand (or,
+;     for a check, `#t`).
 ;     
 ;     Otherwise, unknown.
+;   ==:
+;     If neither operand is an immutable byte string, then unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
+;     If the operands are not both immutable byte strings, then
+;     unknown.
+;     
+;     If the operands are `equal-always?`, then the first operand.
+;     
+;     Otherwise, unknown.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (immutable-bytes-dynamic-type?)
   immutable-bytes-dynamic-type
@@ -6644,12 +6774,26 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
       #:known-distinct? #f
-      #:inhabitant? (fn v /and (bytes? v) (immutable? v)))
+      
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal
+        (fn v /and (bytes? v) (immutable? v))
+        (fn v /base-non-literal? v))
+      
+      )
     (trivial)))
 
 (define/own-contract (non-nan-number-glossesque-sys gss)
   (-> glossesque-summary-sys? glossesque-sys?)
   (normalized-glossesque-sys gss /fn k /normalize-non-nan-number k))
+
+(define non-nan-number-dynamic-type-inhabitant?
+  ; TODO FORWARD: This use of `base-non-literal?` is a forward
+  ; reference. See if we can untangle it.
+  (knowable-predicate-by-appraisal non-nan-number? /fn v
+    (base-non-literal? v)))
 
 ; Level 0:
 ;   path-related:
@@ -6672,6 +6816,12 @@
 ;     
 ;     Otherwise, unknown.
 ;   ==:
+;     If neither operand is a `number?` value without NaN parts, then
+;     unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
 ;     If the operands are not both `number?` values without NaN parts,
 ;     then unknown.
 ;     
@@ -6690,6 +6840,12 @@
 ;     Otherwise, unknown.
 ; Level 1+:
 ;   <=, >=, path-related, join, meet, ==:
+;     If neither operand is a `number?` value without NaN parts, then
+;     unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
 ;     If the operands are not both `number?` values without NaN parts,
 ;     then unknown.
 ;     
@@ -6717,10 +6873,16 @@
       
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
-        (expect (non-nan-number? a) #t
+        (w- inhabitant? non-nan-number-dynamic-type-inhabitant?
+        /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (non-nan-number? b) #t
+        /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (or a-inhabits? b-inhabits?) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (and a-inhabits? b-inhabits?) #t
+          (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+            (false-smoosh-and-comparison-of-two-reports))
         /w- report-1+
           (constant-smoosh-and-comparison-of-two-reports
             (make-yknow-from-value-knowable-promise /delay /known
@@ -6793,36 +6955,46 @@
       
       #:get-custom-gloss-key-reports
       (fn self a
-        (expect (non-nan-number? a) #t
+        (w- inhabitant? non-nan-number-dynamic-type-inhabitant?
+        /expect (non-nan-number? a) #t
           (uninformative-custom-gloss-key-reports)
         /sequence*
           (custom-gloss-key-report-zip*-map (list)
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (known /make-tagged-glossesque-sys gss
-                non-nan-number?
+                inhabitant?
                 (non-nan-number-glossesque-sys)))
             #:on-path-related-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (if (zero? /imag-part a)
                 (known /make-tagged-glossesque-sys gss
                   (makeshift-knowable-predicate /fn v
-                    (knowable-if (non-nan-number? v) /fn
-                      (zero? /imag-part v)))
+                    (knowable-map (accepts?-knowable inhabitant? v)
+                    /fn v-inhabits?
+                      (and v-inhabits? (zero? /imag-part v))))
                   (terminal-glossesque-sys gss))
                 (known /make-tagged-glossesque-sys gss
                   (makeshift-knowable-predicate /fn v
-                    (knowable-if (non-nan-number? v) /fn /= a v))
+                    (knowable-map (accepts?-knowable inhabitant? v)
+                    /fn v-inhabits?
+                      (and v-inhabits? (= a v))))
                   (terminal-glossesque-sys gss)))))
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
             (known /make-tagged-glossesque-sys gss
-              non-nan-number?
+              inhabitant?
               (equal-always-atom-glossesque-sys gss)))))
       
       ))
   
   )
+
+(define non-nan-extflonum-dynamic-type-inhabitant?
+  ; TODO FORWARD: This use of `base-non-literal?` is a forward
+  ; reference. See if we can untangle it.
+  (knowable-predicate-by-appraisal non-nan-extflonum? /fn v
+    (base-non-literal? v)))
 
 ; Level 0:
 ;   path-related:
@@ -6839,6 +7011,12 @@
 ;     Otherwise, the greater (resp. lesser) operand according to
 ;     `extfl<=`.
 ;   ==:
+;     If neither operand is a non-NaN `extflonum?` value, then
+;     unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
 ;     If the operands are not both non-NaN `extflonum?` values, then
 ;     unknown.
 ;     
@@ -6853,6 +7031,12 @@
 ;     operands.
 ; Level 1+:
 ;   <=, >=, path-related, join, meet, ==:
+;     If neither operand is a non-NaN `extflonum?` value, then
+;     unknown.
+;     
+;     If either operand is a `base-non-literal?` value, then a known
+;     nothing.
+;     
 ;     If the operands are not both non-NaN `extflonum?` values, then
 ;     unknown.
 ;     
@@ -6881,10 +7065,16 @@
       
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
-        (expect (non-nan-extflonum? a) #t
+        (w- inhabitant? non-nan-extflonum-dynamic-type-inhabitant?
+        /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (non-nan-extflonum? b) #t
+        /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (or a-inhabits? b-inhabits?) #t
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect (and a-inhabits? b-inhabits?) #t
+          (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+            (false-smoosh-and-comparison-of-two-reports))
         /w- report-1+
           (constant-smoosh-and-comparison-of-two-reports
             (make-yknow-from-value-knowable-promise /delay /known
@@ -6946,12 +7136,13 @@
       
       #:get-custom-gloss-key-reports
       (fn self a
-        (expect (non-nan-extflonum? a) #t
+        (w- inhabitant? non-nan-extflonum-dynamic-type-inhabitant?
+        /expect (non-nan-extflonum? a) #t
           (uninformative-custom-gloss-key-reports)
         /constant-custom-gloss-key-reports
           #:tagged-glossesque-sys-knowable
           (known /make-tagged-glossesque-sys gss
-            non-nan-extflonum?
+            inhabitant?
             (equal-always-atom-glossesque-sys gss))))
       
       ))
@@ -6979,10 +7170,9 @@
         any-dt)
       
       #:inhabitant?
-      (makeshift-knowable-predicate /fn v
-        ; TODO FORWARD: This use of `base-readable?` is a forward
-        ; reference. See if we can untangle it.
-        (knowable-if (base-readable? v) /fn /pair? v))
+      ; TODO FORWARD: This use of `base-readable?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal pair? /fn v /base-readable? v)
       
       #:->list (dissectfn (cons first rest) /list first rest)
       
@@ -7034,7 +7224,13 @@
       (dissectfn (immutable-vector-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? (fn v /and (vector? v) (immutable? v))
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal
+        (fn v /and (vector? v) (immutable? v))
+        (fn v /base-non-literal? v))
+      
       #:->list (fn v /vector->list v)
       
       #:example-and-list->
@@ -7080,11 +7276,10 @@
     (make-expressly-smooshable-bundle-property-for-atom
       
       #:inhabitant?
-      (makeshift-knowable-predicate /fn v
-        ; TODO FORWARD: This use of `base-readable?` is a forward
-        ; reference. See if we can untangle it.
-        (knowable-if (base-readable? v) /fn
-          (base-mutable-readable? v)))
+      ; TODO FORWARD: This use of `base-readable?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal base-mutable-readable? /fn v
+        (base-readable? v))
       
       )
     (trivial)))
@@ -7108,7 +7303,13 @@
       (dissectfn (immutable-box-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? (fn v /and (box? v) (immutable? v))
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal
+        (fn v /and (box? v) (immutable? v))
+        (fn v /base-non-literal? v))
+      
       #:->list (fn b /list /unbox b)
       
       #:example-and-list->
@@ -7155,7 +7356,12 @@
       (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? immutable-prefab-struct?
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal immutable-prefab-struct? /fn v
+        (base-non-literal? v))
+      
       #:->list (fn s /cdr /vector->list /struct->vector s)
       #:example-and-list->
       (fn example lst
@@ -7183,7 +7389,12 @@
       (dissectfn (immutable-hash-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? (fn v /and (hash? v) (immutable? v))
+      #:inhabitant?
+      ; TODO FORWARD: This use of `base-non-literal?` is a forward
+      ; reference. See if we can untangle it.
+      (knowable-predicate-by-appraisal
+        (fn v /and (hash? v) (immutable? v))
+        (fn v /base-non-literal? v))
       
       #:->->list
       (fn a
@@ -7340,13 +7551,8 @@
     #:known-distinct? #f
     (list
       (list
-        (fn v
-          (or
-            (nan-number? v)
-            (nan-extflonum? v)
-            (regexp? v)
-            (compiled-expression? v)))
-        (fn any-dt /uninformative-dynamic-type))
+        base-indistinct-literal?
+        (fn any-dt /base-indistinct-literal-dynamic-type))
       (list boolean? (fn any-dt /boolean-dynamic-type))
       (list char? (fn any-dt /char-dynamic-type))
       (list
@@ -7372,8 +7578,8 @@
         (fn v /and (hash? v) (immutable? v))
         (fn any-dt /immutable-hash-dynamic-type any-dt)))))
 
-(match-define (list base-readable? base-readable-dynamic-type)
-  (dynamic-type-case-by-cases 'base-readable-dynamic-type /list
+(match-define (list base-non-literal? base-non-literal-dynamic-type)
+  (dynamic-type-case-by-cases 'base-non-literal-dynamic-type /list
     (list
       base-mutable-readable?
       (fn any-dt /base-mutable-readable-dynamic-type))
@@ -7382,18 +7588,33 @@
     (list
       base-syntactic-atom?
       (fn any-dt /base-syntactic-atom-dynamic-type))
-    (list pair? (fn any-dt /cons-dynamic-type any-dt))
+    (list pair? (fn any-dt /cons-dynamic-type any-dt))))
+
+(match-define (list base-readable? base-readable-dynamic-type)
+  (dynamic-type-case-by-cases 'base-readable-dynamic-type /list
+    (list
+      base-non-literal?
+      (fn any-dt /base-non-literal-dynamic-type any-dt))
     base-literal-dynamic-type-case))
 
-; Level 0+:
-;   <=, >=, path-related, join, meet, ==:
-;     If one operand is a `nothing?` value and another is a `just?`
-;     value, then a known nothing (or, for a check, `#f`).
-;     
-;     Otherwise, if the operands are not both `nothing?` values, then
-;     unknown.
+; Level 0:
+;   <=, >=, path-related, join, meet:
+;     If the operands are not both `nothing?` values, then unknown.
 ;     
 ;     Otherwise, the first operand (or, for a check, `#t`).
+;   ==:
+;     If neither operand is a `nothing?` value, then unknown.
+;     
+;     If either operand is a `just?` value, then a known nothing.
+;     
+;     If the operands are not both `nothing?` values, then unknown.
+;     
+;     Otherwise, then the first operand.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct (nothing-dynamic-type?)
   nothing-dynamic-type
@@ -7402,12 +7623,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      
-      #:inhabitant?
-      (makeshift-knowable-predicate /fn v
-        (knowable-if (maybe? v) /fn /nothing? v))
-      
-      )
+      #:inhabitant? (knowable-predicate-by-appraisal nothing? maybe?))
     (trivial)))
 
 ; This is an appropriate dynamic type of `just?` values. This is an
@@ -7433,10 +7649,7 @@
       (dissectfn (just-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant?
-      (makeshift-knowable-predicate /fn v
-        (knowable-if (maybe? v) /fn /just? v))
-      
+      #:inhabitant? (knowable-predicate-by-appraisal just? maybe?)
       #:->list (dissectfn (just e) /list e)
       
       #:example-and-list->
@@ -7691,20 +7904,25 @@
         ; NOTE: This report is shared between the `example-unknown?`
         ; case and the `known?` case. Whichever one of these
         ; glossesques is used in a gloss first will take care of the
-        ; other one's duties. Inlining the `report-1-path-related`
-        ; function would change the behavior ever-so-slightly by
-        ; making the two reports not share an equal tag, and hence
-        ; making glossesques based on them not merge with each other
-        ; quite the same way when calling
-        ; `ladder-skv-union-of-two-knowable`. But actually,
+        ; other one's duties. Inlining the
+        ; `knowable-tagged-glossesque-sys` function would change the
+        ; behavior ever-so-slightly by making the two reports not
+        ; share an equal tag, and hence making glossesques based on
+        ; them not merge with each other quite the same way when
+        ; calling `ladder-skv-union-of-two-knowable`. But actually,
         ; since these glossesques have an unwavering size of one (1)
         ; entry anyway, merging them in one big step for having the
         ; same tag and merging them one entry at a time are probably
         ; comparable in efficiency.
-        /w- report-1-path-related
+        /w- knowable-tagged-glossesque-sys
           (fn
             (make-tagged-glossesque-sys gss
               knowable?
+              (terminal-glossesque-sys gss)))
+        /w- unknown-tagged-glossesque-sys
+          (fn
+            (make-tagged-glossesque-sys gss
+              (knowable-predicate-by-appraisal unknown? knowable?)
               (terminal-glossesque-sys gss)))
         /if (example-unknown? a)
           (sequence*
@@ -7713,22 +7931,16 @@
               
               #:on-path-related-tagged-glossesque-sys-knowable
               (dissectfn (list)
-                (known /report-1-path-related))
+                (known /knowable-tagged-glossesque-sys))
               
               #:on-==-tagged-glossesque-sys-knowable
               (dissectfn (list)
-                (known /make-tagged-glossesque-sys gss
-                  (makeshift-knowable-predicate /fn v
-                    (knowable-if (knowable? v) /fn /unknown? v))
-                  (terminal-glossesque-sys gss)))
+                (known /unknown-tagged-glossesque-sys))
               
               )
             (constant-custom-gloss-key-reports
               #:tagged-glossesque-sys-knowable
-              (known /make-tagged-glossesque-sys gss
-                (makeshift-knowable-predicate /fn v
-                  (knowable-if (knowable? v) /fn /unknown? v))
-                (terminal-glossesque-sys gss))))
+              (known /unknown-tagged-glossesque-sys)))
         /expect a (known a-value)
           (uninformative-custom-gloss-key-reports)
         /dissect
@@ -7755,7 +7967,7 @@
             
             #:on-path-related-tagged-glossesque-sys-knowable
             (fn tgs-k
-              (known /report-1-path-related))
+              (known /knowable-tagged-glossesque-sys))
             
             #:on-==-tagged-glossesque-sys-knowable
             tgs-k-uninhabited-by-unknown

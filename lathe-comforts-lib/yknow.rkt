@@ -59,7 +59,6 @@
   get-accepts?-yknow
   accepts?-yknow
   make-knowable-predicate-impl-for-yknow-predicate
-  make-procedure-impl-for-yknow-predicate-with-arity-of-procedure
   makeshift-yknow-predicate)
 
 
@@ -238,7 +237,7 @@
   (-> procedure? (unconstrained-domain-> yknow?))
   (if (expressly-yknow-predicate? f)
     (expressly-yknow-predicate-get-accepts?-yknow f)
-  /let-values ([(required-kws allowed-kws) (procedure-keywords p)])
+  /let-values ([(required-kws allowed-kws) (procedure-keywords f)])
   /procedure-reduce-keyword-arity-mask
     (make-keyword-procedure
       (lambda (ks vs . positional-args)
@@ -278,16 +277,6 @@
   (-> expressly-knowable-predicate-impl?)
   (make-expressly-knowable-predicate-impl /fn f
     (compose yknow-value-knowable (get-accepts?-yknow f))))
-
-(define/own-contract
-  (make-procedure-impl-for-yknow-predicate-with-arity-of-procedure p)
-  (-> procedure? (unconstrained-domain-> any/c))
-  (define-values (required-kws allowed-kws) (procedure-keywords p))
-  (procedure-reduce-keyword-arity-mask
-    (make-procedure-impl-for-yknow-predicate)
-    (arithmetic-shift (procedure-arity-mask p) 1)
-    required-kws
-    allowed-kws))
 
 (define makeshift-yknow-predicate-inspector (current-inspector))
 
