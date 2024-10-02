@@ -927,7 +927,7 @@
   (tagged-glossesque-sys-inhabitant?-knowable tgs v)
   (-> tagged-glossesque-sys? any/c (knowable/c boolean?))
   (dissect tgs (tagged-glossesque-sys _ inhabitant? _)
-  /call-knowable inhabitant? v))
+  /accepts?-knowable inhabitant? v))
 
 (define/own-contract
   (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
@@ -5117,9 +5117,9 @@
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (call-knowable inhabitant? a) (known a-inhabits?)
+      /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (call-knowable inhabitant? b) (known b-inhabits?)
+      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -5469,9 +5469,9 @@
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (call-knowable inhabitant? a) (known a-inhabits?)
+      /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (call-knowable inhabitant? b) (known b-inhabits?)
+      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -6009,9 +6009,9 @@
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (expect (call-knowable inhabitant? a) (known a-inhabits?)
+      (expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (call-knowable inhabitant? b) (known b-inhabits?)
+      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -6151,9 +6151,9 @@
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (expect (call-knowable inhabitant? a) (known a-inhabits?)
+      (expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (call-knowable inhabitant? b) (known b-inhabits?)
+      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -7738,7 +7738,7 @@
             (derive-tagged-glossesque-sys inhabitant? gs
               (makeshift-knowable-predicate /fn v
                 (expect v (path-related-wrapper v) (unknown)
-                /call-knowable inhabitant? v))
+                /accepts?-knowable inhabitant? v))
               (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                 (expect k (path-related-wrapper k) (unknown)
                 /known k))))
@@ -7747,7 +7747,7 @@
           (derive-tagged-glossesque-sys inhabitant? gs
             (makeshift-knowable-predicate /fn v
               (if (unknown? v) (known #f)
-              /call-knowable inhabitant? v))
+              /accepts?-knowable inhabitant? v))
             gs)
         /sequence*
           report-0
@@ -7861,7 +7861,7 @@
       (derive-tagged-glossesque-sys inhabitant? gs
         (makeshift-knowable-predicate /fn v
           (expect v (path-related-wrapper v) (unknown)
-          /call-knowable inhabitant? v))
+          /accepts?-knowable inhabitant? v))
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (path-related-wrapper k) (unknown)
           /known k))))
@@ -8072,7 +8072,7 @@
       (derive-tagged-glossesque-sys inhabitant? gs
         (makeshift-knowable-predicate /fn v
           (expect v (info-wrapper v) (unknown)
-          /call-knowable inhabitant? v))
+          /accepts?-knowable inhabitant? v))
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (info-wrapper k) (unknown)
           /known k))))
@@ -8376,7 +8376,7 @@
     (derive-tagged-glossesque-sys inhabitant? gs
       (makeshift-knowable-predicate /fn v
         (expect v (indistinct-wrapper v) (unknown)
-        /call-knowable inhabitant? v))
+        /accepts?-knowable inhabitant? v))
       (indistinct-glossesque-sys
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (indistinct-wrapper k) (unknown)
@@ -8837,3 +8837,9 @@
 ; really exist. When a user wants to work with the possibility that
 ; comparison results are unknown, we offer `gloss?` values as our
 ; recommended replacement for `hash?` values.
+
+; TODO SMOOSH: Consider using `makeshift-yknow-predicate` for some of
+; our `#:inhabitant?` predicates. If we do, we'll have to modify the
+; places that call those predicates so they can use the yknow results.
+; If we don't use `makeshift-yknow-predicate` after all, maybe we
+; should remove the yknow predicate utilities.

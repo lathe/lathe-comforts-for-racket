@@ -59,7 +59,8 @@
   expressly-knowable-predicate-impl?
   prop:expressly-knowable-predicate
   make-expressly-knowable-predicate-impl
-  call-knowable
+  get-accepts?-knowable
+  accepts?-knowable
   make-procedure-impl-for-knowable-predicate
   make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
   makeshift-knowable-predicate)
@@ -186,31 +187,41 @@
   (-> (-> any/c (unconstrained-domain-> knowable?))
     expressly-knowable-predicate-impl?))
 
-(define/own-contract call-knowable
+(define/own-contract (get-accepts?-knowable f)
+  (-> procedure? (unconstrained-domain-> knowable?))
+  (if (expressly-knowable-predicate? f)
+    (expressly-knowable-predicate-get-accepts?-knowable f)
+  /let-values ([(required-kws allowed-kws) (procedure-keywords p)])
+  /procedure-reduce-keyword-arity-mask
+    (make-keyword-procedure
+      (lambda (ks vs . positional-args)
+        (falsable->uninformative-knowable
+          (keyword-apply f ks vs positional-args)))
+      (lambda positional-args
+        (falsable->uninformative-knowable /apply f positional-args)))
+    (procedure-arity-mask f)
+    required-kws
+    allowed-kws))
+
+(define (accepts?-knowable/get-accepts?-knowable f)
+  (unless (procedure? f)
+    (raise-arguments-error 'accepts?-knowable
+      "expected the called value to be a procedure"
+      "f" f))
+  (get-accepts?-knowable f))
+
+(define/own-contract accepts?-knowable
   (unconstrained-domain-> knowable?)
   (procedure-reduce-arity
     (make-keyword-procedure
       (lambda (ks vs f . positional-args)
-        (if (expressly-knowable-predicate? f)
-          (w- accepts?-knowable
-            (expressly-knowable-predicate-get-accepts?-knowable f)
-          /keyword-apply accepts?-knowable ks vs positional-args)
-        /if (procedure? f)
-          (falsable->uninformative-knowable
-            (keyword-apply f ks vs positional-args))
-          (raise-arguments-error 'call-knowable
-            "expected the called value to be a prop:expressly-knowable-predicate instance or a procedure"
-            "f" f)))
+        (w- accepts?-knowable
+          (accepts?-knowable/get-accepts?-knowable f)
+        /keyword-apply accepts?-knowable ks vs positional-args))
       (lambda (f . positional-args)
-        (if (expressly-knowable-predicate? f)
-          (w- accepts?-knowable
-            (expressly-knowable-predicate-get-accepts?-knowable f)
-          /apply accepts?-knowable positional-args)
-        /if (procedure? f)
-          (falsable->uninformative-knowable /apply f positional-args)
-          (raise-arguments-error 'call-knowable
-            "expected the called value to be a prop:expressly-knowable-predicate instance or a procedure"
-            "f" f))))
+        (w- accepts?-knowable
+          (accepts?-knowable/get-accepts?-knowable f)
+        /apply accepts?-knowable positional-args)))
     (arity-at-least 1)))
 
 ; Returns a value that makes an appropriate `prop:procedure`
@@ -220,7 +231,7 @@
 ;
 (define/own-contract (make-procedure-impl-for-knowable-predicate)
   (-> (unconstrained-domain-> any/c))
-  (compose knowable->falsable call-knowable))
+  (compose knowable->falsable accepts?-knowable))
 
 (define/own-contract
   (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
@@ -240,12 +251,11 @@
     (unconstrained-domain-> any/c))
   (define-imitation-simple-struct
     (makeshift-knowable-predicate?
-      makeshift-knowable-predicate-get-accepts?-direct)
+      makeshift-knowable-predicate-get-accepts?-knowable)
     makeshift-knowable-predicate
     'makeshift-knowable-predicate
     makeshift-knowable-predicate-inspector
     (auto-write)
-    (auto-equal)
     (#:prop prop:procedure
       (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
         accepts?-knowable))

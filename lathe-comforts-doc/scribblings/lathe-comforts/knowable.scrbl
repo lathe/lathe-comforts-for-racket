@@ -173,9 +173,7 @@ There's a little bit of hubris in being so explicit about this intent, since man
     (struct-type-property/c expressly-knowable-predicate-impl?)
   ]
 )]{
-  Structure type property operations for @tech{knowable values} that represent anything short of a complete presence of information.
-  
-  Since not many operations necessarily preserve distinctions between @racket[unknown?] values, the main reason to define a new type abiding by this interface is for the hope of providing more helpful debug printing behavior.
+  Structure type property operations for procedures that can be invoked in a special way to obtain a @tech{knowable value} result. An instance of @racket[prop:expressly-knowable-predicate] should also be an instance of @racket[prop:procedure], likely using @racket[make-procedure-impl-for-knowable-predicate-with-arity-of-procedure]. Furthermore, its ordinary procedure call result should be @racket[#f] when its knowable predicate result is @racket[unknown?], and otherwise the former should be equivalent to the @racket[known-value] of the latter.
 }
 
 @defproc[
@@ -184,26 +182,36 @@ There's a little bit of hubris in being so explicit about this intent, since man
       (-> any/c (unconstrained-domain-> knowable?))])
   expressly-knowable-predicate-impl?
 ]{
-  Given a curried implementation for @racket[call-knowable], returns something a struct can use to implement the @racket[prop:expressly-knowable-predicate] interface.
+  Given an implementation for @racket[get-accepts?-knowable], returns something a struct can use to implement the @racket[prop:expressly-knowable-predicate] interface.
 }
 
-@defproc[
-  (call-knowable
-    [f any/c]
-    [positional-arg any/c]
-    ...
-    [#:<kw> kw-arg any/c]
-    ...)
-  knowable?
+@deftogether[
+  @defproc[
+    ( (get-accepts?-knowable [f procedure?])
+      [positional-arg any/c]
+      ...
+      [#:<kw> kw-arg any/c]
+      ...)
+    knowable?
+  ]
+  @defproc[
+    (accepts?-knowable
+      [f procedure?]
+      [positional-arg any/c]
+      ...
+      [#:<kw> kw-arg any/c]
+      ...)
+    knowable?
+  ]
 ]{
-  Given a value @racket[f] that must be a @racket[prop:expressly-knowable-predicate] instance or a @racket[procedure?], invokes it with the given positional and keyword arguments. If @racket[f] is not a @racket[prop:expressly-knowable-predicate] instance, then the result is obtained by calling @racket[falsable->uninformative-knowable] on the result of the @racket[procedure?] call.
+  Given a procedure @racket[f], invokes it with the given positional and keyword arguments to obtain a @tech{knowable value} result. If @racket[f] is not a @racket[prop:expressly-knowable-predicate] instance, then the result is obtained by calling @racket[falsable->uninformative-knowable] on the result of the @racket[procedure?] call.
 }
 
 @defproc[
   (make-procedure-impl-for-knowable-predicate)
   (unconstrained-domain-> any/c)
 ]{
-  Returns a value that makes an appropriate @racket[prop:procedure] implementation for a structure type that implements @racket[prop:expressly-knowable-predicate]. Calling the procedure will have the same result as using @racket[call-knowable] followed by @racket[knowable->falsable].
+  Returns a value that makes an appropriate @racket[prop:procedure] implementation for a structure type that implements @racket[prop:expressly-knowable-predicate]. Calling the procedure will have the same result as using @racket[accepts?-knowable] followed by @racket[knowable->falsable].
   
   It will often be preferable to pass the result of @tt{make-procedure-impl-for-knowable-predicate} through @racket[procedure-reduce-arity]. Otherwise, the @racket[prop:procedure] instance's arity will be completely unconstrained. Alternatively, use @racket[make-procedure-impl-for-knowable-predicate-with-arity-of-procedure].
 }
@@ -213,15 +221,15 @@ There's a little bit of hubris in being so explicit about this intent, since man
     [p procedure?])
   (unconstrained-domain-> any/c)
 ]{
-  Returns a value that makes an appropriate @racket[prop:procedure] implementation for a structure type that implements @racket[prop:expressly-knowable-predicate]. Calling the procedure will have the same result as using @racket[call-knowable] followed by @racket[knowable->falsable].
+  Returns a value that makes an appropriate @racket[prop:procedure] implementation for a structure type that implements @racket[prop:expressly-knowable-predicate]. Calling the procedure will have the same result as using @racket[accepts?-knowable] followed by @racket[knowable->falsable].
   
   The @racket[prop:procedure] instance's arity will be the same as the arity of the given procedure @racket[p].
 }
 
 @defproc[
   (makeshift-knowable-predicate
-    [accepts?-knowable (unconstrained-domain-> knowable?)])
+    [accepts?-knowable-impl (unconstrained-domain-> knowable?)])
   (unconstrained-domain-> any/c)
 ]{
-  Returns an instance @racket[_f] of @racket[prop:procedure] and @racket[prop:expressly-knowable-predicate] such that calling @racket[(call-knowable _f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(accepts?-knowable _positional-arg ... #:<kw> _kw-arg ...)], while calling @racket[(_f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(knowable->falsable (accepts?-knowable _positional-arg ... #:<kw> _kw-arg ...))].
+  Returns an instance @racket[_f] of @racket[prop:procedure] and @racket[prop:expressly-knowable-predicate] such that calling @racket[(get-accepts?-knowable _f)] returns @racket[accepts?-knowable-impl], while calling @racket[(_f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(knowable->falsable (accepts?-knowable-impl _positional-arg ... #:<kw> _kw-arg ...))].
 }

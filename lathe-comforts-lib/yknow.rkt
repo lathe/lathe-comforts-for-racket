@@ -38,6 +38,7 @@
   yknow/c
   make-yknow-from-value-promise-maybe-knowable-promise
   make-yknow-from-value-knowable-promise
+  make-yknow-from-value-knowable
   make-yknow-from-value
   uninformative-yknow
   yknow-value-promise-knowable
@@ -52,7 +53,14 @@
   yknow-joininfo*-resumably
   yknow-joininfo*
   maybe-min-yknow-zip*-map
-  yknow-maybe-yknow-joininfo*)
+  yknow-maybe-yknow-joininfo*
+  prop:expressly-yknow-predicate
+  make-expressly-yknow-predicate-impl
+  get-accepts?-yknow
+  accepts?-yknow
+  make-knowable-predicate-impl-for-yknow-predicate
+  make-procedure-impl-for-yknow-predicate-with-arity-of-procedure
+  makeshift-yknow-predicate)
 
 
 (define-imitation-simple-struct
@@ -82,9 +90,13 @@
     (promise-map value-kp /fn value-k
       (knowable-map value-k /fn value /just /delay/strict value))))
 
+(define/own-contract (make-yknow-from-value-knowable value-k)
+  (-> knowable? yknow?)
+  (make-yknow-from-value-knowable-promise /delay/strict value-k))
+
 (define/own-contract (make-yknow-from-value value)
   (-> any/c yknow?)
-  (make-yknow-from-value-knowable-promise /delay/strict /known value))
+  (make-yknow-from-value-knowable /known value))
 
 (define/own-contract (uninformative-yknow)
   (-> (yknow/c none/c))
@@ -205,3 +217,97 @@
                     "ymy" ymy)
                 /force /yknow-value-promise-maybe-knowable-promise
                   y)))))))))
+
+
+(define-imitation-simple-generics
+  expressly-yknow-predicate? expressly-yknow-predicate-impl?
+  (#:method expressly-yknow-predicate-get-accepts?-yknow (#:this))
+  prop:expressly-yknow-predicate
+  make-expressly-yknow-predicate-impl
+  'expressly-yknow-predicate
+  'expressly-yknow-predicate-impl (list))
+(ascribe-own-contract expressly-yknow-predicate-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract prop:expressly-yknow-predicate
+  (struct-type-property/c expressly-yknow-predicate-impl?))
+(ascribe-own-contract make-expressly-yknow-predicate-impl
+  (-> (-> any/c (unconstrained-domain-> yknow?))
+    expressly-yknow-predicate-impl?))
+
+(define/own-contract (get-accepts?-yknow f)
+  (-> procedure? (unconstrained-domain-> yknow?))
+  (if (expressly-yknow-predicate? f)
+    (expressly-yknow-predicate-get-accepts?-yknow f)
+  /let-values ([(required-kws allowed-kws) (procedure-keywords p)])
+  /procedure-reduce-keyword-arity-mask
+    (make-keyword-procedure
+      (lambda (ks vs . positional-args)
+        (make-yknow-from-value-knowable
+          (keyword-apply accepts?-knowable ks vs f positional-args)))
+      (lambda positional-args
+        (make-yknow-from-value-knowable
+          (apply accepts?-knowable f positional-args))))
+    (procedure-arity-mask f)
+    required-kws
+    allowed-kws))
+
+(define (accepts?-yknow/get-accepts?-yknow f)
+  (unless (procedure? f)
+    (raise-arguments-error 'accepts?-yknow
+      "expected the called value to be a procedure"
+      "f" f))
+  (get-accepts?-yknow f))
+
+(define/own-contract accepts?-yknow
+  (unconstrained-domain-> yknow?)
+  (procedure-reduce-arity
+    (make-keyword-procedure
+      (lambda (ks vs f . positional-args)
+        (w- accepts?-yknow (accepts?-yknow/get-accepts?-yknow f)
+        /keyword-apply accepts?-yknow ks vs positional-args))
+      (lambda (f . positional-args)
+        (w- accepts?-yknow (accepts?-yknow/get-accepts?-yknow f)
+        /apply accepts?-yknow positional-args)))
+    (arity-at-least 1)))
+
+; Returns a value that makes an appropriate
+; `prop:expressly-knowable-procedure` implementation for a structure
+; type that implements `prop:expressly-yknow-predicate`.
+;
+(define/own-contract (make-knowable-predicate-impl-for-yknow-predicate)
+  (-> expressly-knowable-predicate-impl?)
+  (make-expressly-knowable-predicate-impl /fn f
+    (compose yknow-value-knowable (get-accepts?-yknow f))))
+
+(define/own-contract
+  (make-procedure-impl-for-yknow-predicate-with-arity-of-procedure p)
+  (-> procedure? (unconstrained-domain-> any/c))
+  (define-values (required-kws allowed-kws) (procedure-keywords p))
+  (procedure-reduce-keyword-arity-mask
+    (make-procedure-impl-for-yknow-predicate)
+    (arithmetic-shift (procedure-arity-mask p) 1)
+    required-kws
+    allowed-kws))
+
+(define makeshift-yknow-predicate-inspector (current-inspector))
+
+(define/own-contract (makeshift-yknow-predicate accepts?-yknow)
+  (-> (unconstrained-domain-> yknow?)
+    (unconstrained-domain-> any/c))
+  (define-imitation-simple-struct
+    (makeshift-yknow-predicate?
+      makeshift-yknow-predicate-get-accepts?-yknow)
+    makeshift-yknow-predicate
+    'makeshift-yknow-predicate
+    makeshift-yknow-predicate-inspector
+    (auto-write)
+    (#:prop prop:procedure
+      (make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
+        accepts?-yknow))
+    (#:prop prop:expressly-knowable-predicate
+      (make-knowable-predicate-impl-for-yknow-predicate))
+    (#:prop prop:expressly-yknow-predicate
+      (make-expressly-yknow-predicate-impl
+        (dissectfn (makeshift-yknow-predicate accepts?-yknow)
+          accepts?-yknow))))
+  (makeshift-yknow-predicate accepts?-yknow))

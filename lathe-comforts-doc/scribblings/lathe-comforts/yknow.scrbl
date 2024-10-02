@@ -31,6 +31,8 @@
 @deftech{Yknow objects} are a way to represent @racket[promise?]-like computations that may turn out to have not-yet-specified or user-specifiable results. The not-yet-specified results may be missing for some versions of a program but may eventually be present once the program has been sufficiently upgraded, as with @tech{knowable values}. The user-specifiable results represent a stable absence of information that the user can handle in the way they see fit, as with @tech{maybe values}. Specifically, a yknow object is expressible in terms of a @racket[promise?] containing a @tech{knowable value} containing a possible @tech{maybe value} containing a possible @racket[promise?].
 
 
+@section[#:tag "yknow-proper"]{Yknow Objects Themselves}
+
 @defproc[(yknow? [v any/c]) boolean?]{
   Returns whether the given value is a @tech{yknow object}.
 }
@@ -56,10 +58,14 @@
 
 @defproc[
   (make-yknow-from-value-knowable-promise
-    [value-pmkp (promise/c (knowable/c any/c))])
+    [value-kp (promise/c (knowable/c any/c))])
   yknow?
 ]{
   Returns a @tech{yknow object} whose computation works by forcing the given promise. Its computation result is not-yet-specified if the promise's result is @racket[unknown?]. Otherwise, it's fully specified as the @racket[known-value] contained within, and there's no further computation to do.
+}
+
+@defproc[(make-yknow-from-value-knowable [value-k knowable?]) yknow?]{
+  Returns a @tech{yknow object} which has no computation to do. Its computation result is not-yet-specified if the given @tech{knowable value} is @racket[unknown?]. Otherwise, it's fully specified as the @racket[known-value] contained within.
 }
 
 @defproc[(make-yknow-from-value [value any/c]) yknow?]{
@@ -182,4 +188,63 @@
   This is a way of exercising one's prerogative as a user to replace a user-specified result with a fully specified one.
   
   This operation is idempotent and associative. If the outer yknow objects' fully specified results (if any) are all @racket[nothing?] values, or if they're are all @racket[just?] values containing inner yknow objects whose fully specified results (if any) are equivalent to each other, then this operation is also commutative.
+}
+
+
+@section[#:tag "yknow-predicate"]{Yknow Predicates}
+
+@deftogether[(
+  @defproc[(expressly-yknow-predicate-impl? [v any/c]) boolean?]
+  @defthing[
+    prop:expressly-yknow-predicate
+    (struct-type-property/c expressly-yknow-predicate-impl?)
+  ]
+)]{
+  Structure type property operations for procedures that can be invoked in a special way to obtain a @tech{yknow object} result. An instance of @racket[prop:expressly-yknow-predicate] should also be an instance of @racket[prop:expressly-knowable-predicate] and @racket[prop:procedure], likely using @racket[make-expressly-knowable-predicate-impl-for-yknow-predicate] and @racket[make-procedure-impl-for-knowable-predicate-with-arity-of-procedure] respectively. Furthermore, its ordinary procedure call result should be @racket[#f] and its knowable predicate result should be @racket[unknown?] when its yknow predicate result's @racket[yknow-value-knowable] is @racket[unknown?]; and otherwise, the ordinary procedure result should be equivalent to the @racket[known-value] result of the knowable predicate result and the @racket[yknow-value] of the yknow predicate result.
+}
+
+@defproc[
+  (make-expressly-yknow-predicate-impl
+    [get-accepts?-yknow
+      (-> any/c (unconstrained-domain-> yknow?))])
+  expressly-yknow-predicate-impl?
+]{
+  Given an implementation for @racket[get-accepts?-yknow], returns something a struct can use to implement the @racket[prop:expressly-yknow-predicate] interface.
+}
+
+@deftogether[
+  @defproc[
+    ( (get-accepts?-yknow [f procedure?])
+      [positional-arg any/c]
+      ...
+      [#:<kw> kw-arg any/c]
+      ...)
+    yknow?
+  ]
+  @defproc[
+    (accepts?-yknow
+      [f procedure?]
+      [positional-arg any/c]
+      ...
+      [#:<kw> kw-arg any/c]
+      ...)
+    yknow?
+  ]
+]{
+  Given a procedure @racket[f], invokes it with the given positional and keyword arguments to obtain a @tech{yknow object} result. If @racket[f] is not a @racket[prop:expressly-yknow-predicate] instance, then the result is obtained by calling @racket[make-yknow-from-value-knowable] on the result of the @racket[accepts?-knowable] call.
+}
+
+@defproc[
+  (make-expressly-knowable-predicate-impl-for-yknow-predicate)
+  expressly-knowable-predicate-impl?
+]{
+  Returns a value that makes an appropriate @racket[prop:expressly-knowable-predicate] implementation for a structure type that implements @racket[prop:expressly-yknow-predicate].
+}
+
+@defproc[
+  (makeshift-yknow-predicate
+    [accepts?-yknow-impl (unconstrained-domain-> yknow?)])
+  (unconstrained-domain-> any/c)
+]{
+  Returns an instance @racket[_f] of @racket[prop:procedure], @racket[prop:expressly-knowable-predicate], and @racket[prop:expressly-yknow-predicate] such that calling @racket[(get-accepts?-yknow _f)] returns @racket[accepts?-yknow-impl], calling @racket[(accepts?-knowable _f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(yknow-value-knowable (accepts?-yknow-impl _positional-arg ... #:<kw> _kw-arg ...))], and calling @racket[(_f _positional-arg ... #:<kw> _kw-arg ...)] behaves just like calling @racket[(yknow-value (accepts?-yknow-impl _positional-arg ... #:<kw> _kw-arg ...))].
 }
