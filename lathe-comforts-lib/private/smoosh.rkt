@@ -8866,11 +8866,14 @@
   (/current-any-dynamic-type))
 
 
-; TODO SMOOSH: Implement a `glossesque-sys?` based on AVL trees, for
+; NOTE: If we ever have a `glossesque-sys?` based on AVL trees, for
 ; the sake of types which are hard to write hash code behavior for but
-; which do admit a total ordering. This would justify some of the
-; generality of the design here; without types like this, it's a
-; wonder we don't just hash everything.
+; which do admit a total ordering, it would be more apparent why we
+; bother with tries and don't just hash everything. However, the tries
+; are still necessary for us because of other aspects of the
+; framework's generality, namely the fact that we perform smoosh join
+; and smoosh meet operations and the fact that our smoosh operations
+; sometimes compute unknown results.
 
 ; Except where noted (TODO) or where not mentioned (e.g., where
 ; pertaining to a type that didn't exist at the time of writing this),
@@ -8892,9 +8895,9 @@
 ;       mutable vectors, prefab structs with mutable fields, and
 ;       mutable hash tables, all equatable and distinguishable in a
 ;       way consistent with `equal-always?` and information-ordered in
-;       a way consistent with `chaperone-of?`. (TODO SMOOSH: Is there
-;       a way we can define these to be non-overlapping even with
-;       user-defined types?)
+;       a way consistent with `chaperone-of?`.
+;       (TODO SMOOSH COMMON GLOSSESQUES: Is there a way we can define
+;       these to be non-overlapping even with user-defined types?)
 ;
 ;     - (Done) Flvectors and fxvectors, all equatable and
 ;       distinguishable in a way consistent with `eq?`. (TODO: As of
@@ -9118,8 +9121,161 @@
 ; comparison results are unknown, we offer `gloss?` values as our
 ; recommended replacement for `hash?` values.
 
-; TODO SMOOSH: Consider using `makeshift-yknow-predicate` for some of
-; our `#:inhabitant?` predicates. If we do, we'll have to modify the
-; places that call those predicates so they can use the yknow results.
-; If we don't use `makeshift-yknow-predicate` after all, maybe we
-; should remove the yknow predicate utilities.
+; TODO SMOOSH COMMON GLOSSESQUES: Here's a plan:
+;
+;   - Make an interface
+;     `expressly-potentially-an-identifiable-object-dynamic-type?`
+;     with a "method"
+;     `(dynamic-type-value-identifiable-object-get-guard-wrapper-maybe-knowable-promise-sequence dt v)`
+;     returning an info-level-indexed endless sequence of promises
+;     that default to `(known (nothing))`. A result should only be
+;     `(known (just guard-wrapper))` for some `guard-wrapper` if the
+;     value's corresponding `tagged-glossesque-sys?` (for both
+;     `path-related` and `==`) is the corresponding one described
+;     next. The value of `guard-wrapper` is a one-argument procedure
+;     that produces the value that will be compared for
+;     `equal-always?` on behalf of the original.
+;
+;   - Make a standard `tagged-glossesque-sys?` at each info level
+;     index that accepts any value where
+;     `dynamic-type-value-identifiable-object-get-guard-wrapper-maybe-knowable-promise-sequence`
+;     is `(known (just guard-wrapper))` at that index and positively
+;     rejects any value for which it's `(known (nothing))`. (Other
+;     values have unknown inhabitant-ness.) It compares operands by
+;     passing them through their respective `guard-wrapper`s to obtain
+;     representatives and then calling `equal-always?` on the
+;     representatives, returning a known nothing if that comparison
+;     results in `#f`. If the comparison results in `#t`, then it goes
+;     on to compare the representatives using `atom-chaperone=?`,
+;     returning the first operand if that result is `#t`. Otherwise,
+;     it returns an unknown result.
+;
+;   - Have the `flvector?` and `fxvector?` dynamic types instantiate
+;     `expressly-potentially-an-identifiable-object-dynamic-type?`
+;     with `(known (just (fn v (eq-wrapper v))))`, and define
+;     `eq-wrapper` appropriately. Have the other mutable object
+;     dynamic types instantiate it with
+;     `(known (just (fn v (equal-always-wrapper v))))` or
+;     `(known (just (fn v (box-immutable v))))`. Have all these
+;     dynamic types use the necessary `tagged-glossesque-sys?` at each
+;     index.
+;
+;   - Make an interface
+;     `expressly-potentially-an-s-expression-landmark-dynamic-type?`
+;     with a "method"
+;     `(dynamic-type-value-s-expression-landmark?-knowable-promise-sequence dt v)`
+;     returning an info-level-indexed endless sequence of promises
+;     that default to `(known #f)`. A result should only be
+;     `(known #t)` if the value's corresponding
+;     `tagged-glossesque-sys?` has an `inhabitant?` knowable predicate
+;     whose `accepts?-knowable` behavior returns a `(known #f)` result
+;     for non-special-cased inputs for which the
+;     `dynamic-type-value-s-expression-landmark?-knowable-promise-sequence`
+;     result at the corresponding index is `(known #f)` or
+;     `(known #t)`. Sometimes, a dynamic type may have a
+;     `tagged-glossesque-sys?` whose prospective inhabitants may be
+;     special-cased to have `accepts?-knowable` results other than
+;     `(known #f)`; in that case, the prospective inhabitant's own
+;     dynamic type must also specify a corresponding special case for
+;     this dynamic type's values so that the results are consistent.
+;
+;   - Have the `cons?`, `null?`, `symbol?` and `keyword?` dynamic
+;     types instantiate
+;     `expressly-potentially-an-s-expression-landmark-dynamic-type?`
+;     with `(known #t)`. Have their `tagged-glossesque-sys?` values'
+;     `inhabitant?` knowable predicates give known rejections for
+;     non-special-cased values which have a `(known #t)` or
+;     `(known #f)` result in the corresponding
+;     `dynamic-type-value-s-expression-landmark?-knowable-promise-sequence`
+;     index. The special-cased values for the `symbol?` dynamic type
+;     are `symbol?` values, which are never known to be distinct from
+;     each other and are sometimes even known to be equal. Likewise
+;     with the `keyword?` dynamic type. The special-cased values for
+;     the `cons?` dynamic type are `cons?` values, which compare in a
+;     specific way that can sometimes determine that they're known to
+;     be equal. The special-cased values for the `null?` dynamic type
+;     are `null?` values, which are always equal to each other.
+;
+;   - Make standard `tagged-glossesque-sys?` values that can be used
+;     by user-defined `unknown?` types -- or better yet, a structure
+;     type property bundle for that specific situation.
+;
+;   - Have the `knowable?` dynamic type use the standard
+;     `tagged-glossesque-sys?` values.
+;
+;   - Migrate our `inhabitant?` knowable predicates to more
+;     fundamental `inhabitant?-knowable` procedures and some helper
+;     functions to produce them.
+;
+;     - Commentary: The primary point of knowable predicates is to
+;       allow us to gradually upgrade APIs by replacing some
+;       predicates in covariant positions with knowable predicates. In
+;       contravariant positions, they serve the secondary benefit of
+;       allowing clients to opt to pass in something of a more
+;       familiar type (regular old predicates), ignoring some of the
+;       complexity of the API when they don't need it. However,
+;       there's a potential hazard here: If the client defines a plain
+;       old predicate and passes it in as per a point-free style, and
+;       then the client changes it to be a knowable predicate, they
+;       might not realize the place they've passed it into is going to
+;       use that now-present information for its own purposes.
+;       Essentially I'm thinking this is a problem with having
+;       open-world-extensible-union types in contravariant positions
+;       altogether, and treating `procedure?` as if it's one of those
+;       is probably asking for trouble considering how often
+;       `procedure?` appears in contravariant positions. One potential
+;       solution is to consider knowable predicates to be a proper
+;       subtype of plain old predicates (and likewise consider yknow
+;       predicates to be a proper subtype of knowable predicates), so
+;       that upgrades can happen in covariant positions but plain old
+;       predicates can't be used where knowable predicates are
+;       expected. But at any rate, we can get closer to that vision
+;       now by updating some of our covariant positions to use types
+;       that have no subtyping to consider.
+
+; NOTE:
+;
+; It seems we aren't using `yknow?` values and the `...-via-second`
+; method in the smooshing framework for as much as we thought we would
+; have. When a type is a custom gloss key, everything we know about
+; its value's comparisons has to be encoded not only as a two-argument
+; equality comparison between values but also as a membership relation
+; check between a glossesque and a prospective key value. In lieu of
+; encouraging user code to inspect the structure of specific
+; `typed-glossesque-sys?` objects to determine whether a key belongs
+; to them, we've been designing special-purpose protocols like
+; `expressly-potentially-an-identifiable-object-dynamic-type?` that
+; allow either value (or either value's
+; `tagged-glossesque-sys-inhabitant?-knowable` check) to compute a
+; fully specified result.
+;
+; There are potentially some situations in which taking advantage of
+; the `...-via-second` dispatch will be possible. In particular,
+; dynamic types that represent codata type formers probably won't even
+; have known `tagged-glossesque-sys?` objects, so it will be easier to
+; keep the two-argument smooshing implementations consistent with that
+; nonexistent information. Then again, codata types will require an
+; unusual amount of care to be smooshable at all since the underlying
+; finite representation of the same codata can vary, so examples of
+; nontrivially smooshable ones may be scarce.
+;
+; TODO: Consider whether we might want to remove `yknow?` values
+; altogether. Probably not. They're a viable technique for other
+; dispatch situations, which we'll probably start to see many of once
+; we're writing extensible libraries using these techniques. The idea
+; of using it the way we are seems appropriate, even if the actual
+; need for it isn't there yet.
+;
+; TODO: Alternatively, consider replacing
+; `tagged-glossesque-sys-inhabitant?-knowable` with
+; `value-inhabits-tagged-glossesque-sys?-yknow-via-tagged-glossesque-sys`.
+; In that case, `prop:expressly-custom-gloss-key-dynamic-type` values
+; should also have a
+; `value-inhabits-tagged-glossesque-sys?-yknow-via-value-dynamic-type`
+; method for checking whether their inhabitants are inhabitants of a
+; given `tagged-glossesque-sys?`, so that a
+; `value-inhabits-tagged-glossesque-sys?-yknow` call has more than one
+; candidate to dispatch to. Furthermore, this check might be more
+; useful if, instead of computing a boolean, it computed an upgraded
+; `tagged-glossesque-sys?` and a glossesque upgrader that extended a
+; glossesque with support for the unfamiliar value.
