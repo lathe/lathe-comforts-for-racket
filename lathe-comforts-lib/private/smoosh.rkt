@@ -85,17 +85,17 @@
   glossesque-sys-map-key
   maybe-nonempty-glossesque-sys
   tagged-glossesque-sys?
-  tagged-glossesque-sys-tag
-  tagged-glossesque-sys-get-inhabitant?
-  tagged-glossesque-sys-get-get-glossesque-sys)
+  tagged-glossesque-sys-impl?
+  tagged-glossesque-sys-inhabitant?-knowable
+  tagged-glossesque-sys-get-glossesque-sys
+  prop:tagged-glossesque-sys
+  make-tagged-glossesque-sys-impl)
 (provide
-  tagged-glossesque-sys
   lift
   make-tagged-glossesque-sys
   derive-tagged-glossesque-sys)
 (provide /own-contract-out
   tagged-glossesque-sys=?
-  tagged-glossesque-sys-inhabitant?-knowable
   tagged-glossesque-sys-get-glossesque-sys-for-ladder
   custom-gloss-key-report?
   custom-gloss-key-report-impl?
@@ -853,87 +853,130 @@
         g))))
 
 
-(define-imitation-simple-struct
-  (tagged-glossesque-sys?
-    tagged-glossesque-sys-tag
-    tagged-glossesque-sys-get-inhabitant?
-    tagged-glossesque-sys-get-get-glossesque-sys)
-  tagged-glossesque-sys
-  'tagged-glossesque-sys (current-inspector)
-  (auto-write)
-  (auto-equal))
+(define-imitation-simple-generics
+  tagged-glossesque-sys? tagged-glossesque-sys-impl?
+  (#:method tagged-glossesque-sys-inhabitant?-knowable (#:this) ())
+  (#:method tagged-glossesque-sys-get-glossesque-sys () (#:this))
+  prop:tagged-glossesque-sys
+  make-tagged-glossesque-sys-impl-from-various-unkeyworded
+  'tagged-glossesque-sys 'tagged-glossesque-sys-impl (list))
 (ascribe-own-contract tagged-glossesque-sys? (-> any/c boolean?))
-(ascribe-own-contract tagged-glossesque-sys-tag
-  (-> tagged-glossesque-sys? any/c))
-(ascribe-own-contract tagged-glossesque-sys-get-inhabitant?
-  (-> tagged-glossesque-sys? (-> any/c boolean?)))
-(ascribe-own-contract tagged-glossesque-sys-get-get-glossesque-sys
-  (-> tagged-glossesque-sys?
-    (-> glossesque-summary-sys? glossesque-sys?)))
+(ascribe-own-contract tagged-glossesque-sys-impl? (-> any/c boolean?))
+(ascribe-own-contract tagged-glossesque-sys-inhabitant?-knowable
+  (-> tagged-glossesque-sys? any/c (knowable/c boolean?)))
+(ascribe-own-contract tagged-glossesque-sys-get-glossesque-sys
+  (-> glossesque-summary-sys? tagged-glossesque-sys? glossesque-sys?))
+(ascribe-own-contract prop:tagged-glossesque-sys
+  (struct-type-property/c tagged-glossesque-sys-impl?))
+
+(define/own-contract
+  (make-tagged-glossesque-sys-impl
+    #:inhabitant?-knowable inhabitant?-knowable
+    #:get-glossesque-sys get-glossesque-sys)
+  (->
+    
+    #:inhabitant?-knowable
+    (-> tagged-glossesque-sys? any/c (knowable/c boolean?))
+    
+    #:get-glossesque-sys
+    (-> glossesque-summary-sys? tagged-glossesque-sys?
+      glossesque-sys?)
+    
+    glossesque-summary-sys-impl?)
+  (make-tagged-glossesque-sys-impl-from-various-unkeyworded
+    inhabitant?-knowable
+    get-glossesque-sys))
 
 (define-syntax (lift stx)
   (syntax-parse stx / (_ result:expr)
   /syntax-local-lift-expression #'result))
 
-(define-syntax-parse-rule
-  (make-tagged-glossesque-sys gss:id inhabitant?:expr gs:expr)
-  (w- make-tag
-    (lift /let ()
-      (define-imitation-simple-struct (tag-for-tagged-glossesque-sys?)
-        tag-for-tagged-glossesque-sys
-        'tag-for-tagged-glossesque-sys (current-inspector)
-        (auto-write)
-        (auto-equal))
-      tag-for-tagged-glossesque-sys)
-  /tagged-glossesque-sys
-    (make-tag)
-    inhabitant?
-    (fn gss
-      gs)))
+(define-syntax (make-tagged-glossesque-sys stx)
+  (syntax-parse stx
+    [ (_ gss:id inhabitant?:expr gs:expr)
+      #'(make-tagged-glossesque-sys gss #:equal-always-free-vars ()
+          inhabitant?
+          gs)]
+    [
+      (_ gss:id #:equal-always-free-vars (v ...)
+        inhabitant?:expr
+        gs:expr)
+      
+      #:with (made-tagged-glossesque-sys-v ...)
+      (generate-temporaries #'(v ...))
+      
+      #:with (a-v ...) (generate-temporaries #'(v ...))
+      #:with (b-v ...) (generate-temporaries #'(v ...))
+      #:with (tgs-v ...) (generate-temporaries #'(v ...))
+      
+      #'(w- made-tagged-glossesque-sys
+          (lift /let ()
+            (define-imitation-simple-struct
+              (made-tagged-glossesque-sys?
+                made-tagged-glossesque-sys-v ...)
+              made-tagged-glossesque-sys
+              'made-tagged-glossesque-sys (current-inspector)
+              (auto-write)
+              
+              (#:gen gen:equal-mode+hash
+                
+                (define (equal-mode-proc a b recur now?)
+                  (dissect a (made-tagged-glossesque-sys a-v ...)
+                  /dissect b (made-tagged-glossesque-sys b-v ...)
+                  /and (equal-always? a-v b-v) ...))
+                
+                (define (hash-mode-proc tgs recur now?)
+                  (dissect tgs (made-tagged-glossesque-sys tgs-v ...)
+                  /hash-code-combine
+                    (equal-always-hash-code made-tagged-glossesque-sys?)
+                    (equal-always-hash-code tgs-v)
+                    ...))
+                
+                )
+              
+              (#:prop prop:tagged-glossesque-sys
+                (make-tagged-glossesque-sys-impl
+                  
+                  #:inhabitant?-knowable
+                  (fn tgs candidate
+                    (dissect tgs (made-tagged-glossesque-sys v ...)
+                    /accepts?-knowable inhabitant? candidate))
+                  
+                  #:get-glossesque-sys
+                  (fn gss tgs
+                    (dissect tgs (made-tagged-glossesque-sys v ...)
+                      gs))
+                  
+                  ))
+              
+              )
+            made-tagged-glossesque-sys)
+        /made-tagged-glossesque-sys v ...)]))
 
 (define-syntax-parse-rule
   (derive-tagged-glossesque-sys
     orig-inhabitant?:id gs:id new-inhabitant?:expr new-gs:expr)
   (fn tgs-k
     (knowable-map tgs-k
-      (dissectfn
-        (tagged-glossesque-sys tag local-inhabitant? local-get-gs)
-        (w- make-tag
-          (lift /let ()
-            (define-imitation-simple-struct
-              (derived-tag-for-tagged-glossesque-sys?
-                derived-tag-for-tagged-glossesque-sys-value)
-              derived-tag-for-tagged-glossesque-sys
-              'derived-tag-for-tagged-glossesque-sys
-              (current-inspector)
-              (auto-write)
-              (auto-equal))
-            derived-tag-for-tagged-glossesque-sys)
-        /tagged-glossesque-sys
-          (make-tag tag)
-          (w- orig-inhabitant? local-inhabitant?
+      (fn tgs
+        (make-tagged-glossesque-sys gss #:equal-always-free-vars (tgs)
+          (w- orig-inhabitant?
+            (makeshift-knowable-predicate /fn v
+              (tagged-glossesque-sys-inhabitant?-knowable tgs v))
             new-inhabitant?)
-          (fn gss
-            (w- gs (local-get-gs gss)
-              new-gs)))))))
+          (w- gs (tagged-glossesque-sys-get-glossesque-sys gss tgs)
+            new-gs))))))
 
 (define/own-contract (tagged-glossesque-sys=? a b)
   (-> tagged-glossesque-sys? tagged-glossesque-sys? boolean?)
-  (dissect a (tagged-glossesque-sys a-tag _ _)
-  /dissect b (tagged-glossesque-sys b-tag _ _)
-  /equal-always? a b))
-
-(define/own-contract
-  (tagged-glossesque-sys-inhabitant?-knowable tgs v)
-  (-> tagged-glossesque-sys? any/c (knowable/c boolean?))
-  (dissect tgs (tagged-glossesque-sys _ inhabitant? _)
-  /accepts?-knowable inhabitant? v))
+  (equal-always? a b))
 
 (define/own-contract
   (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
   (-> glossesque-summary-sys? tagged-glossesque-sys? glossesque-sys?)
-  (dissect tgs (tagged-glossesque-sys _ _ get-gs)
-  /get-gs /counted-glossesque-summary-sys gss))
+  (tagged-glossesque-sys-get-glossesque-sys
+    (counted-glossesque-summary-sys gss)
+    tgs))
 
 
 (define-imitation-simple-generics
@@ -1439,6 +1482,15 @@
       gss then-summary else-summary)
   /ladder-populated summary tgs then else))
 
+(define (ladder-key-get-tagged-glossesque-sys-knowable k)
+  ; TODO FORWARD: This use of `any-dynamic-type` is a forward
+  ; reference. See if we can untangle it.
+  (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+    (sequence-first
+      (dynamic-type-get-custom-gloss-key-reports
+        (any-dynamic-type)
+        k))))
+
 (define
   (rider-and-ladder-update-maybe-knowable
     gss rider-and-g k on-rider-and-m-knowable)
@@ -1449,21 +1501,10 @@
       (knowable-bind (on-rider-and-m-knowable /list rider /nothing)
       /dissectfn (list rider m)
       /expect m (just v) (known /list rider /ladder-empty)
-      ; TODO FORWARD: This use of `any-dynamic-type` is a forward
-      ; reference. See if we can untangle it.
-      /knowable-bind
-        (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
-          (sequence-first
-            (dynamic-type-get-custom-gloss-key-reports
-              (any-dynamic-type)
-              k)))
+      /knowable-bind (ladder-key-get-tagged-glossesque-sys-knowable k)
       /fn tgs
       /w- gs
         (tagged-glossesque-sys-get-glossesque-sys-for-ladder gss tgs)
-      /knowable-bind
-        (tagged-glossesque-sys-inhabitant?-knowable tgs k)
-      /fn k-inhabits?
-      /expect k-inhabits? #t (unknown)
       /w- then (glossesque-sys-glossesque-union-of-zero gs)
       /knowable-bind
         (glossesque-sys-glossesque-set-maybe-knowable
@@ -5743,6 +5784,7 @@
         (uninformative-custom-gloss-key-reports)
       /w- equal-always-indistinct-tgs-k
         (known /make-tagged-glossesque-sys gss
+          #:equal-always-free-vars (inhabitant?)
           inhabitant?
           (equal-always-indistinct-from-list-injection-glossesque-sys
             #:glossesque-summary-sys gss
@@ -5750,6 +5792,7 @@
             #:->->list ->->list))
       /w- equal-always-distinct-tgs-k
         (known /make-tagged-glossesque-sys gss
+          #:equal-always-free-vars (inhabitant?)
           inhabitant?
           (equal-always-from-list-injection-glossesque-sys
             #:glossesque-summary-sys gss
@@ -5761,11 +5804,13 @@
           equal-always-indistinct-tgs-k)
       /w- chaperone=-indistinct-tgs-k
         (known /make-tagged-glossesque-sys gss
+          #:equal-always-free-vars (inhabitant?)
           inhabitant?
           (chaperone=-indistinct-copiable-glossesque-sys
             #:glossesque-summary-sys gss #:copy copy))
       /w- chaperone=-distinct-tgs-k
         (known /make-tagged-glossesque-sys gss
+          #:equal-always-free-vars (inhabitant?)
           inhabitant?
           (chaperone=-copiable-glossesque-sys
             #:glossesque-summary-sys gss #:copy copy))
@@ -6304,21 +6349,32 @@
       /w- distinct-0-tgs-k
         (if eq-matters?
           (known /make-tagged-glossesque-sys gss
-            ; TODO SMOOSH: See if we can encompass a wider range of
-            ; inhabitants with this, as an optimization.
+            #:equal-always-free-vars (inhabitant?)
+            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
+            ; a wider range of inhabitants with this, as an
+            ; optimization.
             inhabitant?
             (eq-atom-glossesque-sys gss))
           (known /make-tagged-glossesque-sys gss
+            #:equal-always-free-vars (inhabitant?)
+            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
+            ; a wider range of inhabitants with this, as an
+            ; optimization.
             inhabitant?
             (equal-always-atom-glossesque-sys gss)))
       /w- distinct-1+-tgs-k
         (if (or eq-matters? ignore-chaperones?)
           distinct-0-tgs-k
           (known /make-tagged-glossesque-sys gss
+            #:equal-always-free-vars (inhabitant?)
+            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
+            ; a wider range of inhabitants with this, as an
+            ; optimization.
             inhabitant?
             (chaperone=-atom-glossesque-sys gss)))
       /w- indistinct-0-tgs-k
         (known /make-tagged-glossesque-sys gss
+          #:equal-always-free-vars (inhabitant?)
           inhabitant?
           (if eq-matters?
             (eq-indistinct-atom-glossesque-sys gss)
@@ -6327,6 +6383,7 @@
         (if (or eq-matters? ignore-chaperones?)
           indistinct-0-tgs-k
           (known /make-tagged-glossesque-sys gss
+            #:equal-always-free-vars (inhabitant?)
             inhabitant?
             (chaperone=-indistinct-atom-glossesque-sys gss)))
       /if (and known-distinct? known-discrete?)
@@ -6568,7 +6625,7 @@
       )
     (trivial)))
 
-(define/own-contract (base-indistinct-literal? v)
+(define/own-contract (base-unidentifiable-literal? v)
   (-> any/c boolean?)
   (or
     (nan-number? v)
@@ -6580,8 +6637,8 @@
 ;   <=, >=, path-related, join, meet:
 ;     Unknown.
 ;   ==:
-;     If neither operand is a `base-indistinct-literal?` value, then
-;     unknown.
+;     If neither operand is a `base-unidentifiable-literal?` value,
+;     then unknown.
 ;     
 ;     If either operand is a `base-non-literal?` value, then a known
 ;     nothing.
@@ -6594,9 +6651,9 @@
 ;     Same as the description of level 0 == as a check.
 ;
 (define-imitation-simple-struct
-  (base-indistinct-literal-dynamic-type?)
-  base-indistinct-literal-dynamic-type
-  'base-indistinct-literal-dynamic-type (current-inspector)
+  (base-unidentifiable-literal-dynamic-type?)
+  base-unidentifiable-literal-dynamic-type
+  'base-unidentifiable-literal-dynamic-type (current-inspector)
   (auto-write)
   
   (#:prop
@@ -6606,8 +6663,8 @@
       #:inhabitant?
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal base-indistinct-literal? /fn v
-        (base-non-literal? v))
+      (knowable-predicate-by-appraisal base-unidentifiable-literal?
+        (fn v /base-non-literal? v))
       
       )
     (trivial)))
@@ -6963,18 +7020,22 @@
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (known /make-tagged-glossesque-sys gss
+                #:equal-always-free-vars (inhabitant?)
                 inhabitant?
-                (non-nan-number-glossesque-sys)))
+                (non-nan-number-glossesque-sys gss)))
             #:on-path-related-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (if (zero? /imag-part a)
                 (known /make-tagged-glossesque-sys gss
+                  #:equal-always-free-vars (inhabitant?)
                   (makeshift-knowable-predicate /fn v
                     (knowable-map (accepts?-knowable inhabitant? v)
                     /fn v-inhabits?
                       (and v-inhabits? (zero? /imag-part v))))
                   (terminal-glossesque-sys gss))
-                (known /make-tagged-glossesque-sys gss
+                (w- a (normalize-non-nan-number a)
+                /known /make-tagged-glossesque-sys gss
+                  #:equal-always-free-vars (inhabitant? a)
                   (makeshift-knowable-predicate /fn v
                     (knowable-map (accepts?-knowable inhabitant? v)
                     /fn v-inhabits?
@@ -6983,6 +7044,10 @@
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
             (known /make-tagged-glossesque-sys gss
+              #:equal-always-free-vars (inhabitant?)
+              ; TODO SMOOSH COMMON GLOSSESQUES: See if we can
+              ; encompass a wider range of inhabitants with this, as
+              ; an optimization.
               inhabitant?
               (equal-always-atom-glossesque-sys gss)))))
       
@@ -7142,6 +7207,10 @@
         /constant-custom-gloss-key-reports
           #:tagged-glossesque-sys-knowable
           (known /make-tagged-glossesque-sys gss
+            #:equal-always-free-vars (inhabitant?)
+            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
+            ; a wider range of inhabitants with this, as an
+            ; optimization.
             inhabitant?
             (equal-always-atom-glossesque-sys gss))))
       
@@ -7551,8 +7620,8 @@
     #:known-distinct? #f
     (list
       (list
-        base-indistinct-literal?
-        (fn any-dt /base-indistinct-literal-dynamic-type))
+        base-unidentifiable-literal?
+        (fn any-dt /base-unidentifiable-literal-dynamic-type))
       (list boolean? (fn any-dt /boolean-dynamic-type))
       (list char? (fn any-dt /char-dynamic-type))
       (list
@@ -7949,11 +8018,10 @@
             #:on-tagged-glossesque-sys-knowable
             (derive-tagged-glossesque-sys inhabitant? gs
               (makeshift-knowable-predicate /fn v
-                (expect v (path-related-wrapper v) (unknown)
+                (expect v (known v) (unknown)
                 /accepts?-knowable inhabitant? v))
               (glossesque-sys-map-key gs #:granted-key-knowable /fn k
-                (expect k (path-related-wrapper k) (unknown)
-                /known k))))
+                k)))
           (sequence* report-0 report-1 report-2+)
         /w- tgs-k-uninhabited-by-unknown
           (derive-tagged-glossesque-sys inhabitant? gs
