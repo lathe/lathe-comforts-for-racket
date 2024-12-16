@@ -92,6 +92,7 @@
   make-tagged-glossesque-sys-impl)
 (provide
   lift
+  lift-struct
   make-tagged-glossesque-sys
   derive-tagged-glossesque-sys)
 (provide /own-contract-out
@@ -111,6 +112,7 @@
   custom-gloss-key-reports-zip*-map
   constant-custom-gloss-key-report
   constant-custom-gloss-key-reports
+  make-roughly-constant-custom-gloss-key-report
   path-related-wrapper?
   path-related-wrapper-value)
 (provide
@@ -206,6 +208,11 @@
   constant-smoosh-and-comparison-of-two-reports
   constant-smoosh-equal-hash-code-support-report
   constant-smoosh-equal-hash-code-support-reports
+  eq-wrapper?
+  eq-wrapper-value)
+(provide
+  eq-wrapper)
+(provide /own-contract-out
   equal-always-wrapper?
   equal-always-wrapper-value)
 (provide
@@ -243,6 +250,7 @@
   chaperone=-indistinct-copiable-glossesque-sys
   normalized-glossesque-sys
   terminal-glossesque-sys
+  identifiable-object-tagged-glossesque-sys
   make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
   make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
@@ -495,14 +503,6 @@
   (knowable-map
     (glossesque-sys-rider-and-glossesque-update-maybe-knowable
       gs (list (trivial) g) k
-      (fn state-and-old-m
-        (expect state-and-old-m (list (trivial) old-m)
-          (raise-arguments-error 'glossesque-sys-glossesque-set-maybe-knowable
-            "internal error: state wasn't (trivial)"
-            "gs" gs
-            "state-and-old-m" state-and-old-m)
-        /known /list (trivial) m))
-      #;
       (dissectfn (list (trivial) old-m) (known /list (trivial) m)))
   /dissectfn (list (trivial) g)
     g))
@@ -846,6 +846,10 @@
     #:granted-glossesque
     (fn g-m
       (mat g-m (just g) g
+      ; TODO: Remove this line when we're sure nothing invokes this on
+      ; a non-`maybe?` value by accident. Seems like we should use a
+      ; contract to enforce this kind of thing.
+      /dissect g-m (nothing)
       /glossesque-sys-glossesque-union-of-zero original))
     #:on-glossesque
     (fn g
@@ -857,6 +861,10 @@
   tagged-glossesque-sys? tagged-glossesque-sys-impl?
   (#:method tagged-glossesque-sys-inhabitant?-knowable (#:this) ())
   (#:method tagged-glossesque-sys-get-glossesque-sys () (#:this))
+  (#:method
+    tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+    (#:this)
+    ())
   prop:tagged-glossesque-sys
   make-tagged-glossesque-sys-impl-from-various-unkeyworded
   'tagged-glossesque-sys 'tagged-glossesque-sys-impl (list))
@@ -866,13 +874,22 @@
   (-> tagged-glossesque-sys? any/c (knowable/c boolean?)))
 (ascribe-own-contract tagged-glossesque-sys-get-glossesque-sys
   (-> glossesque-summary-sys? tagged-glossesque-sys? glossesque-sys?))
+(ascribe-own-contract
+  tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+  (-> tagged-glossesque-sys? any/c
+    (knowable/c (maybe/c (-> any/c any/c)))))
 (ascribe-own-contract prop:tagged-glossesque-sys
   (struct-type-property/c tagged-glossesque-sys-impl?))
 
 (define/own-contract
   (make-tagged-glossesque-sys-impl
     #:inhabitant?-knowable inhabitant?-knowable
-    #:get-glossesque-sys get-glossesque-sys)
+    #:get-glossesque-sys get-glossesque-sys
+    
+    #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+    inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+    
+    )
   (->
     
     #:inhabitant?-knowable
@@ -882,14 +899,31 @@
     (-> glossesque-summary-sys? tagged-glossesque-sys?
       glossesque-sys?)
     
+    #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+    (-> tagged-glossesque-sys? any/c
+      (knowable/c (maybe/c (-> any/c any/c))))
+    
     glossesque-summary-sys-impl?)
   (make-tagged-glossesque-sys-impl-from-various-unkeyworded
     inhabitant?-knowable
-    get-glossesque-sys))
+    get-glossesque-sys
+    inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable))
 
 (define-syntax (lift stx)
   (syntax-parse stx / (_ result:expr)
   /syntax-local-lift-expression #'result))
+
+(define-syntax (lift-struct stx)
+  (syntax-parse stx / (_ field:expr)
+    #'(w- lifted-struct
+        (lift /let ()
+          (define-imitation-simple-struct
+            (lifted-struct? lifted-struct-field)
+            lifted-struct 'lifted-struct (current-inspector)
+            (auto-write)
+            (auto-equal))
+          lifted-struct)
+      /lifted-struct field)))
 
 (define-syntax (make-tagged-glossesque-sys stx)
   (syntax-parse stx
@@ -898,9 +932,23 @@
           inhabitant?
           gs)]
     [
-      (_ gss:id #:equal-always-free-vars (v ...)
+      (_ gss:id #:equal-always-free-vars (v:id ...)
         inhabitant?:expr
         gs:expr)
+      #'(make-tagged-glossesque-sys gss #:equal-always-free-vars (v ...)
+          inhabitant?
+          gs
+          
+          #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+          (fn inhabitant
+            (known /nothing)))]
+    [
+      (_ gss:id #:equal-always-free-vars (v:id ...)
+        inhabitant?:expr
+        gs:expr
+        
+        #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable:expr)
       
       #:with (made-tagged-glossesque-sys-v ...)
       (generate-temporaries #'(v ...))
@@ -947,25 +995,53 @@
                     (dissect tgs (made-tagged-glossesque-sys v ...)
                       gs))
                   
+                  #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+                  (fn tgs inhabitant
+                    (
+                      (dissect tgs (made-tagged-glossesque-sys v ...)
+                        inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable)
+                      inhabitant))
+                  
                   ))
               
               )
             made-tagged-glossesque-sys)
         /made-tagged-glossesque-sys v ...)]))
 
-(define-syntax-parse-rule
-  (derive-tagged-glossesque-sys
-    orig-inhabitant?:id gs:id new-inhabitant?:expr new-gs:expr)
-  (fn tgs-k
-    (knowable-map tgs-k
-      (fn tgs
-        (make-tagged-glossesque-sys gss #:equal-always-free-vars (tgs)
-          (w- orig-inhabitant?
-            (makeshift-knowable-predicate /fn v
-              (tagged-glossesque-sys-inhabitant?-knowable tgs v))
-            new-inhabitant?)
-          (w- gs (tagged-glossesque-sys-get-glossesque-sys gss tgs)
-            new-gs))))))
+(define-syntax (derive-tagged-glossesque-sys stx)
+  (syntax-parse stx
+    [ (_ orig-inhabitant?:id gs:id new-inhabitant?:expr new-gs:expr)
+      #'(derive-tagged-glossesque-sys orig-inhabitant? gs
+          new-inhabitant?
+          new-gs
+          
+          #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+          inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+          inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable)]
+    [
+      (_ orig-inhabitant?:id gs:id new-inhabitant?:expr new-gs:expr
+        
+        #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        orig-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable:id
+        new-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable:expr)
+      #'(fn tgs-k
+          (knowable-map tgs-k
+            (fn tgs
+              (make-tagged-glossesque-sys gss #:equal-always-free-vars (tgs)
+                (w- orig-inhabitant?
+                  (makeshift-knowable-predicate /fn v
+                    (tagged-glossesque-sys-inhabitant?-knowable tgs v))
+                  new-inhabitant?)
+                (w- gs (tagged-glossesque-sys-get-glossesque-sys gss tgs)
+                  new-gs)
+                
+                #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+                (w-
+                  orig-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+                  (fn inhabitant
+                    (tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+                      tgs inhabitant))
+                  new-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable)))))]))
 
 (define/own-contract (tagged-glossesque-sys=? a b)
   (-> tagged-glossesque-sys? tagged-glossesque-sys? boolean?)
@@ -1292,16 +1368,46 @@
 
 (define/own-contract
   (constant-custom-gloss-key-report
-    #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable)
-  (->
-    #:tagged-glossesque-sys-knowable
-    (knowable/c tagged-glossesque-sys?)
+    #:tagged-glossesque-sys-knowable [tagged-glossesque-sys-knowable #f]
+    
+    #:==-tagged-glossesque-sys-knowable
+    [==-tagged-glossesque-sys-knowable
+      (or tagged-glossesque-sys-knowable
+        (raise-arguments-error 'constant-custom-gloss-key-report
+          "expected either #:tagged-glossesque-sys-knowable or #:==-tagged-glossesque-sys-knowable to be provided"))]
+    
+    #:path-related-tagged-glossesque-sys-knowable
+    [ path-related-tagged-glossesque-sys-knowable
+      (or tagged-glossesque-sys-knowable
+        (raise-arguments-error 'constant-custom-gloss-key-report
+          "expected either #:tagged-glossesque-sys-knowable or #:path-related-tagged-glossesque-sys-knowable to be provided"))]
+    
+    )
+  (->* ()
+    (
+      #:tagged-glossesque-sys-knowable
+      (or/c #f (knowable/c tagged-glossesque-sys?))
+      
+      #:==-tagged-glossesque-sys-knowable
+      (knowable/c tagged-glossesque-sys?)
+      
+      #:path-related-tagged-glossesque-sys-knowable
+      (knowable/c tagged-glossesque-sys?)
+      
+      )
     
     custom-gloss-key-report?)
   (custom-gloss-key-report-zip*-map (list)
-    #:on-tagged-glossesque-sys-knowable
+    
+    #:on-==-tagged-glossesque-sys-knowable
     (dissectfn (list)
-      tagged-glossesque-sys-knowable)))
+      ==-tagged-glossesque-sys-knowable)
+    
+    #:on-path-related-tagged-glossesque-sys-knowable
+    (dissectfn (list)
+      path-related-tagged-glossesque-sys-knowable)
+    
+    ))
 
 (define/own-contract
   (constant-custom-gloss-key-reports
@@ -1313,6 +1419,28 @@
     (endless-sequence/c custom-gloss-key-report?))
   (in-cycle /list /constant-custom-gloss-key-report
     #:tagged-glossesque-sys-knowable tagged-glossesque-sys-knowable))
+
+(define/own-contract
+  (make-roughly-constant-custom-gloss-key-report body)
+  (->
+    (->
+      (-> custom-gloss-key-report?
+        (knowable/c tagged-glossesque-sys?))
+      (knowable/c tagged-glossesque-sys?))
+    custom-gloss-key-report?)
+  (constant-custom-gloss-key-report
+    
+    #:==-tagged-glossesque-sys-knowable
+    (body /fn report
+      (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+        report))
+    
+    #:path-related-tagged-glossesque-sys-knowable
+    (body /fn report
+      (custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
+        report))
+    
+    ))
 
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
@@ -1887,7 +2015,7 @@
             /known /list
               (summarized
                 (glossesque-summary-sys-summary-plus
-                  summary entry-summary)
+                  gss summary entry-summary)
                 (on-keep state entry-summary))
               (just v)))
         /expect a-v-m (just a-v)
@@ -2015,7 +2143,8 @@
         (glossesque-summary-sys-summarize-one-entry gss k v)
       /w- state (on-keep state entry-summary)
       /w- summary
-        (glossesque-summary-sys-summary-plus summary entry-summary)
+        (glossesque-summary-sys-summary-plus
+          gss summary entry-summary)
       /then state summary result))
   /w-loop next
     state state
@@ -3802,6 +3931,27 @@
   (in-cycle /list /constant-smoosh-equal-hash-code-support-report
     hash-code-promise))
 
+(define-imitation-simple-struct (eq-wrapper? eq-wrapper-value)
+  eq-wrapper 'eq-wrapper (current-inspector) (auto-write)
+  ; We use a comparison that consistently compares the value using
+  ; `eq?`.
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (dissect a (eq-wrapper a-value)
+      /dissect b (eq-wrapper b-value)
+      /eq? a-value b-value))
+    
+    (define (hash-mode-proc v recur now?)
+      (dissect v (eq-wrapper v-value)
+      /hash-code-combine
+        (equal-always-hash-code eq-wrapper?)
+        (eq-hash-code v-value)))
+    
+    ))
+(ascribe-own-contract eq-wrapper? (-> any/c boolean?))
+(ascribe-own-contract eq-wrapper-value (-> eq-wrapper? any/c))
+
 (define-imitation-simple-struct
   (equal-always-wrapper? equal-always-wrapper-value)
   equal-always-wrapper
@@ -4031,7 +4181,7 @@
     (summarized-assoc-list/c any/c any/c any/c))
   (dissect rest (summarized rest-summary rest-unsummarized)
   /summarized
-    (glossesque-summary-sys-summary-plus
+    (glossesque-summary-sys-summary-plus gss
       (glossesque-summary-sys-summarize-one-entry gss k v)
       rest-summary)
     (cons (cons k v) rest)))
@@ -4251,7 +4401,8 @@
         (forwarding-glossesque-summary-sys gss
           #:summarize-one-entry
           (fn k v
-            (glossesque-sys-glossesque-summarize bin-gs v)))))
+            (glossesque-sys-glossesque-summarize bin-gs
+              (just v))))))
   /make-glossesque-sys-impl
     
     #:get-summary-sys (fn gs /get-summary-sys gs)
@@ -4962,6 +5113,47 @@
 (define/own-contract (terminal-glossesque-sys gss)
   (-> glossesque-summary-sys? glossesque-sys?)
   (normalized-glossesque-sys gss /fn k #f))
+
+(define/own-contract
+  (identifiable-object-tagged-glossesque-sys
+    cgkr-get-tgs-k guard-wrapper)
+  (->
+    (-> (endless-sequence/c custom-gloss-key-report?)
+      (knowable/c tagged-glossesque-sys?))
+    (-> any/c any/c)
+    tagged-glossesque-sys?)
+  (make-tagged-glossesque-sys gss
+    #:equal-always-free-vars (cgkr-get-tgs-k guard-wrapper)
+    (makeshift-knowable-predicate /fn v
+      (knowable-bind
+        (cgkr-get-tgs-k
+          (dynamic-type-get-custom-gloss-key-reports
+            (any-dynamic-type)
+            v))
+      /fn tgs
+      /knowable-map
+        (tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+          tgs v)
+      /fn guard-wrapper-m
+        (just? guard-wrapper-m)))
+    (glossesque-sys-map-key (chaperone=-atom-glossesque-sys gss)
+      #:granted-key
+      (fn k
+        (dissect
+          (knowable-bind
+            (cgkr-get-tgs-k
+              (dynamic-type-get-custom-gloss-key-reports
+                (any-dynamic-type)
+                k))
+          /fn tgs
+          /tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+            tgs k)
+          (known /just guard-wrapper)
+        /guard-wrapper k)))
+    
+    #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+    (fn inhabitant
+      (known /just /fn inhabitant /guard-wrapper inhabitant))))
 
 ; Given two lists, this checks whether they have the same length and
 ; `eq?` elements.
@@ -6329,14 +6521,21 @@
   (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
     #:known-reflexive? [known-reflexive? #t]
     #:eq-matters? [eq-matters? #f]
-    #:ignore-chaperones? [ignore-chaperones? eq-matters?]
+    
+    #:ignore-chaperones?
+    [ignore-chaperones? (or (not known-reflexive?) eq-matters?)]
+    
+    #:mutable? [mutable? eq-matters?]
     #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?)
   (->*
     (#:inhabitant? (-> any/c boolean?))
     (
+      #:known-reflexive? boolean?
+      #:eq-matters? boolean?
       #:ignore-chaperones? boolean?
+      #:mutable? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?)
     expressly-custom-gloss-key-dynamic-type-impl?)
@@ -6346,67 +6545,82 @@
     (fn self a
       (expect (and known-reflexive? (inhabitant? a)) #t
         (uninformative-custom-gloss-key-reports)
-      /w- distinct-0-tgs-k
-        (if eq-matters?
+      /w- make-distinct
+        (fn info-level
+          (if mutable?
+            (w- guard-wrapper
+              (if eq-matters?
+                (fn inhabitant /lift-struct /eq-wrapper inhabitant)
+                (fn inhabitant
+                  (lift-struct /equal-always-wrapper inhabitant)))
+            /make-roughly-constant-custom-gloss-key-report
+              (fn cgkr-get-tgs-k
+                (known /identifiable-object-tagged-glossesque-sys
+                  (fn reports
+                    (cgkr-get-tgs-k /sequence-ref reports info-level))
+                  guard-wrapper)))
+            (constant-custom-gloss-key-report
+              #:tagged-glossesque-sys-knowable
+              (if eq-matters?
+                (known /make-tagged-glossesque-sys gss
+                  #:equal-always-free-vars (inhabitant?)
+                  inhabitant?
+                  (eq-atom-glossesque-sys gss))
+                (known /make-tagged-glossesque-sys gss
+                  #:equal-always-free-vars (inhabitant?)
+                  inhabitant?
+                  (equal-always-atom-glossesque-sys gss))))))
+      /w- distinct-0-cgkr (make-distinct 0)
+      /w- distinct-1+-cgkrs
+        (sequence-map
+          (fn i
+            (w- info-level (add1 i)
+            /if (or eq-matters? ignore-chaperones?)
+              (make-distinct info-level)
+            /if mutable?
+              (make-roughly-constant-custom-gloss-key-report
+                (fn cgkr-get-tgs-k
+                  (known /identifiable-object-tagged-glossesque-sys
+                    (fn reports
+                      (cgkr-get-tgs-k
+                        (sequence-ref reports info-level)))
+                    (fn inhabitant /lift-struct inhabitant))))
+              (constant-custom-gloss-key-report
+                #:tagged-glossesque-sys-knowable
+                (known /make-tagged-glossesque-sys gss
+                  #:equal-always-free-vars (inhabitant?)
+                  inhabitant?
+                  (chaperone=-indistinct-atom-glossesque-sys gss)))))
+          (in-naturals))
+      /w- indistinct-0-cgkr
+        (constant-custom-gloss-key-report
+          #:tagged-glossesque-sys-knowable
           (known /make-tagged-glossesque-sys gss
             #:equal-always-free-vars (inhabitant?)
-            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
-            ; a wider range of inhabitants with this, as an
-            ; optimization.
             inhabitant?
-            (eq-atom-glossesque-sys gss))
-          (known /make-tagged-glossesque-sys gss
-            #:equal-always-free-vars (inhabitant?)
-            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
-            ; a wider range of inhabitants with this, as an
-            ; optimization.
-            inhabitant?
-            (equal-always-atom-glossesque-sys gss)))
-      /w- distinct-1+-tgs-k
+            (if eq-matters?
+              (eq-indistinct-atom-glossesque-sys gss)
+              (equal-always-indistinct-atom-glossesque-sys gss))))
+      /w- indistinct-1+-cgkrs
         (if (or eq-matters? ignore-chaperones?)
-          distinct-0-tgs-k
-          (known /make-tagged-glossesque-sys gss
-            #:equal-always-free-vars (inhabitant?)
-            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
-            ; a wider range of inhabitants with this, as an
-            ; optimization.
-            inhabitant?
-            (chaperone=-atom-glossesque-sys gss)))
-      /w- indistinct-0-tgs-k
-        (known /make-tagged-glossesque-sys gss
-          #:equal-always-free-vars (inhabitant?)
-          inhabitant?
-          (if eq-matters?
-            (eq-indistinct-atom-glossesque-sys gss)
-            (equal-always-indistinct-atom-glossesque-sys gss)))
-      /w- indistinct-1+-tgs-k
-        (if (or eq-matters? ignore-chaperones?)
-          indistinct-0-tgs-k
-          (known /make-tagged-glossesque-sys gss
-            #:equal-always-free-vars (inhabitant?)
-            inhabitant?
-            (chaperone=-indistinct-atom-glossesque-sys gss)))
+          (in-cycle /list indistinct-0-cgkr)
+          (constant-custom-gloss-key-reports
+            #:tagged-glossesque-sys-knowable
+            (known /make-tagged-glossesque-sys gss
+              #:equal-always-free-vars (inhabitant?)
+              inhabitant?
+              (chaperone=-indistinct-atom-glossesque-sys gss))))
       /if (and known-distinct? known-discrete?)
-        (sequence*
-          (constant-custom-gloss-key-report
-            #:tagged-glossesque-sys-knowable distinct-0-tgs-k)
-          (constant-custom-gloss-key-reports
-            #:tagged-glossesque-sys-knowable distinct-1+-tgs-k))
+        (sequence* distinct-0-cgkr distinct-1+-cgkrs)
       /if (not known-distinct?)
-        (sequence*
-          (constant-custom-gloss-key-report
-            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
-          (constant-custom-gloss-key-reports
-            #:tagged-glossesque-sys-knowable indistinct-1+-tgs-k))
+        (sequence* indistinct-0-cgkr indistinct-1+-cgkrs)
       /sequence*
-        (custom-gloss-key-report-map
-          (constant-custom-gloss-key-report
-            #:tagged-glossesque-sys-knowable indistinct-0-tgs-k)
+        (custom-gloss-key-report-map indistinct-0-cgkr
           #:on-==-tagged-glossesque-sys-knowable
           (fn tgs-k
-            distinct-0-tgs-k))
-        (constant-custom-gloss-key-reports
-          #:tagged-glossesque-sys-knowable distinct-1+-tgs-k)))
+            (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+              distinct-0-cgkr)))
+        distinct-1+-cgkrs))
     
     ))
 
@@ -6418,6 +6632,7 @@
     #:ignore-chaperones?
     [ignore-chaperones? (or (not known-reflexive?) eq-matters?)]
     
+    #:mutable? [mutable? eq-matters?]
     #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
     #:inhabitant? inhabitant?
@@ -6446,6 +6661,7 @@
       #:known-reflexive? boolean?
       #:eq-matters? boolean?
       #:ignore-chaperones? boolean?
+      #:mutable? boolean?
       #:known-distinct? boolean?
       #:known-discrete? boolean?
       #:==? (-> any/c any/c boolean?)
@@ -6489,6 +6705,7 @@
               #:known-reflexive? known-reflexive?
               #:eq-matters? eq-matters?
               #:ignore-chaperones? ignore-chaperones?
+              #:mutable? mutable?
               #:known-distinct? known-distinct?
               #:known-discrete? known-discrete?
               #:inhabitant? inhabitant?))))))
@@ -7045,9 +7262,6 @@
             #:tagged-glossesque-sys-knowable
             (known /make-tagged-glossesque-sys gss
               #:equal-always-free-vars (inhabitant?)
-              ; TODO SMOOSH COMMON GLOSSESQUES: See if we can
-              ; encompass a wider range of inhabitants with this, as
-              ; an optimization.
               inhabitant?
               (equal-always-atom-glossesque-sys gss)))))
       
@@ -7208,9 +7422,6 @@
           #:tagged-glossesque-sys-knowable
           (known /make-tagged-glossesque-sys gss
             #:equal-always-free-vars (inhabitant?)
-            ; TODO SMOOSH COMMON GLOSSESQUES: See if we can encompass
-            ; a wider range of inhabitants with this, as an
-            ; optimization.
             inhabitant?
             (equal-always-atom-glossesque-sys gss))))
       
@@ -7343,6 +7554,7 @@
   
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
+      #:mutable? #t
       
       #:inhabitant?
       ; TODO FORWARD: This use of `base-readable?` is a forward
@@ -8021,7 +8233,12 @@
                 (expect v (known v) (unknown)
                 /accepts?-knowable inhabitant? v))
               (glossesque-sys-map-key gs #:granted-key-knowable /fn k
-                k)))
+                k)
+              
+              #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+              inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+              (fn inhabitant
+                (known /nothing))))
           (sequence* report-0 report-1 report-2+)
         /w- tgs-k-uninhabited-by-unknown
           (derive-tagged-glossesque-sys inhabitant? gs
@@ -8041,7 +8258,7 @@
             tgs-k-uninhabited-by-unknown
             
             )
-          (custom-gloss-key-reports-map report-1
+          (custom-gloss-key-reports-map report-2+
             #:on-tagged-glossesque-sys-knowable
             tgs-k-uninhabited-by-unknown)))
       
@@ -8144,7 +8361,17 @@
           /accepts?-knowable inhabitant? v))
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (path-related-wrapper k) (unknown)
-          /known k))))
+          /known k))
+        
+        #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        (fn inhabitant
+          (knowable-map
+            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable inhabitant)
+          /fn guard-wrapper-m
+            (maybe-map guard-wrapper-m /fn guard-wrapper
+              (compose guard-wrapper /fn v
+                (path-related-wrapper v)))))))
     (sequence* report-0 report-1+)
   /sequence*
     (constant-custom-gloss-key-report
@@ -8355,7 +8582,17 @@
           /accepts?-knowable inhabitant? v))
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (info-wrapper k) (unknown)
-          /known k))))
+          /known k))
+        
+        #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        (fn inhabitant
+          (knowable-map
+            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable inhabitant)
+          /fn guard-wrapper-m
+            (maybe-map guard-wrapper-m /fn guard-wrapper
+              (compose guard-wrapper /fn v
+                (info-wrapper v)))))))
     (sequence* report-0 report-1+)
     report-1+))
 
@@ -8555,6 +8792,37 @@
 
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
+;     If the operands are not both `eq-wrapper?` values, then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, unknown.
+;   ==:
+;     If the operands are not both `eq-wrapper?` values, then unknown.
+;     
+;     Otherwise, if the operands are `equal-always?`, then the first
+;     operand.
+;     
+;     Otherwise, a known nothing.
+; Level 1+:
+;   path-related, join, meet, ==:
+;     Same as the description of level 0 ==.
+;   <=, >=:
+;     Same as the description of level 0 == as a check.
+;
+(define-imitation-simple-struct (eq-wrapper-dynamic-type?)
+  eq-wrapper-dynamic-type
+  'eq-wrapper-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop
+    (make-expressly-smooshable-bundle-property-for-atom
+      #:ignore-chaperones? #t
+      #:inhabitant? eq-wrapper?)
+    (trivial)))
+
+; Level 0:
+;   <=, >=, path-related, join, meet:
 ;     If the operands are not both `equal-always-wrapper?` values,
 ;     then unknown.
 ;     
@@ -8660,7 +8928,12 @@
       (indistinct-glossesque-sys
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (indistinct-wrapper k) (unknown)
-          /known k))))))
+          /known k)))
+      
+      #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+      inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+      (fn inhabitant
+        (known /nothing)))))
 
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -8787,6 +9060,7 @@
         info-wrapper?
         (fn any-dt /info-wrapper-dynamic-type any-dt))
       (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
+      (list eq-wrapper? (fn any-dt /eq-wrapper-dynamic-type))
       (list
         equal-always-wrapper?
         (fn any-dt /equal-always-wrapper-dynamic-type))
@@ -8896,8 +9170,6 @@
 ;       mutable hash tables, all equatable and distinguishable in a
 ;       way consistent with `equal-always?` and information-ordered in
 ;       a way consistent with `chaperone-of?`.
-;       (TODO SMOOSH COMMON GLOSSESQUES: Is there a way we can define
-;       these to be non-overlapping even with user-defined types?)
 ;
 ;     - (Done) Flvectors and fxvectors, all equatable and
 ;       distinguishable in a way consistent with `eq?`. (TODO: As of
@@ -9049,6 +9321,10 @@
 ;       known-different sets of keys according to smoosh-ordering are
 ;       known to be distinct from each other.
 ;
+;     - (Done) `eq-wrapper?` values, all equatable and distinguishable
+;       with each other according to the `eq?` behavior of their
+;       wrapped value.
+;
 ;     - (Done) `equal-always-wrapper?` values, all equatable and
 ;       distinguishable with each other according to the
 ;       `equal-always?` behavior of their wrapped value.
@@ -9121,44 +9397,45 @@
 ; comparison results are unknown, we offer `gloss?` values as our
 ; recommended replacement for `hash?` values.
 
-; TODO SMOOSH COMMON GLOSSESQUES: Here's a plan:
+; TODO SMOOSH: Here's a plan:
 ;
-;   - Make an interface
-;     `expressly-potentially-an-identifiable-object-dynamic-type?`
-;     with a "method"
-;     `(dynamic-type-value-identifiable-object-get-guard-wrapper-maybe-knowable-promise-sequence dt v)`
-;     returning an info-level-indexed endless sequence of promises
-;     that default to `(known (nothing))`. A result should only be
-;     `(known (just guard-wrapper))` for some `guard-wrapper` if the
-;     value's corresponding `tagged-glossesque-sys?` (for both
-;     `path-related` and `==`) is the corresponding one described
-;     next. The value of `guard-wrapper` is a one-argument procedure
-;     that produces the value that will be compared for
-;     `equal-always?` on behalf of the original.
+;   - (Done) Add a method
+;     `(tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable tgs v)`
+;     to `tagged-glossesque-sys?` returning a result that most
+;     instances will define to be `(known (nothing))` (meaning that
+;     this inhabitant is positively known to be distinct from any
+;     value of any type if that value has object identity). The result
+;     should only be `(known (just guard-wrapper))` for some
+;     `guard-wrapper` if the `tagged-glossesque-sys?` is the one
+;     described next or a `path-related-wrapper`- or
+;     `info-wrapper`-adding adjustment thereof. The value of
+;     `guard-wrapper` is a one-argument procedure that produces the
+;     value that will be compared for `equal-always?` on behalf of the
+;     original.
 ;
-;   - Make a standard `tagged-glossesque-sys?` at each info level
-;     index that accepts any value where
-;     `dynamic-type-value-identifiable-object-get-guard-wrapper-maybe-knowable-promise-sequence`
-;     is `(known (just guard-wrapper))` at that index and positively
-;     rejects any value for which it's `(known (nothing))`. (Other
-;     values have unknown inhabitant-ness.) It compares operands by
-;     passing them through their respective `guard-wrapper`s to obtain
-;     representatives and then calling `equal-always?` on the
-;     representatives, returning a known nothing if that comparison
-;     results in `#f`. If the comparison results in `#t`, then it goes
-;     on to compare the representatives using `atom-chaperone=?`,
-;     returning the first operand if that result is `#t`. Otherwise,
-;     it returns an unknown result.
+;   - (Done) Make a standard `tagged-glossesque-sys?` at each info
+;     level index and each choice of "==" or "path-related" that
+;     accepts any value where
+;     `tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable`
+;     is `(known (just guard-wrapper))` at that index and choice, and
+;     that positively rejects any value for which it's
+;     `(known (nothing))`. (Other values have unknown
+;     inhabitant-ness.) It compares operands by passing them through
+;     their respective `guard-wrapper`s to obtain representatives and
+;     then calling `equal-always?` on the representatives, returning a
+;     known nothing if that comparison results in `#f`. If the
+;     comparison results in `#t`, then it goes on to compare the
+;     representatives using `atom-chaperone=?`, returning the first
+;     operand if that result is `#t`. Otherwise, it returns an unknown
+;     result.
 ;
-;   - Have the `flvector?` and `fxvector?` dynamic types instantiate
-;     `expressly-potentially-an-identifiable-object-dynamic-type?`
-;     with `(known (just (fn v (eq-wrapper v))))`, and define
-;     `eq-wrapper` appropriately. Have the other mutable object
-;     dynamic types instantiate it with
-;     `(known (just (fn v (equal-always-wrapper v))))` or
-;     `(known (just (fn v (box-immutable v))))`. Have all these
-;     dynamic types use the necessary `tagged-glossesque-sys?` at each
-;     index.
+;   - (Done) Have the `flvector?` and `fxvector?` dynamic types use
+;     `tagged-glossesque-sys?` values which implement
+;     `tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable`
+;     with `(known (just (fn v (lift-struct (eq-wrapper v)))))`. Have
+;     the other mutable object dynamic types instantiate it with
+;     `(known (just (fn v (lift-struct (equal-always-wrapper v)))))` or
+;     `(known (just (fn v (lift-struct v))))`.
 ;
 ;   - Make an interface
 ;     `expressly-potentially-an-s-expression-landmark-dynamic-type?`
@@ -9244,8 +9521,8 @@
 ; encouraging user code to inspect the structure of specific
 ; `typed-glossesque-sys?` objects to determine whether a key belongs
 ; to them, we've been designing special-purpose protocols like
-; `expressly-potentially-an-identifiable-object-dynamic-type?` that
-; allow either value (or either value's
+; `tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable`
+; that allow either value (or either value's
 ; `tagged-glossesque-sys-inhabitant?-knowable` check) to compute a
 ; fully specified result.
 ;

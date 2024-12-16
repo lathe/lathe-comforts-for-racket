@@ -4269,6 +4269,17 @@
 
 
 (check-equal?
+  (gloss-count (gloss #t 0.0))
+  1
+  "A `gloss?` value can be made that has precisely one key")
+
+(unless
+  (gloss-count (gloss #t 0.0 #f 0))
+  2
+  "A `gloss?` value can be made that has precisely two keys")
+
+
+(check-equal?
   (s= (gloss #f 0 #t 0.0) (gloss #f 0.0 #t 0))
   (known /just /known /gloss #f 0 #t 0.0)
   "Smoosh works on equal `gloss?` values")
