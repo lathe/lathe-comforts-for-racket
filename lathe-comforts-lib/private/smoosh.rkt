@@ -88,6 +88,7 @@
   tagged-glossesque-sys-impl?
   tagged-glossesque-sys-inhabitant?-knowable
   tagged-glossesque-sys-get-glossesque-sys
+  tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
   prop:tagged-glossesque-sys
   make-tagged-glossesque-sys-impl)
 (provide
@@ -127,6 +128,7 @@
   prop:expressly-custom-gloss-key-dynamic-type
   make-expressly-custom-gloss-key-dynamic-type-impl
   dynamic-type-get-custom-gloss-key-reports
+  known-identifiable-object-or-not?
   boolean-and-yknow-zip*
   gloss?
   list-map-foldl-knowable
@@ -189,6 +191,11 @@
   prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
   make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
   dynamic-type-get-smoosh-equal-hash-code-support-reports
+  expressly-potentially-an-s-expression-landmark-dynamic-type-impl?
+  prop:expressly-potentially-an-s-expression-landmark-dynamic-type
+  make-expressly-potentially-an-s-expression-landmark-dynamic-type-impl
+  dynamic-type-value-s-expression-landmark?-knowable
+  known-s-expression-landmark-or-not?
   smoosh-report-map
   smoosh-reports-map
   smoosh-report-zip*-map
@@ -1569,6 +1576,22 @@
   /uninformative-custom-gloss-key-reports))
 
 
+(define/own-contract (known-identifiable-object-or-not? v)
+  (-> any/c boolean?)
+  (known?
+    (knowable-bind
+      (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+        (sequence-first
+          (dynamic-type-get-custom-gloss-key-reports
+            ; TODO FORWARD: This use of `any-dynamic-type` is a
+            ; forward reference. See if we can untangle it.
+            (any-dynamic-type)
+            v)))
+    /fn tgs
+    /tagged-glossesque-sys-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+      tgs v)))
+
+
 (define-imitation-simple-struct (ladder-empty?) ladder-empty
   'ladder-empty (current-inspector) (auto-write))
 (define-imitation-simple-struct
@@ -2791,6 +2814,57 @@
     (expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-get-smoosh-equal-hash-code-support-reports
       a-dt a)
     (uninformative-smoosh-equal-hash-code-support-reports)))
+
+
+(define-imitation-simple-generics
+  expressly-potentially-an-s-expression-landmark-dynamic-type?
+  expressly-potentially-an-s-expression-landmark-dynamic-type-impl?
+  (#:method
+    expressly-potentially-an-s-expression-landmark-dynamic-type-value-s-expression-landmark?-knowable
+    (#:this)
+    ())
+  prop:expressly-potentially-an-s-expression-landmark-dynamic-type
+  make-expressly-potentially-an-s-expression-landmark-dynamic-type-impl-from-various-unkeyworded
+  'expressly-potentially-an-s-expression-landmark-dynamic-type
+  'expressly-potentially-an-s-expression-landmark-dynamic-type-impl
+  (list))
+(ascribe-own-contract
+  expressly-potentially-an-s-expression-landmark-dynamic-type-impl?
+  (-> any/c boolean?))
+(ascribe-own-contract
+  prop:expressly-potentially-an-s-expression-landmark-dynamic-type
+  (struct-type-property/c
+    expressly-potentially-an-s-expression-landmark-dynamic-type-impl?))
+
+(define/own-contract
+  (make-expressly-potentially-an-s-expression-landmark-dynamic-type-impl
+    #:value-s-expression-landmark?-knowable
+    value-s-expression-landmark?-knowable)
+  (->
+    #:value-s-expression-landmark?-knowable
+    (-> any/c any/c (knowable/c boolean?))
+    
+    expressly-potentially-an-s-expression-landmark-dynamic-type-impl?)
+  (make-expressly-potentially-an-s-expression-landmark-dynamic-type-impl-from-various-unkeyworded
+    value-s-expression-landmark?-knowable))
+
+(define/own-contract
+  (dynamic-type-value-s-expression-landmark?-knowable a-dt a)
+  (-> any/c any/c (knowable/c boolean?))
+  (if
+    (expressly-potentially-an-s-expression-landmark-dynamic-type?
+      a-dt)
+    (expressly-potentially-an-s-expression-landmark-dynamic-type-value-s-expression-landmark?-knowable
+      a-dt a)
+    (known #f)))
+
+(define/own-contract (known-s-expression-landmark-or-not? v)
+  (-> any/c boolean?)
+  (known? /dynamic-type-value-s-expression-landmark?-knowable
+    ; TODO FORWARD: This use of `any-dynamic-type` is a forward
+    ; reference. See if we can untangle it.
+    (any-dynamic-type)
+    v))
 
 
 (define-imitation-simple-struct
@@ -6723,7 +6797,7 @@
 ;     If neither operand is an `flvector?` value, then unknown.
 ;     
 ;     If either operand is a non-`flvector?` value that's
-;     `base-readable?`, then a known nothing.
+;     `known-identifiable-object-or-not?`, then a known nothing.
 ;     
 ;     If the operands are not both `flvector?` values, then unknown.
 ;     
@@ -6744,10 +6818,8 @@
       #:eq-matters? #t
       
       #:inhabitant?
-      ; TODO FORWARD: This use of `base-readable?` is a forward
-      ; reference. See if we can untangle it.
       (knowable-predicate-by-appraisal flvector? /fn v
-        (base-readable? v))
+        (known-identifiable-object-or-not? v))
       
       )
     (trivial)))
@@ -6764,7 +6836,7 @@
 ;     If neither operand is an `fxvector?` value, then unknown.
 ;     
 ;     If either operand is a non-`fxvector?` value that's
-;     `base-readable?`, then a known nothing.
+;     `known-identifiable-object-or-not?`, then a known nothing.
 ;     
 ;     If the operands are not both `fxvector?` values, then unknown.
 ;     
@@ -6785,10 +6857,8 @@
       #:eq-matters? #t
       
       #:inhabitant?
-      ; TODO FORWARD: This use of `base-readable?` is a forward
-      ; reference. See if we can untangle it.
       (knowable-predicate-by-appraisal fxvector? /fn v
-        (base-readable? v))
+        (known-identifiable-object-or-not? v))
       
       )
     (trivial)))
@@ -6811,7 +6881,7 @@
 ;     unknown.
 ;     
 ;     If either operand is a non-`base-syntactic-atom?` value that's
-;     `base-readable?`, then a known nothing.
+;     `known-s-expression-landmark-or-not?`, then a known nothing.
 ;     
 ;     If the operands are not both `base-syntactic-atom?` values, then
 ;     unknown.
@@ -6834,13 +6904,20 @@
       #:ignore-chaperones? #t
       
       #:inhabitant?
-      ; TODO FORWARD: This use of `base-readable?` is a forward
-      ; reference. See if we can untangle it.
       (knowable-predicate-by-appraisal base-syntactic-atom? /fn v
-        (base-readable? v))
+        (known-s-expression-landmark-or-not? v))
       
       )
-    (trivial)))
+    (trivial))
+  
+  (#:prop
+    prop:expressly-potentially-an-s-expression-landmark-dynamic-type
+    (make-expressly-potentially-an-s-expression-landmark-dynamic-type-impl
+      #:value-s-expression-landmark?-knowable
+      (fn a-dt a
+        (known #t))))
+  
+  )
 
 (define/own-contract (base-unidentifiable-literal? v)
   (-> any/c boolean?)
@@ -7450,9 +7527,8 @@
         any-dt)
       
       #:inhabitant?
-      ; TODO FORWARD: This use of `base-readable?` is a forward
-      ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal pair? /fn v /base-readable? v)
+      (knowable-predicate-by-appraisal pair? /fn v
+        (known-s-expression-landmark-or-not? v))
       
       #:->list (dissectfn (cons first rest) /list first rest)
       
@@ -7475,6 +7551,13 @@
       
       )
     (trivial))
+  
+  (#:prop
+    prop:expressly-potentially-an-s-expression-landmark-dynamic-type
+    (make-expressly-potentially-an-s-expression-landmark-dynamic-type-impl
+      #:value-s-expression-landmark?-knowable
+      (fn a-dt a
+        (known #t))))
   
   )
 
@@ -7544,9 +7627,9 @@
 ; Note that while most such instances return known results only when
 ; all the operands pass their `#:inhabitant?` predicate, this one
 ; considers `base-mutable-readable?` values to be known inhabitants
-; and other `base-readable?` values to be known non-inhabitants, and
-; it reports a known inhabitant and a known non-inhabitant as being
-; known to be distinct.
+; and other `known-identifiable-object-or-not?` values to be known
+; non-inhabitants, and it reports a known inhabitant and a known
+; non-inhabitant as being known to be distinct.
 ;
 (define-imitation-simple-struct (base-mutable-readable-dynamic-type?)
   base-mutable-readable-dynamic-type
@@ -7557,10 +7640,8 @@
       #:mutable? #t
       
       #:inhabitant?
-      ; TODO FORWARD: This use of `base-readable?` is a forward
-      ; reference. See if we can untangle it.
       (knowable-predicate-by-appraisal base-mutable-readable? /fn v
-        (base-readable? v))
+        (known-identifiable-object-or-not? v))
       
       )
     (trivial)))
@@ -9404,14 +9485,15 @@
 ;     to `tagged-glossesque-sys?` returning a result that most
 ;     instances will define to be `(known (nothing))` (meaning that
 ;     this inhabitant is positively known to be distinct from any
-;     value of any type if that value has object identity). The result
-;     should only be `(known (just guard-wrapper))` for some
-;     `guard-wrapper` if the `tagged-glossesque-sys?` is the one
-;     described next or a `path-related-wrapper`- or
-;     `info-wrapper`-adding adjustment thereof. The value of
-;     `guard-wrapper` is a one-argument procedure that produces the
-;     value that will be compared for `equal-always?` on behalf of the
-;     original.
+;     value of any type if that value is an info representative at
+;     this info level and the value it's a representative of has
+;     object identity). The result should only be
+;     `(known (just guard-wrapper))` for some `guard-wrapper` if the
+;     `tagged-glossesque-sys?` is the one described next or a
+;     `path-related-wrapper`- or `info-wrapper`-adding adjustment
+;     thereof. The value of `guard-wrapper` is a one-argument
+;     procedure that produces the value that will be compared for
+;     `equal-always?` on behalf of the original.
 ;
 ;   - (Done) Make a standard `tagged-glossesque-sys?` at each info
 ;     level index and each choice of "==" or "path-related" that
@@ -9437,35 +9519,33 @@
 ;     `(known (just (fn v (lift-struct (equal-always-wrapper v)))))` or
 ;     `(known (just (fn v (lift-struct v))))`.
 ;
-;   - Make an interface
+;   - (Done) Make an interface
 ;     `expressly-potentially-an-s-expression-landmark-dynamic-type?`
 ;     with a "method"
-;     `(dynamic-type-value-s-expression-landmark?-knowable-promise-sequence dt v)`
-;     returning an info-level-indexed endless sequence of promises
-;     that default to `(known #f)`. A result should only be
-;     `(known #t)` if the value's corresponding
+;     `(dynamic-type-value-s-expression-landmark?-knowable dt v)`
+;     returning a result that defaults to `(known #f)`. The result
+;     should only be `(known #t)` if the value's info-level-zero
 ;     `tagged-glossesque-sys?` has an `inhabitant?` knowable predicate
 ;     whose `accepts?-knowable` behavior returns a `(known #f)` result
 ;     for non-special-cased inputs for which the
-;     `dynamic-type-value-s-expression-landmark?-knowable-promise-sequence`
-;     result at the corresponding index is `(known #f)` or
-;     `(known #t)`. Sometimes, a dynamic type may have a
-;     `tagged-glossesque-sys?` whose prospective inhabitants may be
+;     `dynamic-type-value-s-expression-landmark?-knowable` result is
+;     `(known #f)` or `(known #t)`. Sometimes, a dynamic type may have
+;     a `tagged-glossesque-sys?` whose prospective inhabitants may be
 ;     special-cased to have `accepts?-knowable` results other than
 ;     `(known #f)`; in that case, the prospective inhabitant's own
 ;     dynamic type must also specify a corresponding special case for
 ;     this dynamic type's values so that the results are consistent.
 ;
-;   - Have the `cons?`, `null?`, `symbol?` and `keyword?` dynamic
-;     types instantiate
+;   - (Done) Have the `cons?`, `null?`, `symbol?` and `keyword?`
+;     dynamic types instantiate
 ;     `expressly-potentially-an-s-expression-landmark-dynamic-type?`
-;     with `(known #t)`. Have their `tagged-glossesque-sys?` values'
-;     `inhabitant?` knowable predicates give known rejections for
-;     non-special-cased values which have a `(known #t)` or
-;     `(known #f)` result in the corresponding
-;     `dynamic-type-value-s-expression-landmark?-knowable-promise-sequence`
-;     index. The special-cased values for the `symbol?` dynamic type
-;     are `symbol?` values, which are never known to be distinct from
+;     with `(known #t)`. Have their info-level-zero
+;     `tagged-glossesque-sys?` values' `inhabitant?` knowable
+;     predicates give known rejections for non-special-cased values
+;     which have a `(known #t)` or `(known #f)` result for
+;     `dynamic-type-value-s-expression-landmark?-knowable`.
+;     The special-cased values for the `symbol?` dynamic type are
+;     `symbol?` values, which are never known to be distinct from
 ;     each other and are sometimes even known to be equal. Likewise
 ;     with the `keyword?` dynamic type. The special-cased values for
 ;     the `cons?` dynamic type are `cons?` values, which compare in a
