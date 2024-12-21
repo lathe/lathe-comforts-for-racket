@@ -65,7 +65,9 @@
   make-procedure-impl-for-knowable-predicate
   make-procedure-impl-for-knowable-predicate-with-arity-of-procedure
   makeshift-knowable-predicate
-  knowable-predicate-by-appraisal)
+  raw-knowable-predicate-by-appraisal
+  knowable-predicate-by-appraisal
+  raw-knowable-predicate)
 
 
 (define-imitation-simple-generics
@@ -273,8 +275,19 @@
   (makeshift-knowable-predicate accepts?-knowable))
 
 (define/own-contract
-  (knowable-predicate-by-appraisal accepts? f-is-genuine-for?)
-  (-> (-> any/c any/c) (-> any/c boolean?) (-> any/c any/c))
-  (makeshift-knowable-predicate /fn v
+  (raw-knowable-predicate-by-appraisal accepts? f-is-genuine-for?)
+  (-> (-> any/c any/c) (-> any/c boolean?)
+    (-> any/c (knowable/c any/c)))
+  (fn v
     (falsable->knowable-by-appraisal (accepts? v) /fn
       (f-is-genuine-for? v))))
+
+(define/own-contract
+  (knowable-predicate-by-appraisal accepts? f-is-genuine-for?)
+  (-> (-> any/c any/c) (-> any/c boolean?) (-> any/c any/c))
+  (makeshift-knowable-predicate
+    (raw-knowable-predicate-by-appraisal accepts? f-is-genuine-for?)))
+
+(define/own-contract (raw-knowable-predicate accepts?)
+  (-> (-> any/c any/c) (-> any/c (knowable/c any/c)))
+  (raw-knowable-predicate-by-appraisal accepts? /fn v #f))

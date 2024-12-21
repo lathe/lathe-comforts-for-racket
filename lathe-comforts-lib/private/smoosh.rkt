@@ -934,16 +934,16 @@
 
 (define-syntax (make-tagged-glossesque-sys stx)
   (syntax-parse stx
-    [ (_ gss:id inhabitant?:expr gs:expr)
+    [ (_ gss:id inhabitant?-knowable:expr gs:expr)
       #'(make-tagged-glossesque-sys gss #:equal-always-free-vars ()
-          inhabitant?
+          inhabitant?-knowable
           gs)]
     [
       (_ gss:id #:equal-always-free-vars (v:id ...)
-        inhabitant?:expr
+        inhabitant?-knowable:expr
         gs:expr)
       #'(make-tagged-glossesque-sys gss #:equal-always-free-vars (v ...)
-          inhabitant?
+          inhabitant?-knowable
           gs
           
           #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
@@ -951,7 +951,7 @@
             (known /nothing)))]
     [
       (_ gss:id #:equal-always-free-vars (v:id ...)
-        inhabitant?:expr
+        inhabitant?-knowable:expr
         gs:expr
         
         #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
@@ -995,7 +995,7 @@
                   #:inhabitant?-knowable
                   (fn tgs candidate
                     (dissect tgs (made-tagged-glossesque-sys v ...)
-                    /accepts?-knowable inhabitant? candidate))
+                    /inhabitant?-knowable candidate))
                   
                   #:get-glossesque-sys
                   (fn gss tgs
@@ -1017,16 +1017,21 @@
 
 (define-syntax (derive-tagged-glossesque-sys stx)
   (syntax-parse stx
-    [ (_ orig-inhabitant?:id gs:id new-inhabitant?:expr new-gs:expr)
-      #'(derive-tagged-glossesque-sys orig-inhabitant? gs
-          new-inhabitant?
+    [
+      (_ orig-inhabitant?-knowable:id gs:id
+        new-inhabitant?-knowable:expr
+        new-gs:expr)
+      #'(derive-tagged-glossesque-sys orig-inhabitant?-knowable gs
+          new-inhabitant?-knowable
           new-gs
           
           #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
           inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
           inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable)]
     [
-      (_ orig-inhabitant?:id gs:id new-inhabitant?:expr new-gs:expr
+      (_ orig-inhabitant?-knowable:id gs:id
+        new-inhabitant?-knowable:expr
+        new-gs:expr
         
         #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
         orig-inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable:id
@@ -1035,10 +1040,10 @@
           (knowable-map tgs-k
             (fn tgs
               (make-tagged-glossesque-sys gss #:equal-always-free-vars (tgs)
-                (w- orig-inhabitant?
-                  (makeshift-knowable-predicate /fn v
+                (w- orig-inhabitant?-knowable
+                  (fn v
                     (tagged-glossesque-sys-inhabitant?-knowable tgs v))
-                  new-inhabitant?)
+                  new-inhabitant?-knowable)
                 (w- gs (tagged-glossesque-sys-get-glossesque-sys gss tgs)
                   new-gs)
                 
@@ -1608,7 +1613,7 @@
     ; variant of that system (where `gss` is the
     ; `glossesque-summary-sys?` used when manipulating this ladder),
     ; containing each entry that has a known true result for its
-    ; `inhabitant?` predicate.
+    ; `inhabitant?-knowable` predicate.
     ladder-populated-then
     
     ; A ladder of entries that have a known false result.
@@ -5198,7 +5203,7 @@
     tagged-glossesque-sys?)
   (make-tagged-glossesque-sys gss
     #:equal-always-free-vars (cgkr-get-tgs-k guard-wrapper)
-    (makeshift-knowable-predicate /fn v
+    (fn v
       (knowable-bind
         (cgkr-get-tgs-k
           (dynamic-type-get-custom-gloss-key-reports
@@ -5257,8 +5262,8 @@
 ; still results in a known failure of comparison overall.
 ;
 ; The given `->->list` function should take an inhabitant (a value
-; which passes the given `inhabitant?` predicate) and return a
-; function that takes an inhabitant of similar structure and returns
+; which passes the given `inhabitant?-knowable` predicate) and return
+; a function that takes an inhabitant of similar structure and returns
 ; the same list of elements that would be passed to the callback of
 ; `equal-always?/recur`. By "similar structure," we mean that the
 ; second inhabitant is `equal-always?/recur` to the first if the
@@ -5287,13 +5292,13 @@
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known nothing.
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known nothing.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -5322,13 +5327,13 @@
 ;     example) whose elements are those recursive results.
 ;   <=, >=:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known `#f`.
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known `#f`.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -5363,7 +5368,7 @@
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
-    #:inhabitant? inhabitant?
+    #:inhabitant?-knowable inhabitant?-knowable
     #:->list [->list #f]
     
     #:->->list
@@ -5386,7 +5391,7 @@
   (->*
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
-      #:inhabitant? (-> any/c boolean?)
+      #:inhabitant?-knowable (-> any/c boolean?)
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:known-distinct? boolean?
@@ -5408,7 +5413,8 @@
     #:get-smoosh-of-one-reports
     (fn self a
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (inhabitant? a) #t (uninformative-smoosh-reports)
+      /expect (inhabitant?-knowable a) (known #t)
+        (uninformative-smoosh-reports)
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /smoosh-reports-zip*-map
@@ -5424,9 +5430,9 @@
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
+      /expect (inhabitant?-knowable a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
+      /expect (inhabitant?-knowable b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -5488,8 +5494,8 @@
 ; stop if it's not there.
 ;
 ; The given `->->list` function should take an inhabitant (a value
-; which passes the given `inhabitant?` predicate) and return a
-; function that takes an inhabitant of similar structure and returns
+; which passes the given `inhabitant?-knowable` predicate) and return
+; a function that takes an inhabitant of similar structure and returns
 ; the same list of elements that would be passed to the callback of
 ; `equal-always?/recur`. By "similar structure," we mean that the
 ; second inhabitant is `equal-always?/recur` to the first if the
@@ -5522,13 +5528,13 @@
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known nothing.
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known nothing.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -5596,13 +5602,13 @@
 ;         still have to be unknown.)
 ;   <=, >=:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known `#f`.
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known `#f`.
 ;     
 ;     Otherwise, if comparing the operands without regard for their
 ;     elements or their impersonator or chaperone wrappers using the
@@ -5668,7 +5674,7 @@
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
-    #:inhabitant? inhabitant?
+    #:inhabitant?-knowable inhabitant?-knowable
     #:->list [->list #f]
     
     #:->->list
@@ -5693,7 +5699,7 @@
   (->*
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
-      #:inhabitant? (-> any/c boolean?)
+      #:inhabitant?-knowable (-> any/c (knowable/c boolean?))
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:known-distinct? boolean?
@@ -5720,7 +5726,8 @@
     #:get-smoosh-of-one-reports
     (fn self a
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (inhabitant? a) #t (uninformative-smoosh-reports)
+      /expect (inhabitant?-knowable a) (known #t)
+        (uninformative-smoosh-reports)
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /dissect
@@ -5776,9 +5783,9 @@
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
       (w- any-dt (self-get-any-dynamic-type self)
-      /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
+      /expect (inhabitant?-knowable a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
+      /expect (inhabitant?-knowable b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -5937,7 +5944,7 @@
 (define/own-contract
   (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
     #:self-get-any-dynamic-type self-get-any-dynamic-type
-    #:inhabitant? inhabitant?
+    #:inhabitant?-knowable inhabitant?-knowable
     #:->list [->list #f]
     
     #:->->list
@@ -5956,7 +5963,7 @@
   (->*
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
-      #:inhabitant? (-> any/c boolean?))
+      #:inhabitant?-knowable (-> any/c (knowable/c boolean?)))
     (
       #:->list (or/c #f (-> any/c list?))
       #:->->list (-> any/c (-> any/c list?))
@@ -5967,7 +5974,7 @@
     #:get-smoosh-equal-hash-code-support-reports
     (fn self a
       (constant-smoosh-equal-hash-code-support-reports /delay
-        (expect (inhabitant? a) #t (uninformative-hash-code)
+        (expect (inhabitant?-knowable a) #t (uninformative-hash-code)
         /w- any-dt (self-get-any-dynamic-type self)
         /w- ->list (->->list a)
         /w- a-list (->list a)
@@ -5979,7 +5986,7 @@
           (fn p-list
             (promise-zip*-map p-list /fn hash-code-list
               (hash-code-combine
-                (equal-always-hash-code inhabitant?)
+                (equal-always-hash-code inhabitant?-knowable)
                 (equal-always-hash-code/recur a /fn a-elem
                   (uninformative-hash-code))
                 (combine-element-hash-codes hash-code-list)))))))
@@ -6020,7 +6027,7 @@
     #:ignore-chaperones? [ignore-chaperones? #f]
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?
+    #:inhabitant?-knowable inhabitant?-knowable
     #:->list [->list #f]
     
     #:->->list
@@ -6033,7 +6040,7 @@
     #:copy copy)
   (->*
     (
-      #:inhabitant? (-> any/c boolean?)
+      #:inhabitant?-knowable (-> any/c (knowable/c boolean?))
       #:copy (-> any/c any/c))
     (
       #:ignore-chaperones? boolean?
@@ -6046,20 +6053,20 @@
     
     #:get-custom-gloss-key-reports
     (fn self a
-      (expect (inhabitant? a) #t
+      (expect (inhabitant?-knowable a) (known #t)
         (uninformative-custom-gloss-key-reports)
       /w- equal-always-indistinct-tgs-k
         (known /make-tagged-glossesque-sys gss
-          #:equal-always-free-vars (inhabitant?)
-          inhabitant?
+          #:equal-always-free-vars (inhabitant?-knowable)
+          inhabitant?-knowable
           (equal-always-indistinct-from-list-injection-glossesque-sys
             #:glossesque-summary-sys gss
             #:->list ->list
             #:->->list ->->list))
       /w- equal-always-distinct-tgs-k
         (known /make-tagged-glossesque-sys gss
-          #:equal-always-free-vars (inhabitant?)
-          inhabitant?
+          #:equal-always-free-vars (inhabitant?-knowable)
+          inhabitant?-knowable
           (equal-always-from-list-injection-glossesque-sys
             #:glossesque-summary-sys gss
             #:->list ->list
@@ -6070,14 +6077,14 @@
           equal-always-indistinct-tgs-k)
       /w- chaperone=-indistinct-tgs-k
         (known /make-tagged-glossesque-sys gss
-          #:equal-always-free-vars (inhabitant?)
-          inhabitant?
+          #:equal-always-free-vars (inhabitant?-knowable)
+          inhabitant?-knowable
           (chaperone=-indistinct-copiable-glossesque-sys
             #:glossesque-summary-sys gss #:copy copy))
       /w- chaperone=-distinct-tgs-k
         (known /make-tagged-glossesque-sys gss
-          #:equal-always-free-vars (inhabitant?)
-          inhabitant?
+          #:equal-always-free-vars (inhabitant?-knowable)
+          inhabitant?-knowable
           (chaperone=-copiable-glossesque-sys
             #:glossesque-summary-sys gss #:copy copy))
       /w- chaperone=-tgs-k
@@ -6117,7 +6124,7 @@
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
     #:self-get-any-dynamic-type self-get-any-dynamic-type
-    #:inhabitant? inhabitant?
+    #:inhabitant?-knowable inhabitant?-knowable
     #:->list [->list #f]
     
     #:->->list
@@ -6147,7 +6154,7 @@
   (->*
     (
       #:self-get-any-dynamic-type (-> any/c any/c)
-      #:inhabitant? (-> any/c boolean?)
+      #:inhabitant?-knowable (-> any/c (knowable/c boolean?))
       #:example-and-list-> (-> any/c list? any/c))
     (
       #:ignore-chaperones? boolean?
@@ -6185,7 +6192,7 @@
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
                 #:self-get-any-dynamic-type self-get-any-dynamic-type
-                #:inhabitant? inhabitant?
+                #:inhabitant?-knowable inhabitant?-knowable
                 #:->list ->list
                 #:->->list ->->list
                 #:example-and-list-> example-and-list->
@@ -6199,7 +6206,7 @@
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
                 #:self-get-any-dynamic-type self-get-any-dynamic-type
-                #:inhabitant? inhabitant?
+                #:inhabitant?-knowable inhabitant?-knowable
                 #:->list ->list
                 #:->->list ->->list
                 #:example-and-list-> example-and-list->
@@ -6216,7 +6223,7 @@
           (dissectfn (trivial)
             (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl-from-list-injection
               #:self-get-any-dynamic-type self-get-any-dynamic-type
-              #:inhabitant? inhabitant?
+              #:inhabitant?-knowable inhabitant?-knowable
               #:->list ->list
               #:->->list ->->list
               
@@ -6229,7 +6236,7 @@
               #:ignore-chaperones? ignore-chaperones?
               #:known-distinct? known-distinct?
               #:known-discrete? known-discrete?
-              #:inhabitant? inhabitant?
+              #:inhabitant?-knowable inhabitant?-knowable
               #:->list ->list
               #:->->list ->->list
               #:copy copy))))))
@@ -6256,13 +6263,13 @@
 ; Level 0:
 ;   <=, >=, path-related, join, meet:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known nothing (or, for a check, `#f`).
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known nothing (or, for a check, `#f`).
 ;     
 ;     Otherwise, if the operands pass the given `==?` function, the
 ;     first operand (or, for a check, `#t`).
@@ -6273,13 +6280,13 @@
 ;     Otherwise, unknown.
 ;   ==:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known nothing.
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known nothing.
 ;     
 ;     Otherwise, if the operands pass the given `==?` function, the
 ;     first operand.
@@ -6298,7 +6305,7 @@
     #:known-reflexive? [known-reflexive? #t]
     #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?
+    #:inhabitant?-knowable inhabitant?-knowable
     
     #:==?
     [ ==?
@@ -6308,7 +6315,7 @@
     
     )
   (->*
-    (#:inhabitant? (-> any/c boolean?))
+    (#:inhabitant?-knowable (-> any/c (knowable/c boolean?)))
     (
       #:known-reflexive? boolean?
       #:known-distinct? boolean?
@@ -6326,14 +6333,14 @@
       (expect known-reflexive? #t
         (uninformative-smoosh-reports)
       /constant-smoosh-reports /delay
-        (knowable-if (inhabitant? a) /fn
-          (just /delay/strict /known a))))
+        (expect (inhabitant?-knowable a) (known #t) (unknown)
+        /known /just /delay/strict /known a)))
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
+      (expect (inhabitant?-knowable a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
+      /expect (inhabitant?-knowable b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -6372,13 +6379,13 @@
 ; Level 1:
 ;   path-related, join, meet, ==:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known nothing.
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known nothing.
 ;     
 ;     Otherwise, if the operands are not `equal-always?` and
 ;     `known-distinct?` is true, then a known nothing.
@@ -6416,13 +6423,13 @@
 ;         `chaperone-of?` each other.
 ;   <=, >=:
 ;     If the operands do not both have known results for the given
-;     `inhabitant?` predicate, which may be an instance of
+;     `inhabitant?-knowable` predicate, which may be an instance of
 ;     `prop:expressly-knowable-predicate?`, or if neither of them has
 ;     a known true result for it, then unknown.
 ;     
 ;     Otherwise, if at least one operand has a known true result for
-;     `inhabitant?` and at least one has a known false result for it,
-;     then a known `#f`.
+;     `inhabitant?-knowable` and at least one has a known false result
+;     for it, then a known `#f`.
 ;     
 ;     Otherwise, if the operands are not `equal-always?` and
 ;     `known-distinct?` is true, then a known `#f`.
@@ -6454,9 +6461,9 @@
   (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
     #:known-distinct? [known-distinct? #t]
     #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?)
+    #:inhabitant?-knowable inhabitant?-knowable)
   (->*
-    (#:inhabitant? (-> any/c boolean?))
+    (#:inhabitant?-knowable (-> any/c (knowable/c boolean?)))
     (#:known-distinct? boolean? #:known-discrete? boolean?)
     expressly-smooshable-dynamic-type-impl?)
   (make-expressly-smooshable-dynamic-type-impl
@@ -6468,14 +6475,14 @@
     #:get-smoosh-of-one-reports
     (fn self a
       (constant-smoosh-reports /delay
-        (knowable-if (inhabitant? a) /fn
-          (just /delay/strict /known a))))
+        (expect (inhabitant?-knowable a) (known #t) (unknown)
+        /known /just /delay/strict /known a)))
     
     #:get-smoosh-and-comparison-of-two-reports
     (fn self a b
-      (expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
+      (expect (inhabitant?-knowable a) (known a-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
-      /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
+      /expect (inhabitant?-knowable b) (known b-inhabits?)
         (uninformative-smoosh-and-comparison-of-two-reports)
       /expect (or a-inhabits? b-inhabits?) #t
         (uninformative-smoosh-and-comparison-of-two-reports)
@@ -6602,9 +6609,9 @@
     #:mutable? [mutable? eq-matters?]
     #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?)
+    #:inhabitant?-knowable inhabitant?-knowable)
   (->*
-    (#:inhabitant? (-> any/c boolean?))
+    (#:inhabitant?-knowable (-> any/c (knowable/c boolean?)))
     (
       #:known-reflexive? boolean?
       #:eq-matters? boolean?
@@ -6617,7 +6624,9 @@
     
     #:get-custom-gloss-key-reports
     (fn self a
-      (expect (and known-reflexive? (inhabitant? a)) #t
+      (expect known-reflexive? #t
+        (uninformative-custom-gloss-key-reports)
+      /expect (inhabitant?-knowable a) (known #t)
         (uninformative-custom-gloss-key-reports)
       /w- make-distinct
         (fn info-level
@@ -6637,12 +6646,12 @@
               #:tagged-glossesque-sys-knowable
               (if eq-matters?
                 (known /make-tagged-glossesque-sys gss
-                  #:equal-always-free-vars (inhabitant?)
-                  inhabitant?
+                  #:equal-always-free-vars (inhabitant?-knowable)
+                  inhabitant?-knowable
                   (eq-atom-glossesque-sys gss))
                 (known /make-tagged-glossesque-sys gss
-                  #:equal-always-free-vars (inhabitant?)
-                  inhabitant?
+                  #:equal-always-free-vars (inhabitant?-knowable)
+                  inhabitant?-knowable
                   (equal-always-atom-glossesque-sys gss))))))
       /w- distinct-0-cgkr (make-distinct 0)
       /w- distinct-1+-cgkrs
@@ -6662,16 +6671,16 @@
               (constant-custom-gloss-key-report
                 #:tagged-glossesque-sys-knowable
                 (known /make-tagged-glossesque-sys gss
-                  #:equal-always-free-vars (inhabitant?)
-                  inhabitant?
+                  #:equal-always-free-vars (inhabitant?-knowable)
+                  inhabitant?-knowable
                   (chaperone=-indistinct-atom-glossesque-sys gss)))))
           (in-naturals))
       /w- indistinct-0-cgkr
         (constant-custom-gloss-key-report
           #:tagged-glossesque-sys-knowable
           (known /make-tagged-glossesque-sys gss
-            #:equal-always-free-vars (inhabitant?)
-            inhabitant?
+            #:equal-always-free-vars (inhabitant?-knowable)
+            inhabitant?-knowable
             (if eq-matters?
               (eq-indistinct-atom-glossesque-sys gss)
               (equal-always-indistinct-atom-glossesque-sys gss))))
@@ -6681,8 +6690,8 @@
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
             (known /make-tagged-glossesque-sys gss
-              #:equal-always-free-vars (inhabitant?)
-              inhabitant?
+              #:equal-always-free-vars (inhabitant?-knowable)
+              inhabitant?-knowable
               (chaperone=-indistinct-atom-glossesque-sys gss))))
       /if (and known-distinct? known-discrete?)
         (sequence* distinct-0-cgkr distinct-1+-cgkrs)
@@ -6709,7 +6718,7 @@
     #:mutable? [mutable? eq-matters?]
     #:known-distinct? [known-distinct? known-reflexive?]
     #:known-discrete? [known-discrete? #f]
-    #:inhabitant? inhabitant?
+    #:inhabitant?-knowable inhabitant?-knowable
     
     #:==?
     [ ==?
@@ -6730,7 +6739,7 @@
     #:hash-code-0 [hash-code-0 hash-code]
     #:hash-code-1+ [hash-code-1+ hash-code])
   (->*
-    (#:inhabitant? (-> any/c boolean?))
+    (#:inhabitant?-knowable (-> any/c (knowable/c boolean?)))
     (
       #:known-reflexive? boolean?
       #:eq-matters? boolean?
@@ -6760,12 +6769,12 @@
               (make-expressly-smooshable-dynamic-type-impl-for-equal-always-atom
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
-                #:inhabitant? inhabitant?
+                #:inhabitant?-knowable inhabitant?-knowable
                 #:==? ==?)
               (make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom
                 #:known-distinct? known-distinct?
                 #:known-discrete? known-discrete?
-                #:inhabitant? inhabitant?))))
+                #:inhabitant?-knowable inhabitant?-knowable))))
         (cons
           prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
           (dissectfn (trivial)
@@ -6782,7 +6791,7 @@
               #:mutable? mutable?
               #:known-distinct? known-distinct?
               #:known-discrete? known-discrete?
-              #:inhabitant? inhabitant?))))))
+              #:inhabitant?-knowable inhabitant?-knowable))))))
   prop:bundle)
 
 ; Level 0:
@@ -6817,9 +6826,9 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:eq-matters? #t
       
-      #:inhabitant?
-      (knowable-predicate-by-appraisal flvector? /fn v
-        (known-identifiable-object-or-not? v))
+      #:inhabitant?-knowable
+      (raw-knowable-predicate-by-appraisal flvector?
+        known-identifiable-object-or-not?)
       
       )
     (trivial)))
@@ -6856,9 +6865,9 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:eq-matters? #t
       
-      #:inhabitant?
-      (knowable-predicate-by-appraisal fxvector? /fn v
-        (known-identifiable-object-or-not? v))
+      #:inhabitant?-knowable
+      (raw-knowable-predicate-by-appraisal fxvector?
+        known-identifiable-object-or-not?)
       
       )
     (trivial)))
@@ -6903,9 +6912,9 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
       
-      #:inhabitant?
-      (knowable-predicate-by-appraisal base-syntactic-atom? /fn v
-        (known-s-expression-landmark-or-not? v))
+      #:inhabitant?-knowable
+      (raw-knowable-predicate-by-appraisal base-syntactic-atom?
+        known-s-expression-landmark-or-not?)
       
       )
     (trivial))
@@ -6954,10 +6963,11 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:known-reflexive? #f
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal base-unidentifiable-literal?
+      (raw-knowable-predicate-by-appraisal
+        base-unidentifiable-literal?
         (fn v /base-non-literal? v))
       
       )
@@ -6996,11 +7006,11 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal boolean? /fn v
-        (base-non-literal? v))
+      (raw-knowable-predicate-by-appraisal boolean?
+        (fn v /base-non-literal? v))
       
       )
     (trivial)))
@@ -7038,11 +7048,11 @@
       #:ignore-chaperones? #t
       #:known-distinct? #f
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal char? /fn v
-        (base-non-literal? v))
+      (raw-knowable-predicate-by-appraisal char?
+        (fn v /base-non-literal? v))
       
       )
     (trivial)))
@@ -7081,11 +7091,11 @@
       #:ignore-chaperones? #t
       #:known-distinct? #f
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal immutable-string? /fn v
-        (base-non-literal? v))
+      (raw-knowable-predicate-by-appraisal immutable-string?
+        (fn v /base-non-literal? v))
       
       )
     (trivial)))
@@ -7126,10 +7136,10 @@
       #:ignore-chaperones? #t
       #:known-distinct? #f
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal
+      (raw-knowable-predicate-by-appraisal
         (fn v /and (bytes? v) (immutable? v))
         (fn v /base-non-literal? v))
       
@@ -7140,11 +7150,11 @@
   (-> glossesque-summary-sys? glossesque-sys?)
   (normalized-glossesque-sys gss /fn k /normalize-non-nan-number k))
 
-(define non-nan-number-dynamic-type-inhabitant?
+(define non-nan-number-dynamic-type-inhabitant?-knowable
   ; TODO FORWARD: This use of `base-non-literal?` is a forward
   ; reference. See if we can untangle it.
-  (knowable-predicate-by-appraisal non-nan-number? /fn v
-    (base-non-literal? v)))
+  (raw-knowable-predicate-by-appraisal non-nan-number?
+    (fn v /base-non-literal? v)))
 
 ; Level 0:
 ;   path-related:
@@ -7224,10 +7234,11 @@
       
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
-        (w- inhabitant? non-nan-number-dynamic-type-inhabitant?
-        /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
+        (w- inhabitant?-knowable
+          non-nan-number-dynamic-type-inhabitant?-knowable
+        /expect (inhabitant?-knowable a) (known a-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
+        /expect (inhabitant?-knowable b) (known b-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /expect (or a-inhabits? b-inhabits?) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
@@ -7306,7 +7317,8 @@
       
       #:get-custom-gloss-key-reports
       (fn self a
-        (w- inhabitant? non-nan-number-dynamic-type-inhabitant?
+        (w- inhabitant?-knowable
+          non-nan-number-dynamic-type-inhabitant?-knowable
         /expect (non-nan-number? a) #t
           (uninformative-custom-gloss-key-reports)
         /sequence*
@@ -7314,43 +7326,43 @@
             #:on-==-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (known /make-tagged-glossesque-sys gss
-                #:equal-always-free-vars (inhabitant?)
-                inhabitant?
+                #:equal-always-free-vars (inhabitant?-knowable)
+                inhabitant?-knowable
                 (non-nan-number-glossesque-sys gss)))
             #:on-path-related-tagged-glossesque-sys-knowable
             (dissectfn (list)
               (if (zero? /imag-part a)
                 (known /make-tagged-glossesque-sys gss
-                  #:equal-always-free-vars (inhabitant?)
-                  (makeshift-knowable-predicate /fn v
-                    (knowable-map (accepts?-knowable inhabitant? v)
+                  #:equal-always-free-vars (inhabitant?-knowable)
+                  (fn v
+                    (knowable-map (inhabitant?-knowable v)
                     /fn v-inhabits?
                       (and v-inhabits? (zero? /imag-part v))))
                   (terminal-glossesque-sys gss))
                 (w- a (normalize-non-nan-number a)
                 /known /make-tagged-glossesque-sys gss
-                  #:equal-always-free-vars (inhabitant? a)
-                  (makeshift-knowable-predicate /fn v
-                    (knowable-map (accepts?-knowable inhabitant? v)
+                  #:equal-always-free-vars (inhabitant?-knowable a)
+                  (fn v
+                    (knowable-map (inhabitant?-knowable v)
                     /fn v-inhabits?
                       (and v-inhabits? (= a v))))
                   (terminal-glossesque-sys gss)))))
           (constant-custom-gloss-key-reports
             #:tagged-glossesque-sys-knowable
             (known /make-tagged-glossesque-sys gss
-              #:equal-always-free-vars (inhabitant?)
-              inhabitant?
+              #:equal-always-free-vars (inhabitant?-knowable)
+              inhabitant?-knowable
               (equal-always-atom-glossesque-sys gss)))))
       
       ))
   
   )
 
-(define non-nan-extflonum-dynamic-type-inhabitant?
+(define non-nan-extflonum-dynamic-type-inhabitant?-knowable
   ; TODO FORWARD: This use of `base-non-literal?` is a forward
   ; reference. See if we can untangle it.
-  (knowable-predicate-by-appraisal non-nan-extflonum? /fn v
-    (base-non-literal? v)))
+  (raw-knowable-predicate-by-appraisal non-nan-extflonum?
+    (fn v /base-non-literal? v)))
 
 ; Level 0:
 ;   path-related:
@@ -7421,10 +7433,11 @@
       
       #:get-smoosh-and-comparison-of-two-reports
       (fn self a b
-        (w- inhabitant? non-nan-extflonum-dynamic-type-inhabitant?
-        /expect (accepts?-knowable inhabitant? a) (known a-inhabits?)
+        (w- inhabitant?-knowable
+          non-nan-extflonum-dynamic-type-inhabitant?-knowable
+        /expect (inhabitant?-knowable a) (known a-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
-        /expect (accepts?-knowable inhabitant? b) (known b-inhabits?)
+        /expect (inhabitant?-knowable b) (known b-inhabits?)
           (uninformative-smoosh-and-comparison-of-two-reports)
         /expect (or a-inhabits? b-inhabits?) #t
           (uninformative-smoosh-and-comparison-of-two-reports)
@@ -7492,14 +7505,15 @@
       
       #:get-custom-gloss-key-reports
       (fn self a
-        (w- inhabitant? non-nan-extflonum-dynamic-type-inhabitant?
+        (w- inhabitant?-knowable
+          non-nan-extflonum-dynamic-type-inhabitant?-knowable
         /expect (non-nan-extflonum? a) #t
           (uninformative-custom-gloss-key-reports)
         /constant-custom-gloss-key-reports
           #:tagged-glossesque-sys-knowable
           (known /make-tagged-glossesque-sys gss
-            #:equal-always-free-vars (inhabitant?)
-            inhabitant?
+            #:equal-always-free-vars (inhabitant?-knowable)
+            inhabitant?-knowable
             (equal-always-atom-glossesque-sys gss))))
       
       ))
@@ -7526,9 +7540,9 @@
       (dissectfn (cons-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant?
-      (knowable-predicate-by-appraisal pair? /fn v
-        (known-s-expression-landmark-or-not? v))
+      #:inhabitant?-knowable
+      (raw-knowable-predicate-by-appraisal pair?
+        known-s-expression-landmark-or-not?)
       
       #:->list (dissectfn (cons first rest) /list first rest)
       
@@ -7587,10 +7601,10 @@
       (dissectfn (immutable-vector-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal
+      (raw-knowable-predicate-by-appraisal
         (fn v /and (vector? v) (immutable? v))
         (fn v /base-non-literal? v))
       
@@ -7625,11 +7639,11 @@
 ; `make-expressly-smooshable-dynamic-type-impl-for-chaperone-of-atom`.
 ;
 ; Note that while most such instances return known results only when
-; all the operands pass their `#:inhabitant?` predicate, this one
-; considers `base-mutable-readable?` values to be known inhabitants
-; and other `known-identifiable-object-or-not?` values to be known
-; non-inhabitants, and it reports a known inhabitant and a known
-; non-inhabitant as being known to be distinct.
+; all the operands pass their `#:inhabitant?-knowable` predicate, this
+; one considers `base-mutable-readable?` values to be known
+; inhabitants and other `known-identifiable-object-or-not?` values to
+; be known non-inhabitants, and it reports a known inhabitant and a
+; known non-inhabitant as being known to be distinct.
 ;
 (define-imitation-simple-struct (base-mutable-readable-dynamic-type?)
   base-mutable-readable-dynamic-type
@@ -7639,9 +7653,9 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:mutable? #t
       
-      #:inhabitant?
-      (knowable-predicate-by-appraisal base-mutable-readable? /fn v
-        (known-identifiable-object-or-not? v))
+      #:inhabitant?-knowable
+      (raw-knowable-predicate-by-appraisal base-mutable-readable?
+        known-identifiable-object-or-not?)
       
       )
     (trivial)))
@@ -7665,10 +7679,10 @@
       (dissectfn (immutable-box-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal
+      (raw-knowable-predicate-by-appraisal
         (fn v /and (box? v) (immutable? v))
         (fn v /base-non-literal? v))
       
@@ -7718,11 +7732,11 @@
       (dissectfn (immutable-prefab-struct-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal immutable-prefab-struct? /fn v
-        (base-non-literal? v))
+      (raw-knowable-predicate-by-appraisal immutable-prefab-struct?
+        (fn v /base-non-literal? v))
       
       #:->list (fn s /cdr /vector->list /struct->vector s)
       #:example-and-list->
@@ -7751,10 +7765,10 @@
       (dissectfn (immutable-hash-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant?
+      #:inhabitant?-knowable
       ; TODO FORWARD: This use of `base-non-literal?` is a forward
       ; reference. See if we can untangle it.
-      (knowable-predicate-by-appraisal
+      (raw-knowable-predicate-by-appraisal
         (fn v /and (hash? v) (immutable? v))
         (fn v /base-non-literal? v))
       
@@ -7985,7 +7999,11 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? (knowable-predicate-by-appraisal nothing? maybe?))
+      
+      #:inhabitant?-knowable
+      (raw-knowable-predicate-by-appraisal nothing? maybe?)
+      
+      )
     (trivial)))
 
 ; This is an appropriate dynamic type of `just?` values. This is an
@@ -7993,8 +8011,8 @@
 ; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`.
 ;
 ; Note that while most such instances return known results only when
-; all the operands pass their `#:inhabitant?` predicate, this one
-; considers `just?` values to be known inhabitants and `nothing?`
+; all the operands pass their `#:inhabitant?-knowable` predicate, this
+; one considers `just?` values to be known inhabitants and `nothing?`
 ; values to be known non-inhabitants, and it reports a known
 ; inhabitant and a known non-inhabitant as being known to be distinct.
 ;
@@ -8011,7 +8029,9 @@
       (dissectfn (just-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? (knowable-predicate-by-appraisal just? maybe?)
+      #:inhabitant?-knowable
+      (raw-knowable-predicate-by-appraisal just? maybe?)
+      
       #:->list (dissectfn (just e) /list e)
       
       #:example-and-list->
@@ -8048,7 +8068,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? trivial?)
+      #:inhabitant?-knowable (raw-knowable-predicate trivial?))
     (trivial)))
 
 (define/own-contract
@@ -8279,12 +8299,12 @@
         /w- knowable-tagged-glossesque-sys
           (fn
             (make-tagged-glossesque-sys gss
-              knowable?
+              (raw-knowable-predicate knowable?)
               (terminal-glossesque-sys gss)))
         /w- unknown-tagged-glossesque-sys
           (fn
             (make-tagged-glossesque-sys gss
-              (knowable-predicate-by-appraisal unknown? knowable?)
+              (raw-knowable-predicate-by-appraisal unknown? knowable?)
               (terminal-glossesque-sys gss)))
         /if (example-unknown? a)
           (sequence*
@@ -8309,10 +8329,10 @@
           (custom-gloss-key-reports-map
             (dynamic-type-get-custom-gloss-key-reports any-dt a-value)
             #:on-tagged-glossesque-sys-knowable
-            (derive-tagged-glossesque-sys inhabitant? gs
-              (makeshift-knowable-predicate /fn v
+            (derive-tagged-glossesque-sys inhabitant?-knowable gs
+              (fn v
                 (expect v (known v) (unknown)
-                /accepts?-knowable inhabitant? v))
+                /inhabitant?-knowable v))
               (glossesque-sys-map-key gs #:granted-key-knowable /fn k
                 k)
               
@@ -8322,10 +8342,10 @@
                 (known /nothing))))
           (sequence* report-0 report-1 report-2+)
         /w- tgs-k-uninhabited-by-unknown
-          (derive-tagged-glossesque-sys inhabitant? gs
-            (makeshift-knowable-predicate /fn v
+          (derive-tagged-glossesque-sys inhabitant?-knowable gs
+            (fn v
               (if (unknown? v) (known #f)
-              /accepts?-knowable inhabitant? v))
+              /inhabitant?-knowable v))
             gs)
         /sequence*
           report-0
@@ -8436,10 +8456,10 @@
   (dissect
     (custom-gloss-key-reports-map value-reports
       #:on-tagged-glossesque-sys-knowable
-      (derive-tagged-glossesque-sys inhabitant? gs
-        (makeshift-knowable-predicate /fn v
+      (derive-tagged-glossesque-sys inhabitant?-knowable gs
+        (fn v
           (expect v (path-related-wrapper v) (unknown)
-          /accepts?-knowable inhabitant? v))
+          /inhabitant?-knowable v))
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (path-related-wrapper k) (unknown)
           /known k))
@@ -8657,10 +8677,10 @@
   (dissect
     (custom-gloss-key-reports-map value-reports
       #:on-tagged-glossesque-sys-knowable
-      (derive-tagged-glossesque-sys inhabitant? gs
-        (makeshift-knowable-predicate /fn v
+      (derive-tagged-glossesque-sys inhabitant?-knowable gs
+        (fn v
           (expect v (info-wrapper v) (unknown)
-          /accepts?-knowable inhabitant? v))
+          /inhabitant?-knowable v))
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (info-wrapper k) (unknown)
           /known k))
@@ -8838,7 +8858,7 @@
       (dissectfn (gloss-dynamic-type any-dt)
         any-dt)
       
-      #:inhabitant? gloss?
+      #:inhabitant?-knowable (raw-knowable-predicate gloss?)
       
       #:->->list
       (fn a
@@ -8899,7 +8919,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? eq-wrapper?)
+      #:inhabitant?-knowable (raw-knowable-predicate eq-wrapper?))
     (trivial)))
 
 ; Level 0:
@@ -8932,7 +8952,11 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      #:inhabitant? equal-always-wrapper?)
+      
+      #:inhabitant?-knowable
+      (raw-knowable-predicate equal-always-wrapper?)
+      
+      )
     (trivial)))
 
 (define/own-contract
@@ -9002,10 +9026,10 @@
     (endless-sequence/c custom-gloss-key-report?))
   (custom-gloss-key-reports-map value-reports
     #:on-tagged-glossesque-sys-knowable
-    (derive-tagged-glossesque-sys inhabitant? gs
-      (makeshift-knowable-predicate /fn v
+    (derive-tagged-glossesque-sys inhabitant?-knowable gs
+      (fn v
         (expect v (indistinct-wrapper v) (unknown)
-        /accepts?-knowable inhabitant? v))
+        /inhabitant?-knowable v))
       (indistinct-glossesque-sys
         (glossesque-sys-map-key gs #:granted-key-knowable /fn k
           (expect k (indistinct-wrapper k) (unknown)
@@ -9525,13 +9549,13 @@
 ;     `(dynamic-type-value-s-expression-landmark?-knowable dt v)`
 ;     returning a result that defaults to `(known #f)`. The result
 ;     should only be `(known #t)` if the value's info-level-zero
-;     `tagged-glossesque-sys?` has an `inhabitant?` knowable predicate
-;     whose `accepts?-knowable` behavior returns a `(known #f)` result
-;     for non-special-cased inputs for which the
+;     `tagged-glossesque-sys?` has an `inhabitant?-knowable` predicate
+;     which returns a `(known #f)` result for non-special-cased inputs
+;     for which the
 ;     `dynamic-type-value-s-expression-landmark?-knowable` result is
 ;     `(known #f)` or `(known #t)`. Sometimes, a dynamic type may have
 ;     a `tagged-glossesque-sys?` whose prospective inhabitants may be
-;     special-cased to have `accepts?-knowable` results other than
+;     special-cased to have `inhabitant?-knowable` results other than
 ;     `(known #f)`; in that case, the prospective inhabitant's own
 ;     dynamic type must also specify a corresponding special case for
 ;     this dynamic type's values so that the results are consistent.
@@ -9540,7 +9564,7 @@
 ;     dynamic types instantiate
 ;     `expressly-potentially-an-s-expression-landmark-dynamic-type?`
 ;     with `(known #t)`. Have their info-level-zero
-;     `tagged-glossesque-sys?` values' `inhabitant?` knowable
+;     `tagged-glossesque-sys?` values' `inhabitant?-knowable`
 ;     predicates give known rejections for non-special-cased values
 ;     which have a `(known #t)` or `(known #f)` result for
 ;     `dynamic-type-value-s-expression-landmark?-knowable`.
@@ -9553,6 +9577,15 @@
 ;     be equal. The special-cased values for the `null?` dynamic type
 ;     are `null?` values, which are always equal to each other.
 ;
+;   - Change the places we're using
+;     `(raw-knowable-predicate-by-appraisal foo? base-non-literal?)`
+;     for some `foo?` so that they use `(raw-knowable-predicate foo?)`
+;     instead. The difference should already be covered by the way the
+;     identifiable objects' predicates exclude
+;     `known-s-expression-landmark-or-not?` and the way the
+;     s-expression landmark values' predicates exclude
+;     `known-s-expression-landmark-or-not?`.
+;
 ;   - Make standard `tagged-glossesque-sys?` values that can be used
 ;     by user-defined `unknown?` types -- or better yet, a structure
 ;     type property bundle for that specific situation.
@@ -9560,7 +9593,7 @@
 ;   - Have the `knowable?` dynamic type use the standard
 ;     `tagged-glossesque-sys?` values.
 ;
-;   - Migrate our `inhabitant?` knowable predicates to more
+;   - (Done) Migrate our `inhabitant?` knowable predicates to more
 ;     fundamental `inhabitant?-knowable` procedures and some helper
 ;     functions to produce them.
 ;

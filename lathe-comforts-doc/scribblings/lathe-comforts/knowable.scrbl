@@ -244,10 +244,35 @@ There's a little bit of hubris in being so explicit about this intent, since man
 }
 
 @defproc[
+  (raw-knowable-predicate-by-appraisal
+    [accepts? (-> any/c (or/c #f any/c))]
+    [f-is-genuine-for? (-> any/c boolean?)])
+  (-> any/c (knowable/c (or/c #f any/c)))
+]{
+  Returns a procedure @racket[_f] such that calling @racket[(_f _v)] returns @racket[(known _acceptance)] if @racket[(accepts? _v)] returns a non-@racket[#f] result @racket[_acceptance], or @racket[(known #f)] if it returns @racket[#f] and @racket[(f-is-genuine-for? _v)] is true, or @racket[(unknown)] otherwise.
+}
+
+@defproc[
   (knowable-predicate-by-appraisal
     [accepts? (-> any/c (or/c #f any/c))]
     [f-is-genuine-for? (-> any/c boolean?)])
   (-> any/c (or/c #f any/c))
 ]{
-  Returns an instance @racket[_f] of @racket[prop:procedure] and @racket[prop:expressly-knowable-predicate] such that calling @racket[(accepts?-knowable _f _v)] returns @racket[(knowable-if (is-known? v) (fn (is-known-true? v)))] and calling @racket[(_f _v)] returns @racket[(and (is-known? v) (is-known-true? v))].
+  Returns an instance @racket[_f] of @racket[prop:procedure] and @racket[prop:expressly-knowable-predicate] such that
+  
+  @itemlist[
+    @item{
+      calling @racket[(_f _v)] returns @racket[(accepts? _v)]; and
+    }
+    @item{
+      calling @racket[(accepts?-knowable _f _v)] returns a @racket[(known _acceptance)] if @racket[(accepts? _v)] returns a non-@racket[#f] result @racket[_acceptance], or @racket[(known #f)] if it returns @racket[#f] and @racket[(f-is-genuine-for? _v)] is true, or @racket[(unknown)] otherwise.
+    }
+  ]
+}
+
+@defproc[
+  (raw-knowable-predicate-by [accepts? (-> any/c (or/c #f any/c))])
+  (-> any/c (knowable/c (or/c #f any/c)))
+]{
+  Returns a procedure @racket[_f] such that calling @racket[(_f _v)] returns @racket[(known _acceptance)] if @racket[(accepts? _v)] returns a non-@racket[#f] result @racket[_acceptance], or @racket[(unknown)] otherwise.
 }
