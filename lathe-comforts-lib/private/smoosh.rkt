@@ -6943,9 +6943,6 @@
 ;     If neither operand is a `base-unidentifiable-literal?` value,
 ;     then unknown.
 ;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
-;     
 ;     Otherwise, unknown.
 ; Level 1+:
 ;   path-related, join, meet, ==:
@@ -6964,11 +6961,7 @@
       #:known-reflexive? #f
       
       #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal
-        base-unidentifiable-literal?
-        (fn v /base-non-literal? v))
+      (raw-knowable-predicate base-unidentifiable-literal?)
       
       )
     (trivial)))
@@ -6983,9 +6976,6 @@
 ;     Otherwise, unknown.
 ;   ==:
 ;     If neither operand is a `boolean?` value, then unknown.
-;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
 ;     
 ;     If the operands are not both `boolean?` values, then unknown.
 ;     
@@ -7005,14 +6995,7 @@
   (#:prop
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
-      
-      #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal boolean?
-        (fn v /base-non-literal? v))
-      
-      )
+      #:inhabitant?-knowable (raw-knowable-predicate boolean?))
     (trivial)))
 
 ; Level 0:
@@ -7025,9 +7008,6 @@
 ;     Otherwise, unknown.
 ;   ==:
 ;     If neither operand is a character, then unknown.
-;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
 ;     
 ;     If the operands are not both characters, then unknown.
 ;     
@@ -7047,14 +7027,7 @@
     (make-expressly-smooshable-bundle-property-for-atom
       #:ignore-chaperones? #t
       #:known-distinct? #f
-      
-      #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal char?
-        (fn v /base-non-literal? v))
-      
-      )
+      #:inhabitant?-knowable (raw-knowable-predicate char?))
     (trivial)))
 
 ; Level 0:
@@ -7067,9 +7040,6 @@
 ;     Otherwise, unknown.
 ;   ==:
 ;     If neither operand is an immutable string, then unknown.
-;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
 ;     
 ;     If the operands are not both immutable strings, then unknown.
 ;     
@@ -7092,10 +7062,7 @@
       #:known-distinct? #f
       
       #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal immutable-string?
-        (fn v /base-non-literal? v))
+      (raw-knowable-predicate immutable-string?)
       
       )
     (trivial)))
@@ -7111,9 +7078,6 @@
 ;     Otherwise, unknown.
 ;   ==:
 ;     If neither operand is an immutable byte string, then unknown.
-;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
 ;     
 ;     If the operands are not both immutable byte strings, then
 ;     unknown.
@@ -7137,11 +7101,7 @@
       #:known-distinct? #f
       
       #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal
-        (fn v /and (bytes? v) (immutable? v))
-        (fn v /base-non-literal? v))
+      (raw-knowable-predicate /fn v /and (bytes? v) (immutable? v))
       
       )
     (trivial)))
@@ -7151,10 +7111,7 @@
   (normalized-glossesque-sys gss /fn k /normalize-non-nan-number k))
 
 (define non-nan-number-dynamic-type-inhabitant?-knowable
-  ; TODO FORWARD: This use of `base-non-literal?` is a forward
-  ; reference. See if we can untangle it.
-  (raw-knowable-predicate-by-appraisal non-nan-number?
-    (fn v /base-non-literal? v)))
+  (raw-knowable-predicate non-nan-number?))
 
 ; Level 0:
 ;   path-related:
@@ -7180,9 +7137,6 @@
 ;     If neither operand is a `number?` value without NaN parts, then
 ;     unknown.
 ;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
-;     
 ;     If the operands are not both `number?` values without NaN parts,
 ;     then unknown.
 ;     
@@ -7203,9 +7157,6 @@
 ;   <=, >=, path-related, join, meet, ==:
 ;     If neither operand is a `number?` value without NaN parts, then
 ;     unknown.
-;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
 ;     
 ;     If the operands are not both `number?` values without NaN parts,
 ;     then unknown.
@@ -7359,10 +7310,7 @@
   )
 
 (define non-nan-extflonum-dynamic-type-inhabitant?-knowable
-  ; TODO FORWARD: This use of `base-non-literal?` is a forward
-  ; reference. See if we can untangle it.
-  (raw-knowable-predicate-by-appraisal non-nan-extflonum?
-    (fn v /base-non-literal? v)))
+  (raw-knowable-predicate non-nan-extflonum?))
 
 ; Level 0:
 ;   path-related:
@@ -7382,9 +7330,6 @@
 ;     If neither operand is a non-NaN `extflonum?` value, then
 ;     unknown.
 ;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
-;     
 ;     If the operands are not both non-NaN `extflonum?` values, then
 ;     unknown.
 ;     
@@ -7401,9 +7346,6 @@
 ;   <=, >=, path-related, join, meet, ==:
 ;     If neither operand is a non-NaN `extflonum?` value, then
 ;     unknown.
-;     
-;     If either operand is a `base-non-literal?` value, then a known
-;     nothing.
 ;     
 ;     If the operands are not both non-NaN `extflonum?` values, then
 ;     unknown.
@@ -7602,11 +7544,7 @@
         any-dt)
       
       #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal
-        (fn v /and (vector? v) (immutable? v))
-        (fn v /base-non-literal? v))
+      (raw-knowable-predicate /fn v /and (vector? v) (immutable? v))
       
       #:->list (fn v /vector->list v)
       
@@ -7680,11 +7618,7 @@
         any-dt)
       
       #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal
-        (fn v /and (box? v) (immutable? v))
-        (fn v /base-non-literal? v))
+      (raw-knowable-predicate /fn v /and (box? v) (immutable? v))
       
       #:->list (fn b /list /unbox b)
       
@@ -7733,10 +7667,7 @@
         any-dt)
       
       #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal immutable-prefab-struct?
-        (fn v /base-non-literal? v))
+      (raw-knowable-predicate immutable-prefab-struct?)
       
       #:->list (fn s /cdr /vector->list /struct->vector s)
       #:example-and-list->
@@ -7766,11 +7697,7 @@
         any-dt)
       
       #:inhabitant?-knowable
-      ; TODO FORWARD: This use of `base-non-literal?` is a forward
-      ; reference. See if we can untangle it.
-      (raw-knowable-predicate-by-appraisal
-        (fn v /and (hash? v) (immutable? v))
-        (fn v /base-non-literal? v))
+      (raw-knowable-predicate /fn v /and (hash? v) (immutable? v))
       
       #:->->list
       (fn a
@@ -9577,14 +9504,26 @@
 ;     be equal. The special-cased values for the `null?` dynamic type
 ;     are `null?` values, which are always equal to each other.
 ;
-;   - Change the places we're using
+;   - (Done) Change the places we're using
 ;     `(raw-knowable-predicate-by-appraisal foo? base-non-literal?)`
 ;     for some `foo?` so that they use `(raw-knowable-predicate foo?)`
-;     instead. The difference should already be covered by the way the
+;     instead. The difference should now be covered by the way the
 ;     identifiable objects' predicates exclude
 ;     `known-s-expression-landmark-or-not?` and the way the
 ;     s-expression landmark values' predicates exclude
 ;     `known-s-expression-landmark-or-not?`.
+;
+;   - Is that actually true? Don't we generally need comparison logic
+;     on both sides to agree? Maybe we're not making enough use of
+;     `yknow?` functionality; we probably need to make known
+;     non-inhabitants yield known-unspecified smoosh results.
+;
+;   - We've probably now brought the `dynamic-type-case-by-cases`
+;     types' logic for distinguishing cases out of consistency with
+;     the ways we're distinguishing identifiable objects and
+;     s-expression landmarks from other values. Discontinue our use of
+;     `dynamic-type-case-by-cases`, or at least of its
+;     `#:known-distinct?` argument.
 ;
 ;   - Make standard `tagged-glossesque-sys?` values that can be used
 ;     by user-defined `unknown?` types -- or better yet, a structure
