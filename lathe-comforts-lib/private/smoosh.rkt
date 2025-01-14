@@ -42,6 +42,24 @@
 
 
 (provide /own-contract-out
+  reffage-unknowns?
+  reffage-unknowns-unknown-entries)
+(provide
+  reffage-unknowns)
+(provide /own-contract-out
+  reffage-miss?)
+(provide
+  reffage-miss)
+(provide /own-contract-out
+  reffage-hit?
+  reffage-hit-key
+  reffage-hit-value)
+(provide
+  reffage-hit)
+(provide /own-contract-out
+  reffage/c
+  reffage->maybe-knowable
+  reffage-with-unknown-entries
   glossesque-summary-sys?
   glossesque-summary-sys-trivial-value
   glossesque-summary-sys-summarize-zero
@@ -70,7 +88,7 @@
   glossesque-sys-get-summary-sys
   glossesque-sys-glossesque-union-of-zero
   glossesque-sys-glossesque-skv-union-of-two-knowable
-  glossesque-sys-glossesque-ref-maybe-knowable
+  glossesque-sys-glossesque-ref-reffage
   glossesque-sys-rider-and-glossesque-update-maybe-knowable
   glossesque-sys-glossesque-summarize
   glossesque-sys-glossesque-iteration-sequence
@@ -144,6 +162,7 @@
   gloss-union-of-zero
   gloss-iteration-sequence
   summarized-gloss-skv-union-of-two-knowable
+  gloss-ref-reffage
   gloss-ref-maybe-knowable
   gloss-count
   gloss-empty?
@@ -245,7 +264,7 @@
   summarized-assoc-list-nil
   summarized-assoc-list-cons
   summarized-assoc-list-skv-union-of-two-knowable
-  summarized-assoc-list-ref-maybe-knowable
+  summarized-assoc-list-ref-reffage
   rider-and-summarized-assoc-list-update-maybe-knowable
   equality-check-atom-glossesque-sys
   equal-always-atom-glossesque-sys
@@ -285,6 +304,50 @@
 (provide /own-contract-out
   current-any-dynamic-type
   any-dynamic-type)
+
+
+(define-imitation-simple-struct
+  (reffage-unknowns? reffage-unknowns-unknown-entries)
+  reffage-unknowns 'reffage-unknowns (current-inspector) (auto-write))
+(ascribe-own-contract reffage-unknowns? (-> any/c boolean?))
+; TODO SMOOSH: Decide whether we want to constrain the constructor so
+; this can return a `(sequence/c any/c any/c)`.
+(ascribe-own-contract reffage-unknowns-unknown-entries
+  (-> reffage-unknowns? any/c))
+
+(define-imitation-simple-struct (reffage-miss?)
+  reffage-miss 'reffage-miss (current-inspector) (auto-write))
+(ascribe-own-contract reffage-miss? (-> any/c boolean?))
+
+(define-imitation-simple-struct
+  (reffage-hit? reffage-hit-key reffage-hit-value)
+  reffage-hit 'reffage-hit (current-inspector) (auto-write))
+(ascribe-own-contract reffage-hit? (-> any/c boolean?))
+(ascribe-own-contract reffage-hit-key (-> reffage-hit? any/c))
+(ascribe-own-contract reffage-hit-value (-> reffage-hit? any/c))
+
+(define/own-contract (reffage/c c)
+  (-> contract? contract?)
+  (w- c (coerce-contract 'reffage/c c)
+  /rename-contract
+    (or/c
+      (match/c reffage-unknowns /sequence/c any/c c)
+      reffage-miss?
+      (match/c reffage-hit any/c c))
+    `(reffage/c ,(contract-name c))))
+
+(define/own-contract (reffage->maybe-knowable r)
+  (-> (reffage/c any/c) (knowable/c maybe?))
+  (mat r (reffage-unknowns unknown-entries) (unknown)
+  /mat r (reffage-miss) (known /nothing)
+  /dissect r (reffage-hit k v) (known /just v)))
+
+(define/own-contract (reffage-with-unknown-entries so-far r)
+  (-> (sequence/c any/c any/c) (reffage/c any/c) (reffage/c any/c))
+  (mat r (reffage-hit actual-k v) (reffage-hit actual-k v)
+  /mat r (reffage-miss) (reffage-unknowns so-far)
+  /dissect r (reffage-unknowns more)
+  /reffage-unknowns /in-sequences so-far more))
 
 
 (define-imitation-simple-generics
@@ -520,8 +583,7 @@
     ()
     ()
     ())
-  (#:method
-    glossesque-sys-glossesque-ref-maybe-knowable (#:this) () ())
+  (#:method glossesque-sys-glossesque-ref-reffage (#:this) () ())
   (#:method glossesque-sys-rider-and-glossesque-update-maybe-knowable
     (#:this)
     ()
@@ -544,8 +606,8 @@
     (-> any/c any/c any/c)
     (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c any/c))))
-(ascribe-own-contract glossesque-sys-glossesque-ref-maybe-knowable
-  (-> glossesque-sys? any/c any/c (knowable/c maybe?)))
+(ascribe-own-contract glossesque-sys-glossesque-ref-reffage
+  (-> glossesque-sys? any/c any/c (reffage/c any/c)))
 (ascribe-own-contract
   glossesque-sys-rider-and-glossesque-update-maybe-knowable
   (-> glossesque-sys? (list/c any/c any/c) any/c
@@ -582,7 +644,7 @@
     #:glossesque-skv-union-of-two-knowable
     glossesque-skv-union-of-two-knowable
     
-    #:glossesque-ref-maybe-knowable glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage glossesque-ref-reffage
     
     #:rider-and-glossesque-update-maybe-knowable
     rider-and-glossesque-update-maybe-knowable
@@ -599,8 +661,8 @@
       (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
       (knowable/c (list/c any/c any/c)))
     
-    #:glossesque-ref-maybe-knowable
-    (-> glossesque-sys? any/c any/c (knowable/c maybe?))
+    #:glossesque-ref-reffage
+    (-> glossesque-sys? any/c any/c (reffage/c any/c))
     
     #:rider-and-glossesque-update-maybe-knowable
     (-> glossesque-sys? (list/c any/c any/c) any/c
@@ -617,7 +679,7 @@
     get-summary-sys
     glossesque-union-of-zero
     glossesque-skv-union-of-two-knowable
-    glossesque-ref-maybe-knowable
+    glossesque-ref-reffage
     rider-and-glossesque-update-maybe-knowable
     glossesque-summarize
     glossesque-iteration-sequence))
@@ -782,10 +844,10 @@
         (fn state summary /on-keep state /<s> summary)
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (dissect gs (mapped-summary-glossesque-sys >s< <s> original)
-      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+      /glossesque-sys-glossesque-ref-reffage original g k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -845,11 +907,11 @@
       /fn result
         (<g> result)))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
       /w- g (>g< g)
-      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+      /glossesque-sys-glossesque-ref-reffage original g k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -931,16 +993,23 @@
         /dissectfn (list state m)
           (list state /maybe-map m /fn v /list k v))))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (dissect gs
         (mapped-key-glossesque-sys _ >k< original-gss rep-gs)
       /w- internal-k (>k< k)
-      /knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable
-          rep-gs g internal-k)
-      /fn entry-m
-      /known /maybe-map entry-m /dissectfn (list k v) v))
+      /w- entry-r
+        (glossesque-sys-glossesque-ref-reffage rep-gs g internal-k)
+      /mat entry-r (reffage-hit k entry)
+        (dissect entry (list k v)
+        /reffage-hit k v)
+      /mat entry-r (reffage-miss) (reffage-miss)
+      /dissect entry-r (reffage-unknowns unknown-entry-entries)
+      /reffage-unknowns /sequence-map
+        (fn internal-k entry
+          (dissect entry (list k v)
+          /values k v))
+        unknown-entry-entries))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -2012,7 +2081,7 @@
         gss state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (dissect gs (ladder-glossesque-sys-unguarded gss)
       /w-loop next g g
@@ -2020,11 +2089,13 @@
         /w- gs
           (tagged-glossesque-sys-get-glossesque-sys-for-ladder
             gss tgs)
-        /knowable-bind
-          (tagged-glossesque-sys-inhabitant?-knowable tgs k)
-        /fn k-inhabits?
+        /expect (tagged-glossesque-sys-inhabitant?-knowable tgs k)
+          (known k-inhabits?)
+          (reffage-with-unknown-entries
+            (glossesque-sys-glossesque-iteration-sequence gs then)
+            (next else))
         /if k-inhabits?
-          (glossesque-sys-glossesque-ref-maybe-knowable gs then k)
+          (glossesque-sys-glossesque-ref-reffage gs then k)
           (next else))))
     
     #:rider-and-glossesque-update-maybe-knowable
@@ -2273,10 +2344,14 @@
   (w- gs (gloss-ladder-glossesque-sys)
   /glossesque-sys-glossesque-iteration-sequence gs g))
 
+(define/own-contract (gloss-ref-reffage g k)
+  (-> gloss? any/c (reffage/c any/c))
+  (w- gs (gloss-ladder-glossesque-sys)
+  /glossesque-sys-glossesque-ref-reffage gs g k))
+
 (define/own-contract (gloss-ref-maybe-knowable g k)
   (-> gloss? any/c (knowable/c maybe?))
-  (w- gs (gloss-ladder-glossesque-sys)
-  /glossesque-sys-glossesque-ref-maybe-knowable gs g k))
+  (reffage->maybe-knowable /gloss-ref-reffage g k))
 
 (define/own-contract (gloss-count g)
   (-> gloss? natural?)
@@ -2398,10 +2473,10 @@
         gss state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (dissect g (summarized summary gloss)
-      /gloss-ref-maybe-knowable gloss k))
+      /gloss-ref-reffage gloss k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4324,10 +4399,11 @@
         gss state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (dissect g (summarized summary h)
-      /known /hash-ref-maybe h k))
+      /expect (hash-ref-maybe h k) (just v) (reffage-miss)
+      /reffage-hit (hash-ref-key h k) v))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4477,18 +4553,19 @@
     /next state a b (summarized-assoc-list-cons gss b-k v result))))
 
 (define/own-contract
-  (summarized-assoc-list-ref-maybe-knowable ==?-knowable a k)
+  (summarized-assoc-list-ref-reffage ==?-knowable a k)
   (->
     (-> any/c any/c (knowable/c boolean?))
     (summarized-assoc-list/c any/c any/c any/c)
     any/c
-    (knowable/c maybe?))
+    (reffage/c any/c))
   (w-loop next a a
     (dissect a (summarized _ a)
-    /expect a (cons entry a) (known /nothing)
+    /expect a (cons entry a) (reffage-miss)
     /dissect entry (cons a-k v)
-    /knowable-bind (==?-knowable k a-k) /fn succeeded?
-    /if succeeded? (known /just v)
+    /expect (==?-knowable k a-k) (known succeeded?)
+      (reffage-with-unknown-entries (stream /values a-k v) (next a))
+    /if succeeded? (reffage-hit a-k v)
     /next a)))
 
 (define/own-contract
@@ -4555,10 +4632,10 @@
         gss ==?-knowable state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (w- ==?-knowable (get-==?-knowable gs)
-      /summarized-assoc-list-ref-maybe-knowable ==?-knowable g k))
+      /summarized-assoc-list-ref-reffage ==?-knowable g k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4657,14 +4734,25 @@
             (fn state k a-v b-v
               (skv-union-knowable state k a-v b-v))))))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (w- base-gs (get-base-gs gs)
-      /knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable base-gs g k)
-      /fn bin-m
       /w- bin-gs (get-bin-gs gs)
-      /glossesque-sys-glossesque-ref-maybe-knowable bin-gs bin-m k))
+      /w- bin-r (glossesque-sys-glossesque-ref-reffage base-gs g k)
+      /mat bin-r (reffage-unknowns base-unknown-entries)
+        (reffage-unknowns /for*/stream
+          (
+            [(k bin) (in-sequences base-unknown-entries)]
+            [ (k v)
+              (in-sequences
+                (glossesque-sys-glossesque-iteration-sequence
+                  gs bin))])
+          (values k v))
+      /w- bin-m
+        (mat bin-r (reffage-miss) (nothing)
+        /dissect bin-r (reffage-hit actual-k bin)
+        /just bin)
+      /glossesque-sys-glossesque-ref-reffage bin-gs bin-m k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4687,15 +4775,17 @@
     (fn gs g
       (w- base-gs (get-base-gs gs)
       /w- bin-gs (get-bin-gs gs)
-      /apply in-sequences
-        (for/list
-          (
-            [ (k bin)
-              (in-sequences
-                (glossesque-sys-glossesque-iteration-sequence
-                  base-gs g))])
-          (glossesque-sys-glossesque-iteration-sequence bin-gs
-            (just bin)))))
+      /for*/stream
+        (
+          [ (k bin)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence
+                base-gs g))]
+          [ (k v)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence bin-gs
+                (just bin)))])
+        (values k v)))
     
     ))
 
@@ -4727,7 +4817,8 @@
         (just /glossesque-summary-sys-trivial-value gss a))
     /fn g
     /knowable-bind
-      (glossesque-sys-glossesque-ref-maybe-knowable original-gs g b)
+      (reffage->maybe-knowable
+        (glossesque-sys-glossesque-ref-reffage original-gs g b))
     /fn v-m
     /knowable-if (just? v-m) /fn #t)))
 
@@ -4827,17 +4918,20 @@
 (define (list-injection-trie-iteration-sequence gss trie)
   (w- cons-tries-gs (get-cons-tries-gs gss)
   /dissect trie (list nil-m cons-tries)
-  /apply in-sequences
+  /in-sequences
     (expect nil-m (just kv) (list)
       (dissect kv (list k v)
       /in-parallel (in-value k) (in-value v)))
-    (for/list
+    (for*/stream
       (
         [ (elem trie)
           (in-sequences
             (glossesque-sys-glossesque-iteration-sequence
-              cons-tries-gs cons-tries))])
-      (list-injection-trie-iteration-sequence gss trie))))
+              cons-tries-gs cons-tries))]
+        [ (k v)
+          (in-sequences
+            (list-injection-trie-iteration-sequence gss trie))])
+      (values k v))))
 
 (define (list-injection-trie-union-of-zero gss)
   (w- cons-tries-gs (get-cons-tries-gs gss)
@@ -5069,28 +5163,69 @@
           /dissectfn (list state trie)
           /known /list state /just /list a-->list trie))))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-reffage
     (fn gs g k
       (w- gss (get-gss gs)
       /w- base-gs (get-base-gs gss)
       /w- cons-tries-gs (get-cons-tries-gs gss)
-      /knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable base-gs g
+      /w- ->list-and-trie-r
+        (glossesque-sys-glossesque-ref-reffage base-gs g
           (shallow-wrapper k))
-      /fn ->list-and-trie-maybe
-      /expect ->list-and-trie-maybe (just ->list-and-trie)
-        (known /nothing)
-      /dissect ->list-and-trie (list ->list trie)
-      /w-loop next trie trie k (->list k)
+      /mat ->list-and-trie-r (reffage-unknowns base-unknown-entries)
+        (reffage-unknowns /for*/stream
+          (
+            [(k ->list-and-trie) (in-sequences base-unknown-entries)]
+            [ (k v)
+              (in-sequences
+                (dissect ->list-and-trie (list ->list trie)
+                /list-injection-trie-iteration-sequence gss trie))])
+          (values k v))
+      /mat ->list-and-trie-r (reffage-miss) (reffage-miss)
+      /dissect ->list-and-trie-r
+        (reffage-hit base-k /list ->list trie)
+      /w-loop next-cons trie trie k (->list k)
         (dissect trie (list nil-m cons-tries)
         /expect k (cons elem k)
-          (known /maybe-map nil-m /dissectfn (list k v) v)
-        /knowable-bind
-          (glossesque-sys-glossesque-ref-maybe-knowable
+          (expect nil-m (just nil) (reffage-miss)
+          /dissect nil (list k v)
+          /reffage-hit k v)
+        /w- trie-r
+          (glossesque-sys-glossesque-ref-reffage
             cons-tries-gs cons-tries elem)
-        /fn trie-m
-        /expect trie-m (just trie) (known /nothing)
-        /next trie k)))
+        /mat trie-r (reffage-unknowns cons-unknown-entries)
+          ; This one element's comparison has given us an unknown
+          ; result for certain candidate entries, but we go on to
+          ; check the rest of the elements in case they eliminate some
+          ; of the candidates.
+          ;
+          ; TODO SMOOSH: This is the likely location of a bug for
+          ; which we're currently commenting out two tests in
+          ; `lathe-comforts/tests/smoosh` marked with "TODO SMOOSH".
+          ;
+          (w-loop next-unknown-entries
+            rev-collected (list)
+            candidates (in-values-sequence cons-unknown-entries)
+            
+            (expect candidates (sequence* candidate candidates)
+              (mat rev-collected (list) (reffage-miss)
+              /reffage-unknowns
+                (apply in-sequences /reverse rev-collected))
+            /dissect candidate (list _ trie)
+            /w- next-result-r (next-cons trie k)
+            /mat next-result-r (reffage-unknowns more)
+              (next-unknown-entries
+                (cons more rev-collected)
+                candidates)
+            /mat next-result-r (reffage-miss)
+              (next-unknown-entries rev-collected candidates)
+            /dissect next-result-r (reffage-hit actual-k next-result)
+            /next-unknown-entries
+              (cons (stream /values actual-k next-result)
+                rev-collected)
+              candidates))
+        /mat trie-r (reffage-miss) (reffage-miss)
+        /dissect trie-r (reffage-hit _ trie)
+        /next-cons trie k)))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -5131,15 +5266,17 @@
     (fn gs g
       (w- gss (get-gss gs)
       /w- base-gs (get-base-gs gss)
-      /apply in-sequences
-        (for/list
-          (
-            [ (tag ->list-and-trie)
-              (in-sequences
-                (glossesque-sys-glossesque-iteration-sequence
-                  base-gs g))])
-          (dissect ->list-and-trie (list ->list trie)
-          /list-injection-trie-iteration-sequence gss trie))))
+      /for*/stream
+        (
+          [ (tag ->list-and-trie)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence
+                base-gs g))]
+          [ (k v)
+            (in-sequences
+              (dissect ->list-and-trie (list ->list trie)
+              /list-injection-trie-iteration-sequence gss trie))])
+        (values k v)))
     
     ))
 
