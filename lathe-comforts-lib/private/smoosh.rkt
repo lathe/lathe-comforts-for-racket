@@ -5201,6 +5201,15 @@
           ; TODO SMOOSH: This is the likely location of a bug for
           ; which we're currently commenting out two tests in
           ; `lathe-comforts/tests/smoosh` marked with "TODO SMOOSH".
+          ; ...Actually, it's likely we'll want to do one of these:
+          ;
+          ;  - Give up on letting ourselves skip past unknowns to find
+          ;    discrepancies. In this case, we should tear down some
+          ;    of this reffage logic, especially the unknown entries.
+          ;
+          ;  - Change the list injection trie representation to have
+          ;    more than one `cons-tries`, such as perhaps a list of
+          ;    them.
           ;
           (w-loop next-unknown-entries
             rev-collected (list)
