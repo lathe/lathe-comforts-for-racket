@@ -179,6 +179,17 @@
 }
 
 @defproc[
+  (maybe-min-yknow-zip*-map/unambitious
+    [y-list (listof (yknow/c maybe?))]
+    [on-value (-> list? any/c)])
+  (yknow/c maybe?)
+]{
+  Given a list of @tech{yknow objects} possibly resulting in @tech{maybe values}, returns a new one obtained by updating their fully specified @racket[just-value] result values (if they all have them) according to the given function. If any of the given yknow objects has a result that's not-yet-specified or user-specified, then the resulting yknow object has a not-yet-specified result. Otherwise, if any of them has a result that's a fully specified @racket[nothing?] value, then the resulting yknow object does as well. The function won't be called until the resulting yknow object's computation is fully forced.
+  
+  Note that this flattens the sometimes useful distinction between a yknow object with a not-yet-specified result and a yknow object with a user-specified result.
+}
+
+@defproc[
   (yknow-maybe-yknow-joininfo*
     [ymy-list (listof (yknow/c (maybe/c (yknow/c any/c))))])
   (yknow/c (maybe/c (yknow/c any/c)))

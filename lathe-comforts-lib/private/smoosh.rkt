@@ -2065,6 +2065,11 @@
     (boolean-and-knowable-promise-zip* /list-map y-list /fn y
       (delay /yknow-value-knowable y))))
 
+(define/own-contract (boolean-and-yknow-zip*/unambitious y-list)
+  (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
+  (yknow-zip*-map y-list /fn value-list
+    (list-all value-list /fn b b)))
+
 (define/own-contract
   (gloss-equal-always?-knowable a b value-equal-always?-knowable)
   (-> any/c any/c (-> any/c any/c (knowable/c boolean?))
@@ -5475,11 +5480,10 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include a known nothing, then a known
-;     nothing.
+;     under the same smoosh include an unknown, then unknown.
 ;     
-;     Otherwise, if those recursive results include an unknown, then
-;     unknown.
+;     Otherwise, if those recursive results include a known nothing,
+;     then a known nothing.
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand, then the first such operand.
@@ -5508,10 +5512,10 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include a known `#f`, then a known `#f`.
+;     under the same smoosh include an unknown, then unknown.
 ;     
-;     Otherwise, if those recursive results include an unknown, then
-;     unknown.
+;     Otherwise, if those recursive results include a known `#f`, then
+;     a known `#f`.
 ;     
 ;     Otherwise, a known `#t`.
 ; Level 2+:
@@ -5584,7 +5588,7 @@
           (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
         #:on-result-yknow-maybe-yknow
         (fn ymy-list
-          (maybe-min-yknow-zip*-map ymy-list /fn y-list
+          (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
             (yknow-zip*-map y-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /example-and-list-> a result-list))))))
@@ -5624,10 +5628,10 @@
             any-dt a-elem b-elem))
         #:on-check-result-yknow
         (fn y-list
-          (boolean-and-yknow-zip* y-list))
+          (boolean-and-yknow-zip*/unambitious y-list))
         #:on-smoosh-result-yknow-maybe-yknow
         (fn ymy-list
-          (maybe-min-yknow-zip*-map ymy-list /fn y-list
+          (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
             (yknow-zip*-map y-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /if (list-elements-eq? result-list b-list) b
@@ -5711,11 +5715,10 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include a known nothing, then a known
-;     nothing.
+;     under the same smoosh include an unknown, then unknown.
 ;     
-;     Otherwise, if those recursive results include an unknown, then
-;     unknown.
+;     Otherwise, if those recursive results include a known nothing,
+;     then a known nothing.
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand that counts as an acceptable result, then the
@@ -5783,10 +5786,10 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include a known `#f`, then a known `#f`.
+;     under the same smoosh include an unknown, then unknown.
 ;     
-;     Otherwise, if those recursive results include an unknown, then
-;     unknown.
+;     Otherwise, if those recursive results include a known `#f`, then
+;     a known `#f`.
 ;     
 ;     Otherwise, if the element we're proposing to be greater is
 ;     shallowly chaperone-of the other one, then a known `#t`.
@@ -5898,7 +5901,7 @@
             (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
           #:on-result-yknow-maybe-yknow
           (fn ymy-list
-            (maybe-min-yknow-zip*-map ymy-list /fn y-list
+            (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
               (yknow-zip*-map y-list /fn result-list
                 result-list))))
         (sequence* report-0 report-1 report-2+)
@@ -5979,10 +5982,10 @@
               any-dt a-elem b-elem))
           #:on-check-result-yknow
           (fn y-list
-            (boolean-and-yknow-zip* y-list))
+            (boolean-and-yknow-zip*/unambitious y-list))
           #:on-smoosh-result-yknow-maybe-yknow
           (fn ymy-list
-            (maybe-min-yknow-zip*-map ymy-list /fn y-list
+            (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
               (yknow-zip*-map y-list /fn result-list
                 result-list))))
         (sequence* report-0 report-1 report-2+)

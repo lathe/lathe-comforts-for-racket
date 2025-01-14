@@ -2803,17 +2803,12 @@
   (unknown)
   "Path-related smoosh is unknown on immutable hash tables with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
 
-; TODO SMOOSH: Figure out how to represent a trie where unknown
-; comparison results at one level don't stop us from finding false
-; comparison results at levels after that one. Once we do, this test
-; should be fixed, so uncomment it.
-#;
 (check-smoosh
   (s=
     (pw /hash #f path-failing-1 #t 0+i)
     (pw /hash #f path-failing-2 #t 1+i))
-  (known /nothing)
-  "Path-related smoosh fails on immutable hash tables with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+  (unknown)
+  "Path-related smoosh is unknown on immutable hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another pair's path-relatedness is known false")
 
 (check-smoosh-eq-left
   (s= (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0))
@@ -3336,17 +3331,12 @@
   (unknown)
   "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
 
-; TODO SMOOSH: Figure out how to represent a trie where unknown
-; comparison results at one level don't stop us from finding false
-; comparison results at levels after that one. Once we do, this test
-; should be fixed, so uncomment it.
-#;
 (check-smoosh
   (s=
     (pw /gloss #f path-failing-1 #t 0+i)
     (pw /gloss #f path-failing-2 #t 1+i))
-  (known /nothing)
-  "Path-related smoosh fails on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+  (unknown)
+  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another pair's path-relatedness is known false")
 
 (check-smoosh-eq-left
   (s= (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0))
