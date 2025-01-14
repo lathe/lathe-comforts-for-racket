@@ -4687,15 +4687,17 @@
     (fn gs g
       (w- base-gs (get-base-gs gs)
       /w- bin-gs (get-bin-gs gs)
-      /apply in-sequences
-        (for/list
-          (
-            [ (k bin)
-              (in-sequences
-                (glossesque-sys-glossesque-iteration-sequence
-                  base-gs g))])
-          (glossesque-sys-glossesque-iteration-sequence bin-gs
-            (just bin)))))
+      /for*/stream
+        (
+          [ (k bin)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence
+                base-gs g))]
+          [ (k v)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence bin-gs
+                (just bin)))])
+        (values k v)))
     
     ))
 
@@ -4827,17 +4829,20 @@
 (define (list-injection-trie-iteration-sequence gss trie)
   (w- cons-tries-gs (get-cons-tries-gs gss)
   /dissect trie (list nil-m cons-tries)
-  /apply in-sequences
+  /in-sequences
     (expect nil-m (just kv) (list)
       (dissect kv (list k v)
       /in-parallel (in-value k) (in-value v)))
-    (for/list
+    (for*/stream
       (
         [ (elem trie)
           (in-sequences
             (glossesque-sys-glossesque-iteration-sequence
-              cons-tries-gs cons-tries))])
-      (list-injection-trie-iteration-sequence gss trie))))
+              cons-tries-gs cons-tries))]
+        [ (k v)
+          (in-sequences
+            (list-injection-trie-iteration-sequence gss trie))])
+      (values k v))))
 
 (define (list-injection-trie-union-of-zero gss)
   (w- cons-tries-gs (get-cons-tries-gs gss)
@@ -5131,15 +5136,17 @@
     (fn gs g
       (w- gss (get-gss gs)
       /w- base-gs (get-base-gs gss)
-      /apply in-sequences
-        (for/list
-          (
-            [ (tag ->list-and-trie)
-              (in-sequences
-                (glossesque-sys-glossesque-iteration-sequence
-                  base-gs g))])
-          (dissect ->list-and-trie (list ->list trie)
-          /list-injection-trie-iteration-sequence gss trie))))
+      /for*/stream
+        (
+          [ (tag ->list-and-trie)
+            (in-sequences
+              (glossesque-sys-glossesque-iteration-sequence
+                base-gs g))]
+          [ (k v)
+            (in-sequences
+              (dissect ->list-and-trie (list ->list trie)
+              /list-injection-trie-iteration-sequence gss trie))])
+        (values k v)))
     
     ))
 
