@@ -70,7 +70,7 @@
   glossesque-sys-get-summary-sys
   glossesque-sys-glossesque-union-of-zero
   glossesque-sys-glossesque-skv-union-of-two-knowable
-  glossesque-sys-glossesque-ref-maybe-knowable
+  glossesque-sys-glossesque-ref-entry-maybe-knowable
   glossesque-sys-rider-and-glossesque-update-maybe-knowable
   glossesque-sys-glossesque-summarize
   glossesque-sys-glossesque-iteration-sequence
@@ -144,6 +144,7 @@
   gloss-union-of-zero
   gloss-iteration-sequence
   summarized-gloss-skv-union-of-two-knowable
+  gloss-ref-entry-maybe-knowable
   gloss-ref-maybe-knowable
   gloss-count
   gloss-empty?
@@ -245,7 +246,7 @@
   summarized-assoc-list-nil
   summarized-assoc-list-cons
   summarized-assoc-list-skv-union-of-two-knowable
-  summarized-assoc-list-ref-maybe-knowable
+  summarized-assoc-list-ref-entry-maybe-knowable
   rider-and-summarized-assoc-list-update-maybe-knowable
   equality-check-atom-glossesque-sys
   equal-always-atom-glossesque-sys
@@ -274,6 +275,7 @@
   make-expressly-smooshable-bundle-property-for-atom
   non-nan-number-glossesque-sys
   dynamic-type-case-by-cases
+  gloss-ref-entry
   gloss-ref
   gloss-set
   make-gloss
@@ -521,7 +523,7 @@
     ()
     ())
   (#:method
-    glossesque-sys-glossesque-ref-maybe-knowable (#:this) () ())
+    glossesque-sys-glossesque-ref-entry-maybe-knowable (#:this) () ())
   (#:method glossesque-sys-rider-and-glossesque-update-maybe-knowable
     (#:this)
     ()
@@ -544,8 +546,9 @@
     (-> any/c any/c any/c)
     (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
     (knowable/c (list/c any/c any/c))))
-(ascribe-own-contract glossesque-sys-glossesque-ref-maybe-knowable
-  (-> glossesque-sys? any/c any/c (knowable/c maybe?)))
+(ascribe-own-contract glossesque-sys-glossesque-ref-entry-maybe-knowable
+  (-> glossesque-sys? any/c any/c
+    (knowable/c (maybe/c (list/c any/c any/c)))))
 (ascribe-own-contract
   glossesque-sys-rider-and-glossesque-update-maybe-knowable
   (-> glossesque-sys? (list/c any/c any/c) any/c
@@ -582,7 +585,8 @@
     #:glossesque-skv-union-of-two-knowable
     glossesque-skv-union-of-two-knowable
     
-    #:glossesque-ref-maybe-knowable glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
+    glossesque-ref-entry-maybe-knowable
     
     #:rider-and-glossesque-update-maybe-knowable
     rider-and-glossesque-update-maybe-knowable
@@ -599,8 +603,9 @@
       (-> any/c any/c any/c any/c (knowable/c (list/c any/c maybe?)))
       (knowable/c (list/c any/c any/c)))
     
-    #:glossesque-ref-maybe-knowable
-    (-> glossesque-sys? any/c any/c (knowable/c maybe?))
+    #:glossesque-ref-entry-maybe-knowable
+    (-> glossesque-sys? any/c any/c
+      (knowable/c (maybe/c (list/c any/c any/c))))
     
     #:rider-and-glossesque-update-maybe-knowable
     (-> glossesque-sys? (list/c any/c any/c) any/c
@@ -617,7 +622,7 @@
     get-summary-sys
     glossesque-union-of-zero
     glossesque-skv-union-of-two-knowable
-    glossesque-ref-maybe-knowable
+    glossesque-ref-entry-maybe-knowable
     rider-and-glossesque-update-maybe-knowable
     glossesque-summarize
     glossesque-iteration-sequence))
@@ -782,10 +787,11 @@
         (fn state summary /on-keep state /<s> summary)
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (dissect gs (mapped-summary-glossesque-sys >s< <s> original)
-      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+      /glossesque-sys-glossesque-ref-entry-maybe-knowable
+        original g k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -845,11 +851,12 @@
       /fn result
         (<g> result)))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (dissect gs (mapped-glossesque-glossesque-sys >g< <g> original)
       /w- g (>g< g)
-      /glossesque-sys-glossesque-ref-maybe-knowable original g k))
+      /glossesque-sys-glossesque-ref-entry-maybe-knowable
+        original g k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -931,16 +938,19 @@
         /dissectfn (list state m)
           (list state /maybe-map m /fn v /list k v))))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (dissect gs
         (mapped-key-glossesque-sys _ >k< original-gss rep-gs)
       /w- internal-k (>k< k)
       /knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable
+        (glossesque-sys-glossesque-ref-entry-maybe-knowable
           rep-gs g internal-k)
-      /fn entry-m
-      /known /maybe-map entry-m /dissectfn (list k v) v))
+      /fn entry-entry-m
+      /known
+        (maybe-map entry-entry-m
+          (dissectfn (list internal-k /list k v)
+            (list k v)))))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -2012,7 +2022,7 @@
         gss state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (dissect gs (ladder-glossesque-sys-unguarded gss)
       /w-loop next g g
@@ -2024,7 +2034,8 @@
           (tagged-glossesque-sys-inhabitant?-knowable tgs k)
         /fn k-inhabits?
         /if k-inhabits?
-          (glossesque-sys-glossesque-ref-maybe-knowable gs then k)
+          (glossesque-sys-glossesque-ref-entry-maybe-knowable
+            gs then k)
           (next else))))
     
     #:rider-and-glossesque-update-maybe-knowable
@@ -2065,10 +2076,20 @@
     (boolean-and-knowable-promise-zip* /list-map y-list /fn y
       (delay /yknow-value-knowable y))))
 
-(define/own-contract (boolean-and-yknow-zip*/unambitious y-list)
-  (-> (listof (yknow/c boolean?)) (yknow/c boolean?))
-  (yknow-zip*-map y-list /fn value-list
-    (list-all value-list /fn b b)))
+(define/own-contract
+  (boolean-and-yknow-zip*/from-maybe-min-yknow-trivial-zip*-map
+    maybe-min-yknow-trivial-zip*-map y-list)
+  (->
+    (-> (listof (yknow/c maybe?)) (-> (listof trivial?) trivial?)
+      (yknow/c maybe?))
+    (listof (yknow/c boolean?))
+    (yknow/c boolean?))
+  (yknow-map
+    (maybe-min-yknow-trivial-zip*-map
+      (list-map y-list /fn y
+        (yknow-map y /fn b /maybe-if b /fn /trivial))
+      (fn value-list /trivial))
+    (fn m /just? m)))
 
 (define/own-contract
   (gloss-equal-always?-knowable a b value-equal-always?-knowable)
@@ -2278,10 +2299,16 @@
   (w- gs (gloss-ladder-glossesque-sys)
   /glossesque-sys-glossesque-iteration-sequence gs g))
 
+(define/own-contract (gloss-ref-entry-maybe-knowable g k)
+  (-> gloss? any/c (knowable/c (maybe/c (list/c any/c any/c))))
+  (w- gs (gloss-ladder-glossesque-sys)
+  /glossesque-sys-glossesque-ref-entry-maybe-knowable gs g k))
+
 (define/own-contract (gloss-ref-maybe-knowable g k)
   (-> gloss? any/c (knowable/c maybe?))
-  (w- gs (gloss-ladder-glossesque-sys)
-  /glossesque-sys-glossesque-ref-maybe-knowable gs g k))
+  (knowable-map (gloss-ref-entry-maybe-knowable g k) /fn entry-m
+    (maybe-map entry-m /dissectfn (list k v)
+      v)))
 
 (define/own-contract (gloss-count g)
   (-> gloss? natural?)
@@ -2403,10 +2430,10 @@
         gss state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (dissect g (summarized summary gloss)
-      /gloss-ref-maybe-knowable gloss k))
+      /gloss-ref-entry-maybe-knowable gloss k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4329,10 +4356,11 @@
         gss state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (dissect g (summarized summary h)
-      /known /hash-ref-maybe h k))
+      /known /maybe-map (hash-ref-maybe h k) /fn v
+        (list (hash-ref-key h k) v)))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4482,18 +4510,18 @@
     /next state a b (summarized-assoc-list-cons gss b-k v result))))
 
 (define/own-contract
-  (summarized-assoc-list-ref-maybe-knowable ==?-knowable a k)
+  (summarized-assoc-list-ref-entry-maybe-knowable ==?-knowable a k)
   (->
     (-> any/c any/c (knowable/c boolean?))
     (summarized-assoc-list/c any/c any/c any/c)
     any/c
-    (knowable/c maybe?))
+    (knowable/c (maybe/c (list/c any/c any/c))))
   (w-loop next a a
     (dissect a (summarized _ a)
     /expect a (cons entry a) (known /nothing)
     /dissect entry (cons a-k v)
     /knowable-bind (==?-knowable k a-k) /fn succeeded?
-    /if succeeded? (known /just v)
+    /if succeeded? (known /just /list a-k v)
     /next a)))
 
 (define/own-contract
@@ -4560,10 +4588,11 @@
         gss ==?-knowable state a b a-keeping? b-keeping? on-keep
         skv-union-knowable))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (w- ==?-knowable (get-==?-knowable gs)
-      /summarized-assoc-list-ref-maybe-knowable ==?-knowable g k))
+      /summarized-assoc-list-ref-entry-maybe-knowable
+        ==?-knowable g k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4662,14 +4691,17 @@
             (fn state k a-v b-v
               (skv-union-knowable state k a-v b-v))))))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (w- base-gs (get-base-gs gs)
       /knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable base-gs g k)
-      /fn bin-m
+        (glossesque-sys-glossesque-ref-entry-maybe-knowable
+          base-gs g k)
+      /fn bin-entry-m
+      /w- bin-m (maybe-map bin-entry-m /dissectfn (list k bin) bin)
       /w- bin-gs (get-bin-gs gs)
-      /glossesque-sys-glossesque-ref-maybe-knowable bin-gs bin-m k))
+      /glossesque-sys-glossesque-ref-entry-maybe-knowable
+        bin-gs bin-m k))
     
     #:rider-and-glossesque-update-maybe-knowable
     (fn gs rider-and-g k on-rider-and-m-knowable
@@ -4734,9 +4766,10 @@
         (just /glossesque-summary-sys-trivial-value gss a))
     /fn g
     /knowable-bind
-      (glossesque-sys-glossesque-ref-maybe-knowable original-gs g b)
-    /fn v-m
-    /knowable-if (just? v-m) /fn #t)))
+      (glossesque-sys-glossesque-ref-entry-maybe-knowable
+        original-gs g b)
+    /fn entry-m
+    /knowable-if (just? entry-m) /fn #t)))
 
 (define/own-contract (equal-always-indistinct-atom-glossesque-sys gss)
   (-> glossesque-summary-sys? glossesque-sys?)
@@ -5079,27 +5112,28 @@
           /dissectfn (list state trie)
           /known /list state /just /list a-->list trie))))
     
-    #:glossesque-ref-maybe-knowable
+    #:glossesque-ref-entry-maybe-knowable
     (fn gs g k
       (w- gss (get-gss gs)
       /w- base-gs (get-base-gs gss)
       /w- cons-tries-gs (get-cons-tries-gs gss)
       /knowable-bind
-        (glossesque-sys-glossesque-ref-maybe-knowable base-gs g
+        (glossesque-sys-glossesque-ref-entry-maybe-knowable base-gs g
           (shallow-wrapper k))
-      /fn ->list-and-trie-maybe
-      /expect ->list-and-trie-maybe (just ->list-and-trie)
+      /fn ->list-and-trie-entry-maybe
+      /expect ->list-and-trie-entry-maybe (just ->list-and-trie-entry)
         (known /nothing)
-      /dissect ->list-and-trie (list ->list trie)
+      /dissect ->list-and-trie-entry (list _ /list ->list trie)
       /w-loop next trie trie k (->list k)
         (dissect trie (list nil-m cons-tries)
         /expect k (cons elem k)
-          (known /maybe-map nil-m /dissectfn (list k v) v)
+          (known nil-m)
         /knowable-bind
-          (glossesque-sys-glossesque-ref-maybe-knowable
+          (glossesque-sys-glossesque-ref-entry-maybe-knowable
             cons-tries-gs cons-tries elem)
-        /fn trie-m
-        /expect trie-m (just trie) (known /nothing)
+        /fn trie-entry-m
+        /expect trie-entry-m (just trie-entry) (known /nothing)
+        /dissect trie-entry (list _ trie)
         /next trie k)))
     
     #:rider-and-glossesque-update-maybe-knowable
@@ -5480,10 +5514,11 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include an unknown, then unknown.
-;     
-;     Otherwise, if those recursive results include a known nothing,
-;     then a known nothing.
+;     under the same smoosh include an unknown and/or a known nothing,
+;     then a result determined by the
+;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
+;     results in a known nothing if those recursive results include a
+;     known nothing and unknown otherwise.
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand, then the first such operand.
@@ -5512,10 +5547,11 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include an unknown, then unknown.
-;     
-;     Otherwise, if those recursive results include a known `#f`, then
-;     a known `#f`.
+;     under the same smoosh include an unknown and/or a known nothing,
+;     then a result determined by the
+;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
+;     results in a known nothing if those recursive results include a
+;     known nothing and unknown otherwise.
 ;     
 ;     Otherwise, a known `#t`.
 ; Level 2+:
@@ -5546,6 +5582,12 @@
     
     #:example-and-list-> example-and-list->
     
+    #:maybe-min-yknow-zip*-map/custom
+    [ maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map my-list /fn value-list
+          (on-value value-list)))]
+    
     #:inhabitant-shallowly-equal-always?-knowable
     [ inhabitant-shallowly-equal-always?-knowable
       (fn a b /known /equal-always?/recur a b /fn a-elem b-elem #t)]
@@ -5564,6 +5606,9 @@
       #:known-discrete? boolean?
       #:->list (or/c #f (-> any/c list?))
       #:->->list (-> any/c (-> any/c list?))
+      
+      #:maybe-min-yknow-zip*-map/custom
+      (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
       
       #:inhabitant-shallowly-equal-always?-knowable
       (-> any/c any/c (knowable/c boolean?))
@@ -5588,7 +5633,7 @@
           (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
         #:on-result-yknow-maybe-yknow
         (fn ymy-list
-          (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
+          (maybe-min-yknow-zip*-map/custom ymy-list /fn y-list
             (yknow-zip*-map y-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /example-and-list-> a result-list))))))
@@ -5628,10 +5673,11 @@
             any-dt a-elem b-elem))
         #:on-check-result-yknow
         (fn y-list
-          (boolean-and-yknow-zip*/unambitious y-list))
+          (boolean-and-yknow-zip*/from-maybe-min-yknow-trivial-zip*-map
+            maybe-min-yknow-zip*-map/custom y-list))
         #:on-smoosh-result-yknow-maybe-yknow
         (fn ymy-list
-          (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
+          (maybe-min-yknow-zip*-map/custom ymy-list /fn y-list
             (yknow-zip*-map y-list /fn result-list
               (if (list-elements-eq? result-list a-list) a
               /if (list-elements-eq? result-list b-list) b
@@ -5715,10 +5761,11 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include an unknown, then unknown.
-;     
-;     Otherwise, if those recursive results include a known nothing,
-;     then a known nothing.
+;     under the same smoosh include an unknown and/or a known nothing,
+;     then a result determined by the
+;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
+;     results in a known nothing if those recursive results include a
+;     known nothing and unknown otherwise.
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand that counts as an acceptable result, then the
@@ -5786,10 +5833,11 @@
 ;     Otherwise, if it shows they differ, then unknown.
 ;     
 ;     Otherwise, if the results of smooshing corresponding elements
-;     under the same smoosh include an unknown, then unknown.
-;     
-;     Otherwise, if those recursive results include a known `#f`, then
-;     a known `#f`.
+;     under the same smoosh include an unknown and/or a known nothing,
+;     then a result determined by the
+;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
+;     results in a known nothing if those recursive results include a
+;     known nothing and unknown otherwise.
 ;     
 ;     Otherwise, if the element we're proposing to be greater is
 ;     shallowly chaperone-of the other one, then a known `#t`.
@@ -5851,6 +5899,12 @@
     
     #:example-and-list-> example-and-list->
     
+    #:maybe-min-yknow-zip*-map/custom
+    [ maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map my-list /fn value-list
+          (on-value value-list)))]
+    
     #:inhabitant-shallowly-equal-always?-knowable
     [ inhabitant-shallowly-equal-always?-knowable
       (fn a b /known /equal-always?/recur a b /fn a-elem b-elem #t)]
@@ -5871,6 +5925,9 @@
       #:known-discrete? boolean?
       #:->list (or/c #f (-> any/c list?))
       #:->->list (-> any/c (-> any/c list?))
+      
+      #:maybe-min-yknow-zip*-map/custom
+      (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
       
       #:inhabitant-shallowly-equal-always?-knowable
       (-> any/c any/c (knowable/c boolean?))
@@ -5901,7 +5958,7 @@
             (dynamic-type-get-smoosh-of-one-reports any-dt a-elem))
           #:on-result-yknow-maybe-yknow
           (fn ymy-list
-            (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
+            (maybe-min-yknow-zip*-map/custom ymy-list /fn y-list
               (yknow-zip*-map y-list /fn result-list
                 result-list))))
         (sequence* report-0 report-1 report-2+)
@@ -5982,10 +6039,11 @@
               any-dt a-elem b-elem))
           #:on-check-result-yknow
           (fn y-list
-            (boolean-and-yknow-zip*/unambitious y-list))
+            (boolean-and-yknow-zip*/from-maybe-min-yknow-trivial-zip*-map
+              maybe-min-yknow-zip*-map/custom y-list))
           #:on-smoosh-result-yknow-maybe-yknow
           (fn ymy-list
-            (maybe-min-yknow-zip*-map/unambitious ymy-list /fn y-list
+            (maybe-min-yknow-zip*-map/custom ymy-list /fn y-list
               (yknow-zip*-map y-list /fn result-list
                 result-list))))
         (sequence* report-0 report-1 report-2+)
@@ -6358,6 +6416,12 @@
     
     #:example-and-list-> example-and-list->
     
+    #:maybe-min-yknow-zip*-map/custom
+    [ maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map my-list /fn value-list
+          (on-value value-list)))]
+    
     #:combine-element-hash-codes
     [ combine-element-hash-codes
       (fn element-hash-codes
@@ -6384,6 +6448,10 @@
       #:known-discrete? boolean?
       #:->list (or/c #f (-> any/c list?))
       #:->->list (-> any/c (-> any/c list?))
+      
+      #:maybe-min-yknow-zip*-map/custom
+      (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
+      
       #:combine-element-hash-codes (-> (listof fixnum?) fixnum?)
       
       #:inhabitant-shallowly-equal-always?-knowable
@@ -6419,6 +6487,9 @@
                 #:->->list ->->list
                 #:example-and-list-> example-and-list->
                 
+                #:maybe-min-yknow-zip*-map/custom
+                maybe-min-yknow-zip*-map/custom
+                
                 #:inhabitant-shallowly-equal-always?-knowable
                 inhabitant-shallowly-equal-always?-knowable
                 
@@ -6432,6 +6503,9 @@
                 #:->list ->list
                 #:->->list ->->list
                 #:example-and-list-> example-and-list->
+                
+                #:maybe-min-yknow-zip*-map/custom
+                maybe-min-yknow-zip*-map/custom
                 
                 #:inhabitant-shallowly-equal-always?-knowable
                 inhabitant-shallowly-equal-always?-knowable
@@ -7705,6 +7779,13 @@
   
   )
 
+; This is an appropriate dynamic type of cons cells,
+; information-ordered in a way that's consistent with `chaperone-of?`
+; as long as the keys' and values' information orderings are. This is
+; an instance of
+; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`
+; and uses `maybe-min-yknow-zip*-map/indistinct`.
+;
 ; NOTE: This would be used like so:
 ;
 #;
@@ -7736,6 +7817,11 @@
         (dissect lst (list first rest)
         /cons first rest))
       
+      #:maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
+          (on-value value-list)))
+      
       #:get-smoosh-of-zero-reports
       (fn self
         (dissect self (cons-dynamic-type any-dt)
@@ -7764,7 +7850,8 @@
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?` as long as the elements' information orderings are.
 ; This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
+; and uses `maybe-min-yknow-zip*-map/indistinct`.
 ;
 ; NOTE: This would be used like so:
 ;
@@ -7794,6 +7881,11 @@
       #:example-and-list->
       (fn example lst
         (vector->immutable-vector /list->vector lst))
+      
+      #:maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
+          (on-value value-list)))
       
       #:copy (fn v /vector->immutable-vector /vector-copy v)
       
@@ -7893,7 +7985,8 @@
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the elements' information orderings
 ; are. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
+; and uses `maybe-min-yknow-zip*-map/indistinct`.
 ;
 (define-imitation-simple-struct
   (immutable-prefab-struct-dynamic-type?
@@ -7913,9 +8006,17 @@
       (raw-knowable-predicate immutable-prefab-struct?)
       
       #:->list (fn s /cdr /vector->list /struct->vector s)
+      
       #:example-and-list->
       (fn example lst
-        (apply make-prefab-struct (prefab-struct-key example) lst)))
+        (apply make-prefab-struct (prefab-struct-key example) lst))
+      
+      #:maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
+          (on-value value-list)))
+      
+      )
     (trivial))
   
   )
@@ -7924,7 +8025,8 @@
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the keys' and values' information
 ; orderings are. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
+; and uses `maybe-min-yknow-zip*-map/indistinct`.
 ;
 (define-imitation-simple-struct
   (immutable-hash-dynamic-type?
@@ -7947,7 +8049,7 @@
         (w- keys (hash-keys a)
         /fn b
           (append* /for/list ([k (in-list keys)])
-            (list k (hash-ref b k)))))
+            (list (hash-ref-key b k) (hash-ref b k)))))
       
       #:example-and-list->
       (fn example lst
@@ -7955,6 +8057,11 @@
           (for/list ([entry (in-slice 2 (in-list lst))])
             (dissect entry (list k v)
             /cons k v))))
+      
+      #:maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
+          (on-value value-list)))
       
       #:copy (fn v /hash-v-map v /fn v v)
       
@@ -8999,19 +9106,27 @@
   
   )
 
-(define/own-contract (gloss-ref g k)
-  (-> gloss? any/c any/c)
-  (expect (gloss-ref-maybe-knowable g k) (known result)
-    (raise-arguments-error 'gloss-ref
+(define (gloss-ref-entry/who who g k)
+  (expect (gloss-ref-entry-maybe-knowable g k) (known entry-m)
+    (raise-arguments-error who
       "tried to get a key that couldn't be verified equivalent to or distinct from all the existing keys"
       "gloss" g
       "key" k)
-  /expect result (just result)
-    (raise-arguments-error 'gloss-ref
+  /expect entry-m (just entry)
+    (raise-arguments-error who
       "no value found for key"
       "gloss" g
       "key" k)
-    result))
+    entry))
+
+(define/own-contract (gloss-ref-entry g k)
+  (-> gloss? any/c (list/c any/c any/c))
+  (gloss-ref-entry/who 'gloss-ref-entry g k))
+
+(define/own-contract (gloss-ref g k)
+  (-> gloss? any/c any/c)
+  (dissect (gloss-ref-entry/who 'gloss-ref g k) (list k v)
+    v))
 
 (define/own-contract (gloss-set g k v)
   (-> gloss? any/c any/c gloss?)
@@ -9037,10 +9152,10 @@
 ; information-ordered in a way that's consistent with `chaperone-of?`
 ; as long as the keys' and values' information orderings are. This is
 ; an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`.
-; Note that this instance's
-; `inhabitant-shallowly-equal-always?-knowable` can result in a
-; non-`known?` value if any key comparison does.
+; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`
+; and uses `maybe-min-yknow-zip*-map/indistinct`. Note that this
+; instance's `inhabitant-shallowly-equal-always?-knowable` can result
+; in a non-`known?` value if any key comparison does.
 ;
 (define-imitation-simple-struct
   (gloss-dynamic-type? gloss-dynamic-type-get-any-dynamic-type)
@@ -9062,7 +9177,8 @@
         (w- keys (sequence->list /gloss-keys a)
         /fn b
           (append* /for/list ([k (in-list keys)])
-            (list k (gloss-ref b k)))))
+            (dissect (gloss-ref-entry b k) (list a-k v)
+            /list a-k v))))
       
       #:example-and-list->
       (fn example lst
@@ -9070,6 +9186,11 @@
           (for/list ([entry (in-slice 2 (in-list lst))])
             (dissect entry (list k v)
             /cons k v))))
+      
+      #:maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
+          (on-value value-list)))
       
       #:combine-element-hash-codes
       (fn element-hash-codes
@@ -9459,27 +9580,15 @@
 ; hashing, and `prop:expressly-custom-gloss-key-dynamic-type` behavior
 ; for these types:
 ;
-;   - Various types that can result from the default Racket reader, as
-;     well as their corresponding mutable types where these exist.
-;     We're referring to these as `base-readable?` values. The
-;     following are distinct from each other, a choice which aims to
-;     clarify which parts of an s-expression's data should be
-;     inspectable by a typical parser and which parts should be
-;     considered subject to more unsensational changes (such as
-;     replacing strings with normalized strings):
-;
-;     - (Done) Mutable strings, mutable byte strings, mutable boxes,
-;       mutable vectors, prefab structs with mutable fields, and
-;       mutable hash tables, all equatable and distinguishable in a
-;       way consistent with `equal-always?` and information-ordered in
-;       a way consistent with `chaperone-of?`.
-;
-;     - (Done) Flvectors and fxvectors, all equatable and
-;       distinguishable in a way consistent with `eq?`. (TODO: As of
-;       Racket 8.12 [cs], the implementation of `equal-always?` for
-;       flvectors and fxvectors is incorrect. Once we're on 8.13 or
-;       so, simplify the design by grouping these with the other
-;       mutable data structures.)
+;   - Certain immutable types that can result from the default Racket
+;     reader and tend to need to be treated as decisively distinct
+;     cases when parsing s-expression-based code. We call these
+;     s-expression landmark values, and they're known to be distinct
+;     from all other values except possibly values which specify
+;     otherwise. Landmarks are contrasted with types that potentially
+;     allow more suggestive or special-purpose ideas of what
+;     distinctions matter, such as number and string types with
+;     multiple representations for the same essential value:
 ;
 ;     - (Done) Symbols and keywords, which are all known to be
 ;       distinct from each other. They're not known to be ordered, not
@@ -9498,85 +9607,118 @@
 ;     - (Done) Cons cells, ordered according to the elements'
 ;       orderings and in a way that's consistent with a
 ;       `chaperone-of?` information ordering if the elements'
+;       orderings are. Cons cells with distinct elements aren't known
+;       to be distinct.
+;
+;   - Various mutable types that can result from the default Racket
+;     reader, as well as the mutable equivalents of the immutable
+;     types that can result from the default Racket reader, where
+;     those exist. These are instances of something we refer to as
+;     "identifiable objects," and we consider any identifiable object
+;     to be distinct from all other values except possibly values
+;     which specify otherwise:
+;
+;     - (Done) Mutable strings, mutable byte strings, mutable boxes,
+;       mutable vectors, prefab structs with mutable fields, and
+;       mutable hash tables, all equatable and distinguishable in a
+;       way consistent with `equal-always?` and information-ordered in
+;       a way consistent with `chaperone-of?`.
+;
+;     - (Done) Flvectors and fxvectors, all equatable and
+;       distinguishable in a way consistent with `eq?`. (TODO: As of
+;       Racket 8.12 [cs], the implementation of `equal-always?` for
+;       flvectors and fxvectors is incorrect. Once we're on 8.13 or
+;       so, simplify the design by grouping these with the other
+;       mutable data structures.)
+;
+;   - Various immutable types that can result from the default Racket
+;     reader that aren't specifically needed for s-expression parsing.
+;     We're referring to these as `base-literal?` values (though we
+;     only define `base-literal-dynamic-type-case`, not its
+;     `base-literal?` predicate). The following are known to be
+;     distinct from each other, a choice which aims to clarify which
+;     parts of an s-expression's data should be inspectable by a
+;     typical parser and which parts should be considered subject to
+;     more unsensational changes (such as replacing strings with
+;     normalized strings):
+;
+;     - (Done) Booleans, which are known to be distinct from each
+;       other. They're not known to be ordered, not even by the
+;       convention from abstract algebra that `#f` < `#t`; booleans
+;       are often used in programming as a convenient stand-in for a
+;       two-valued enum type which has no defined ordering.
+;
+;     - (Done) Numbers with NaN parts, not even known to be equal to
+;       themselves.
+;
+;     - (Done) Numbers with no NaN parts, with the ones whose
+;       imaginary parts are `=` zero being ordered in a way that's
+;       consistent with `<=` and `=` on their real parts.
+;
+;     - (Done) NaN extflonums, not even known to be equal to
+;       themselves.
+;
+;     - (Done) Non-NaN extflonums, ordered in a way consistent with
+;       `extfl<=` and `extfl=`, and information-ordered in a way
+;       consistent with `chaperone-of?`.
+;
+;     - (Done) Characters, immutable strings, and immutable byte
+;       strings, which are known to be equal to themselves when
+;       they're `equal-always?` but not known to be distinct from each
+;       other. There are many possible ways to normalize and collate
+;       Unicode strings, and the only thing that's necessarily obvious
+;       across all of those is that identical Unicode scalar sequences
+;       are equal. Byte strings may seem easier to justify
+;       distinguishing from each other according to a byte-by-byte
+;       comparison, but the reader gives them a text representation
+;       that a programmer may refactor into similar Unicode text
+;       without realizing they've made a change.
+;
+;     - (Done) Regular expressions (`regexp?`) and compiled code
+;       expressions (`compiled-expression?`), not even known to be
+;       equal to themselves. Comparing them by their exact source code
+;       isn't necessarily consistent with the intent of the programmer
+;       who wrote that code, and comparing them by their behavior
+;       isn't necessarily feasible.
+;
+;     - (Done) Immutable boxes, ordered according to the elements'
+;       orderings and in a way that's consistent with a
+;       `chaperone-of?` information ordering if the elements'
 ;       orderings are.
 ;
-;     - Other literal datums. The following cases are not necessarily
-;       nonoverlapping, and smooshing one with another will have
-;       unknown results:
+;     - (Done) Immutable vectors, ordered according to the elements'
+;       orderings and in a way that's consistent with a
+;       `chaperone-of?` information ordering if the elements'
+;       orderings are. Vectors of different lengths are known to be
+;       distinct from each other. Vectors of the same length with
+;       distinct elements aren't known to be distinct.
 ;
-;       - (Done) Booleans, which are known to be distinct from each
-;         other. They're not known to be ordered, not even by the
-;         convention from abstract algebra that `#f` < `#t`; booleans
-;         are often used in programming as a convenient stand-in for a
-;         two-valued enum type which has no defined ordering.
+;     - (Done) Prefab structs with no mutable fields, ordered
+;       according to the elements' orderings and in a way that's
+;       consistent with a `chaperone-of?` information ordering if the
+;       elements' orderings are. Prefab structs with different keys
+;       and/or different numbers of fields are known to be distinct
+;       from each other. Prefab structs with the same keys and same
+;       number of fields but with distinct elements aren't known to be
+;       distinct.
 ;
-;       - (Done) Numbers with NaN parts, not even known to be equal to
-;         themselves.
-;
-;       - (Done) Numbers with no NaN parts, with the ones whose
-;         imaginary parts are `=` zero being ordered in a way that's
-;         consistent with `<=` and `=` on their real parts.
-;
-;       - (Done) NaN extflonums, not even known to be equal to
-;         themselves.
-;
-;       - (Done) Non-NaN extflonums, ordered in a way consistent with
-;         `extfl<=` and `extfl=`, and information-ordered in a way
-;         consistent with `chaperone-of?`.
-;
-;       - (Done) Characters, immutable strings, and immutable byte
-;         strings, which are known to be equal to themselves when
-;         they're `equal-always?` but not known to be distinct from
-;         each other. There are many possible ways to normalize and
-;         collate Unicode strings, and the only thing that's
-;         necessarily obvious across all of those is that identical
-;         Unicode scalar sequences are equal. Byte strings may seem
-;         easier to justify distinguishing from each other according
-;         to a byte-by-byte comparison, but the reader gives them a
-;         text representation that a programmer may refactor into
-;         similar Unicode text without realizing they've made a
-;         change.
-;
-;       - (Done) Regular expressions (`regexp?`) and compiled code
-;         expressions (`compiled-expression?`), not even known to be
-;         equal to themselves. Comparing them by their exact source
-;         code isn't necessarily consistent with the intent of the
-;         programmer who wrote that code, and comparing them by their
-;         behavior isn't necessarily feasible.
-;
-;       - (Done) Immutable boxes, ordered according to the elements'
-;         orderings and in a way that's consistent with a
-;         `chaperone-of?` information ordering if the elements'
-;         orderings are.
-;
-;       - (Done) Immutable vectors, ordered according to the elements'
-;         orderings and in a way that's consistent with a
-;         `chaperone-of?` information ordering if the elements'
-;         orderings are. Vectors of different lengths are known to be
-;         distinct from each other.
-;
-;       - (Done) Prefab structs with no mutable fields, ordered
-;         according to the elements' orderings and in a way that's
-;         consistent with a `chaperone-of?` information ordering if
-;         the elements' orderings are. Prefab structs with different
-;         keys and/or different numbers of fields are known to be
-;         distinct from each other.
-;
-;       - (Done) Immutable hash tables with various comparison
-;         functions, ordered according to the keys' and values'
-;         orderings and in a way that's consistent with a 
-;         `chaperone-of?` information ordering if the elements'
-;         orderings are. Hash tables which use different comparison
-;         functions or which have different sets of keys according to
-;         their comparison functions are known to be distinct from
-;         each other.
+;     - (Done) Immutable hash tables with various comparison
+;       functions, ordered according to the keys' and values'
+;       orderings and in a way that's consistent with a
+;       `chaperone-of?` information ordering if the elements'
+;       orderings are. Hash tables which use different comparison
+;       functions or which have different sets of keys according to
+;       their comparison function are known to be distinct from each
+;       other. Hash tables which use the same comparison function and
+;       which have teh same set of keys according to their comparison
+;       function but with distinct elements aren't known to be
+;       distinct.
 ;
 ;     - (TODO) Potentially others in future versions of Racket. The
 ;       above list is up-to-date as of Racket 8.12.
 ;
 ;   - Types defined by Lathe Comforts that this smooshing framework
-;     uses. The following are indistinct from each other and from the
-;     other types listed above and below:
+;     uses:
 ;
 ;     - (Done) `maybe?` values, ordered according to the elements'
 ;       orderings and in a way that's consistent with a
@@ -9586,8 +9728,7 @@
 ;
 ;     - (Done) `trivial?` values.
 ;
-;   - Types defined here in smoosh.rkt. The following are indistinct
-;     from each other and from the other types listed above and below:
+;   - Types defined here in smoosh.rkt:
 ;
 ;     - (Done) `known?` values, `example-unknown?` values, and their
 ;       interactions with other `unknown?` values. The `known?` values
@@ -9622,7 +9763,9 @@
 ;     - (Done) `gloss?` values, ordered according to the keys' and
 ;       values' smoosh orderings. `gloss?` values which have
 ;       known-different sets of keys according to smoosh-ordering are
-;       known to be distinct from each other.
+;       known to be distinct from each other. `gloss?` values which
+;       have the same set of keys according to smoosh-ordering but
+;       which have distinct elements aren't known to be distinct.
 ;
 ;     - (Done) `eq-wrapper?` values, all equatable and distinguishable
 ;       with each other according to the `eq?` behavior of their
@@ -9660,8 +9803,7 @@
 ;       that can be smooshed" means for their own purposes.)
 ;
 ;   - (TODO) Types defined by Lathe Comforts even if this smooshing
-;     framework doesn't use them. The following are indistinct from
-;     each other and from the other types listed above:
+;     framework doesn't use them:
 ;
 ;     - `obstinacy?`, for instance. Potentially others; we haven't
 ;       made a comprehensive list here yet.
@@ -9780,7 +9922,7 @@
 ;     for some `foo?` so that they use `(raw-knowable-predicate foo?)`
 ;     instead. The difference should now be covered by the way the
 ;     identifiable objects' predicates exclude
-;     `known-s-expression-landmark-or-not?` and the way the
+;     `known-identifiable-object-or-not?` and the way the
 ;     s-expression landmark values' predicates exclude
 ;     `known-s-expression-landmark-or-not?`.
 ;

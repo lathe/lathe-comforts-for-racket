@@ -53,7 +53,7 @@
   yknow-joininfo*-resumably
   yknow-joininfo*
   maybe-min-yknow-zip*-map
-  maybe-min-yknow-zip*-map/unambitious
+  maybe-min-yknow-zip*-map/indistinct
   yknow-maybe-yknow-joininfo*
   prop:expressly-yknow-predicate
   make-expressly-yknow-predicate-impl
@@ -194,11 +194,15 @@
         (just /on-value /list-map m-list /fn m /just-value m)))))
 
 (define/own-contract
-  (maybe-min-yknow-zip*-map/unambitious my-list on-value)
+  (maybe-min-yknow-zip*-map/indistinct my-list on-value)
   (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
-  (yknow-zip*-map my-list /fn m-list
-    (maybe-map (maybe-min-zip* m-list) /fn value-list
-      (on-value value-list))))
+  (yknow-zip*-map
+    (list-map my-list /fn my
+      (yknow-map/knowable my /fn m
+        (expect m (just v) (unknown)
+        /known v)))
+    (fn value-list
+      (just /on-value value-list))))
 
 (define/own-contract (yknow-maybe-yknow-joininfo* ymy-list)
   (-> (listof (yknow/c (maybe/c (yknow/c any/c))))

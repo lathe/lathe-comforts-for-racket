@@ -241,16 +241,32 @@
                   e-result
                   message))
           /expect e-result (known e-result)
-            #,
-              (syntax/loc stx
-                (check-pred
-                  unknown?
-                  (knowable-bind
-                    (gloss-set-maybe-knowable (gloss) a-result
-                      (just #f))
-                    (fn g
-                    /gloss-set-maybe-knowable g b-result (just #f)))
-                  message))
+            
+            ; TODO SMOOSH: We no longer require that in a gloss with
+            ; multiple keys, it must be known that they're distinct.
+            ; Instead, let's begin to require that a gloss can carry
+            ; any two keys that are not known to be indistinct.
+            ;
+            ; TODO SMOOSH: We currently treat the default value of
+            ; `#:maybe-min-yknow-zip*-map/custom` as
+            ; `maybe-min-yknow-zip*-map`. But if these abstractions
+            ; also implement the trie data structure, then they should
+            ; probably be using `maybe-min-yknow-zip*-map/indistinct`
+            ; as the default. Then the non-default would tend to be a
+            ; version of `maybe-min-yknow-zip*-map` that verifies that
+            ; its list has only 0 or 1 elements, and the trie would be
+            ; replaced with a simpler data structure for those.
+            ; Perhaps instead of calling it `...-list-isomorphism`, at
+            ; those call sites, it would be called `...-unwrapping`.
+            ;
+            ; TODO SMOOSH: Make cons cells use a different
+            ; `#:maybe-min-yknow-zip*-map/custom` that returns the
+            ; first unknown or known-`nothing?` result it encounters
+            ; as it proceeds from first to rest. We'll need to make
+            ; sure trie lookups also return results consistent with
+            ; this.
+            ;
+            (void)
           /expect e-result (just e-result)
             #,
               (syntax/loc stx
@@ -299,6 +315,13 @@
 (define-values
   (imp-prop:arbitrary imp-prop:arbitrary? imp-prop:arbitrary-get)
   (make-impersonator-property 'imp-prop:arbitrary))
+
+(define (make-trivial-hash-chaperone h)
+  (chaperone-hash h
+    (fn h k /values k /fn h k current-v current-v)
+    (fn h k new-v /values k new-v)
+    (fn h k k)
+    (fn h k k)))
 
 (define mstr1 (string #\a))
 (define mstr2 (string #\b))
@@ -356,24 +379,9 @@
     (fn mprefab current-v current-v)))
 (define mhash1 (make-hash /list /cons 0 0))
 (define mhash2 (make-hash /list /cons 0 0))
-(define mhash1-chap
-  (chaperone-hash mhash1
-    (fn mhash k /values k /fn mhash k current-v current-v)
-    (fn mhash k new-v /values k new-v)
-    (fn mhash k k)
-    (fn mhash k k)))
-(define mhash1-chap2
-  (chaperone-hash mhash1
-    (fn mhash k /values k /fn mhash k current-v current-v)
-    (fn mhash k new-v /values k new-v)
-    (fn mhash k k)
-    (fn mhash k k)))
-(define mhash1-chap-chap
-  (chaperone-hash mhash1-chap
-    (fn mhash k /values k /fn mhash k current-v current-v)
-    (fn mhash k new-v /values k new-v)
-    (fn mhash k k)
-    (fn mhash k k)))
+(define mhash1-chap (make-trivial-hash-chaperone mhash1))
+(define mhash1-chap2 (make-trivial-hash-chaperone mhash1))
+(define mhash1-chap-chap (make-trivial-hash-chaperone mhash1-chap))
 (define flv1 (flvector 0.0))
 (define flv2 (flvector 0.0))
 (define fxv1 (fxvector 0))
@@ -427,24 +435,14 @@
   (chaperone-struct iprefab1-chap iprefab-field1
     (fn iprefab current-v current-v)))
 (define ihash1 (hash #f 0 #t 0.0))
-(define ihash1-chap
-  (chaperone-hash ihash1
-    (fn mhash k /values k /fn mhash k current-v current-v)
-    (fn mhash k new-v /values k new-v)
-    (fn mhash k k)
-    (fn mhash k k)))
-(define ihash1-chap2
-  (chaperone-hash ihash1
-    (fn mhash k /values k /fn mhash k current-v current-v)
-    (fn mhash k new-v /values k new-v)
-    (fn mhash k k)
-    (fn mhash k k)))
-(define ihash1-chap-chap
-  (chaperone-hash ihash1-chap
-    (fn mhash k /values k /fn mhash k current-v current-v)
-    (fn mhash k new-v /values k new-v)
-    (fn mhash k k)
-    (fn mhash k k)))
+(define ihash1-chap (make-trivial-hash-chaperone ihash1))
+(define ihash1-chap2 (make-trivial-hash-chaperone ihash1))
+(define ihash1-chap-chap (make-trivial-hash-chaperone ihash1-chap))
+(define ihasheq1 (hasheq #f 0 #t 0.0))
+(define ihasheq1-chap (make-trivial-hash-chaperone ihasheq1))
+(define ihasheq1-chap2 (make-trivial-hash-chaperone ihasheq1))
+(define ihasheq1-chap-chap
+  (make-trivial-hash-chaperone ihasheq1-chap))
 (define eaw1 (equal-always-wrapper /box-immutable 0))
 (define eaw2 (equal-always-wrapper /box-immutable 0))
 (define eaw-different (equal-always-wrapper /box-immutable 1))
@@ -454,6 +452,22 @@
 ; results).
 (define path-failing-1 (iw #t))
 (define path-failing-2 (iw #f))
+
+
+(check-smoosh
+  (sj path-failing-1 path-failing-2)
+  (known /nothing)
+  "Smoosh join fails on the example values we expect it to fail on")
+
+(check-smoosh
+  (sm path-failing-1 path-failing-2)
+  (known /nothing)
+  "Smoosh meet fails on the example values we expect it to fail on")
+
+(check-smoosh
+  (s= (pw path-failing-1) (pw path-failing-2))
+  (known /nothing)
+  "Path-related smoosh fails on the example values we expect it to fail on")
 
 
 (check-smoosh
@@ -1535,8 +1549,18 @@
 
 (check-smoosh
   (s= (pw /cons path-failing-1 0+i) (pw /cons path-failing-2 1+i))
-  (known /nothing)
-  "Path-related smoosh fails on cons cells with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+  (unknown)
+  "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, earlier pair's path-related smoosh result is known false")
+
+(check-smoosh
+  (s= (pw /cons 0+i path-failing-1) (pw /cons 1+i path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, later pair's path-related smoosh result is known false")
+
+(check-smoosh
+  (s= (pw /cons 0 0+i) (pw /cons 0 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
 
 (check-smoosh-eq-left
   (s= (iw /cons 0 0) (iw /cons 0 0))
@@ -2547,8 +2571,20 @@
   (s=
     (pw /vector-immutable path-failing-1 0+i)
     (pw /vector-immutable path-failing-2 1+i))
-  (known /nothing)
-  "Path-related smoosh fails on immutable vectors with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+  (unknown)
+  "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, earlier pair's path-related smoosh result is known false")
+
+(check-smoosh
+  (s=
+    (pw /vector-immutable 0+i path-failing-1)
+    (pw /vector-immutable 1+i path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, later pair's path-related smoosh result is known false")
+
+(check-smoosh
+  (s= (pw /vector-immutable 0 0+i) (pw /vector-immutable 0 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
 
 (check-smoosh-eq-left
   (s= (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
@@ -2677,8 +2713,20 @@
   (s=
     (pw /iprefab path-failing-1 0+i)
     (pw /iprefab path-failing-2 1+i))
-  (known /nothing)
-  "Path-related smoosh fails on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh fails, even if another pair's path-related smoosh result is unknown")
+  (unknown)
+  "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, earlier pair's path-related smoosh result is known false")
+
+(check-smoosh
+  (s=
+    (pw /iprefab 0+i path-failing-1)
+    (pw /iprefab 1+i path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, later pair's path-related smoosh result is known false")
+
+(check-smoosh
+  (s= (pw /iprefab 0 0+i) (pw /iprefab 0 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
 
 (check-smoosh-eq-left
   (s= (iw /iprefab 0 0) (iw /iprefab 0 0))
@@ -2755,132 +2803,340 @@
 
 (check-smoosh-eq-left
   (s= (hash #f 0 #t 0.0) (hash #f 0.0 #t 0))
-  "Smoosh works and preserves `eq?` when possible on equal immutable hash tables")
+  "Smoosh works and preserves `eq?` when possible on equal immutable `equal?`-based hash tables")
 
 (check-smoosh
   (s= (hash #f 0 #t 0) (hash #f 1 #t 0))
   (known /nothing)
-  "Smoosh fails on unequal immutable hash tables")
+  "Smoosh fails on unequal immutable `equal?`-based hash tables")
 
 (check-smoosh-eq-left
   (sj (hash #f 0 #t 0.0) (hash #f 0.0 #t 0))
-  "Smoosh join works and preserves `eq?` when possible on equal immutable hash tables")
+  "Smoosh join works and preserves `eq?` when possible on equal immutable `equal?`-based hash tables")
 
 (check-smoosh
   (sj (hash #f 1 #t 0) (hash #f 0.0 #t 1+0.0i))
   (known /just /known /hash #f 1 #t 1+0.0i)
-  "Smoosh join works on unequal, comparable immutable hash tables")
+  "Smoosh join works on unequal, comparable immutable `equal?`-based hash tables")
 
 (check-smoosh
   (sj (hash #f 0 #t 0+i) (hash #f 0 #t 1+i))
   (unknown)
-  "Smoosh join is unknown on unequal, uncomparable immutable hash tables")
+  "Smoosh join is unknown on unequal, uncomparable immutable `equal?`-based hash tables")
 
 (check-smoosh-eq-left
   (sm (hash #f 0 #t 0.0) (hash #f 0.0 #t 0))
-  "Smoosh meet works and preserves `eq?` when possible on equal immutable hash tables")
+  "Smoosh meet works and preserves `eq?` when possible on equal immutable `equal?`-based hash tables")
 
 (check-smoosh
   (sm (hash #f 1 #t 0) (hash #f 0.0 #t 1+0.0i))
   (known /just /known /hash #f 0.0 #t 0)
-  "Smoosh meet works on unequal, comparable immutable hash tables")
+  "Smoosh meet works on unequal, comparable immutable `equal?`-based hash tables")
 
 (check-smoosh
   (sm (hash #f 0 #t 0+i) (hash #f 0 #t 1+i))
   (unknown)
-  "Smoosh meet is unknown on unequal, uncomparable immutable hash tables")
+  "Smoosh meet is unknown on unequal, uncomparable immutable `equal?`-based hash tables")
 
 (check-smoosh-eq-left
   (s= (pw /hash #f 0 #t 0.0) (pw /hash #f 0.0 #t 0))
-  "Path-related smoosh works and preserves `eq?` when possible on equal immutable hash tables")
+  "Path-related smoosh works and preserves `eq?` when possible on equal immutable `equal?`-based hash tables")
 
 (check-smoosh-eq-left
   (s= (pw /hash #f 0 #t 0.0) (pw /hash #f 1.0 #t 1+0.0i))
-  "Path-related smoosh works and preserves `eq?` when possible on immutable hash tables with path-related elements")
+  "Path-related smoosh works and preserves `eq?` when possible on immutable `equal?`-based hash tables with path-related elements")
 
 (check-smoosh
   (s= (pw /hash #f 0 #t 0+i) (pw /hash #f 0 #t 1+i))
   (unknown)
-  "Path-related smoosh is unknown on immutable hash tables with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+  "Path-related smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
 
 (check-smoosh
   (s=
     (pw /hash #f path-failing-1 #t 0+i)
     (pw /hash #f path-failing-2 #t 1+i))
   (unknown)
-  "Path-related smoosh is unknown on immutable hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another pair's path-relatedness is known false")
+  "Path-related smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, earlier-source-location pair's path-relatedness is known false")
+
+(check-smoosh
+  (s=
+    (pw /hash #f 0+i #t path-failing-1)
+    (pw /hash #f 1+i #t path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, later-source-location pair's path-relatedness is known false")
+
+(check-smoosh
+  (s= (pw /hash #f 0 #t 0+i) (pw /hash #f 0 #t 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
 
 (check-smoosh-eq-left
   (s= (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0))
-  "Info smoosh works and preserves `eq?` when possible on shallowly `chaperone=?` immutable hash tables whose elements are info smooshable")
+  "Info smoosh works and preserves `eq?` when possible on shallowly `chaperone=?` immutable `equal?`-based hash tables whose elements are info smooshable")
 
 (check-smoosh
   (s= (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0.0))
   (known /nothing)
-  "Info smoosh fails on shallowly `chaperone=?` immutable hash tables with a pair of corresponding elements whose info smoosh fails")
+  "Info smoosh fails on shallowly `chaperone=?` immutable `equal?`-based hash tables with a pair of corresponding elements whose info smoosh fails")
 
 (check-smoosh
   (s= (iw ihash1-chap-chap) (iw ihash1-chap))
   (unknown)
-  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable hash tables even when they're shallowly `chaperone-of?` in one direction and have elements which are info smooshable")
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable `equal?`-based hash tables even when they're shallowly `chaperone-of?` in one direction and have elements which are info smooshable")
 
 (check-smoosh
   (s= (iw ihash1-chap) (iw ihash1-chap2))
   (unknown)
-  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable hash tables even when they're shallowly `equal-always?` and have elements which are info smooshable")
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable `equal?`-based hash tables even when they're shallowly `equal-always?` and have elements which are info smooshable")
 
 (check-smoosh-eq-left
   (sj (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0))
-  "Info smoosh join works and preserves `eq?` when possible on shallowly `chaperone=?` immutable hash tables whose elements are info smoosh joinable")
+  "Info smoosh join works and preserves `eq?` when possible on shallowly `chaperone=?` immutable `equal?`-based hash tables whose elements are info smoosh joinable")
 
 (check-smoosh-eq-left
   (sj (iw ihash1-chap-chap) (iw ihash1-chap))
-  "Info smoosh join works and preserves `eq?` on shallowly `chaperone-of?` immutable hash tables even when they're not shallowly `chaperone=?`")
+  "Info smoosh join works and preserves `eq?` on shallowly `chaperone-of?` immutable `equal?`-based hash tables even when they're not shallowly `chaperone=?`")
 
 (check-smoosh
   (sj (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0.0))
   (known /nothing)
-  "Info smoosh join fails on immutable hash tables with at least one pair of corresponding elements whose info smoosh join fails")
+  "Info smoosh join fails on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose info smoosh join fails")
 
 (check-smoosh
   (sj (iw ihash1-chap) (iw ihash1-chap2))
   (unknown)
-  "Info smoosh join is unknown on non-shallowly-`chaperone-of?` immutable hash tables even when they're `equal-always?`")
+  "Info smoosh join is unknown on non-shallowly-`chaperone-of?` immutable `equal?`-based hash tables even when they're `equal-always?`")
 
 (check-smoosh-eq-left
   (sm (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0))
-  "Info smoosh meet works and preserves `eq?` when possible on shallowly `chaperone=?` immutable hash tables whose elements are info smoosh meetable")
+  "Info smoosh meet works and preserves `eq?` when possible on shallowly `chaperone=?` immutable `equal?`-based hash tables whose elements are info smoosh meetable")
 
 (check-smoosh-eq-right
   (sm (iw ihash1-chap-chap) (iw ihash1-chap))
-  "Info smoosh meet works and preserves `eq?` on shallowly `chaperone-of?` immutable hash tables even when they're not shallowly `chaperone=?`")
+  "Info smoosh meet works and preserves `eq?` on shallowly `chaperone-of?` immutable `equal?`-based hash tables even when they're not shallowly `chaperone=?`")
 
 (check-smoosh
   (sm (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0.0))
   (known /nothing)
-  "Info smoosh meet fails on immutable hash tables with at least one pair of corresponding elements whose info smoosh meet fails")
+  "Info smoosh meet fails on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose info smoosh meet fails")
 
 (check-smoosh
   (sm (iw ihash1-chap) (iw ihash1-chap2))
   (unknown)
-  "Info smoosh meet is unknown on non-shallowly-`chaperone-of?` immutable hash tables even when they're `equal-always?`")
+  "Info smoosh meet is unknown on non-shallowly-`chaperone-of?` immutable `equal?`-based hash tables even when they're `equal-always?`")
 
 (check-smoosh-eq-left
   (s= (pw /iw /hash #f 0 #t 0) (pw /iw /hash #f 0 #t 0))
-  "Path-related info smoosh works and preserves `eq?` when possible on immutable hash tables whose elements are path-related info smooshable")
+  "Path-related info smoosh works and preserves `eq?` when possible on immutable `equal?`-based hash tables whose elements are path-related info smooshable")
 
 (check-smoosh-eq-left
   (s= (pw /iw ihash1-chap-chap) (pw /iw ihash1-chap))
-  "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable hash tables even when they're only shallowly `chaperone-of?` in one direction")
+  "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable `equal?`-based hash tables even when they're only shallowly `chaperone-of?` in one direction")
 
 (check-smoosh-eq-left
   (s= (pw /iw ihash1-chap) (pw /iw ihash1-chap2))
-  "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable hash tables even when they're not shallowly `chaperone=?` in either direction")
+  "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable `equal?`-based hash tables even when they're not shallowly `chaperone=?` in either direction")
 
 (check-smoosh
   (s= (pw /iw /hash #f 0 #t 0) (pw /iw /hash #f 0 #t 0.0))
+  (unknown)
+  "Path-related info smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+; We test immutable hash tables again, this time with a different key
+; comparison procedure.
+
+(check-smoosh-eq-left
+  (s= (hasheq #f 0 #t 0.0) (hasheq #f 0.0 #t 0))
+  "Smoosh works and preserves `eq?` when possible on equal immutable `eq?`-based hash tables")
+
+(check-smoosh
+  (s= (hasheq #f 0 #t 0) (hasheq #f 1 #t 0))
   (known /nothing)
-  "Path-related info smoosh fails on immutable hash tables with at least one pair of corresponding elements whose path-related info smoosh fails")
+  "Smoosh fails on unequal immutable `eq?`-based hash tables")
+
+(check-smoosh-eq-left
+  (sj (hasheq #f 0 #t 0.0) (hasheq #f 0.0 #t 0))
+  "Smoosh join works and preserves `eq?` when possible on equal immutable `eq?`-based hash tables")
+
+(check-smoosh
+  (sj (hasheq #f 1 #t 0) (hasheq #f 0.0 #t 1+0.0i))
+  (known /just /known /hasheq #f 1 #t 1+0.0i)
+  "Smoosh join works on unequal, comparable immutable `eq?`-based hash tables")
+
+(check-smoosh
+  (sj (hasheq #f 0 #t 0+i) (hasheq #f 0 #t 1+i))
+  (unknown)
+  "Smoosh join is unknown on unequal, uncomparable immutable `eq?`-based hash tables")
+
+(check-smoosh-eq-left
+  (sm (hasheq #f 0 #t 0.0) (hasheq #f 0.0 #t 0))
+  "Smoosh meet works and preserves `eq?` when possible on equal immutable `eq?`-based hash tables")
+
+(check-smoosh
+  (sm (hasheq #f 1 #t 0) (hasheq #f 0.0 #t 1+0.0i))
+  (known /just /known /hasheq #f 0.0 #t 0)
+  "Smoosh meet works on unequal, comparable immutable `eq?`-based hash tables")
+
+(check-smoosh
+  (sm (hasheq #f 0 #t 0+i) (hasheq #f 0 #t 1+i))
+  (unknown)
+  "Smoosh meet is unknown on unequal, uncomparable immutable `eq?`-based hash tables")
+
+(check-smoosh-eq-left
+  (s= (pw /hasheq #f 0 #t 0.0) (pw /hasheq #f 0.0 #t 0))
+  "Path-related smoosh works and preserves `eq?` when possible on equal immutable `eq?`-based hash tables")
+
+(check-smoosh-eq-left
+  (s= (pw /hasheq #f 0 #t 0.0) (pw /hasheq #f 1.0 #t 1+0.0i))
+  "Path-related smoosh works and preserves `eq?` when possible on immutable `eq?`-based hash tables with path-related elements")
+
+(check-smoosh
+  (s= (pw /hasheq #f 0 #t 0+i) (pw /hasheq #f 0 #t 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+(check-smoosh
+  (s=
+    (pw /hasheq #f path-failing-1 #t 0+i)
+    (pw /hasheq #f path-failing-2 #t 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, earlier-source-location pair's path-relatedness is known false")
+
+(check-smoosh
+  (s=
+    (pw /hasheq #f 0+i #t path-failing-1)
+    (pw /hasheq #f 1+i #t path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, later-source-location pair's path-relatedness is known false")
+
+(check-smoosh
+  (s= (pw /hasheq #f 0 #t 0+i) (pw /hasheq #f 0 #t 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
+
+(check-smoosh-eq-left
+  (s= (iw /hasheq #f 0 #t 0) (iw /hasheq #f 0 #t 0))
+  "Info smoosh works and preserves `eq?` when possible on shallowly `chaperone=?` immutable `eq?`-based hash tables whose elements are info smooshable")
+
+(check-smoosh
+  (s= (iw /hasheq #f 0 #t 0) (iw /hasheq #f 0 #t 0.0))
+  (known /nothing)
+  "Info smoosh fails on shallowly `chaperone=?` immutable `eq?`-based hash tables with a pair of corresponding elements whose info smoosh fails")
+
+(check-smoosh
+  (s= (iw ihasheq1-chap-chap) (iw ihasheq1-chap))
+  (unknown)
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable `eq?`-based hash tables even when they're shallowly `chaperone-of?` in one direction and have elements which are info smooshable")
+
+(check-smoosh
+  (s= (iw ihasheq1-chap) (iw ihasheq1-chap2))
+  (unknown)
+  "Info smoosh is unknown on non-shallowly-`chaperone=?` immutable `eq?`-based hash tables even when they're shallowly `equal-always?` and have elements which are info smooshable")
+
+(check-smoosh-eq-left
+  (sj (iw /hasheq #f 0 #t 0) (iw /hasheq #f 0 #t 0))
+  "Info smoosh join works and preserves `eq?` when possible on shallowly `chaperone=?` immutable `eq?`-based hash tables whose elements are info smoosh joinable")
+
+(check-smoosh-eq-left
+  (sj (iw ihasheq1-chap-chap) (iw ihasheq1-chap))
+  "Info smoosh join works and preserves `eq?` on shallowly `chaperone-of?` immutable `eq?`-based hash tables even when they're not shallowly `chaperone=?`")
+
+(check-smoosh
+  (sj (iw /hasheq #f 0 #t 0) (iw /hasheq #f 0 #t 0.0))
+  (known /nothing)
+  "Info smoosh join fails on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose info smoosh join fails")
+
+(check-smoosh
+  (sj (iw ihasheq1-chap) (iw ihasheq1-chap2))
+  (unknown)
+  "Info smoosh join is unknown on non-shallowly-`chaperone-of?` immutable `eq?`-based hash tables even when they're `equal-always?`")
+
+(check-smoosh-eq-left
+  (sm (iw /hasheq #f 0 #t 0) (iw /hasheq #f 0 #t 0))
+  "Info smoosh meet works and preserves `eq?` when possible on shallowly `chaperone=?` immutable `eq?`-based hash tables whose elements are info smoosh meetable")
+
+(check-smoosh-eq-right
+  (sm (iw ihasheq1-chap-chap) (iw ihasheq1-chap))
+  "Info smoosh meet works and preserves `eq?` on shallowly `chaperone-of?` immutable `eq?`-based hash tables even when they're not shallowly `chaperone=?`")
+
+(check-smoosh
+  (sm (iw /hasheq #f 0 #t 0) (iw /hasheq #f 0 #t 0.0))
+  (known /nothing)
+  "Info smoosh meet fails on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose info smoosh meet fails")
+
+(check-smoosh
+  (sm (iw ihasheq1-chap) (iw ihasheq1-chap2))
+  (unknown)
+  "Info smoosh meet is unknown on non-shallowly-`chaperone-of?` immutable `eq?`-based hash tables even when they're `equal-always?`")
+
+(check-smoosh-eq-left
+  (s= (pw /iw /hasheq #f 0 #t 0) (pw /iw /hasheq #f 0 #t 0))
+  "Path-related info smoosh works and preserves `eq?` when possible on immutable `eq?`-based hash tables whose elements are path-related info smooshable")
+
+(check-smoosh-eq-left
+  (s= (pw /iw ihasheq1-chap-chap) (pw /iw ihasheq1-chap))
+  "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable `eq?`-based hash tables even when they're only shallowly `chaperone-of?` in one direction")
+
+(check-smoosh-eq-left
+  (s= (pw /iw ihasheq1-chap) (pw /iw ihasheq1-chap2))
+  "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable `eq?`-based hash tables even when they're not shallowly `chaperone=?` in either direction")
+
+(check-smoosh
+  (s= (pw /iw /hasheq #f 0 #t 0) (pw /iw /hasheq #f 0 #t 0.0))
+  (unknown)
+  "Path-related info smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related info smoosh fails")
+
+
+(check-smoosh
+  (s= (hash #f 0 #t 0.0) (hasheq #f 0 #t 0.0))
+  (known /nothing)
+  "Smoosh fails on immutable hash tables that use different key comparison procedures")
+
+
+; We test immutable hash tables some more, this time with keys that
+; are equivalent according to the hash tables' own comparison
+; procedure (`equal?`) but not according to smooshing.
+
+(check-smoosh
+  (s= (hash mbox1 0) (hash mbox2 0))
+  (known /nothing)
+  "Smoosh fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+
+(check-smoosh
+  (sj (hash mbox1 0) (hash mbox2 0))
+  (known /nothing)
+  "Smoosh join fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+
+(check-smoosh
+  (sm (hash mbox1 0) (hash mbox2 0))
+  (known /nothing)
+  "Smoosh meet fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+
+(check-smoosh
+  (s= (pw /hash mbox1 0) (pw /hash mbox2 0))
+  (unknown)
+  "Path-related smoosh is unknown on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys' path-related smoosh result is unknown")
+
+(check-smoosh
+  (s= (iw /hash mbox1 0) (iw /hash mbox2 0))
+  (known /nothing)
+  "Info smoosh fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+
+(check-smoosh
+  (sj (iw /hash mbox1 0) (iw /hash mbox2 0))
+  (known /nothing)
+  "Info smoosh join fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+
+(check-smoosh
+  (sm (iw /hash mbox1 0) (iw /hash mbox2 0))
+  (known /nothing)
+  "Info smoosh meet fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+
+(check-smoosh
+  (s= (pw /iw /hash mbox1 0) (pw /iw /hash mbox2 0))
+  (known /nothing)
+  "Path-related info smoosh fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
 
 
 (check-smoosh
@@ -3336,7 +3592,19 @@
     (pw /gloss #f path-failing-1 #t 0+i)
     (pw /gloss #f path-failing-2 #t 1+i))
   (unknown)
-  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another pair's path-relatedness is known false")
+  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, earlier-source-location pair's path-relatedness is known false")
+
+(check-smoosh
+  (s=
+    (pw /gloss #f 0+i #t path-failing-1)
+    (pw /gloss #f 1+i #t path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, later-source-location pair's path-relatedness is known false")
+
+(check-smoosh
+  (s= (pw /gloss #f 0 #t 0+i) (pw /gloss #f 0 #t 1+i))
+  (unknown)
+  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
 
 (check-smoosh-eq-left
   (s= (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0))
@@ -3597,6 +3865,42 @@
   "Path-related info smoosh is unknown on `indistinct-wrapper?` values if it's unknown on their elements")
 
 
+(check-smoosh
+  (s= 'example-symbol (list))
+  (known /nothing)
+  "Smoosh fails on distinctive s-expression landmark values")
+
+(check-smoosh
+  (s= 'example-symbol 0)
+  (known /nothing)
+  "Smoosh fails on a value that's an s-expression landmark and a value that isn't")
+
+(check-smoosh
+  (s= (make-hash) (vector))
+  (known /nothing)
+  "Smoosh fails on distinctive identifiable object values")
+
+(check-smoosh
+  (s= (make-hash) 0)
+  (known /nothing)
+  "Smoosh fails on a value that's an identifiable object and a value that isn't")
+
+(check-smoosh
+  (s= #f 0)
+  (unknown)
+  "Smoosh is unknown on a boolean and a number")
+
+(check-smoosh
+  (s= #f (nothing))
+  (unknown)
+  "Smoosh is unknown on a boolean and a `nothing?` value")
+
+(check-smoosh
+  (s= #f (gloss))
+  (unknown)
+  "Smoosh is unknown on a boolean and a `gloss?` value")
+
+
 ; TODO SMOOSH (currently basically done): Implement smooshing tests
 ; for values of the following types:
 ;
@@ -3635,9 +3939,8 @@
 ;   - (Done) Prefab structs with no mutable fields.
 ;
 ;   - (Done) Immutable hash tables. (TODO SMOOSH: But maybe we should
-;     test more than one hash table comparison function and test what
-;     happens with keys that are equal according to the comparison
-;     function but not according to smooshing.)
+;     test what happens with keys that are equal according to the
+;     comparison function but not according to smooshing.)
 ;
 ;   - (Done) `maybe?` values.
 ;
