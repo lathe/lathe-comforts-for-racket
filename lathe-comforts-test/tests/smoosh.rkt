@@ -249,15 +249,12 @@
             ;
             ; TODO SMOOSH: We currently treat the default value of
             ; `#:maybe-min-yknow-zip*-map/custom` as
-            ; `maybe-min-yknow-zip*-map`. But if these abstractions
-            ; also implement the trie data structure, then they should
-            ; probably be using `maybe-min-yknow-zip*-map/indistinct`
-            ; as the default. Then the non-default would tend to be a
-            ; version of `maybe-min-yknow-zip*-map` that verifies that
-            ; its list has only 0 or 1 elements, and the trie would be
-            ; replaced with a simpler data structure for those.
-            ; Perhaps instead of calling it `...-list-isomorphism`, at
-            ; those call sites, it would be called `...-unwrapping`.
+            ; `maybe-min-yknow-zip*-map/indistinct`. But for the
+            ; immutable box type and the `just?` value type, is this
+            ; an appropriate choice? These abstractions also implement
+            ; the trie data structure, so their default of
+            ; `maybe-min-yknow-zip*-map/indistinct` is consistent with
+            ; that.
             ;
             ; TODO SMOOSH: Make cons cells use a different
             ; `#:maybe-min-yknow-zip*-map/custom` that returns the
@@ -1558,9 +1555,9 @@
   "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, later pair's path-related smoosh result is known false")
 
 (check-smoosh
-  (s= (pw /cons 0 0+i) (pw /cons 0 1+i))
+  (s= (pw /cons 0 path-failing-1) (pw /cons 0 path-failing-2))
   (unknown)
-  "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
+  "Path-related smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs has a path-related smoosh result that's unknown")
 
 (check-smoosh-eq-left
   (s= (iw /cons 0 0) (iw /cons 0 0))
@@ -2444,6 +2441,13 @@
   (unknown)
   "Path-related smoosh is unknown on immutable boxes with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
 
+(check-smoosh
+  (s=
+    (pw /box-immutable path-failing-1)
+    (pw /box-immutable path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on immutable boxes with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs has a path-related smoosh result that's unknown")
+
 (check-smoosh-eq-left
   (s= (iw /box-immutable 0) (iw /box-immutable 0))
   "Info smoosh works and preserves `eq?` when possible on shallowly `chaperone=?` immutable boxes whose elements are info smooshable")
@@ -2582,9 +2586,11 @@
   "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, later pair's path-related smoosh result is known false")
 
 (check-smoosh
-  (s= (pw /vector-immutable 0 0+i) (pw /vector-immutable 0 1+i))
+  (s=
+    (pw /vector-immutable 0 path-failing-1)
+    (pw /vector-immutable 0 path-failing-2))
   (unknown)
-  "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
+  "Path-related smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs has a path-related smoosh result that's unknown")
 
 (check-smoosh-eq-left
   (s= (iw /vector-immutable 0 0) (iw /vector-immutable 0 0))
@@ -2724,9 +2730,9 @@
   "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh is unknown, even if another, later pair's path-related smoosh result is known false")
 
 (check-smoosh
-  (s= (pw /iprefab 0 0+i) (pw /iprefab 0 1+i))
+  (s= (pw /iprefab 0 path-failing-1) (pw /iprefab 0 path-failing-2))
   (unknown)
-  "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
+  "Path-related smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs has a path-related smoosh result that's unknown")
 
 (check-smoosh-eq-left
   (s= (iw /iprefab 0 0) (iw /iprefab 0 0))
@@ -2866,9 +2872,11 @@
   "Path-related smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, later-source-location pair's path-relatedness is known false")
 
 (check-smoosh
-  (s= (pw /hash #f 0 #t 0+i) (pw /hash #f 0 #t 1+i))
+  (s=
+    (pw /hash #f 0 #t path-failing-1)
+    (pw /hash #f 0 #t path-failing-2))
   (unknown)
-  "Path-related smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
+  "Path-related smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs has a path-related smoosh result that's unknown")
 
 (check-smoosh-eq-left
   (s= (iw /hash #f 0 #t 0) (iw /hash #f 0 #t 0))
@@ -3011,9 +3019,11 @@
   "Path-related smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, later-source-location pair's path-relatedness is known false")
 
 (check-smoosh
-  (s= (pw /hasheq #f 0 #t 0+i) (pw /hasheq #f 0 #t 1+i))
+  (s=
+    (pw /hasheq #f 0 #t path-failing-1)
+    (pw /hasheq #f 0 #t path-failing-2))
   (unknown)
-  "Path-related smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
+  "Path-related smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs has a path-related smoosh result that's unknown")
 
 (check-smoosh-eq-left
   (s= (iw /hasheq #f 0 #t 0) (iw /hasheq #f 0 #t 0))
@@ -3229,6 +3239,11 @@
   (s= (pw /just 0+i) (pw /just 1+i))
   (unknown)
   "Path-related smoosh is unknown on `just?` values with at least one pair of corresponding elements whose path-relatedness is unknown and no pairs whose path-relatedness is known false")
+
+(check-smoosh
+  (s= (pw /just path-failing-1) (pw /just path-failing-2))
+  (unknown)
+  "Path-related smoosh is unknown on `just?` values with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
 
 (check-smoosh-eq-left
   (s= (iw /just 0) (iw /just 0))
@@ -3602,9 +3617,11 @@
   "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh result is unknown, even if another, later-source-location pair's path-relatedness is known false")
 
 (check-smoosh
-  (s= (pw /gloss #f 0 #t 0+i) (pw /gloss #f 0 #t 1+i))
+  (s=
+    (pw /gloss #f 0 #t path-failing-1)
+    (pw /gloss #f 0 #t path-failing-2))
   (unknown)
-  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs' path-related smoosh results is unknown")
+  "Path-related smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related smoosh is known false, even if none of the other pairs has a path-related smoosh result that's unknown")
 
 (check-smoosh-eq-left
   (s= (iw /gloss #f 0 #t 0) (iw /gloss #f 0 #t 0))

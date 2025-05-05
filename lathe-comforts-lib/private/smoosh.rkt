@@ -5517,8 +5517,7 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in a known nothing if those recursive results include a
-;     known nothing and unknown otherwise.
+;     results in unknown.
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand, then the first such operand.
@@ -5550,8 +5549,7 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in a known nothing if those recursive results include a
-;     known nothing and unknown otherwise.
+;     results in unknown.
 ;     
 ;     Otherwise, a known `#t`.
 ; Level 2+:
@@ -5585,7 +5583,7 @@
     #:maybe-min-yknow-zip*-map/custom
     [ maybe-min-yknow-zip*-map/custom
       (fn my-list on-value
-        (maybe-min-yknow-zip*-map my-list /fn value-list
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
           (on-value value-list)))]
     
     #:inhabitant-shallowly-equal-always?-knowable
@@ -5764,8 +5762,7 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in a known nothing if those recursive results include a
-;     known nothing and unknown otherwise.
+;     results in unknown.
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand that counts as an acceptable result, then the
@@ -5836,8 +5833,7 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in a known nothing if those recursive results include a
-;     known nothing and unknown otherwise.
+;     results in unknown.
 ;     
 ;     Otherwise, if the element we're proposing to be greater is
 ;     shallowly chaperone-of the other one, then a known `#t`.
@@ -5902,7 +5898,7 @@
     #:maybe-min-yknow-zip*-map/custom
     [ maybe-min-yknow-zip*-map/custom
       (fn my-list on-value
-        (maybe-min-yknow-zip*-map my-list /fn value-list
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
           (on-value value-list)))]
     
     #:inhabitant-shallowly-equal-always?-knowable
@@ -6419,7 +6415,7 @@
     #:maybe-min-yknow-zip*-map/custom
     [ maybe-min-yknow-zip*-map/custom
       (fn my-list on-value
-        (maybe-min-yknow-zip*-map my-list /fn value-list
+        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
           (on-value value-list)))]
     
     #:combine-element-hash-codes
@@ -7817,11 +7813,6 @@
         (dissect lst (list first rest)
         /cons first rest))
       
-      #:maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))
-      
       #:get-smoosh-of-zero-reports
       (fn self
         (dissect self (cons-dynamic-type any-dt)
@@ -7881,11 +7872,6 @@
       #:example-and-list->
       (fn example lst
         (vector->immutable-vector /list->vector lst))
-      
-      #:maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))
       
       #:copy (fn v /vector->immutable-vector /vector-copy v)
       
@@ -8011,11 +7997,6 @@
       (fn example lst
         (apply make-prefab-struct (prefab-struct-key example) lst))
       
-      #:maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))
-      
       )
     (trivial))
   
@@ -8057,11 +8038,6 @@
           (for/list ([entry (in-slice 2 (in-list lst))])
             (dissect entry (list k v)
             /cons k v))))
-      
-      #:maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))
       
       #:copy (fn v /hash-v-map v /fn v v)
       
@@ -9186,11 +9162,6 @@
           (for/list ([entry (in-slice 2 (in-list lst))])
             (dissect entry (list k v)
             /cons k v))))
-      
-      #:maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))
       
       #:combine-element-hash-codes
       (fn element-hash-codes
