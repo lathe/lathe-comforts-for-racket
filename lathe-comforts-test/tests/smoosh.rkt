@@ -3634,7 +3634,7 @@
   "Info smoosh meet fails on `gloss?` values with at least one pair of corresponding elements whose info smoosh meet fails")
 
 (check-smoosh-eq-left
-  (s= (pw /iw /gloss #f 0 #t 0) (pw /iw /gloss #f 0 #t 0))
+  (s= (pw /iw /gloss #f 0 #t 0.0) (pw /iw /gloss #f 0.0 #t 0))
   "Path-related info smoosh works and preserves `eq?` when possible on `gloss?` values whose elements are path-related info smooshable")
 
 (check-smoosh
