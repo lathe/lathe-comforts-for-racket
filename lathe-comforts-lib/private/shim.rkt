@@ -7,7 +7,7 @@
 ; these things, and various utilities that could come in handy in
 ; other codebases for making shim files like this one.
 
-;   Copyright 2021, 2022 The Lathe Authors
+;   Copyright 2021, 2022, 2014 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -95,29 +95,23 @@
   #:with result (eval-for-so-to-speak this-syntax #'(body ...))
   result)
 
-(define-syntax-parse-rule
-  (ifc next-phase-condition:expr then:expr else:expr)
-  (so-to-speak /if next-phase-condition
-    #'then
-    #'else))
-
-(define-syntax-parser whenc /
-  (_ next-phase-condition:expr body:expr ...+)
-  (when (equal? 'expression (syntax-local-context))
+(define-for-syntax (eval-for-condc this-syntax body)
+  (define result (syntax-local-eval body))
+  (unless (boolean? result)
+    
+    ; TODO: See if there's a good way to embed the non-boolean result
+    ; value into the error message, perhaps using a combination of
+    ; `raise-syntax-error`'s `message-suffix` argument and
+    ; `error-value->string-handler`. Or perhaps `body` should be
+    ; subjected to `expr/c` with `#:phase 1`.
+    ;
     (raise-syntax-error #f
-      "not permitted in an expression context"
-      this-syntax))
-  #'(ifc next-phase-condition
-      (begin body ...)
-      (begin)))
-
-(define-syntax-parser unlessc /
-  (_ next-phase-condition:expr body:expr ...+)
-  (when (equal? 'expression (syntax-local-context))
-    (raise-syntax-error #f
-      "not permitted in an expression context"
-      this-syntax))
-  #'(whenc (not next-phase-condition) body ...))
+      (~a
+        "does not evaluate to a boolean at phase "
+        (add1 /syntax-local-phase-level))
+      this-syntax
+      body))
+  result)
 
 (define-syntax-parser condc /
   (_
@@ -151,10 +145,48 @@
         this-syntax
         #f
         (list clause)))
-  #'(so-to-speak /cond
-      [next-phase-condition #'/begin branch ...]
-      ...
-      [else #'/begin else-branch ...]))
+  (for/first
+    (
+      [ entry
+        (in-list /syntax->list
+          #'(
+              [next-phase-condition (begin branch ...)]
+              ...
+              [#t (begin else-branch ...)]))]
+      #:do
+      [(match-define (list condition branch) (syntax->list entry))]
+      #:when (eval-for-condc this-syntax #`(let () #,condition)))
+    branch))
+
+(define-syntax-parse-rule
+  (ifc next-phase-condition:expr then:expr els:expr)
+  (condc [next-phase-condition then] [else els]))
+  ; TODO: Figure out why we can't use one of these implementations
+  ; (and make a corresponding simplification to `condc`).
+  ; Specifically, when `then` or `else` contains definitions, these
+  ; don't allow the definitions to be visible outside the form.
+;  (so-to-speak /if next-phase-condition
+;    #'then
+;    #'else))
+;  (so-to-speak /if next-phase-condition
+;    (quote-syntax then #:local)
+;    (quote-syntax else #:local)))
+
+(define-syntax-parser whenc /
+  (_ next-phase-condition:expr body:expr ...+)
+  (when (equal? 'expression (syntax-local-context))
+    (raise-syntax-error #f
+      "not permitted in an expression context"
+      this-syntax))
+  #'(condc [next-phase-condition body ...]))
+
+(define-syntax-parser unlessc /
+  (_ next-phase-condition:expr body:expr ...+)
+  (when (equal? 'expression (syntax-local-context))
+    (raise-syntax-error #f
+      "not permitted in an expression context"
+      this-syntax))
+  #'(whenc (not next-phase-condition) body ...))
 
 (begin-for-syntax /define-splicing-syntax-class pattern-directive
   #:attributes ([parts 1])
@@ -197,7 +229,7 @@
   (ifc-out next-phase-condition:expr then-out else-out . args)
   
   #:with result
-  (if (syntax-local-eval #'next-phase-condition)
+  (if (eval-for-condc this-syntax #'(let () next-phase-condition))
     #'(then-out . args)
     #'(else-out . args))
   
@@ -380,7 +412,7 @@
   result)
 
 (begin-for-syntax /define-syntax-class
-  (own-contracted-id antecedent-land)
+  (own-contracted-id who antecedent-land)
   #:attributes (val/c)
   (pattern
     {~and var:id /~not /~or* {~literal struct} {~literal rename}}
@@ -395,17 +427,25 @@
           this-syntax)))
     
     #:declare val/c-unguarded
-    (expr/c #'contract?
+    (expr/c #'(promise/c contract?)
       #:name "the ascribe-own-contract value of a variable")
     
-    #:attr val/c #'val/c-unguarded.c))
+    #:attr val/c
+    #`(begin
+        (when (eq? var val/c-unguarded)
+          (raise-arguments-error '#,who
+            (format "no ascribe-own-contract information for ~a" 'var)))
+        (force val/c-unguarded.c))))
 
 (define-provide-pre-transformer-syntax-parse-rule
   (own-contract-ignored-out
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-ignored-out #'antecedent-land)
+  
   (contract-ignored-out [var var.val/c] ...))
 
 (define-provide-pre-transformer-syntax-parse-rule
@@ -413,7 +453,9 @@
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-out #'antecedent-land)
   
   #:with result
   #`(
@@ -438,7 +480,9 @@
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-whenc-out #'antecedent-land)
   
   #:with result
   #`(
@@ -467,7 +511,10 @@
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
     var ...)
-  #:declare var (own-contracted-id #'antecedent-land)
+  
+  #:declare var
+  (own-contracted-id 'own-contract-unlessc-out #'antecedent-land)
+  
   (contract-whenc-out (not next-phase-condition)
     [var var.val/c]
     ...))
@@ -494,7 +541,7 @@
         "not allowed in an expression context"
         this-syntax))]
   
-  (define own-contract-var val/c.c))
+  (define own-contract-var (delay val/c.c)))
 
 (begin-for-syntax /define-splicing-syntax-class lambda-param
   #:attributes (kw var default)
@@ -549,7 +596,9 @@
                     (raise-syntax-error #f
                       "expected a define-own-contract-policies definition before using the policies"
                       stx)))
-                #'(define var (invariant-assertion own-contract-var body))
+                #'(define var
+                    (invariant-assertion (force own-contract-var)
+                      body))
                 #'(define var body)))]
       [
         (_ (head . args:lambda-params) val/c:expr

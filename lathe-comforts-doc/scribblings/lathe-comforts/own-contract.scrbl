@@ -6,7 +6,7 @@
 @; they're for, with configuration options for suppressing external
 @; contracts and/or activating certain internal contracts.
 
-@;   Copyright 2022 The Lathe Authors
+@;   Copyright 2022, 2024-2025 The Lathe Authors
 @;
 @;   Licensed under the Apache License, Version 2.0 (the "License");
 @;   you may not use this file except in compliance with the License.
@@ -149,7 +149,7 @@ The @tt{lathe-comforts/own-contract} module defines a small and unstable DSL for
   
   #:contracts ([contract-expr contract?])
 ]{
-  Works like @racket[define] or @racket[define/contract], except that it associates the given contract with @racket[id] for the purposes of @racket[own-contract-out].
+  Works like @racket[define] or @racket[define/contract], except that it associates the given @racket[contract-expr] with @racket[id] for the purposes of @racket[own-contract-out]. The @racket[contract-expr] expression is evaluated right away if the @racket[#:activating-internal-contracts?] policy is in effect, or otherwise lazily when it's needed by @racket[own-contract-out].
   
   The @racketmodname[lathe-comforts/own-contract] DSL must be set up for the current module using @racket[define-own-contract-policies] before calling this.
   
@@ -173,7 +173,7 @@ The @tt{lathe-comforts/own-contract} module defines a small and unstable DSL for
   
   #:contracts ([contract-expr contract?])
 ]{
-  Associates the given contract with the given @racket[id] for the purposes of @racket[own-contract-out].
+  Associates the given @racket[contract-expr] with the given @racket[id] for the purposes of @racket[own-contract-out]. The @racket[contract-expr] expression is evaluated lazily when needed by @racket[own-contract-out].
   
   The @racketmodname[lathe-comforts/own-contract] DSL must be set up for the current module using @racket[define-own-contract-policies] before calling this.
   
