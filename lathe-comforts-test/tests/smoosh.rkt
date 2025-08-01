@@ -35,8 +35,10 @@
 (require lathe-comforts/maybe)
 (require lathe-comforts/private/smoosh)
 (require /only-in lathe-comforts/private/smoosh
+  [path-related-wrapper pw]
+  [==-wrapper =w]
   [info-wrapper iw]
-  [path-related-wrapper pw])
+  [uninfo-wrapper uw])
 (require lathe-comforts/sequence)
 (require lathe-comforts/trivial)
 (require lathe-comforts/yknow)
@@ -196,6 +198,8 @@
 (define (knowable= value=)
   (fn a b
     (mat (list a b) (list (known a) (known b)) (value= a b)
+    /mat a (known a) #f
+    /mat b (known b) #f
       #t)))
 
 (define (equal-always-recur= value=)
@@ -249,21 +253,43 @@
             ;
             ; TODO SMOOSH: We currently treat the default value of
             ; `#:maybe-min-yknow-zip*-map/custom` as
-            ; `maybe-min-yknow-zip*-map/indistinct`. But for the
-            ; immutable box type and the `just?` value type, is this
-            ; an appropriate choice? These abstractions also implement
-            ; the trie data structure, so their default of
-            ; `maybe-min-yknow-zip*-map/indistinct` is consistent with
-            ; that.
+            ; `maybe-min-yknow-zip*-map/elementwise-indistinct`. But
+            ; for the immutable box type and the `just?` value type,
+            ; is this an appropriate choice? These abstractions also
+            ; implement the trie data structure, so their default of
+            ; `maybe-min-yknow-zip*-map/elementwise-indistinct` is
+            ; consistent with that.
             ;
+            ; TODO NOW: Remove this next TODO once we've done it.
             ; TODO SMOOSH: Make cons cells use a different
             ; `#:maybe-min-yknow-zip*-map/custom` that returns the
             ; first unknown or known-`nothing?` result it encounters
             ; as it proceeds from first to rest. We'll need to make
             ; sure trie lookups also return results consistent with
             ; this.
+            ; TODO NOW: Well, this is getting complicated. It turns
+            ; out we're not going to want glosses that are strict
+            ; about ensuring all the keys are known to be distinct, so
+            ; several of our design choices that things need to be
+            ; known to be distinct are no longer well motivated. We
+            ; might want to change a lot of these known-false results
+            ; to unknown results.
             ;
             (void)
+            ; NOTE: We used to use this code here, back when we
+            ; required that in a gloss with multiple keys, it must be
+            ; known that they're distinct.
+            #;
+            #,
+              (syntax/loc stx
+                (check-pred
+                  unknown?
+                  (knowable-bind
+                    (gloss-set-maybe-knowable (gloss) a-result
+                      (just #f))
+                    (fn g
+                    /gloss-set-maybe-knowable g b-result (just #f)))
+                  message))
           /expect e-result (just e-result)
             #,
               (syntax/loc stx
@@ -447,8 +473,13 @@
 ; This is a pair of values whose smoosh join, smoosh meet, and
 ; path-related smoosh actually fail (rather than just having unknown
 ; results).
-(define path-failing-1 (iw #t))
-(define path-failing-2 (iw #f))
+(define path-failing-1 (=w #t))
+(define path-failing-2 (=w #f))
+
+; This is a pair of values whose path-related info smoosh actually
+; fails (rather than just having unknown results).
+(define path-info-failing-1 (uw /=w #t))
+(define path-info-failing-2 (uw /=w #f))
 
 
 (check-smoosh
@@ -465,6 +496,11 @@
   (s= (pw path-failing-1) (pw path-failing-2))
   (known /nothing)
   "Path-related smoosh fails on the example values we expect it to fail on")
+
+(check-smoosh
+  (s= (pw /iw path-info-failing-1) (pw /iw path-info-failing-2))
+  (known /nothing)
+  "Path-related info smoosh fails on the example values we expect it to fail on")
 
 
 (check-smoosh
@@ -542,10 +578,12 @@
   (known /just /known /pw /iw mstr1)
   "Path-related info smoosh works on `eq?` mutable strings")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw mstr1) (pw /iw mstr2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`eq?` mutable strings")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`eq?` mutable strings")
 
 
 (check-smoosh
@@ -623,10 +661,12 @@
   (known /just /known /pw /iw mbytes1)
   "Path-related info smoosh works on `eq?` mutable byte strings")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw mbytes1) (pw /iw mbytes2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`eq?` mutable byte strings")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`eq?` mutable byte strings")
 
 
 (check-smoosh-eq-left
@@ -748,10 +788,12 @@
   (s= (pw /iw mbox1-chap) (pw /iw mbox1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` mutable boxes even when they're not `chaperone=?`")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw mbox1) (pw /iw mbox2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`equal-always?` mutable boxes")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`equal-always?` mutable boxes")
 
 
 (check-smoosh-eq-left
@@ -873,10 +915,12 @@
   (s= (pw /iw mv1-chap) (pw /iw mv1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` mutable vectors even when they're not `chaperone=?`")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw mv1) (pw /iw mv2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`equal-always?` mutable vectors")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`equal-always?` mutable vectors")
 
 
 (check-smoosh-eq-left
@@ -998,10 +1042,12 @@
   (s= (pw /iw mprefab1-chap) (pw /iw mprefab1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` mutable prefab structs even when they're not `chaperone=?`")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw mprefab1) (pw /iw mprefab2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`equal-always?` mutable prefab structs")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`equal-always?` mutable prefab structs")
 
 
 (check-smoosh-eq-left
@@ -1123,10 +1169,12 @@
   (s= (pw /iw mhash1-chap) (pw /iw mhash1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` mutable hash tables even when they're not `chaperone=?`")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw mhash1) (pw /iw mhash2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`equal-always?` mutable hash tables")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`equal-always?` mutable hash tables")
 
 
 (check-smoosh
@@ -1204,10 +1252,12 @@
   (known /just /known /pw /iw flv1)
   "Path-related info smoosh works on `eq?` flvectors")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw flv1) (pw /iw flv2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`eq?` flvectors")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`eq?` flvectors")
 
 
 (check-smoosh
@@ -1285,10 +1335,12 @@
   (known /just /known /pw /iw fxv1)
   "Path-related info smoosh works on `eq?` fxvectors")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw fxv1) (pw /iw fxv2))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`eq?` fxvectors")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`eq?` fxvectors")
 
 
 (check-smoosh
@@ -1366,10 +1418,12 @@
   (known /just /known /pw /iw 'a)
   "Path-related info smoosh works on equal symbols")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw 'a) (pw /iw 'b))
-  (known /nothing)
-  "Path-related info smoosh fails on unequal symbols")
+  (unknown)
+  "Path-related info smoosh is unknown on unequal symbols")
 
 
 (check-smoosh
@@ -1447,10 +1501,12 @@
   (known /just /known /pw /iw '#:a)
   "Path-related info smoosh works on equal keywords")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw '#:a) (pw /iw '#:b))
-  (known /nothing)
-  "Path-related info smoosh fails on unequal keywords")
+  (unknown)
+  "Path-related info smoosh is unknown on unequal keywords")
 
 
 (check-smoosh
@@ -1590,10 +1646,21 @@
   (s= (pw /iw /cons 0 0) (pw /iw /cons 0 0))
   "Path-related info smoosh works and preserves `eq?` when possible on cons cells whose elements are path-related info smooshable")
 
+; TODO NOW: We think this passes according to the type docs and the
+; implementation. Make sure it does.
 (check-smoosh
   (s= (pw /iw /cons 0 0) (pw /iw /cons 0 0.0))
-  (known /nothing)
-  "Path-related info smoosh fails on cons cells with at least one pair of corresponding elements whose path-related info smoosh fails")
+  (unknown)
+  "Path-related info smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
+(check-smoosh
+  (s=
+    (pw /iw /cons 0 path-info-failing-1)
+    (pw /iw /cons 0 path-info-failing-2))
+  (unknown)
+  "Path-related info smoosh is unknown on cons cells with at least one pair of corresponding elements whose path-related info smoosh fails")
 
 
 (check-smoosh
@@ -1631,10 +1698,12 @@
   (known /nothing)
   "Info smoosh meet fails on interactions between different types of base syntactic atom")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw 'a) (pw /iw '#:b))
-  (known /nothing)
-  "Path-related info smoosh fails on interactions between different types of base syntactic atom")
+  (unknown)
+  "Path-related info smoosh is unknown on interactions between different types of base syntactic atom")
 
 
 (check-smoosh
@@ -1712,10 +1781,12 @@
   (known /just /known /pw /iw #f)
   "Path-related info smoosh works on equal booleans")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw #f) (pw /iw #t))
-  (known /nothing)
-  "Path-related info smoosh fails on unequal booleans")
+  (unknown)
+  "Path-related info smoosh is unknown on unequal booleans")
 
 
 (check-smoosh
@@ -1934,10 +2005,12 @@
   (known /just /known /pw /iw 0)
   "Path-related info smoosh works on `equal-always?` numbers")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw 0) (pw /iw 0.0))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`equal-always?` numbers")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`equal-always?` numbers")
 
 
 (when (extflonum-available?)
@@ -2058,10 +2131,14 @@
     (known /just /known /pw /iw 0t0)
     "Path-related info smoosh works on `equal-always?` extflonums")
   
+  ; TODO NOW: Update the type docs and the implementation for this.
+  ; It's currently `(known /nothing)`.
+  ; TODO NOW: Make sure to test this one on a version of Racket where
+  ; extflonums are available.
   (check-smoosh
     (s= (pw /iw -0t0) (pw /iw 0t0))
-    (known /nothing)
-    "Path-related info smoosh fails on non-`equal-always?` extflonums")
+    (unknown)
+    "Path-related info smoosh is unknown on non-`equal-always?` extflonums")
   
   )
 
@@ -2515,10 +2592,21 @@
   (s= (pw /iw ibox1-chap) (pw /iw ibox1-chap2))
   "Path-related info smoosh works and preserves `eq?` when possible on `equal-always?` immutable boxes even when they're not shallowly `chaperone=?` in either direction")
 
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also updated.
 (check-smoosh
   (s= (pw /iw /box-immutable 0) (pw /iw /box-immutable 0.0))
-  (known /nothing)
-  "Path-related info smoosh fails on immutable boxes with at least one pair of corresponding elements whose path-related info smoosh fails")
+  (unknown)
+  "Path-related info smoosh is unknown on immutable boxes with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
+(check-smoosh
+  (s=
+    (pw /iw /box-immutable path-info-failing-1)
+    (pw /iw /box-immutable path-info-failing-2))
+  (unknown)
+  "Path-related info smoosh is unknown on immutable boxes with at least one pair of corresponding elements whose path-related info smoosh fails")
 
 
 (check-smoosh-eq-left
@@ -2659,10 +2747,21 @@
   (s= (pw /iw iv1-chap) (pw /iw iv1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable vectors even when they're not shallowly `chaperone=?` in either direction")
 
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also updated.
 (check-smoosh
   (s= (pw /iw /vector-immutable 0 0) (pw /iw /vector-immutable 0 0.0))
-  (known /nothing)
-  "Path-related info smoosh fails on immutable vectors with at least one pair of corresponding elements whose path-related info smoosh fails")
+  (unknown)
+  "Path-related info smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
+(check-smoosh
+  (s=
+    (pw /iw /vector-immutable 0 path-info-failing-1)
+    (pw /iw /vector-immutable 0 path-info-failing-2))
+  (unknown)
+  "Path-related info smoosh is unknown on immutable vectors with at least one pair of corresponding elements whose path-related info smoosh fails")
 
 
 (check-smoosh-eq-left
@@ -2801,10 +2900,21 @@
   (s= (pw /iw iprefab1-chap) (pw /iw iprefab1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable prefab structs even when they're not shallowly `chaperone=?` in either direction")
 
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also updated.
 (check-smoosh
   (s= (pw /iw /iprefab 0 0) (pw /iw /iprefab 0 0.0))
-  (known /nothing)
-  "Path-related info smoosh fails on immutable prefab structs with at least one pair of corresponding elements whose path-related info smoosh fails")
+  (unknown)
+  "Path-related info smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
+(check-smoosh
+  (s=
+    (pw /iw /iprefab 0 path-info-failing-1)
+    (pw /iw /iprefab 0 path-info-failing-2))
+  (unknown)
+  "Path-related info smoosh is unknown on immutable prefab structs with at least one pair of corresponding elements whose path-related info smoosh fails")
 
 
 (check-smoosh-eq-left
@@ -2945,8 +3055,19 @@
   (s= (pw /iw ihash1-chap) (pw /iw ihash1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable `equal?`-based hash tables even when they're not shallowly `chaperone=?` in either direction")
 
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also consistent with this.
 (check-smoosh
   (s= (pw /iw /hash #f 0 #t 0) (pw /iw /hash #f 0 #t 0.0))
+  (unknown)
+  "Path-related info smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also consistent with this.
+(check-smoosh
+  (s=
+    (pw /iw /hash #f 0 #t path-info-failing-1)
+    (pw /iw /hash #f 0 #t path-info-failing-2))
   (unknown)
   "Path-related info smoosh is unknown on immutable `equal?`-based hash tables with at least one pair of corresponding elements whose path-related info smoosh fails")
 
@@ -3092,8 +3213,19 @@
   (s= (pw /iw ihasheq1-chap) (pw /iw ihasheq1-chap2))
   "Path-related info smoosh works and preserves `eq?` on `equal-always?` immutable `eq?`-based hash tables even when they're not shallowly `chaperone=?` in either direction")
 
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also consistent with this.
 (check-smoosh
   (s= (pw /iw /hasheq #f 0 #t 0) (pw /iw /hasheq #f 0 #t 0.0))
+  (unknown)
+  "Path-related info smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also consistent with this.
+(check-smoosh
+  (s=
+    (pw /iw /hasheq #f 0 #t path-info-failing-1)
+    (pw /iw /hasheq #f 0 #t path-info-failing-2))
   (unknown)
   "Path-related info smoosh is unknown on immutable `eq?`-based hash tables with at least one pair of corresponding elements whose path-related info smoosh fails")
 
@@ -3111,42 +3243,44 @@
 (check-smoosh
   (s= (hash mbox1 0) (hash mbox2 0))
   (known /nothing)
-  "Smoosh fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+  "Smoosh fails on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
 
 (check-smoosh
   (sj (hash mbox1 0) (hash mbox2 0))
-  (known /nothing)
-  "Smoosh join fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+  (unknown)
+  "Smoosh join is unknown on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys have an unknown smoosh result")
 
 (check-smoosh
   (sm (hash mbox1 0) (hash mbox2 0))
-  (known /nothing)
-  "Smoosh meet fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+  (unknown)
+  "Smoosh meet is unknown on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys have an unknown smoosh result")
 
 (check-smoosh
   (s= (pw /hash mbox1 0) (pw /hash mbox2 0))
   (unknown)
-  "Path-related smoosh is unknown on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys' path-related smoosh result is unknown")
+  "Path-related smoosh is unknown on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys' path-related smoosh result is unknown")
 
 (check-smoosh
   (s= (iw /hash mbox1 0) (iw /hash mbox2 0))
   (known /nothing)
-  "Info smoosh fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+  "Info smoosh fails on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
 
 (check-smoosh
   (sj (iw /hash mbox1 0) (iw /hash mbox2 0))
   (known /nothing)
-  "Info smoosh join fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+  "Info smoosh join fails on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
 
 (check-smoosh
   (sm (iw /hash mbox1 0) (iw /hash mbox2 0))
   (known /nothing)
-  "Info smoosh meet fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+  "Info smoosh meet fails on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw /hash mbox1 0) (pw /iw /hash mbox2 0))
-  (known /nothing)
-  "Path-related info smoosh fails on hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
+  (unknown)
+  "Path-related info smoosh is unknown on immutable hash tables that have smooshable values and that have the same keys according to their own comparison procedure but whose keys fail to smoosh")
 
 
 (check-smoosh
@@ -3276,10 +3410,21 @@
   (s= (pw /iw /just 0) (pw /iw /just 0))
   "Path-related info smoosh works and preserves `eq?` when possible on `just?` values whose elements are path-related info smooshable")
 
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also updated.
 (check-smoosh
   (s= (pw /iw /just 0) (pw /iw /just 0.0))
-  (known /nothing)
-  "Path-related info smoosh fails on `just?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
+  (unknown)
+  "Path-related info smoosh is unknown on `just?` values with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
+(check-smoosh
+  (s=
+    (pw /iw /just path-info-failing-1)
+    (pw /iw /just path-info-failing-2))
+  (unknown)
+  "Path-related info smoosh is unknown on `just?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
 
 
 (check-smoosh
@@ -3317,10 +3462,10 @@
   (known /nothing)
   "Info smoosh meet fails on distinctive `maybe?` values")
 
-(check-smoosh
-  (s= (pw /iw /nothing) (pw /iw /just 0))
-  (known /nothing)
-  "Path-related info smoosh fails on distinctive `maybe?` values")
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
+(check-smoosh (s= (pw /iw /nothing) (pw /iw /just 0)) (unknown)
+  "Path-related info smoosh is unknown on distinctive `maybe?` values")
 
 
 (check-smoosh
@@ -3480,6 +3625,12 @@
 
 (check-smoosh-eq-left
   (s= (pw /iw /known 0) (pw /iw /known 0.0))
+  "Path-related info smoosh works and preserves `eq?` when possible on `known?` values with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+(check-smoosh-eq-left
+  (s=
+    (pw /iw /known path-info-failing-1)
+    (pw /iw /known path-info-failing-2))
   "Path-related info smoosh works and preserves `eq?` when possible on `known?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
 
 
@@ -3651,13 +3802,24 @@
   "Info smoosh meet fails on `gloss?` values with at least one pair of corresponding elements whose info smoosh meet fails")
 
 (check-smoosh-eq-left
-  (s= (pw /iw /gloss #f 0 #t 0.0) (pw /iw /gloss #f 0.0 #t 0))
+  (s= (pw /iw /gloss #f 0 #t 0) (pw /iw /gloss #f 0 #t 0))
   "Path-related info smoosh works and preserves `eq?` when possible on `gloss?` values whose elements are path-related info smooshable")
 
+; TODO NOW: We think this passes according to the implementation. Make
+; sure the type docs are also updated.
 (check-smoosh
   (s= (pw /iw /gloss #f 0 #t 0) (pw /iw /gloss #f 0 #t 0.0))
-  (known /nothing)
-  "Path-related info smoosh fails on `gloss?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
+  (unknown)
+  "Path-related info smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related info smoosh is unknown")
+
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
+(check-smoosh
+  (s=
+    (pw /iw /gloss #f 0 #t path-info-failing-1)
+    (pw /iw /gloss #f 0 #t path-info-failing-2))
+  (unknown)
+  "Path-related info smoosh is unknown on `gloss?` values with at least one pair of corresponding elements whose path-related info smoosh fails")
 
 
 (check-smoosh
@@ -3735,10 +3897,12 @@
   (known /just /known /pw /iw eaw1)
   "Path-related info smoosh works on `equal-always?` `equal-always-wrapper?` values")
 
+; TODO NOW: Update the type docs and the implementation for this. It's
+; currently `(known /nothing)`.
 (check-smoosh
   (s= (pw /iw eaw1) (pw /iw eaw-different))
-  (known /nothing)
-  "Path-related info smoosh fails on non-`equal-always?` `equal-always-wrapper?` values")
+  (unknown)
+  "Path-related info smoosh is unknown on non-`equal-always?` `equal-always-wrapper?` values")
 
 
 (check-smoosh

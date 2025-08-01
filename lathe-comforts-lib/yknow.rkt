@@ -53,7 +53,8 @@
   yknow-joininfo*-resumably
   yknow-joininfo*
   maybe-min-yknow-zip*-map
-  maybe-min-yknow-zip*-map/indistinct
+  maybe-min-yknow-zip*-map/ltr-dependent
+  maybe-min-yknow-zip*-map/elementwise-indistinct
   yknow-maybe-yknow-joininfo*
   prop:expressly-yknow-predicate
   make-expressly-yknow-predicate-impl
@@ -194,7 +195,21 @@
         (just /on-value /list-map m-list /fn m /just-value m)))))
 
 (define/own-contract
-  (maybe-min-yknow-zip*-map/indistinct my-list on-value)
+  (maybe-min-yknow-zip*-map/ltr-dependent my-list on-value)
+  (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
+  (make-yknow-from-value-promise-maybe-knowable-promise /delay
+    (w-loop next my-list my-list rev-v-list (list)
+      (expect my-list (cons my my-list)
+        (known /just /delay/strict /just
+          (on-value /reverse rev-v-list))
+      /w- mpmk (force /yknow-value-promise-maybe-knowable-promise my)
+      /knowable-bind mpmk /fn mpm
+      /expect mpm (just mp) (known /nothing)
+      /expect (force mp) (just v) (known /just /delay/strict /nothing)
+      /next my-list (cons v rev-v-list)))))
+
+(define/own-contract
+  (maybe-min-yknow-zip*-map/elementwise-indistinct my-list on-value)
   (-> (listof (yknow/c maybe?)) (-> list? any/c) (yknow/c maybe?))
   (yknow-zip*-map
     (list-map my-list /fn my

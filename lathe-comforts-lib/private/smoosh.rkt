@@ -124,10 +124,20 @@
 (provide
   path-related-wrapper)
 (provide /own-contract-out
+  ==-wrapper?
+  ==-wrapper-value)
+(provide
+  ==-wrapper)
+(provide /own-contract-out
   info-wrapper?
   info-wrapper-value)
 (provide
   info-wrapper)
+(provide /own-contract-out
+  uninfo-wrapper?
+  uninfo-wrapper-value)
+(provide
+  uninfo-wrapper)
 (provide /own-contract-out
   expressly-custom-gloss-key-dynamic-type-impl?
   prop:expressly-custom-gloss-key-dynamic-type
@@ -219,6 +229,7 @@
   constant-smoosh-reports
   constant-smoosh-and-comparison-of-two-report
   constant-smoosh-and-comparison-of-two-reports
+  constantish-smoosh-equal-hash-code-support-report
   constant-smoosh-equal-hash-code-support-report
   constant-smoosh-equal-hash-code-support-reports
   eq-wrapper?
@@ -1616,6 +1627,41 @@
     
     ))
 
+; TODO SMOOSH: Figure out whether to export this.
+(define (equal-mode-proc-via-smoosh a b)
+  (knowable->falsable /knowable-map
+    (yknow-value-knowable
+      ; TODO FORWARD: These uses of
+      ; `smoosh-report-==-yknow-maybe-yknow`,
+      ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
+      ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`, and
+      ; `any-dynamic-type` are forward references. See if we can
+      ; untangle them.
+      (smoosh-report-==-yknow-maybe-yknow
+        (smoosh-and-comparison-of-two-report-get-smoosh-report
+          (sequence-first
+            (dynamic-type-get-smoosh-and-comparison-of-two-reports
+              (any-dynamic-type)
+              a
+              b)))))
+    (fn ym
+      (just? ym))))
+
+; TODO SMOOSH: Figure out whether to export this.
+(define (hash-mode-proc-via-smoosh v)
+  ; TODO FORWARD: These uses of
+  ; `smoosh-equal-hash-code-support-report-==-hash-code-promise`,
+  ; `dynamic-type-get-smoosh-equal-hash-code-support-reports`, and
+  ; `any-dynamic-type` are forward references. See if we can untangle
+  ; them.
+  (force
+    (smoosh-equal-hash-code-support-report-==-hash-code-promise
+      (sequence-first
+        (dynamic-type-get-smoosh-equal-hash-code-support-reports
+          (any-dynamic-type)
+          v))
+      #f)))
+
 (define-imitation-simple-struct
   (path-related-wrapper? path-related-wrapper-value)
   path-related-wrapper
@@ -1623,83 +1669,57 @@
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (knowable->falsable /knowable-map
-        (yknow-value-knowable
-          ; TODO FORWARD: These uses of
-          ; `smoosh-report-==-yknow-maybe-yknow`,
-          ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
-          ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
-          ; and `any-dynamic-type` are forward references. See if we
-          ; can untangle them.
-          (smoosh-report-==-yknow-maybe-yknow
-            (smoosh-and-comparison-of-two-report-get-smoosh-report
-              (sequence-first
-                (dynamic-type-get-smoosh-and-comparison-of-two-reports
-                  (any-dynamic-type)
-                  a
-                  b)))))
-        (fn ym
-          (just? ym))))
+      (equal-mode-proc-via-smoosh a b))
     
     (define (hash-mode-proc v recur now?)
-      ; TODO FORWARD: These uses of
-      ; `smoosh-equal-hash-code-support-report-==-hash-code-promise`,
-      ; `dynamic-type-get-smoosh-equal-hash-code-support-reports`, and
-      ; `any-dynamic-type` are forward references. See if we can
-      ; untangle them.
-      (force
-        (smoosh-equal-hash-code-support-report-==-hash-code-promise
-          (sequence-first
-            (dynamic-type-get-smoosh-equal-hash-code-support-reports
-              (any-dynamic-type)
-              v))
-          #f)))
+      (hash-mode-proc-via-smoosh v))
     
     ))
 (ascribe-own-contract path-related-wrapper? (-> any/c boolean?))
 (ascribe-own-contract path-related-wrapper-value
   (-> path-related-wrapper? any/c))
 
+(define-imitation-simple-struct (==-wrapper? ==-wrapper-value)
+  ==-wrapper '==-wrapper (current-inspector) (auto-write)
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (equal-mode-proc-via-smoosh a b))
+    
+    (define (hash-mode-proc v recur now?)
+      (hash-mode-proc-via-smoosh v))
+    
+    ))
+(ascribe-own-contract ==-wrapper? (-> any/c boolean?))
+(ascribe-own-contract ==-wrapper-value (-> ==-wrapper? any/c))
+
 (define-imitation-simple-struct (info-wrapper? info-wrapper-value)
   info-wrapper 'info-wrapper (current-inspector) (auto-write)
   (#:gen gen:equal-mode+hash
     
     (define (equal-mode-proc a b recur now?)
-      (knowable->falsable /knowable-map
-        (yknow-value-knowable
-          ; TODO FORWARD: These uses of
-          ; `smoosh-report-==-yknow-maybe-yknow`,
-          ; `smoosh-and-comparison-of-two-report-get-smoosh-report`,
-          ; `dynamic-type-get-smoosh-and-comparison-of-two-reports`,
-          ; and `any-dynamic-type` are forward references. See if we
-          ; can untangle them.
-          (smoosh-report-==-yknow-maybe-yknow
-            (smoosh-and-comparison-of-two-report-get-smoosh-report
-              (sequence-first
-                (dynamic-type-get-smoosh-and-comparison-of-two-reports
-                  (any-dynamic-type)
-                  a
-                  b)))))
-        (fn ym
-          (just? ym))))
+      (equal-mode-proc-via-smoosh a b))
     
     (define (hash-mode-proc v recur now?)
-      ; TODO FORWARD: These uses of
-      ; `smoosh-equal-hash-code-support-report-==-hash-code-promise`,
-      ; `dynamic-type-get-smoosh-equal-hash-code-support-reports`, and
-      ; `any-dynamic-type` are forward references. See if we can
-      ; untangle them.
-      (force
-        (smoosh-equal-hash-code-support-report-==-hash-code-promise
-          (sequence-first
-            (dynamic-type-get-smoosh-equal-hash-code-support-reports
-              (any-dynamic-type)
-              v))
-          #f)))
+      (hash-mode-proc-via-smoosh v))
     
     ))
 (ascribe-own-contract info-wrapper? (-> any/c boolean?))
 (ascribe-own-contract info-wrapper-value (-> info-wrapper? any/c))
+
+(define-imitation-simple-struct (uninfo-wrapper? uninfo-wrapper-value)
+  uninfo-wrapper 'uninfo-wrapper (current-inspector) (auto-write)
+  (#:gen gen:equal-mode+hash
+    
+    (define (equal-mode-proc a b recur now?)
+      (equal-mode-proc-via-smoosh a b))
+    
+    (define (hash-mode-proc v recur now?)
+      (hash-mode-proc-via-smoosh v))
+    
+    ))
+(ascribe-own-contract uninfo-wrapper? (-> any/c boolean?))
+(ascribe-own-contract uninfo-wrapper-value (-> uninfo-wrapper? any/c))
 
 (define-imitation-simple-generics
   expressly-custom-gloss-key-dynamic-type?
@@ -3867,7 +3887,7 @@
             original)
         /on-==-hash-code-promise
           (smoosh-equal-hash-code-support-report-==-hash-code-promise
-            original)))
+            original now?)))
       
       #:path-related-hash-code-promise
       (fn self a now?
@@ -3878,7 +3898,7 @@
             original)
         /on-path-related-hash-code-promise
           (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
-            original)))
+            original now?)))
       
       )))
 
@@ -3977,7 +3997,7 @@
         /on-==-hash-code-promise
           (list-map original-list /fn original
             (smoosh-equal-hash-code-support-report-==-hash-code-promise
-              original))))
+              original now?))))
       
       #:path-related-hash-code-promise
       (fn self a now?
@@ -3989,7 +4009,7 @@
         /on-path-related-hash-code-promise
           (list-map original-list /fn original
             (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
-              original))))
+              original now?))))
       
       )))
 
@@ -4162,6 +4182,39 @@
     result-yknow-maybe-yknow))
 
 (define-imitation-simple-struct
+  (constantish-smoosh-equal-hash-code-support-report?
+    constantish-smoosh-equal-hash-code-support-report-hash-code-promise)
+  constantish-smoosh-equal-hash-code-support-report-unguarded
+  'constantish-smoosh-equal-hash-code-support-report
+  (current-inspector)
+  (auto-write)
+  (#:prop prop:smoosh-equal-hash-code-support-report
+    (make-smoosh-equal-hash-code-support-report-impl
+      
+      #:==-hash-code-promise
+      (fn self now?
+        (dissect self
+          (constantish-smoosh-equal-hash-code-support-report-unguarded
+            hash-code-promise)
+          (hash-code-promise now?)))
+      
+      #:path-related-hash-code-promise
+      (fn self now?
+        (dissect self
+          (constantish-smoosh-equal-hash-code-support-report-unguarded
+            hash-code-promise)
+          (hash-code-promise now?)))
+      
+      )))
+
+(define/own-contract
+  (constantish-smoosh-equal-hash-code-support-report hash-code-promise)
+  (-> (-> boolean? (promise/c fixnum?))
+    smoosh-equal-hash-code-support-report?)
+  (constantish-smoosh-equal-hash-code-support-report-unguarded
+    hash-code-promise))
+
+(define-imitation-simple-struct
   (constant-smoosh-equal-hash-code-support-report?
     constant-smoosh-equal-hash-code-support-report-hash-code-promise)
   constant-smoosh-equal-hash-code-support-report-unguarded
@@ -4306,8 +4359,7 @@
     ((endless-sequence/c smoosh-and-comparison-of-two-report?))
     (#:known-distinct? boolean? #:known-discrete? boolean?)
     (endless-sequence/c smoosh-and-comparison-of-two-report?))
-  (if (and known-distinct? known-discrete?) reports
-  /w- kp->known-true
+  (w- kp->known-true
     (fn kp
       (promise-map kp /fn k
         (knowable-bind k /fn result
@@ -4324,14 +4376,17 @@
       #:on-smoosh-result-yknow-maybe-yknow my->known-true)
   /dissect reports (sequence* report-0 report-1+)
   /sequence*
-    (smoosh-and-comparison-of-two-report-map report-0
-      #:on-check-result-yknow y->known-true
-      #:on-smoosh-result-yknow-maybe-yknow my->known-true
-      
-      #:on-==-yknow-maybe-yknow
-      (fn ymy
-        ymy))
-    report-1+))
+    (if known-discrete?
+      report-0
+      (smoosh-and-comparison-of-two-report-map report-0
+        #:on-check-result-yknow y->known-true
+        #:on-smoosh-result-yknow-maybe-yknow my->known-true
+        
+        #:on-==-yknow-maybe-yknow
+        (fn ymy
+          ymy)))
+    (smoosh-and-comparison-of-two-reports-map report-1+
+      #:on-path-related-yknow-maybe-yknow my->known-true)))
 
 (define/own-contract
   (make-glossesque-sys-impl-for-hash get-summary-sys make-empty-hash)
@@ -5517,7 +5572,7 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in unknown.
+;     results in unknown (TODO NOW: Is this still true?).
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand, then the first such operand.
@@ -5549,13 +5604,14 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in unknown.
+;     results in unknown (TODO NOW: Is this still true?).
 ;     
 ;     Otherwise, a known `#t`.
 ; Level 2+:
 ;   path-related, join, meet, ==:
 ;     Same as the description of level 1 ==, but with "the same
-;     smoosh" referring to this level-2+ smoosh.
+;     smoosh" referring to this level-2+ smoosh, and for path-related,
+;     returning unknown instead of a known false.
 ;   <=, >=:
 ;     Same as the description of level 1 == as a check, but with "the
 ;     same smoosh" referring to this level-2+ check, understanding the
@@ -5563,6 +5619,10 @@
 ;     success so that finding an acceptable result for the overall
 ;     smoosh is possible.
 ;
+; TODO NOW: Move this somewhere better.
+(define (maybe-min-yknow-zip*-map/default-custom my-list on-value)
+  (maybe-min-yknow-zip*-map my-list /fn value-list
+    (on-value value-list)))
 (define/own-contract
   (make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism
     #:known-distinct? [known-distinct? #t]
@@ -5582,9 +5642,7 @@
     
     #:maybe-min-yknow-zip*-map/custom
     [ maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))]
+      maybe-min-yknow-zip*-map/default-custom]
     
     #:inhabitant-shallowly-equal-always?-knowable
     [ inhabitant-shallowly-equal-always?-knowable
@@ -5665,21 +5723,27 @@
       /w- ->list (->->list a)
       /w- a-list (->list a)
       /w- b-list (->list b)
-      /smoosh-and-comparison-of-two-reports-zip*-map
-        (list-zip-map a-list b-list /fn a-elem b-elem
-          (dynamic-type-get-smoosh-and-comparison-of-two-reports
-            any-dt a-elem b-elem))
-        #:on-check-result-yknow
-        (fn y-list
-          (boolean-and-yknow-zip*/from-maybe-min-yknow-trivial-zip*-map
-            maybe-min-yknow-zip*-map/custom y-list))
-        #:on-smoosh-result-yknow-maybe-yknow
-        (fn ymy-list
-          (maybe-min-yknow-zip*-map/custom ymy-list /fn y-list
-            (yknow-zip*-map y-list /fn result-list
-              (if (list-elements-eq? result-list a-list) a
-              /if (list-elements-eq? result-list b-list) b
-              /example-and-list-> a result-list))))))
+      /smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+        #:known-distinct? known-distinct?
+        ; TODO NOW: Make sure passing in `known-discrete?` with any
+        ; value other than `#t` isn't causing problems somehow.
+        ; TODO NOW NOW: This seems to be the clincher.
+        #:known-discrete? known-discrete?
+        (smoosh-and-comparison-of-two-reports-zip*-map
+          (list-zip-map a-list b-list /fn a-elem b-elem
+            (dynamic-type-get-smoosh-and-comparison-of-two-reports
+              any-dt a-elem b-elem))
+          #:on-check-result-yknow
+          (fn y-list
+            (boolean-and-yknow-zip*/from-maybe-min-yknow-trivial-zip*-map
+              maybe-min-yknow-zip*-map/custom y-list))
+          #:on-smoosh-result-yknow-maybe-yknow
+          (fn ymy-list
+            (maybe-min-yknow-zip*-map/custom ymy-list /fn y-list
+              (yknow-zip*-map y-list /fn result-list
+                (if (list-elements-eq? result-list a-list) a
+                /if (list-elements-eq? result-list b-list) b
+                /example-and-list-> a result-list)))))))
     
     ))
 
@@ -5762,7 +5826,7 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in unknown.
+;     results in unknown (TODO NOW: Is this still true?).
 ;     
 ;     Otherwise, if those recursive results are `eq?` to the elements
 ;     of an operand that counts as an acceptable result, then the
@@ -5833,7 +5897,7 @@
 ;     under the same smoosh include an unknown and/or a known nothing,
 ;     then a result determined by the
 ;     `maybe-min-yknow-zip*-map/custom` argument. By default, this
-;     results in unknown.
+;     results in unknown (TODO NOW: Is this still true?).
 ;     
 ;     Otherwise, if the element we're proposing to be greater is
 ;     shallowly chaperone-of the other one, then a known `#t`.
@@ -5870,7 +5934,8 @@
 ; Level 2+:
 ;   path-related, join, meet, ==:
 ;     Same as the description of level 1 ==, but with "the same
-;     smoosh" referring to this level-2+ smoosh.
+;     smoosh" referring to this level-2+ smoosh, and for path-related,
+;     returning unknown instead of a known false.
 ;   <=, >=:
 ;     Same as the description of level 1 == as a check, but with "the
 ;     same smoosh" referring to this level-2+ check, understanding the
@@ -5897,9 +5962,7 @@
     
     #:maybe-min-yknow-zip*-map/custom
     [ maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))]
+      maybe-min-yknow-zip*-map/default-custom]
     
     #:inhabitant-shallowly-equal-always?-knowable
     [ inhabitant-shallowly-equal-always?-knowable
@@ -6125,38 +6188,44 @@
       /w- path-related-acceptable-result?
         (fn v
           #t)
-      /sequence*
-        (smoosh-and-comparison-of-two-report-map report-0
-          #:on-check-result-yknow (on-check-result-yknow #f #f)
-          #:on-smoosh-result-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-report-map report-1
-          #:on-<=?-yknow (on-check-result-yknow #t #f)
-          #:on->=?-yknow (on-check-result-yknow #f #t)
-          #:on-join-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            (fn v
-              (and
-                (inhabitant-shallowly-chaperone-of? v a)
-                (inhabitant-shallowly-chaperone-of? v b))))
-          #:on-meet-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            (fn v
-              (and
-                (or (eq? v a) (eq? v b))
-                (inhabitant-shallowly-chaperone-of? a v)
-                (inhabitant-shallowly-chaperone-of? b v))))
-          #:on-==-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow ==-acceptable-result?)
-          #:on-path-related-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-reports-map report-2+
-          #:on-check-result-yknow (on-check-result-yknow #t #t)
-          #:on-smoosh-result-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            ==-acceptable-result?))))
+      /smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+        ; TODO NOW: Make sure passing in a `known-distinct?` other
+        ; than `#t` or any `known-discrete?` other than `#t` isn't
+        ; going to cause problems here.
+        #:known-distinct? known-distinct?
+        #:known-discrete? known-discrete?
+        (sequence*
+          (smoosh-and-comparison-of-two-report-map report-0
+            #:on-check-result-yknow (on-check-result-yknow #f #f)
+            #:on-smoosh-result-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              path-related-acceptable-result?))
+          (smoosh-and-comparison-of-two-report-map report-1
+            #:on-<=?-yknow (on-check-result-yknow #t #f)
+            #:on->=?-yknow (on-check-result-yknow #f #t)
+            #:on-join-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              (fn v
+                (and
+                  (inhabitant-shallowly-chaperone-of? v a)
+                  (inhabitant-shallowly-chaperone-of? v b))))
+            #:on-meet-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              (fn v
+                (and
+                  (or (eq? v a) (eq? v b))
+                  (inhabitant-shallowly-chaperone-of? a v)
+                  (inhabitant-shallowly-chaperone-of? b v))))
+            #:on-==-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow ==-acceptable-result?)
+            #:on-path-related-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              path-related-acceptable-result?))
+          (smoosh-and-comparison-of-two-reports-map report-2+
+            #:on-check-result-yknow (on-check-result-yknow #t #t)
+            #:on-smoosh-result-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              ==-acceptable-result?)))))
     
     ))
 
@@ -6414,9 +6483,7 @@
     
     #:maybe-min-yknow-zip*-map/custom
     [ maybe-min-yknow-zip*-map/custom
-      (fn my-list on-value
-        (maybe-min-yknow-zip*-map/indistinct my-list /fn value-list
-          (on-value value-list)))]
+      maybe-min-yknow-zip*-map/default-custom]
     
     #:combine-element-hash-codes
     [ combine-element-hash-codes
@@ -6588,7 +6655,8 @@
 ;     Otherwise, unknown.
 ; Level 1+:
 ;   path-related, join, meet, ==:
-;     Same as the description of level 0 ==.
+;     Same as the description of level 1 ==, but for path-related,
+;     returning unknown instead of a known false.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
 ;
@@ -6745,7 +6813,8 @@
 ;     as known nothings.)
 ; Level 2+:
 ;   path-related, join, meet, ==:
-;     Same as the description of level 1 ==.
+;     Same as the description of level 1 ==, but for path-related,
+;     returning unknown instead of a known false.
 ;   <=, >=:
 ;     Same as the description of level 1 == as a check.
 ;
@@ -6832,37 +6901,43 @@
       /w- path-related-acceptable-result?
         (fn v
           #t)
-      /sequence*
-        (smoosh-and-comparison-of-two-report-zip*-map (list)
-          #:on-check-result-yknow (on-check-result-yknow #f #f)
-          #:on-smoosh-result-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-report-zip*-map (list)
-          #:on-<=?-yknow (on-check-result-yknow #t #f)
-          #:on->=?-yknow (on-check-result-yknow #f #t)
-          #:on-join-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            (fn v
-              (and
-                (inhabitant-chaperone-of? v a)
-                (inhabitant-chaperone-of? v b))))
-          #:on-meet-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            (fn v
-              (and
-                (inhabitant-chaperone-of? a v)
-                (inhabitant-chaperone-of? b v))))
-          #:on-==-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow ==-acceptable-result?)
-          #:on-path-related-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            path-related-acceptable-result?))
-        (smoosh-and-comparison-of-two-reports-zip*-map (list)
-          #:on-check-result-yknow (on-check-result-yknow #t #t)
-          #:on-smoosh-result-yknow-maybe-yknow
-          (on-smoosh-result-yknow-maybe-yknow
-            ==-acceptable-result?))))
+      /smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+        ; TODO NOW: Make sure passing in a `known-distinct?` other
+        ; than `#t` or any `known-discrete?` other than `#t` isn't
+        ; going to cause problems here.
+        #:known-distinct? known-distinct?
+        #:known-discrete? known-discrete?
+        (sequence*
+          (smoosh-and-comparison-of-two-report-zip*-map (list)
+            #:on-check-result-yknow (on-check-result-yknow #f #f)
+            #:on-smoosh-result-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              path-related-acceptable-result?))
+          (smoosh-and-comparison-of-two-report-zip*-map (list)
+            #:on-<=?-yknow (on-check-result-yknow #t #f)
+            #:on->=?-yknow (on-check-result-yknow #f #t)
+            #:on-join-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              (fn v
+                (and
+                  (inhabitant-chaperone-of? v a)
+                  (inhabitant-chaperone-of? v b))))
+            #:on-meet-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              (fn v
+                (and
+                  (inhabitant-chaperone-of? a v)
+                  (inhabitant-chaperone-of? b v))))
+            #:on-==-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow ==-acceptable-result?)
+            #:on-path-related-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              path-related-acceptable-result?))
+          (smoosh-and-comparison-of-two-reports-zip*-map (list)
+            #:on-check-result-yknow (on-check-result-yknow #t #t)
+            #:on-smoosh-result-yknow-maybe-yknow
+            (on-smoosh-result-yknow-maybe-yknow
+              ==-acceptable-result?)))))
     
     ))
 
@@ -7096,6 +7171,8 @@
         (cons
           prop:expressly-custom-gloss-key-dynamic-type
           (dissectfn (trivial)
+            ; TODO NOW: Make this return unknown instead of a known
+            ; false from path info smooshes.
             (make-expressly-custom-gloss-key-dynamic-type-impl-for-atom
               #:known-reflexive? known-reflexive?
               #:eq-matters? eq-matters?
@@ -7126,7 +7203,10 @@
 ;     
 ;     Otherwise, a known nothing.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7165,7 +7245,10 @@
 ;     
 ;     Otherwise, a known nothing.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7211,7 +7294,10 @@
 ;     
 ;     Otherwise, a known nothing.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7257,7 +7343,10 @@
 ;     
 ;     Otherwise, unknown.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7295,7 +7384,10 @@
 ;     
 ;     Otherwise, a known nothing.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7327,7 +7419,10 @@
 ;     
 ;     Otherwise, unknown.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7359,7 +7454,10 @@
 ;     
 ;     Otherwise, unknown.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7398,7 +7496,10 @@
 ;     
 ;     Otherwise, unknown.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -7467,14 +7568,13 @@
 ;     Otherwise, unknown.
 ; Level 1+:
 ;   <=, >=, path-related, join, meet, ==:
-;     If neither operand is a `number?` value without NaN parts, then
-;     unknown.
-;     
 ;     If the operands are not both `number?` values without NaN parts,
 ;     then unknown.
 ;     
 ;     Otherwise, if the operands are `equal-always?`, the first
 ;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, if we're smooshing by path-related, then unknown.
 ;     
 ;     Otherwise, a known nothing (or, for a check, `#f`).
 ;
@@ -7514,10 +7614,12 @@
               (maybe-if (equal-always? a b) /fn
                 (make-yknow-from-value a))))
         /if (= a b)
-          (sequence*
-            (constant-smoosh-and-comparison-of-two-report
-              (make-yknow-from-value /just /make-yknow-from-value a))
-            report-1+)
+          (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+            (sequence*
+              (constant-smoosh-and-comparison-of-two-report
+                (make-yknow-from-value /just /make-yknow-from-value
+                  a))
+              report-1+))
         /w- real?-promise
           (delay /and (zero? /imag-part a) (zero? /imag-part b))
         /w- <=?-yknow
@@ -7541,27 +7643,34 @@
             (promise-map real?-promise /fn real?
               (knowable-if real? /fn
                 (just /make-yknow-from-value a))))
-        /sequence*
-          (smoosh-and-comparison-of-two-report-zip*-map (list)
-            #:on-<=?-yknow
-            (dissectfn (list)
-              <=?-yknow)
-            #:on->=?-yknow
-            (dissectfn (list)
-              >=?-yknow)
-            #:on-join-yknow-maybe-yknow
-            (dissectfn (list)
-              join-yknow-maybe-yknow)
-            #:on-meet-yknow-maybe-yknow
-            (dissectfn (list)
-              meet-yknow-maybe-yknow)
-            #:on-==-yknow-maybe-yknow
-            (dissectfn (list)
-              (make-yknow-from-value /nothing))
-            #:on-path-related-yknow-maybe-yknow
-            (dissectfn (list)
-              path-related-yknow-maybe-yknow))
-          report-1+))
+        /smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+          
+          ; NOTE: It's not exactly discrete, just not indiscrete. By
+          ; passing this in, we preserve the known failures we specify
+          ; at level 0.
+          #:known-discrete? #t
+          
+          (sequence*
+            (smoosh-and-comparison-of-two-report-zip*-map (list)
+              #:on-<=?-yknow
+              (dissectfn (list)
+                <=?-yknow)
+              #:on->=?-yknow
+              (dissectfn (list)
+                >=?-yknow)
+              #:on-join-yknow-maybe-yknow
+              (dissectfn (list)
+                join-yknow-maybe-yknow)
+              #:on-meet-yknow-maybe-yknow
+              (dissectfn (list)
+                meet-yknow-maybe-yknow)
+              #:on-==-yknow-maybe-yknow
+              (dissectfn (list)
+                (make-yknow-from-value /nothing))
+              #:on-path-related-yknow-maybe-yknow
+              (dissectfn (list)
+                path-related-yknow-maybe-yknow))
+            report-1+)))
       
       ))
   
@@ -7657,14 +7766,13 @@
 ;     operands.
 ; Level 1+:
 ;   <=, >=, path-related, join, meet, ==:
-;     If neither operand is a non-NaN `extflonum?` value, then
-;     unknown.
-;     
 ;     If the operands are not both non-NaN `extflonum?` values, then
 ;     unknown.
 ;     
 ;     Otherwise, if the operands are `equal-always?`, the first
 ;     operand (or, for a check, `#t`).
+;     
+;     Otherwise, if we're smooshing by path-related, then unknown.
 ;     
 ;     Otherwise, a known nothing (or, for a check, `#f`).
 ;
@@ -7705,10 +7813,12 @@
               (maybe-if (equal-always? a b) /fn
                 (make-yknow-from-value a))))
         /if (extfl= a b)
-          (sequence*
-            (constant-smoosh-and-comparison-of-two-report
-              (make-yknow-from-value /just /make-yknow-from-value a))
-            report-1+)
+          (smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+            (sequence*
+              (constant-smoosh-and-comparison-of-two-report
+                (make-yknow-from-value /just /make-yknow-from-value
+                  a))
+              report-1+))
         /w- <=?-yknow
           (make-yknow-from-value-promise-maybe-knowable-promise
             (delay/strict /known /just /delay /extfl<= a b))
@@ -7721,27 +7831,35 @@
         /w- meet-yknow-maybe-yknow
           (yknow-map <=?-yknow /fn result
             (just /make-yknow-from-value /if result a b))
-        /sequence*
-          (smoosh-and-comparison-of-two-report-zip*-map (list)
-            #:on-<=?-yknow
-            (dissectfn (list)
-              <=?-yknow)
-            #:on->=?-yknow
-            (dissectfn (list)
-              >=?-yknow)
-            #:on-join-yknow-maybe-yknow
-            (dissectfn (list)
-              join-yknow-maybe-yknow)
-            #:on-meet-yknow-maybe-yknow
-            (dissectfn (list)
-              meet-yknow-maybe-yknow)
-            #:on-==-yknow-maybe-yknow
-            (dissectfn (list)
-              (make-yknow-from-value /nothing))
-            #:on-path-related-yknow-maybe-yknow
-            (dissectfn (list)
-              (make-yknow-from-value /just /make-yknow-from-value a)))
-          report-1+))
+        /smoosh-and-comparison-of-two-reports-with-hesitation-at-discrepancies
+          
+          ; NOTE: It's not exactly discrete, just not indiscrete. By
+          ; passing this in, we preserve the known failures we specify
+          ; at level 0.
+          #:known-discrete? #t
+          
+          (sequence*
+            (smoosh-and-comparison-of-two-report-zip*-map (list)
+              #:on-<=?-yknow
+              (dissectfn (list)
+                <=?-yknow)
+              #:on->=?-yknow
+              (dissectfn (list)
+                >=?-yknow)
+              #:on-join-yknow-maybe-yknow
+              (dissectfn (list)
+                join-yknow-maybe-yknow)
+              #:on-meet-yknow-maybe-yknow
+              (dissectfn (list)
+                meet-yknow-maybe-yknow)
+              #:on-==-yknow-maybe-yknow
+              (dissectfn (list)
+                (make-yknow-from-value /nothing))
+              #:on-path-related-yknow-maybe-yknow
+              (dissectfn (list)
+                (make-yknow-from-value /just /make-yknow-from-value
+                  a)))
+            report-1+)))
       
       ))
   
@@ -7780,7 +7898,7 @@
 ; as long as the keys' and values' information orderings are. This is
 ; an instance of
 ; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`
-; and uses `maybe-min-yknow-zip*-map/indistinct`.
+; and uses `maybe-min-yknow-zip*-map/ltr-dependent`.
 ;
 ; NOTE: This would be used like so:
 ;
@@ -7813,6 +7931,13 @@
         (dissect lst (list first rest)
         /cons first rest))
       
+      ; TODO NOW: See if we still need to add this.
+      #;#;
+      #:maybe-min-yknow-zip*-map/custom
+      (fn my-list on-value
+        (maybe-min-yknow-zip*-map/ltr-dependent my-list /fn value-list
+          (on-value value-list)))
+      
       #:get-smoosh-of-zero-reports
       (fn self
         (dissect self (cons-dynamic-type any-dt)
@@ -7841,8 +7966,7 @@
 ; chaperones, information-ordered in a way that's consistent with
 ; `chaperone-of?` as long as the elements' information orderings are.
 ; This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
-; and uses `maybe-min-yknow-zip*-map/indistinct`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
 ;
 ; NOTE: This would be used like so:
 ;
@@ -7971,8 +8095,7 @@
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the elements' information orderings
 ; are. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
-; and uses `maybe-min-yknow-zip*-map/indistinct`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
 ;
 (define-imitation-simple-struct
   (immutable-prefab-struct-dynamic-type?
@@ -8006,8 +8129,7 @@
 ; their chaperones, information-ordered in a way that's consistent
 ; with `chaperone-of?` as long as the keys' and values' information
 ; orderings are. This is an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`
-; and uses `maybe-min-yknow-zip*-map/indistinct`.
+; `make-expressly-smooshable-dynamic-type-impl-from-chaperone-of-list-isomorphism`.
 ;
 (define-imitation-simple-struct
   (immutable-hash-dynamic-type?
@@ -8240,7 +8362,10 @@
 ;     
 ;     Otherwise, then the first operand.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -8467,25 +8592,30 @@
               (on-known-smoosh-result-yknow-maybe-yknow
                 (list a b)
                 ymy))
-            (smoosh-and-comparison-of-two-reports-map
+            (dissect
               (dynamic-type-get-smoosh-and-comparison-of-two-reports
                 any-dt a-value b-value)
-              
-              #:on-path-related-yknow-maybe-yknow
-              (fn ymy
-                (make-yknow-from-value
-                  (just /make-yknow-from-value a-value)))
-              
-              #:on-meet-yknow-maybe-yknow
-              (fn ymy
-                (yknow-map/knowable ymy /fn ym
-                  (knowable-if (just? ym) /fn ym)))
-              
-              #:on-smoosh-result-yknow-maybe-yknow
-              (fn ymy
-                ymy)
-              
-              ))
+              (sequence* report-0 report-1 report-2+)
+              (sequence*
+                report-0
+                (smoosh-and-comparison-of-two-report-map report-1
+                  
+                  #:on-path-related-yknow-maybe-yknow
+                  (fn ymy
+                    (make-yknow-from-value
+                      (just /make-yknow-from-value a-value)))
+                  
+                  #:on-meet-yknow-maybe-yknow
+                  (fn ymy
+                    (yknow-map/knowable ymy /fn ym
+                      (knowable-if (just? ym) /fn ym)))
+                  
+                  #:on-smoosh-result-yknow-maybe-yknow
+                  (fn ymy
+                    ymy)
+                  
+                  )
+                report-2+)))
         /sequence* (uninformative-smoosh-and-comparison-of-two-report)
           (smoosh-and-comparison-of-two-report-zip*-map (list)
             
@@ -8720,9 +8850,9 @@
       on-path-related-wrapper-hash-code-promise)
     (sequence* report-0 report-1+)
   /sequence*
-    (constant-smoosh-equal-hash-code-support-report
+    (constantish-smoosh-equal-hash-code-support-report /fn now?
       (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
-        report-0))
+        report-0 now?))
     report-1+))
 
 (define/own-contract
@@ -8746,7 +8876,8 @@
         inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
         (fn inhabitant
           (knowable-map
-            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable inhabitant)
+            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+              inhabitant)
           /fn guard-wrapper-m
             (maybe-map guard-wrapper-m /fn guard-wrapper
               (compose guard-wrapper /fn v
@@ -8884,6 +9015,237 @@
   )
 
 (define/own-contract
+  (on-==-wrapper-smoosh-result-yknow-maybe-yknow operands ymy)
+  (->
+    (listof ==-wrapper?)
+    (yknow/c (maybe/c (yknow/c ==-wrapper?)))
+    (yknow/c (maybe/c (yknow/c ==-wrapper?))))
+  (yknow-map ymy /fn ym
+    (maybe-map ym /fn y
+      (yknow-map y /fn result-value
+        (w-loop next operands operands
+          (expect operands (cons operand operands)
+            (==-wrapper result-value)
+          /dissect operand (==-wrapper operand-value)
+          /if (eq? operand-value result-value)
+            operand
+          /next operands))))))
+
+(define/own-contract (on-==-wrapper-hash-code-promise p)
+  (-> (promise/c fixnum?) (promise/c fixnum?))
+  (promise-map p /fn value-hash-code
+    (hash-code-combine
+      (equal-always-hash-code ==-wrapper?)
+      value-hash-code)))
+
+(define/own-contract
+  (==-wrapper-smoosh-reports-from-value-reports
+    operands value-reports)
+  (->
+    (listof ==-wrapper?)
+    (endless-sequence/c smoosh-report?)
+    (endless-sequence/c smoosh-report?))
+  (dissect
+    (smoosh-reports-map value-reports
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-==-wrapper-smoosh-result-yknow-maybe-yknow operands ymy)))
+    (sequence* report-0 report-1+)
+  /sequence*
+    (constant-smoosh-report
+      (smoosh-report-==-yknow-maybe-yknow report-0))
+    report-1+))
+
+(define/own-contract
+  (==-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+    operands value-reports)
+  (->
+    (listof ==-wrapper?)
+    (endless-sequence/c smoosh-and-comparison-of-two-report?)
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
+  (dissect
+    (smoosh-and-comparison-of-two-reports-map value-reports
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-==-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))
+    (sequence* report-0 report-1+)
+  /sequence*
+    (constant-smoosh-and-comparison-of-two-report
+      (smoosh-report-==-yknow-maybe-yknow
+        (smoosh-and-comparison-of-two-report-get-smoosh-report
+          report-0)))
+    report-1+))
+
+(define/own-contract
+  (==-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+    value-reports)
+  (-> (endless-sequence/c smoosh-equal-hash-code-support-report?)
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
+  (dissect
+    (smoosh-equal-hash-code-support-reports-map value-reports
+      #:on-hash-code-promise
+      on-==-wrapper-hash-code-promise)
+    (sequence* report-0 report-1+)
+  /sequence*
+    (constantish-smoosh-equal-hash-code-support-report /fn now?
+      (smoosh-equal-hash-code-support-report-==-hash-code-promise
+        report-0 now?))
+    report-1+))
+
+(define/own-contract
+  (==-wrapper-custom-gloss-key-reports-from-value-reports
+    value-reports)
+  (-> (endless-sequence/c custom-gloss-key-report?)
+    (endless-sequence/c custom-gloss-key-report?))
+  (dissect
+    (custom-gloss-key-reports-map value-reports
+      #:on-tagged-glossesque-sys-knowable
+      (derive-tagged-glossesque-sys inhabitant?-knowable get-gs
+        (fn v
+          (expect v (==-wrapper v) (unknown)
+          /inhabitant?-knowable v))
+        (fn gss
+          (glossesque-sys-map-key gss (fn gss /get-gs gss)
+            #:name 'unwrap-==-wrapper
+            #:granted-key (dissectfn (==-wrapper k) k)))
+        
+        #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        (fn inhabitant
+          (knowable-map
+            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+              inhabitant)
+          /fn guard-wrapper-m
+            (maybe-map guard-wrapper-m /fn guard-wrapper
+              (compose guard-wrapper /fn v /==-wrapper v))))))
+    (sequence* report-0 report-1+)
+  /sequence*
+    (constant-custom-gloss-key-report
+      #:tagged-glossesque-sys-knowable
+      (custom-gloss-key-report-get-==-tagged-glossesque-sys-knowable
+        report-0))
+    report-1+))
+
+; This is an appropriate dynamic type of `==-wrapper` values, ordered
+; so that one value is less than or equal to another if the wrapped
+; values are ==.
+;
+; Level 0:
+;   path-related, join, meet, ==:
+;     If the operands are not both `==-wrapper?` values, then unknown.
+;     
+;     Otherwise, if the result of performing a level-0 == smoosh on
+;     their values is a known success and any operand's unwrapped
+;     value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as an
+;     `==-wrapper?` value.
+;     
+;     Otherwise, the same known failure or unknown result.
+;   <=, >=:
+;     If the operands are not both `==-wrapper?` values, then unknown.
+;     
+;     Otherwise, the boolean result of whether or not performing a
+;     level-0 == smoosh on their values succeeds.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `==-wrapper?` values, then unknown.
+;     
+;     Otherwise, if the result of performing the same smoosh or check
+;     on their values is a known success and we're doing a check, then
+;     `#t`.
+;     
+;     Otherwise, if it's a known success and any operand's unwrapped
+;     value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as an
+;     `==-wrapper?` value.
+;     
+;     Otherwise, the same known failure or unknown result.
+;
+(define-imitation-simple-struct
+  (==-wrapper-dynamic-type?
+    ==-wrapper-dynamic-type-get-any-dynamic-type)
+  ==-wrapper-dynamic-type
+  '==-wrapper-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-reports
+      (fn self
+        (dissect self (==-wrapper-dynamic-type any-dt)
+        /==-wrapper-smoosh-reports-from-value-reports
+          (list)
+          (dynamic-type-get-smoosh-of-zero-reports any-dt)))
+      
+      #:get-smoosh-of-one-reports
+      (fn self a
+        (dissect self (==-wrapper-dynamic-type any-dt)
+        /expect a (==-wrapper a-value)
+          (uninformative-smoosh-reports)
+        /==-wrapper-smoosh-reports-from-value-reports
+          (list a)
+          (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
+      
+      #:get-smoosh-and-comparison-of-two-reports-via-first
+      (fn self a b
+        (dissect self (==-wrapper-dynamic-type any-dt)
+        /expect a (==-wrapper a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (==-wrapper b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /==-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
+            any-dt a-value b-value)))
+      
+      #:get-smoosh-and-comparison-of-two-reports-via-second
+      (fn self a b
+        (dissect self (==-wrapper-dynamic-type any-dt)
+        /expect a (==-wrapper a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (==-wrapper b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /==-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+            any-dt a-value b-value)))
+      
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+      
+      #:get-smoosh-equal-hash-code-support-reports
+      (fn self a
+        (dissect self (==-wrapper-dynamic-type any-dt)
+        /expect a (==-wrapper a-value)
+          (uninformative-smoosh-equal-hash-code-support-reports)
+        /==-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+          (dynamic-type-get-smoosh-equal-hash-code-support-reports
+            any-dt a-value)))
+      
+      ))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (dissect self (==-wrapper-dynamic-type any-dt)
+        /expect a (==-wrapper a-value)
+          (uninformative-custom-gloss-key-reports)
+        /==-wrapper-custom-gloss-key-reports-from-value-reports
+          (dynamic-type-get-custom-gloss-key-reports
+            any-dt a-value)))
+      
+      ))
+  
+  )
+
+(define/own-contract
   (on-info-wrapper-smoosh-result-yknow-maybe-yknow operands ymy)
   (->
     (listof info-wrapper?)
@@ -8969,7 +9331,8 @@
         inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
         (fn inhabitant
           (knowable-map
-            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable inhabitant)
+            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+              inhabitant)
           /fn guard-wrapper-m
             (maybe-map guard-wrapper-m /fn guard-wrapper
               (compose guard-wrapper /fn v
@@ -8979,10 +9342,8 @@
 
 ; This is an appropriate dynamic type of `info-wrapper` values,
 ; ordered so that one value is less than or equal to another if the
-; wrapped values are path-related (related by some sequence of two or
-; more values, beginning with one of them and ending with the other,
-; such that each pair of successive elements is related either by <=
-; or by >=).
+; first's wrapped value is less than or equal to the second according
+; to their information ordering.
 ;
 ; Level 0+:
 ;   <=, >=, path-related, join, meet, ==:
@@ -9082,6 +9443,243 @@
   
   )
 
+(define/own-contract
+  (on-uninfo-wrapper-smoosh-result-yknow-maybe-yknow operands ymy)
+  (->
+    (listof uninfo-wrapper?)
+    (yknow/c (maybe/c (yknow/c uninfo-wrapper?)))
+    (yknow/c (maybe/c (yknow/c uninfo-wrapper?))))
+  (yknow-map ymy /fn ym
+    (maybe-map ym /fn y
+      (yknow-map y /fn result-value
+        (w-loop next operands operands
+          (expect operands (cons operand operands)
+            (uninfo-wrapper result-value)
+          /dissect operand (uninfo-wrapper operand-value)
+          /if (eq? operand-value result-value)
+            operand
+          /next operands))))))
+
+(define/own-contract (on-uninfo-wrapper-hash-code-promise p)
+  (-> (promise/c fixnum?) (promise/c fixnum?))
+  (promise-map p /fn value-hash-code
+    (hash-code-combine
+      (equal-always-hash-code uninfo-wrapper?)
+      value-hash-code)))
+
+(define/own-contract
+  (uninfo-wrapper-smoosh-reports-from-value-reports
+    operands value-reports)
+  (-> (listof uninfo-wrapper?) (endless-sequence/c smoosh-report?)
+    (endless-sequence/c smoosh-report?))
+  (dissect
+    (smoosh-reports-map value-reports
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-uninfo-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))
+    (sequence* report-1 report-2+)
+  /sequence*
+    (constant-smoosh-report
+      (smoosh-report-path-related-yknow-maybe-yknow report-1))
+    report-1
+    report-2+))
+
+(define/own-contract
+  (uninfo-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+    operands value-reports)
+  (->
+    (listof uninfo-wrapper?)
+    (endless-sequence/c smoosh-and-comparison-of-two-report?)
+    (endless-sequence/c smoosh-and-comparison-of-two-report?))
+  (dissect
+    (smoosh-and-comparison-of-two-reports-map value-reports
+      #:on-smoosh-result-yknow-maybe-yknow
+      (fn ymy
+        (on-uninfo-wrapper-smoosh-result-yknow-maybe-yknow
+          operands ymy)))
+    (sequence* report-1 report-2+)
+  /sequence*
+    (constant-smoosh-and-comparison-of-two-report
+      (smoosh-report-path-related-yknow-maybe-yknow
+        (smoosh-and-comparison-of-two-report-get-smoosh-report
+          report-1)))
+    report-1
+    report-2+))
+
+(define/own-contract
+  (uninfo-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+    value-reports)
+  (-> (endless-sequence/c smoosh-equal-hash-code-support-report?)
+    (endless-sequence/c smoosh-equal-hash-code-support-report?))
+  (dissect
+    (smoosh-equal-hash-code-support-reports-map value-reports
+      #:on-hash-code-promise on-uninfo-wrapper-hash-code-promise)
+    (sequence* report-1 report-2+)
+  /sequence*
+    (constantish-smoosh-equal-hash-code-support-report /fn now?
+      (smoosh-equal-hash-code-support-report-path-related-hash-code-promise
+        report-1 now?))
+    report-1
+    report-2+))
+
+(define/own-contract
+  (uninfo-wrapper-custom-gloss-key-reports-from-value-reports
+    value-reports)
+  (-> (endless-sequence/c custom-gloss-key-report?)
+    (endless-sequence/c custom-gloss-key-report?))
+  (dissect
+    (custom-gloss-key-reports-map value-reports
+      #:on-tagged-glossesque-sys-knowable
+      (derive-tagged-glossesque-sys inhabitant?-knowable get-gs
+        (fn v
+          (expect v (uninfo-wrapper v) (unknown)
+          /inhabitant?-knowable v))
+        (fn gss
+          (glossesque-sys-map-key gss (fn gss /get-gs gss)
+            #:name 'unwrap-uninfo-wrapper
+            #:granted-key (dissectfn (uninfo-wrapper k) k)))
+        
+        #:inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+        (fn inhabitant
+          (knowable-map
+            (inhabitant-get-identifiable-object-guard-wrapper-maybe-knowable
+              inhabitant)
+          /fn guard-wrapper-m
+            (maybe-map guard-wrapper-m /fn guard-wrapper
+              (compose guard-wrapper /fn v
+                (uninfo-wrapper v)))))))
+    (sequence* report-1 report-2+)
+  /sequence*
+    (constant-custom-gloss-key-report
+      #:tagged-glossesque-sys-knowable
+      (custom-gloss-key-report-get-path-related-tagged-glossesque-sys-knowable
+        report-1))
+    report-1
+    report-2+))
+
+; This is an appropriate dynamic type of `uninfo-wrapper` values,
+; ordered so that one value is less than or equal to another if the
+; wrapped values are path-related (related by some sequence of two or
+; more values, beginning with one of them and ending with the other,
+; such that each pair of successive elements is related either by <=
+; or by >=).
+;
+; Level 0:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `uninfo-wrapper?` values, then
+;     unknown.
+;     
+;     Otherwise, if the result of processing the unwrapped values with
+;     path-related smoosh is a known success and we're doing a check,
+;     then `#t`.
+;     
+;     Otherwise, if it's a known success and any operand's unwrapped
+;     value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as an
+;     `uninfo-wrapper?` value.
+;     
+;     Otherwise, the same known failure or unknown result.
+; Level 1+:
+;   <=, >=, path-related, join, meet, ==:
+;     If the operands are not both `uninfo-wrapper?` values, then
+;     unknown.
+;     
+;     Otherwise, if the result of processing the unwrapped values with
+;     the same smoosh or check 1 level down is a known success and
+;     we're doing a check, then `#t`.
+;     
+;     Otherwise, if it's a known success and any operand's unwrapped
+;     value is `eq?` to it, then that operand.
+;     
+;     Otherwise, if it's a known success, that value wrapped up as an
+;     `uninfo-wrapper?` value.
+;     
+;     Otherwise, the same known failure or unknown result.
+;
+(define-imitation-simple-struct
+  (uninfo-wrapper-dynamic-type?
+    uninfo-wrapper-dynamic-type-get-any-dynamic-type)
+  uninfo-wrapper-dynamic-type
+  'uninfo-wrapper-dynamic-type (current-inspector) (auto-write)
+  
+  (#:prop prop:expressly-smooshable-dynamic-type
+    (make-expressly-smooshable-dynamic-type-impl
+      
+      #:get-smoosh-of-zero-reports
+      (fn self
+        (dissect self (uninfo-wrapper-dynamic-type any-dt)
+        /uninfo-wrapper-smoosh-reports-from-value-reports
+          (list)
+          (dynamic-type-get-smoosh-of-zero-reports any-dt)))
+      
+      #:get-smoosh-of-one-reports
+      (fn self a
+        (dissect self (uninfo-wrapper-dynamic-type any-dt)
+        /expect a (uninfo-wrapper a-value)
+          (uninformative-smoosh-reports)
+        /uninfo-wrapper-smoosh-reports-from-value-reports
+          (list a)
+          (dynamic-type-get-smoosh-of-one-reports any-dt a-value)))
+      
+      #:get-smoosh-and-comparison-of-two-reports-via-first
+      (fn self a b
+        (dissect self (uninfo-wrapper-dynamic-type any-dt)
+        /expect a (uninfo-wrapper a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (uninfo-wrapper b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /uninfo-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-first
+            any-dt a-value b-value)))
+      
+      #:get-smoosh-and-comparison-of-two-reports-via-second
+      (fn self a b
+        (dissect self (uninfo-wrapper-dynamic-type any-dt)
+        /expect a (uninfo-wrapper a-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /expect b (uninfo-wrapper b-value)
+          (uninformative-smoosh-and-comparison-of-two-reports)
+        /uninfo-wrapper-smoosh-and-comparison-of-two-reports-from-value-reports
+          (list a b)
+          (dynamic-type-get-smoosh-and-comparison-of-two-reports-via-second
+            any-dt a-value b-value)))
+      
+      ))
+  
+  (#:prop prop:expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type
+    (make-expressly-equipped-with-smoosh-equal-hash-code-support-dynamic-type-impl
+      
+      #:get-smoosh-equal-hash-code-support-reports
+      (fn self a
+        (dissect self (uninfo-wrapper-dynamic-type any-dt)
+        /expect a (uninfo-wrapper a-value)
+          (uninformative-smoosh-equal-hash-code-support-reports)
+        /uninfo-wrapper-smoosh-equal-hash-code-support-reports-from-value-reports
+          (dynamic-type-get-smoosh-equal-hash-code-support-reports
+            any-dt a-value)))
+      
+      ))
+  
+  (#:prop prop:expressly-custom-gloss-key-dynamic-type
+    (make-expressly-custom-gloss-key-dynamic-type-impl
+      
+      #:get-custom-gloss-key-reports
+      (fn self a
+        (dissect self (uninfo-wrapper-dynamic-type any-dt)
+        /expect a (uninfo-wrapper a-value)
+          (uninformative-custom-gloss-key-reports)
+        /uninfo-wrapper-custom-gloss-key-reports-from-value-reports
+          (dynamic-type-get-custom-gloss-key-reports
+            any-dt a-value)))
+      
+      ))
+  
+  )
+
 (define (gloss-ref-entry/who who g k)
   (expect (gloss-ref-entry-maybe-knowable g k) (known entry-m)
     (raise-arguments-error who
@@ -9128,10 +9726,10 @@
 ; information-ordered in a way that's consistent with `chaperone-of?`
 ; as long as the keys' and values' information orderings are. This is
 ; an instance of
-; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`
-; and uses `maybe-min-yknow-zip*-map/indistinct`. Note that this
-; instance's `inhabitant-shallowly-equal-always?-knowable` can result
-; in a non-`known?` value if any key comparison does.
+; `make-expressly-smooshable-dynamic-type-impl-from-equal-always-list-isomorphism`.
+; Note that this instance's
+; `inhabitant-shallowly-equal-always?-knowable` can result in a
+; non-`known?` value if any key comparison does.
 ;
 (define-imitation-simple-struct
   (gloss-dynamic-type? gloss-dynamic-type-get-any-dynamic-type)
@@ -9191,12 +9789,16 @@
 ;   ==:
 ;     If the operands are not both `eq-wrapper?` values, then unknown.
 ;     
-;     Otherwise, if the operands are `equal-always?`, then the first
-;     operand.
+;     Otherwise, if the operands are `equal-always?` (which, in this
+;     case, is equivalent to checking that the wrapped values are
+;     `eq?`), then the first operand.
 ;     
 ;     Otherwise, a known nothing.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -9229,7 +9831,10 @@
 ;     
 ;     Otherwise, a known nothing.
 ; Level 1+:
-;   path-related, join, meet, ==:
+;   path-related:
+;     Same as the description of level 0 ==, but if it would result in
+;     a known nothing, it results in unknown instead.
+;   join, meet, ==:
 ;     Same as the description of level 0 ==.
 ;   <=, >=:
 ;     Same as the description of level 0 == as a check.
@@ -9452,8 +10057,14 @@
         path-related-wrapper?
         (fn any-dt /path-related-wrapper-dynamic-type any-dt))
       (list
+        ==-wrapper?
+        (fn any-dt /==-wrapper-dynamic-type any-dt))
+      (list
         info-wrapper?
         (fn any-dt /info-wrapper-dynamic-type any-dt))
+      (list
+        uninfo-wrapper?
+        (fn any-dt /uninfo-wrapper-dynamic-type any-dt))
       (list gloss? (fn any-dt /gloss-dynamic-type any-dt))
       (list eq-wrapper? (fn any-dt /eq-wrapper-dynamic-type))
       (list
@@ -9724,12 +10335,20 @@
 ;       own purposes.)
 ;
 ;     - (Done) `path-related-wrapper?` values, ordered according to
-;       whether elements are path-related according to the "any"
+;       whether their elements are path-related according to the "any"
 ;       type's smoosh ordering.
 ;
-;     - (Done) `info-wrapper?` values, ordered according to whether
-;       elements are related according to the "any" type's information
+;     - (Done) `==-wrapper?` values, ordered according to whether
+;       their elements are == according to the "any" type's smoosh
 ;       ordering.
+;
+;     - (Done) `info-wrapper?` values, ordered according to whether
+;       their elements are related according to the "any" type's
+;       information ordering.
+;
+;     - (Done) `uninfo-wrapper?` values, ordered and
+;       information-ordered according to whether their elements are
+;       related according to the "any" type's ordering.
 ;
 ;     - (Done) `gloss?` values, ordered according to the keys' and
 ;       values' smoosh orderings. `gloss?` values which have

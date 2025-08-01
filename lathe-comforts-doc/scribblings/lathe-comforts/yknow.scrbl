@@ -169,7 +169,7 @@
 
 @defproc[
   (maybe-min-yknow-zip*-map
-    [y-list (listof (yknow/c maybe?))]
+    [my-list (listof (yknow/c maybe?))]
     [on-value (-> list? any/c)])
   (yknow/c maybe?)
 ]{
@@ -179,8 +179,19 @@
 }
 
 @defproc[
-  (maybe-min-yknow-zip*-map/indistinct
-    [y-list (listof (yknow/c maybe?))]
+  (maybe-min-yknow-zip*-map/ltr-dependent
+    [my-list (listof (yknow/c maybe?))]
+    [on-value (-> list? any/c)])
+  (yknow/c maybe?)
+]{
+  Given a list of @tech{yknow objects} possibly resulting in @tech{maybe values}, returns a new one obtained by updating their fully specified @racket[just-value] result values (if they all have them) according to the given function. If any of the given yknow objects has a result that's not-yet-specified, user-specified, or a fully specified @racket[nothing?] value, then the resulting yknow object has the first such result encountered when traversing @racket[my-list] from first to last. The function won't be called until the resulting yknow object's computation is fully forced.
+  
+  Note that this flattens the sometimes useful distinction between a yknow object with a not-yet-specified result, a yknow object with a user-specified result, and a yknow object with a fully specified @racket[nothing?] value.
+}
+
+@defproc[
+  (maybe-min-yknow-zip*-map/elementwise-indistinct
+    [my-list (listof (yknow/c maybe?))]
     [on-value (-> list? any/c)])
   (yknow/c maybe?)
 ]{
