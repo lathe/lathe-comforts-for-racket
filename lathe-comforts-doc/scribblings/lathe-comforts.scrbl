@@ -4,7 +4,7 @@
 @;
 @; Evergreen utilities.
 
-@;   Copyright 2017-2022 The Lathe Authors
+@;   Copyright 2017-2022, 2025 The Lathe Authors
 @;
 @;   Licensed under the Apache License, Version 2.0 (the "License");
 @;   you may not use this file except in compliance with the License.
@@ -49,9 +49,53 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 @defmodule[lathe-comforts]
 
 
+@subsection[#:tag "syntax-definition"]{Utilities for Macro Definition}
+
+@(define @enforces-autopticity[]
+  @list{
+    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+  })
+
+@(define @also-enforces-autopticity[]
+  @list{
+    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+  })
+
+@(define @definition-that-ensures-autopticity[]
+  @list{
+    Defining a syntax transformer this way helps to ensure @tech{autopticity} of each of its call sites. Note that each of the @racket[_pattern]s is still the usual sort of @racket[syntax-parse] pattern, and it won't ensure autopticity without the use of helpers like the @racket[~autoptic-list] pattern expander.
+    
+    @also-enforces-autopticity[]
+  })
+
+@defform[
+  (define-syntax-parse-rule/autoptic (id pattern ...)
+    pattern-directive ...
+    template)
+]{
+  Defines a syntax transformer named @racket[id] similarly to @racket[define-syntax-parse-rule], except that it first verifies that that the literal list @racket[(id pattern ...)] at the call site has scopes that are a subset of the scopes on that list's first cons cell.
+  
+  @definition-that-ensures-autopticity[]
+}
+
+@defform[
+  (define-syntax-parse-rule/autoptic/loc (id pattern ...)
+    pattern-directive ...
+    template)
+]{
+  Defines a syntax transformer named @racket[id] similarly to @racket[define-syntax-parse-rule], except that it first verifies that that all the tails of the literal list @racket[(id pattern ...)] at the call site have scopes that are a subset of the scopes on that list's first cons cell, and it restores the list's source location on the transformed code as though using @racket[syntax/loc].
+  
+  @definition-that-ensures-autopticity[]
+}
+
+
 @subsection[#:tag "binding-syntax"]{Utilities for Binding Syntax}
 
-@defidform[#:kind "splicing syntax class" binds]{
+@defproc[
+  #:kind "splicing syntax class"
+  (autoptic-binds-to [surrounding-stx syntax?])
+  @#,tech[#:doc syntax-doc]{splicing syntax class}
+]{
   Matches syntax in any of three formats:
   
   @itemlist[
@@ -80,7 +124,9 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Specifically, the generated macro is equivalent to the following, where @racket[pattern ...] and @racket[template ...] are expanded right away, and the rest of the ellipses are part of the generated macro:
   
   @racketblock[
-    (define-simple-macro (id pattern ... _vars:binds _body:expr ...)
+    (define-syntax-parse-rule/autoptic/loc
+      (id pattern ... _vars _body:expr ...)
+      #:declare _vars (autoptic-binds-to this-syntax)
       (template ... ([_vars.var _vars.val] ...)
         _body ...))
   ]
@@ -95,6 +141,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
     (define-simple-normalizing-binder (w-loop _proc:id)
       (let _proc))
   ]
+  
+  @definition-that-ensures-autopticity[]
 }
 
 
@@ -123,7 +171,9 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 @defform[(w- local-binds body-expr ...)]{
-  Works just like a @racket[let] form with no @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
+  Works just like a @racket[let] form with no @racket[_proc-id], but uses the @racket[autoptic-binds-to] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
+  
+  @enforces-autopticity[]
   
   @examples[
     #:eval (example-eval)
@@ -139,6 +189,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 @defform[(fn arg-id ... body-expr)]{
   Creates a procedure with positional arguments @racket[arg-id ...] and body @racket[body-expr].
   
+  @enforces-autopticity[]
+  
   This is only a frequently useful shorthand, not a full replacement of @racket[lambda]. Unlike @racket[lambda], @tt{fn} can only be used to create functions of fixed arity, with no keyword arguments, and the body may only consist of one expression (although this expression may be a @racket[begin] form of course). Hence, programs that use @racket[fn] may still need to use @racket[lambda] on occasion.
   
   @examples[
@@ -150,7 +202,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 @defform[(w-loop proc-id local-binds body ...)]{
-  Works just like a @racket[let] form with a @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
+  Works just like a @racket[let] form with a @racket[_proc-id], but uses the @racket[autoptic-binds-to] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
   
   This example reverses and squares the numbers in a list, using the @racket[_next] procedure to continue the loop:
   
@@ -164,10 +216,14 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
       (expect original (cons first rest) result
       _/ next rest _/ cons (* first first) result))
   ]
+  
+  @enforces-autopticity[]
 }
 
 @defform[(loopfn proc-id arg-id ... body-expr)]{
   Creates a procedure with positional arguments @racket[arg-id ...] and body @racket[body-expr], which can refer to itself in the body using the name @racket[proc-id].
+  
+  @enforces-autopticity[]
 }
 
 
@@ -178,6 +234,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   @defform[(expect val-expr pat else-expr then-expr)]
 )]{
   Checks whether @racket[pat] matches the result of @racket[val-expr]. If it does, this evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, this evaluates @racket[else-expr] without any new bindings.
+  
+  @enforces-autopticity[]
   
   The only difference between @tt{mat} and @tt{expect} is the order of @racket[then-expr] and @racket[else-expr] in the form. When these are used with Parendown's weak opening brackets, they enable a programming style where run time error checking and other early exit conditions are kept toward the top of a procedure body, without affecting the indentation of the procedure's main logic.
   
@@ -207,10 +265,14 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   #:contracts ([elsefn-expr (-> any/c any)])
 ]{
   Returns a procedure. The procedure takes a single argument value and checks whether it matches the @racket[match] pattern @racket[pat]. If it does, the procedure evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the procedure makes a tail call to the procedure resulting from @racket[elsefn-expr], passing in the same argument value.
+  
+  @enforces-autopticity[]
 }
 
 @defform[(expectfn pat else-expr then-expr)]{
   Returns a procedure. The procedure takes a single argument value and checks whether it matches the @racket[match] pattern @racket[pat]. If it does, the procedure evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the procedure evaluates @racket[else-expr] in tail position without any new bindings.
+  
+  @enforces-autopticity[]
 }
 
 @deftogether[(
@@ -218,6 +280,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   @defform[(dissect/derived orig val-expr pat then-expr)]
 )]{
   Checks whether @racket[pat] matches the result of @racket[val-expr]. If it does, this evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the @racket[exn:misc:match?] exception is raised.
+  
+  @enforces-autopticity[]
   
   The @tt{dissect/derived} variant reports errors in terms of @racket[orig].
   
@@ -229,6 +293,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   @defform[(dissectfn/derived orig pat then-expr)]
 )]{
   Returns a procedure. The procedure takes a single argument value and checks whether it matches the @racket[match] pattern @racket[pat]. If it does, the procedure evaluates @racket[then-expr] in tail position with the bindings introduced by @racket[pat]. Otherwise, the @racket[exn:misc:match?] exception is raised.
+  
+  @enforces-autopticity[]
   
   The @tt{dissectfn/derived} variant reports errors in terms of @racket[orig].
   
@@ -1111,6 +1177,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   Unlike @racket[struct/c] (but like @racket[istruct/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[arg/c-expr] contracts contain one or more impersonator contracts.
 }
+
+
+
+@include-section["lathe-comforts/syntax.scrbl"]
 
 
 

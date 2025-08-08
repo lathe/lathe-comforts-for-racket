@@ -1,10 +1,10 @@
-#lang parendown racket/base
+#lang parendown/slash racket/base
 
-; lathe-comforts
+; lathe-comforts/syntax
 ;
-; Evergreen utilities.
+; Macro utilities.
 
-;   Copyright 2018-2019, 2022, 2025 The Lathe Authors
+;   Copyright 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -22,37 +22,17 @@
 (require lathe-comforts/private/shim)
 (init-shim)
 
+(require /submod lathe-comforts/private part1)
+(require /submod lathe-comforts/private part3)
+(require /submod lathe-comforts/private part4)
+(require /submod lathe-comforts/private part5)
 (require lathe-comforts/private)
 
+
+(provide /contract-out
+  [scopes-empty? (-> syntax? boolean?)]
+  [scopes<=? (-> syntax? syntax? boolean?)])
 (provide
-  
-  ; === Evergreen utilities for binding syntax and FP ===
-  
-  ; == Utilities for macros ==
-  define-syntax-parse-rule/autoptic
-  define-syntax-parse-rule/autoptic/loc
-  
-  ; == Utilities for binding syntax ==
-  autoptic-binds-to
-  define-simple-normalizing-binder
-  
-  ; == Utilities for functional programming ==
-  
-  ; Bindings and recursion
-  (recontract-out
-    pass)
-  w-
-  fn
-  w-loop
-  loopfn
-  
-  ; Conditionals
-  mat
-  expect
-  matfns
-  expectfn
-  dissect
-  dissect/derived
-  dissectfn
-  dissectfn/derived
-)
+  ~autoptic-list-to
+  ~autoptic
+  ~autoptic-list)

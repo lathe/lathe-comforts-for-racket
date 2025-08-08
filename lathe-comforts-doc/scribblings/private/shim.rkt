@@ -59,8 +59,8 @@
           (only-in racket/math natural?)
           (only-in racket/struct make-constructor-style-printer)
           (only-in racket/struct-info extract-struct-info)
-          (only-in syntax/parse expr id)
-          (only-in syntax/parse/define define-simple-macro)
+          (only-in syntax/parse expr id this-syntax syntax-parse)
+          (only-in syntax/parse/define define-syntax-parse-rule)
           
           (only-in parendown pd)
           
@@ -73,8 +73,13 @@
           lathe-comforts/own-contract
           lathe-comforts/string
           lathe-comforts/struct
+          lathe-comforts/syntax
           lathe-comforts/trivial)
         
-        racket/base)))
+        racket/base)
+      
+      (define syntax-doc '(lib "syntax/scribblings/syntax.scrbl"))
+      
+      ))
   
   result)
