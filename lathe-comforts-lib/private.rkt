@@ -56,190 +56,9 @@
 ; ===== Evergreen utilities for binding syntax and FP ================
 
 
-(module part1 racket/base
+(module part7 racket/base
   
-  (require lathe-comforts/private/shim)
-  (init-shim)
-  
-  (provide #/all-defined-out)
-  
-  
-  (define (scopes-empty? stx)
-    (bound-identifier=?
-      (datum->syntax stx 'x)
-      (datum->syntax #f 'x)
-      0))
-  
-  (define (scopes<=? a b)
-    (define b-scopes-fn
-      (make-syntax-delta-introducer (datum->syntax b 'x) #f 0))
-    (scopes-empty? #/b-scopes-fn a 'remove))
-  
-  (define (autoptic-to? surrounding-stx stx)
-    (scopes<=? surrounding-stx stx))
-  
-  (define (autoptic-list-to? surrounding-stx lst)
-    (if (syntax? lst)
-      (and (autoptic-to? surrounding-stx lst)
-        (autoptic-list-to? surrounding-stx (syntax-e lst)))
-      (match lst
-        [(cons elem lst) (autoptic-list-to? surrounding-stx lst)]
-        [(list) #t]
-        [_ #f])))
-  
-  )
-
-
-(module part2 racket/base
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require #/only-in syntax/parse
-    define-syntax-class pattern this-syntax)
-  
-  (require #/submod ".." part1)
-  
-  (require lathe-comforts/private/shim)
-  (init-shim)
-  
-  (provide #/all-defined-out)
-  
-  
-  ; === Utilities for macros, part 1 ===
-  
-  (define-syntax-class (autoptic-to surrounding-stx)
-    (pattern _
-      #:when
-      (and (syntax? surrounding-stx)
-        (autoptic-to? surrounding-stx this-syntax))))
-  
-  (define-syntax-class (autoptic-list-to surrounding-stx)
-    (pattern _
-      #:when (autoptic-list-to? surrounding-stx this-syntax)))
-  
-  )
-
-
-(module part3 racket/base
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require #/for-syntax #/only-in syntax/parse syntax-parser)
-  
-  (require #/for-syntax #/submod ".." part2)
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require #/only-in syntax/parse
-    ~and ~var expr/c pattern-expander this-syntax)
-  
-  (require #/submod ".." part2)
-  
-  (require lathe-comforts/private/shim)
-  (init-shim)
-  
-  (provide #/all-defined-out)
-  
-  
-  ; === Utilities for macros, part 2 ===
-  
-  (define-syntax ~autoptic-list-to #/pattern-expander
-    (syntax-parser #/
-      {~and {~var _ #/autoptic-list-to this-syntax}
-        {_ surrounding-stx pattern}}
-      
-      #:declare surrounding-stx
-      (expr/c #'syntax? #:name "surrounding-stx argument")
-      
-      #'{~and {~var _ #/autoptic-list-to surrounding-stx.c} pattern}))
-  
-  )
-
-
-(module part4 racket/base
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require #/for-syntax #/only-in syntax/parse syntax-parser)
-  
-  (require #/for-syntax #/submod ".." part3)
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require #/only-in syntax/parse pattern-expander this-syntax)
-  
-  (require #/submod ".." part3)
-  
-  (require lathe-comforts/private/shim)
-  (init-shim)
-  
-  (provide #/all-defined-out)
-  
-  
-  ; === Utilities for macros, part 3 ===
-  
-  (define-syntax ~autoptic-list #/pattern-expander #/syntax-parser #/
-    {~autoptic-list-to this-syntax {_ pattern}}
-    #'
-    {~autoptic-list-to
-      (let ([stx this-syntax])
-        (unless (syntax? stx)
-          (raise-arguments-error '~autoptic-list
-            "expected the current result of this-syntax to be a syntax object"
-            "this-syntax" stx))
-        stx)
-      pattern})
-  
-  )
-
-
-(module part5 racket/base
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require #/for-syntax #/only-in syntax/parse syntax-parser)
-  
-  (require #/for-syntax #/submod ".." part2)
-  (require #/for-syntax #/submod ".." part4)
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require #/only-in syntax/parse ~and ~var pattern-expander)
-  
-  (require lathe-comforts/private/shim)
-  (init-shim)
-  
-  (provide #/all-defined-out)
-  
-  
-  ; === Utilities for macros, part 4 ===
-  
-  (define-syntax ~autoptic #/pattern-expander #/syntax-parser #/
-    {~autoptic-list {_ pattern}}
-    #'
-    {~and
-      {~var _ #/autoptic-to
-        (let ([stx this-syntax])
-          (unless (syntax? stx)
-            (raise-arguments-error '~autoptic
-              "expected the current result of this-syntax to be a syntax object"
-              "this-syntax" stx))
-          stx)}
-      pattern})
-  
-  )
-
-
-(module part6 racket/base
-  
-  (require #/for-syntax #/submod ".." part4)
+  (require #/for-syntax #/submod lathe-comforts/private/shim part4)
   
   ; TODO SHIM: See if we should add these to the shim. Our other
   ; modules don't depend on `syntax/parse`'s parsing framework at run
@@ -247,46 +66,13 @@
   (require #/only-in syntax/parse
     ~or* ~peek-not ~seq define-splicing-syntax-class expr id pattern)
   
-  (require #/submod ".." part3)
-  (require #/submod ".." part4)
+  (require #/submod lathe-comforts/private/shim part3)
+  (require #/submod lathe-comforts/private/shim part4)
   
   (require lathe-comforts/private/shim)
   (init-shim)
   
   (provide #/all-defined-out)
-  
-  
-  ; === Utilities for macros, part 5 ===
-  
-  ; NOTE: We define `define-syntax-parse-rule/autoptic/loc` so it's
-  ; easy to use something like `define-syntax-parse-rule` but with
-  ; `syntax/loc`. If we don't use `syntax/loc` like this, stack traces
-  ; which involve functions generated by the macro will use the source
-  ; location of the macro, rather than the location where the macro
-  ; was used.
-  
-  (define-syntax (define-syntax-parse-rule/autoptic/loc stx)
-    (syntax-parse stx #/
-      {~autoptic-list
-        (_ {~autoptic-list (name:id pat:expr ...)} pattern-directive ... template)}
-      (syntax/loc stx
-      #/define-syntax (name stx)
-        (syntax-parse stx #:track-literals #/
-          {~autoptic-list (_ pat ...)}
-          pattern-directive ...
-        #/syntax/loc stx
-          template))))
-  
-  (define-syntax-parse-rule/autoptic/loc
-    (define-syntax-parse-rule/autoptic
-      {~autoptic-list (name:id pat:expr ...)}
-      pattern-directive ...
-      template)
-    (define-syntax (name stx)
-      (syntax-parse stx #:track-literals #/
-        {~autoptic-list (_ pat ...)}
-        pattern-directive ...
-        #'template)))
   
   
   ; === Utilities for binding syntax, part 1 ===
@@ -321,9 +107,9 @@
   )
 
 
-(require #/for-syntax 'part4)
-(require #/for-syntax 'part6)
-(require 'part6)
+(require #/for-syntax #/submod lathe-comforts/private/shim part4)
+(require #/for-syntax 'part7)
+(require 'part7)
 
 
 ; === Utilities for binding syntax, part 2 ===

@@ -22,11 +22,10 @@
 (require lathe-comforts/private/shim)
 (init-shim)
 
-(require /submod lathe-comforts/private part1)
-(require /submod lathe-comforts/private part3)
-(require /submod lathe-comforts/private part4)
-(require /submod lathe-comforts/private part5)
 (require lathe-comforts/private)
+(require /submod lathe-comforts/private/shim part3)
+(require /submod lathe-comforts/private/shim part4)
+(require /submod lathe-comforts/private/shim part5)
 
 
 (provide /contract-out
