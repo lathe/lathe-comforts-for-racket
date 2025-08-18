@@ -7,7 +7,7 @@
 ; these things, and various utilities that could come in handy in
 ; other codebases for making shim files like this one.
 
-;   Copyright 2021, 2022, 2014 The Lathe Authors
+;   Copyright 2021-2022, 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@
   unlessc
   condc
   (for-syntax
-    pattern-directive)
+    autoptic-pattern-directive-to)
   define-provide-pre-transformer-syntax-parse-rule
   so-to-speak-out
   ifc-out
@@ -134,8 +134,43 @@
         (autoptic-to? surrounding-stx this-syntax))))
   
   (define-syntax-class (autoptic-list-to surrounding-stx)
+    #:attributes (smuggle)
     (pattern _
-      #:when (autoptic-list-to? surrounding-stx this-syntax)))
+      #:when (autoptic-list-to? surrounding-stx this-syntax)
+      #:attr smuggle
+      (lambda (lctx elements)
+        (let next ([stx this-syntax] [elems elements])
+          (if (syntax? stx)
+            (datum->syntax
+              #;lctx lctx
+              (next (syntax-e stx) elems)
+              #;srcloc stx
+              #;prop stx)
+          /match stx
+            [ (cons original-elem stx)
+              (match elems
+                [(cons elem elems) (cons elem /next stx elems)]
+                [ (list)
+                  (raise-arguments-error 'autoptic-list-to
+                    "not enough replacement elements supplied to the smuggle procedure"
+                    "elements" elements
+                    "original syntax" this-syntax)]
+                [_
+                  (raise-arguments-error 'autoptic-list-to
+                    "expected a proper list of replacement elements"
+                    "elements" elements)])]
+            [ (list)
+              (match elems
+                [(list) (list)]
+                [ (cons elem elems)
+                  (raise-arguments-error 'autoptic-list-to
+                    "too many replacement elements supplied to the smuggle procedure"
+                    "elements" elements
+                    "original syntax" this-syntax)]
+                [_
+                  (raise-arguments-error 'autoptic-list-to
+                    "expected a proper list of replacement elements"
+                    "elements" elements)])])))))
   
   )
 
@@ -153,7 +188,7 @@
   ; modules don't depend on `syntax/parse`'s parsing framework at run
   ; time.
   (require /only-in syntax/parse
-    ~and ~var expr/c pattern-expander this-syntax)
+    ~and ~bind ~var expr/c pattern-expander this-syntax)
   
   (require lathe-comforts/private/codebasewide-requires)
   
@@ -162,14 +197,38 @@
   (provide /all-defined-out)
   
   
-  (define-syntax ~autoptic-list-to /pattern-expander /syntax-parser /
+  (define-syntax ~autoptic-to /pattern-expander /syntax-parser /
     {~and {~var _ /autoptic-list-to this-syntax}
       {_ surrounding-stx pattern}}
     
     #:declare surrounding-stx
     (expr/c #'syntax? #:name "surrounding-stx argument")
     
-    #'{~and {~var _ /autoptic-list-to surrounding-stx.c} pattern})
+    #'{~and {~var _ /autoptic-to surrounding-stx.c} pattern})
+  
+  (define-syntax ~autoptic-list-to /pattern-expander /syntax-parser
+    [
+      {~and {~var _ /autoptic-list-to this-syntax}
+        {_ surrounding-stx pattern}}
+      
+      #:declare surrounding-stx
+      (expr/c #'syntax? #:name "surrounding-stx argument")
+      
+      #'{~and {~var _ /autoptic-list-to surrounding-stx.c} pattern}]
+    [
+      {~and {~var _ /autoptic-list-to this-syntax}
+        {_ surrounding-stx
+          {~and #:smuggle /~var _ /autoptic-to this-syntax}
+          smuggle:id
+          pattern}}
+      
+      #:declare surrounding-stx
+      (expr/c #'syntax? #:name "surrounding-stx argument")
+      
+      #'
+      {~and {~var lst /autoptic-list-to surrounding-stx.c}
+        {~bind / smuggle /datum lst.smuggle}
+        pattern}])
   
   )
 
@@ -181,6 +240,7 @@
   ; time.
   (require /for-syntax /only-in syntax/parse syntax-parser)
   
+  (require /for-syntax /submod ".." part2)
   (require /for-syntax /submod ".." part3)
   
   ; TODO SHIM: See if we should add these to the shim. Our other
@@ -195,17 +255,34 @@
   (provide /all-defined-out)
   
   
-  (define-syntax ~autoptic-list /pattern-expander /syntax-parser /
-    {~autoptic-list-to this-syntax {_ pattern}}
-    #'
-    {~autoptic-list-to
-      (let ([stx this-syntax])
-        (unless (syntax? stx)
-          (raise-arguments-error '~autoptic-list
-            "expected the current result of this-syntax to be a syntax object"
-            "this-syntax" stx))
-        stx)
-      pattern})
+  (define-syntax ~autoptic-list /pattern-expander /syntax-parser
+    [ {~autoptic-list-to this-syntax {_ pattern}}
+      #'
+      {~autoptic-list-to
+        (let ([stx this-syntax])
+          (unless (syntax? stx)
+            (raise-arguments-error '~autoptic-list
+              "expected the current result of this-syntax to be a syntax object"
+              "this-syntax" stx))
+          stx)
+        pattern}]
+    [
+      {~autoptic-list-to this-syntax
+        {_
+          {~and #:smuggle /~var _ /autoptic-to this-syntax}
+          smuggle:id
+          pattern}}
+      #'
+      {~autoptic-list-to
+        (let ([stx this-syntax])
+          (unless (syntax? stx)
+            (raise-arguments-error '~autoptic-list
+              "expected the current result of this-syntax to be a syntax object"
+              "this-syntax" stx))
+          stx)
+        #:smuggle smuggle
+        pattern}]
+    )
   
   )
 
@@ -226,6 +303,8 @@
   (require /only-in syntax/parse ~and ~var pattern-expander)
   
   (require lathe-comforts/private/codebasewide-requires)
+  
+  (require /submod ".." part2)
   
   (provide /all-defined-out)
   
@@ -297,6 +376,9 @@
   
   )
 
+
+(require /for-syntax 'part3)
+(require /for-syntax 'part5)
 
 (require 'part1)
 (require 'part6)
@@ -418,35 +500,110 @@
       this-syntax))
   #'(whenc (not next-phase-condition) body ...))
 
-(begin-for-syntax /define-splicing-syntax-class pattern-directive
-  #:attributes ([parts 1])
-  (pattern
-    {~and
-      {~or*
-        {~seq
-          #:declare _:id {~or* _:id (_:id _ ...)}
-          {~or* {~seq} /~seq #:role _:expr}}
-        {~seq #:post _:expr}
-        {~seq #:and _:expr}
-        {~seq #:with _ _:expr}
-        {~seq #:attr {~or* _:id [_:id _:nat]} _:expr}
-        {~seq #:fail-when _:expr _:expr}
-        {~seq #:fail-unless _:expr _:expr}
-        {~seq #:when _:expr}
-        {~seq #:do [_:expr ...]}
-        {~seq #:undo [_:expr ...]}
-        {~seq #:cut}}
-      {~seq parts ...}}))
+(define-for-syntax (contextualize-stx lctx-stx basis-stx)
+  (datum->syntax
+    #;lctx lctx-stx
+    (syntax-e basis-stx)
+    #;srcloc basis-stx
+    #;prop basis-stx))
 
-(define-syntax-parse-rule
+(begin-for-syntax /define-splicing-syntax-class
+  (autoptic-pattern-directive-to surrounding-stx)
+  #:attributes (smuggle-parts)
+  (pattern
+    {~or*
+      {~and
+        {~or*
+          {~seq {~autoptic-to surrounding-stx #:post} _:expr}
+          {~seq {~autoptic-to surrounding-stx #:and} _:expr}
+          {~seq {~autoptic-to surrounding-stx #:with} _ _:expr}
+          {~seq {~autoptic-to surrounding-stx #:fail-when}
+            _:expr
+            _:expr}
+          {~seq {~autoptic-to surrounding-stx #:fail-unless}
+            _:expr
+            _:expr}
+          {~seq {~autoptic-to surrounding-stx #:when} _:expr}
+          {~seq {~autoptic-to surrounding-stx #:cut}}}
+        {~seq kw args ...}
+        {~bind / smuggle-parts /lambda (lctx)
+          `
+          (,(contextualize-stx lctx #'kw)
+            ,@(syntax->list #'(args ...)))}}
+      {~and
+        {~seq
+          {~and kw /~autoptic-to surrounding-stx #:declare}
+          var:id
+          {~or*
+            {~and stxclass:id
+              {~bind / smuggle-stxclass /lambda (lctx) #'stxclass}}
+            {~and
+              {~autoptic-list-to surrounding-stx
+                #:smuggle smuggle-stxclass-call
+                (stxclass:id arg ...)}
+              {~bind / smuggle-stxclass /lambda (lctx)
+                ((datum smuggle-stxclass-call) lctx
+                  `(,#'stxclass ,@(syntax->list #'(arg ...))))}}}
+          {~or*
+            {~and {~seq}
+              {~bind / smuggle-role /lambda (lctx) `()}}
+            {~and
+              {~seq
+                {~and role-kw /~autoptic-to surrounding-stx #:role}
+                role-expr:expr}
+              {~bind / smuggle-role /lambda (lctx)
+                `
+                (,(contextualize-stx lctx #'role-kw)
+                  ,#'role-expr)}}}}
+        {~bind / smuggle-parts /lambda (lctx)
+          `
+          (,(contextualize-stx lctx #'kw)
+            ,#'var
+            ,((datum smuggle-stxclass) lctx)
+            ,@((datum smuggle-role) lctx))}}
+      {~and
+        {~seq {~and kw /~autoptic-to surrounding-stx #:attr}
+          {~or*
+            {~and var:id
+              {~bind / smuggle-var /lambda (lctx) #'var}}
+            {~and
+              {~autoptic-list-to surrounding-stx
+                #:smuggle smuggle-var-list
+                [var:id {~autoptic-to surrounding-stx depth:nat}]}
+              {~bind / smuggle-var /lambda (lctx)
+                ((datum smuggle-var-list) lctx
+                  `(,#'var ,(contextualize-stx lctx #'depth)))}}}
+          val:expr}
+        {~bind / smuggle-parts /lambda (lctx)
+          `
+          (,(contextualize-stx lctx #'kw)
+            ,((datum smuggle-var) lctx)
+            ,#'val)}}
+      {~and
+        {~seq
+          {~and kw /~autoptic-to surrounding-stx /~or* #:do #:undo}
+          {~autoptic-list-to surrounding-stx #:smuggle smuggle-body
+            [body:expr ...]}}
+        {~bind / smuggle-parts /lambda (lctx)
+          `
+          (,(contextualize-stx lctx #'kw)
+            ,
+            ( (datum smuggle-body) lctx
+              (syntax->list #'(body ...))))}}}))
+
+(define-syntax-parse-rule/autoptic/loc
   (define-provide-pre-transformer-syntax-parse-rule
-    (name:id . pattern)
-    directive:pattern-directive ...
+    {~autoptic (name:id . pattern)}
+    {~and
+      {~var directive /autoptic-pattern-directive-to this-syntax}
+      {~bind / [directive-parts 1]
+        ((datum directive.smuggle-parts) this-syntax)}}
+    ...
     template)
   (define-syntax name
     (make-provide-pre-transformer /lambda (stx modes)
       (syntax-parse stx / (_ . pattern)
-        {~@ directive.parts ...} ...
+        {~@ directive-parts ...} ...
         (pre-expand-export #'template modes)))))
 
 ; TODO: See if we'll use this.

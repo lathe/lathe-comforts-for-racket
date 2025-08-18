@@ -31,6 +31,7 @@
     (only-in racket/syntax format-id syntax-local-eval)
     (only-in racket/unit rename)
     (only-in syntax/contract wrap-expr/c)
+    (only-in syntax/datum datum)
     (only-in syntax/parse
       ...+ ~! ~alt ~and ~bind ~fail ~literal ~not ~optional ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse this-syntax))
   racket/base)
@@ -46,6 +47,8 @@
 (only-in racket/math natural?)
 (only-in racket/promise delay force)
 (only-in racket/struct make-constructor-style-printer)
+(only-in syntax/datum datum)
+(only-in syntax/parse this-syntax)
 (only-in syntax/parse/define
   define-syntax-parser define-syntax-parse-rule)
 
