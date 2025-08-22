@@ -72,6 +72,33 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   (define-syntax-parse-rule/autoptic (id pattern ...)
     pattern-directive ...
     template)
+  
+  #:grammar
+  (
+    [ pattern-directive
+      (code:line #:declare pvar-id stxclass maybe-role)
+      (code:line #:post action-pattern)
+      (code:line #:and action-pattern)
+      (code:line #:with syntax-pattern stx-expr)
+      (code:line #:attr attr-arity-decl expr)
+      (code:line #:fail-when condition-expr message-expr)
+      (code:line #:fail-unless condition-expr message-expr)
+      (code:line #:when condition-expr)
+      (code:line #:do [def-or-expr ...])
+      (code:line #:undo [def-or-expr ...])
+      (code:line #:cut)]
+    [ stxclass
+      syntax-class-id
+      (syntax-class-id arg ...)]
+    [ maybe-role
+      (code:line)
+      (code:line #:role role-expr)]
+    [attr-arity-decl attr-name-id (attr-name-id depth)])
+  
+  #:contracts
+  (
+    [message-expr (or/c string? #f)]
+    [role-expr (or/c string? #f)])
 ]{
   Defines a syntax transformer named @racket[id] similarly to @racket[define-syntax-parse-rule], except that it first verifies that that the literal list @racket[(id pattern ...)] at the call site has scopes that are a subset of the scopes on that list's first cons cell.
   
@@ -82,6 +109,33 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   (define-syntax-parse-rule/autoptic/loc (id pattern ...)
     pattern-directive ...
     template)
+  
+  #:grammar
+  (
+    [ pattern-directive
+      (code:line #:declare pvar-id stxclass maybe-role)
+      (code:line #:post action-pattern)
+      (code:line #:and action-pattern)
+      (code:line #:with syntax-pattern stx-expr)
+      (code:line #:attr attr-arity-decl expr)
+      (code:line #:fail-when condition-expr message-expr)
+      (code:line #:fail-unless condition-expr message-expr)
+      (code:line #:when condition-expr)
+      (code:line #:do [def-or-expr ...])
+      (code:line #:undo [def-or-expr ...])
+      (code:line #:cut)]
+    [ stxclass
+      syntax-class-id
+      (syntax-class-id arg ...)]
+    [ maybe-role
+      (code:line)
+      (code:line #:role role-expr)]
+    [attr-arity-decl attr-name-id (attr-name-id depth)])
+  
+  #:contracts
+  (
+    [message-expr (or/c string? #f)]
+    [role-expr (or/c string? #f)])
 ]{
   Defines a syntax transformer named @racket[id] similarly to @racket[define-syntax-parse-rule], except that it first verifies that that all the tails of the literal list @racket[(id pattern ...)] at the call site have scopes that are a subset of the scopes on that list's first cons cell, and it restores the list's source location on the transformed code as though using @racket[syntax/loc].
   

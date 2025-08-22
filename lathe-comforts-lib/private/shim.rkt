@@ -332,6 +332,130 @@
   ; TODO SHIM: See if we should add these to the shim. Our other
   ; modules don't depend on `syntax/parse`'s parsing framework at run
   ; time.
+  (require /only-in syntax/parse
+    ~and ~bind ~or* ~seq ~var define-splicing-syntax-class expr expr/c id nat pattern)
+  
+  (require /submod ".." part3)
+  
+  (require lathe-comforts/private/codebasewide-requires)
+  
+  (provide /all-defined-out)
+  
+  
+  (define (contextualize-stx lctx-stx basis-stx)
+    (datum->syntax
+      #;lctx lctx-stx
+      (syntax-e basis-stx)
+      #;srcloc basis-stx
+      #;prop basis-stx))
+  
+  (define-splicing-syntax-class
+    (autoptic-pattern-directive-to surrounding-stx #:phase phase)
+    #:attributes (smuggle-parts)
+    (pattern
+      {~or*
+        {~and
+          {~or*
+            {~seq {~autoptic-to surrounding-stx #:post} _:expr}
+            {~seq {~autoptic-to surrounding-stx #:and} _:expr}
+            {~seq {~autoptic-to surrounding-stx #:with} _ _:expr}
+            {~seq {~autoptic-to surrounding-stx #:when} _:expr}
+            {~seq {~autoptic-to surrounding-stx #:cut}}}
+          {~seq kw args ...}
+          {~bind / smuggle-parts /lambda (lctx)
+            `
+            (,(contextualize-stx lctx #'kw)
+              ,@(syntax->list #'(args ...)))}}
+        {~and
+          {~seq
+            {~and kw
+              {~autoptic-to surrounding-stx
+                (~or* #:fail-when #:fail-unless)}}
+            condition:expr
+            {~var message
+              (expr/c #'(or/c string? #f)
+                #:phase phase
+                #:name "the message string or #f")}}
+          {~bind / smuggle-parts /lambda (lctx)
+            `
+            (,(contextualize-stx lctx #'kw)
+              ,#'condition
+              ,#'message.c)}}
+        {~and
+          {~seq
+            {~and kw /~autoptic-to surrounding-stx #:declare}
+            var:id
+            {~or*
+              {~and stxclass:id
+                {~bind / smuggle-stxclass /lambda (lctx) #'stxclass}}
+              {~and
+                {~autoptic-list-to surrounding-stx
+                  #:smuggle smuggle-stxclass-call
+                  (stxclass:id arg ...)}
+                {~bind / smuggle-stxclass /lambda (lctx)
+                  ((datum smuggle-stxclass-call) lctx
+                    `(,#'stxclass ,@(syntax->list #'(arg ...))))}}}
+            {~or*
+              {~and {~seq}
+                {~bind / smuggle-role /lambda (lctx) `()}}
+              {~and
+                {~seq
+                  {~and role-kw /~autoptic-to surrounding-stx #:role}
+                  {~var role-expr
+                    (expr/c #'(or/c string? #f)
+                      #:phase phase
+                      #:name "the role string or #f")}}
+                {~bind / smuggle-role /lambda (lctx)
+                  `
+                  (,(contextualize-stx lctx #'role-kw)
+                    ,#'role-expr.c)}}}}
+          {~bind / smuggle-parts /lambda (lctx)
+            `
+            (,(contextualize-stx lctx #'kw)
+              ,#'var
+              ,((datum smuggle-stxclass) lctx)
+              ,@((datum smuggle-role) lctx))}}
+        {~and
+          {~seq {~and kw /~autoptic-to surrounding-stx #:attr}
+            {~or*
+              {~and var:id
+                {~bind / smuggle-var /lambda (lctx) #'var}}
+              {~and
+                {~autoptic-list-to surrounding-stx
+                  #:smuggle smuggle-var-list
+                  [var:id {~autoptic-to surrounding-stx depth:nat}]}
+                {~bind / smuggle-var /lambda (lctx)
+                  ((datum smuggle-var-list) lctx
+                    `(,#'var ,(contextualize-stx lctx #'depth)))}}}
+            val:expr}
+          {~bind / smuggle-parts /lambda (lctx)
+            `
+            (,(contextualize-stx lctx #'kw)
+              ,((datum smuggle-var) lctx)
+              ,#'val)}}
+        {~and
+          {~seq
+            {~and kw /~autoptic-to surrounding-stx /~or* #:do #:undo}
+            {~autoptic-list-to surrounding-stx #:smuggle smuggle-body
+              [body:expr ...]}}
+          {~bind / smuggle-parts /lambda (lctx)
+            `
+            (,(contextualize-stx lctx #'kw)
+              ,
+              ( (datum smuggle-body) lctx
+                (syntax->list #'(body ...))))}}}))
+  
+  )
+
+
+(module part7 racket/base
+  
+  (require /for-syntax /submod ".." part4)
+  (require /for-syntax /submod ".." part6)
+  
+  ; TODO SHIM: See if we should add these to the shim. Our other
+  ; modules don't depend on `syntax/parse`'s parsing framework at run
+  ; time.
   (require /only-in syntax/parse expr id)
   
   (require /submod ".." part3)
@@ -353,25 +477,39 @@
     (syntax-parse stx /
       {~autoptic-list
         (_ {~autoptic-list (name:id pat:expr ...)}
-          pattern-directive ...
+          {~and
+            {~var directive
+              (autoptic-pattern-directive-to this-syntax
+                #:phase (add1 /syntax-local-phase-level))}
+            {~bind / [directive-parts 1]
+              ((datum directive.smuggle-parts) this-syntax)}}
+          ...
           template)}
       (syntax/loc stx
       /define-syntax (name stx)
         (syntax-parse stx #:track-literals /
           {~autoptic-list (_ pat ...)}
-          pattern-directive ...
+          {~@ directive-parts ...}
+          ...
         /syntax/loc stx
           template))))
   
   (define-syntax-parse-rule/autoptic/loc
     (define-syntax-parse-rule/autoptic
       {~autoptic-list (name:id pat:expr ...)}
-      pattern-directive ...
+      {~and
+        {~var directive
+          (autoptic-pattern-directive-to this-syntax
+            #:phase (add1 /syntax-local-phase-level))}
+        {~bind / [directive-parts 1]
+          ((datum directive.smuggle-parts) this-syntax)}}
+      ...
       template)
     (define-syntax (name stx)
       (syntax-parse stx #:track-literals /
         {~autoptic-list (_ pat ...)}
-        pattern-directive ...
+        {~@ directive-parts ...}
+        ...
         #'template)))
   
   )
@@ -379,9 +517,10 @@
 
 (require /for-syntax 'part3)
 (require /for-syntax 'part5)
+(require /for-syntax 'part6)
 
 (require 'part1)
-(require 'part6)
+(require 'part7)
 
 
 (define-for-syntax (eval-for-so-to-speak this-syntax body)
@@ -500,102 +639,13 @@
       this-syntax))
   #'(whenc (not next-phase-condition) body ...))
 
-(define-for-syntax (contextualize-stx lctx-stx basis-stx)
-  (datum->syntax
-    #;lctx lctx-stx
-    (syntax-e basis-stx)
-    #;srcloc basis-stx
-    #;prop basis-stx))
-
-(begin-for-syntax /define-splicing-syntax-class
-  (autoptic-pattern-directive-to surrounding-stx)
-  #:attributes (smuggle-parts)
-  (pattern
-    {~or*
-      {~and
-        {~or*
-          {~seq {~autoptic-to surrounding-stx #:post} _:expr}
-          {~seq {~autoptic-to surrounding-stx #:and} _:expr}
-          {~seq {~autoptic-to surrounding-stx #:with} _ _:expr}
-          {~seq {~autoptic-to surrounding-stx #:fail-when}
-            _:expr
-            _:expr}
-          {~seq {~autoptic-to surrounding-stx #:fail-unless}
-            _:expr
-            _:expr}
-          {~seq {~autoptic-to surrounding-stx #:when} _:expr}
-          {~seq {~autoptic-to surrounding-stx #:cut}}}
-        {~seq kw args ...}
-        {~bind / smuggle-parts /lambda (lctx)
-          `
-          (,(contextualize-stx lctx #'kw)
-            ,@(syntax->list #'(args ...)))}}
-      {~and
-        {~seq
-          {~and kw /~autoptic-to surrounding-stx #:declare}
-          var:id
-          {~or*
-            {~and stxclass:id
-              {~bind / smuggle-stxclass /lambda (lctx) #'stxclass}}
-            {~and
-              {~autoptic-list-to surrounding-stx
-                #:smuggle smuggle-stxclass-call
-                (stxclass:id arg ...)}
-              {~bind / smuggle-stxclass /lambda (lctx)
-                ((datum smuggle-stxclass-call) lctx
-                  `(,#'stxclass ,@(syntax->list #'(arg ...))))}}}
-          {~or*
-            {~and {~seq}
-              {~bind / smuggle-role /lambda (lctx) `()}}
-            {~and
-              {~seq
-                {~and role-kw /~autoptic-to surrounding-stx #:role}
-                role-expr:expr}
-              {~bind / smuggle-role /lambda (lctx)
-                `
-                (,(contextualize-stx lctx #'role-kw)
-                  ,#'role-expr)}}}}
-        {~bind / smuggle-parts /lambda (lctx)
-          `
-          (,(contextualize-stx lctx #'kw)
-            ,#'var
-            ,((datum smuggle-stxclass) lctx)
-            ,@((datum smuggle-role) lctx))}}
-      {~and
-        {~seq {~and kw /~autoptic-to surrounding-stx #:attr}
-          {~or*
-            {~and var:id
-              {~bind / smuggle-var /lambda (lctx) #'var}}
-            {~and
-              {~autoptic-list-to surrounding-stx
-                #:smuggle smuggle-var-list
-                [var:id {~autoptic-to surrounding-stx depth:nat}]}
-              {~bind / smuggle-var /lambda (lctx)
-                ((datum smuggle-var-list) lctx
-                  `(,#'var ,(contextualize-stx lctx #'depth)))}}}
-          val:expr}
-        {~bind / smuggle-parts /lambda (lctx)
-          `
-          (,(contextualize-stx lctx #'kw)
-            ,((datum smuggle-var) lctx)
-            ,#'val)}}
-      {~and
-        {~seq
-          {~and kw /~autoptic-to surrounding-stx /~or* #:do #:undo}
-          {~autoptic-list-to surrounding-stx #:smuggle smuggle-body
-            [body:expr ...]}}
-        {~bind / smuggle-parts /lambda (lctx)
-          `
-          (,(contextualize-stx lctx #'kw)
-            ,
-            ( (datum smuggle-body) lctx
-              (syntax->list #'(body ...))))}}}))
-
 (define-syntax-parse-rule/autoptic/loc
   (define-provide-pre-transformer-syntax-parse-rule
     {~autoptic (name:id . pattern)}
     {~and
-      {~var directive /autoptic-pattern-directive-to this-syntax}
+      {~var directive
+        (autoptic-pattern-directive-to this-syntax
+          #:phase (add1 /syntax-local-phase-level))}
       {~bind / [directive-parts 1]
         ((datum directive.smuggle-parts) this-syntax)}}
     ...
@@ -603,7 +653,8 @@
   (define-syntax name
     (make-provide-pre-transformer /lambda (stx modes)
       (syntax-parse stx / (_ . pattern)
-        {~@ directive-parts ...} ...
+        {~@ directive-parts ...}
+        ...
         (pre-expand-export #'template modes)))))
 
 ; TODO: See if we'll use this.
