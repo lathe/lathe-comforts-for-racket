@@ -652,7 +652,7 @@
     template)
   (define-syntax name
     (make-provide-pre-transformer /lambda (stx modes)
-      (syntax-parse stx / (_ . pattern)
+      (syntax-parse stx #:track-literals / (_ . pattern)
         {~@ directive-parts ...}
         ...
         (pre-expand-export #'template modes)))))
