@@ -53,12 +53,12 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @(define @enforces-autopticity[]
   @list{
-    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
   })
 
 @(define @also-enforces-autopticity[]
   @list{
-    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
   })
 
 @(define @definition-that-ensures-autopticity[]
@@ -103,6 +103,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Defines a syntax transformer named @racket[id] similarly to @racket[define-syntax-parse-rule], except that it first verifies that that the literal list @racket[(id pattern ...)] at the call site has scopes that are a subset of the scopes on that list's first cons cell.
   
   @definition-that-ensures-autopticity[]
+  
+  The @racket[depth] of an attribute must be an exact nonnegative integer literal, and it's considered a structural element of this syntax for the purposes of the autopticity requirement.
 }
 
 @defform[
@@ -140,6 +142,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Defines a syntax transformer named @racket[id] similarly to @racket[define-syntax-parse-rule], except that it first verifies that that all the tails of the literal list @racket[(id pattern ...)] at the call site have scopes that are a subset of the scopes on that list's first cons cell, and it restores the list's source location on the transformed code as though using @racket[syntax/loc].
   
   @definition-that-ensures-autopticity[]
+  
+  The @racket[depth] of an attribute must be an exact nonnegative integer literal, and it's considered a structural element of this syntax for the purposes of the autopticity requirement.
 }
 
 

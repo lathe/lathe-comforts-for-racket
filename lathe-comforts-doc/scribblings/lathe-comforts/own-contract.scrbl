@@ -25,6 +25,12 @@
 @(init-shim)
 
 
+@(define @enforces-autopticity[]
+  @list{
+    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+  })
+
+
 @title[#:tag "own-contract"]{
   A Framework for Declaring Contracts Alongside Functions
 }
@@ -53,6 +59,8 @@ The @tt{lathe-comforts/own-contract} module defines a small and unstable DSL for
     [activating-external-contracts?-expr boolean?])
 ]{
   Sets up the @racketmodname[lathe-comforts/own-contract] DSL for the current module. Certain policies can be specified that adjust the behavior of the DSL.
+  
+  @enforces-autopticity[]
   
   @specsubform[(code:line #:antecedent-land antecedent-land)]{
     The various syntactic forms of the @racketmodname[lathe-comforts/own-contract] DSL communicate by way of anaphoric bindings. This option causes the @tt{define-own-contract-policies} form to define these bindings so that they have a lexical context derived from the lexical context of the syntax of @racket[antecedent-land].
@@ -113,6 +121,8 @@ The @tt{lathe-comforts/own-contract} module defines a small and unstable DSL for
   
   The @racketmodname[lathe-comforts/own-contract] DSL must be set up for the current module using @racket[define-own-contract-policies] before calling this.
   
+  @enforces-autopticity[]
+  
   @specsubform[(code:line #:antecedent-land antecedent-land)]{
     The various syntactic forms of the @racketmodname[lathe-comforts/own-contract] DSL communicate by way of anaphoric bindings. This option causes the @tt{own-contract-out} form to retrieve these bindings using a lexical context derived from the lexical context of the syntax of @racket[antecedent-land].
     
@@ -155,6 +165,8 @@ The @tt{lathe-comforts/own-contract} module defines a small and unstable DSL for
   
   If the @racket[#:activating-internal-contracts?] policy is in effect (though it is not in effect by default), uses of @racket[id] are protected by the given contract even within the current module. Currently, unlike most ways of imposing a contract, this enforcement doesn't establish a boundary between two parties. The surrounding module is blamed for any violations of the contract. See @racket[invariant-assertion]. Like @racket[invariant-assertion], and unlike @racket[define/contract], the contract is enforced for recursive function calls.
   
+  @enforces-autopticity[]
+  
   @specsubform[(code:line #:antecedent-land antecedent-land)]{
     The various syntactic forms of the @racketmodname[lathe-comforts/own-contract] DSL communicate by way of anaphoric bindings. This option causes the @tt{define/own-contract} form to retrieve these bindings using a lexical context derived from the lexical context of the syntax of @racket[antecedent-land].
     
@@ -178,6 +190,8 @@ The @tt{lathe-comforts/own-contract} module defines a small and unstable DSL for
   The @racketmodname[lathe-comforts/own-contract] DSL must be set up for the current module using @racket[define-own-contract-policies] before calling this.
   
   Note that currently, even if the @racket[#:activating-internal-contracts?] policy is in effect, code that uses @tt{ascribe-own-contract} won't have its internal contracts activated. Contracts ascribed using @tt{ascribe-own-contract} don't affect the internal binding of the variable they annotate, so direct uses of that variable will continue to behave in ways that aren't protected by the contract.
+  
+  @enforces-autopticity[]
   
   @specsubform[(code:line #:antecedent-land antecedent-land)]{
     The various syntactic forms of the @racketmodname[lathe-comforts/own-contract] DSL communicate by way of anaphoric bindings. This option causes the @tt{ascribe-own-contract} form to retrieve these bindings using a lexical context derived from the lexical context of the syntax of @racket[antecedent-land].

@@ -45,7 +45,7 @@ An example of a situation which would be ameliorated by use of autoptic parsing 
 
 @(define @also-enforces-autopticity[]
   @list{
-    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
   })
 
 @(define @pattern-that-ensures-autopticity[]
@@ -57,10 +57,38 @@ An example of a situation which would be ameliorated by use of autoptic parsing 
 
 @defform[
   #:kind "pattern expander"
-  {~autoptic-list-to surrounding-stx pattern}
+  {~autoptic-list-to surrounding-stx maybe-smuggle pattern}
+  
+  #:grammar
+  (
+    [ maybe-smuggle
+      (code:line)
+      (code:line #:smuggle smuggle-pvar-id)])
+  
   #:contracts ([surrounding-stx syntax?])
 ]{
   A @tech[#:doc syntax-doc]{pattern expander} that parses according to @racket[pattern], but only if the syntax object is a syntax list, each of whose syntax object tails has a set of scopes that's equal to or a superset of the set of scopes on the given syntax object @racket[surrounding-stx].
+  
+  If @racket[smuggle-pvar-id] is supplied, it's bound as a pattern variable to a procedure that reconstructs the syntax list with a different lexical context and different elements. The procedure takes a syntax object to obtain the new lexical context from and a list of values (usually syntax objects which have had their lexical context adjusted) that will replace the elements of the reconstructed list.
+  
+  @pattern-that-ensures-autopticity[]
+}
+
+@defform[
+  #:kind "pattern expander"
+  {~autoptic-list*-to surrounding-stx maybe-smuggle pattern}
+  
+  #:grammar
+  (
+    [ maybe-smuggle
+      (code:line)
+      (code:line #:smuggle smuggle-pvar-id)])
+  
+  #:contracts ([surrounding-stx syntax?])
+]{
+  A @tech[#:doc syntax-doc]{pattern expander} that parses according to @racket[pattern], but only if the syntax object is a possibly improper syntax list, each of whose syntax object tails (including an empty list tail, but not including an improper tail) has a set of scopes that's equal to or a superset of the set of scopes on the given syntax object @racket[surrounding-stx].
+  
+  If @racket[smuggle-pvar-id] is supplied, it's bound as a pattern variable to a procedure that reconstructs the improper syntax list with a different lexical context, different elements, and a different tail. The procedure takes a syntax object to obtain the new lexical context from, a list of values (usually syntax objects which have had their lexical context adjusted) that will replace the elements of the reconstructed list, and a tail value that will replace the (proper or improper) tail of the list. The replacement tail value may even be a syntax list or an improper syntax list, in which case it's effectively appended to the reconstructed list.
   
   @pattern-that-ensures-autopticity[]
 }
@@ -71,8 +99,36 @@ An example of a situation which would be ameliorated by use of autoptic parsing 
   @pattern-that-ensures-autopticity[]
 }
 
-@defform[#:kind "pattern expander" {~autoptic-list pattern}]{
+@defform[
+  #:kind "pattern expander"
+  {~autoptic-list maybe-smuggle pattern}
+  
+  #:grammar
+  (
+    [ maybe-smuggle
+      (code:line)
+      (code:line #:smuggle smuggle-pvar-id)])
+]{
   A @tech[#:doc syntax-doc]{pattern expander} that parses according to @racket[pattern], but only if the syntax object is a syntax list, each of whose syntax object tails has a set of scopes that's equal to or a superset of the set of scopes on the syntax object @racket[this-syntax] that's currently being parsed.
+  
+  If @racket[smuggle-pvar-id] is supplied, it's bound as a pattern variable to a procedure that reconstructs the syntax list with a different lexical context and different elements. The procedure takes a syntax object to obtain the new lexical context from and a list of values (usually syntax objects which have had their lexical context adjusted) that will replace the elements of the reconstructed list.
+  
+  @pattern-that-ensures-autopticity[]
+}
+
+@defform[
+  #:kind "pattern expander"
+  {~autoptic-list* maybe-smuggle pattern}
+  
+  #:grammar
+  (
+    [ maybe-smuggle
+      (code:line)
+      (code:line #:smuggle smuggle-pvar-id)])
+]{
+  A @tech[#:doc syntax-doc]{pattern expander} that parses according to @racket[pattern], but only if the syntax object is a possibly improper syntax list, each of whose syntax object tails (including an empty list tail, but not including an improper tail) has a set of scopes that's equal to or a superset of the set of scopes on the syntax object @racket[this-syntax] that's currently being parsed.
+  
+  If @racket[smuggle-pvar-id] is supplied, it's bound as a pattern variable to a procedure that reconstructs the improper syntax list with a different lexical context, different elements, and a different tail. The procedure takes a syntax object to obtain the new lexical context from, a list of values (usually syntax objects which have had their lexical context adjusted) that will replace the elements of the reconstructed list, and a tail value that will replace the (proper or improper) tail of the list. The replacement tail value may even be a syntax list or an improper syntax list, in which case it's effectively appended to the reconstructed list.
   
   @pattern-that-ensures-autopticity[]
 }

@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         racket-variant: ["BC", "CS"]
-        racket-version: ["8.3", "stable", "current"]
+        racket-version: ["8.18", "stable", "current"]
         racket-catalogs-id: ["pkgs"]
         racket-catalogs: [""]
         include:
@@ -26,11 +26,11 @@ jobs:
           # Cargo.lock information.
           #
           - racket-variant: "CS"
-            racket-version: "8.3"
+            racket-version: "8.18"
             racket-catalogs-id: "racksnaps"
             racket-catalogs: |
-              https://download.racket-lang.org/releases/8.3/catalog/,
-              https://racksnaps.defn.io/built-snapshots/2022/01/23/catalog/
+              https://download.racket-lang.org/releases/8.18/catalog/,
+              https://racksnaps.defn.io/built-snapshots/2025/08/23/catalog/
     steps:
       - name: Checkout
         uses: actions/checkout@v4

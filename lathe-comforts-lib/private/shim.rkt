@@ -31,6 +31,7 @@
   scopes-empty?
   scopes<=?
   autoptic-to?
+  autoptic-list*-to?
   autoptic-list-to?
   define-syntax-parse-rule/autoptic/loc
   define-syntax-parse-rule/autoptic
@@ -43,7 +44,7 @@
   condc
   (for-syntax
     autoptic-pattern-directive-to)
-  define-provide-pre-transformer-syntax-parse-rule
+  define-provide-pre-transformer-syntax-parse-rule/autoptic
   so-to-speak-out
   ifc-out
   contract-ignored-out
@@ -100,6 +101,16 @@
   (define (autoptic-to? surrounding-stx stx)
     (scopes<=? surrounding-stx stx))
   
+  (define (autoptic-list*-to? surrounding-stx lst)
+    (if (syntax? lst)
+      (let ([lst-e (syntax-e lst)])
+        (or (not /or (pair? lst-e) (null? lst-e))
+          (and (autoptic-to? surrounding-stx lst)
+            (autoptic-list*-to? surrounding-stx lst-e))))
+      (match lst
+        [(cons elem lst) (autoptic-list*-to? surrounding-stx lst)]
+        [_ #t])))
+  
   (define (autoptic-list-to? surrounding-stx lst)
     (if (syntax? lst)
       (and (autoptic-to? surrounding-stx lst)
@@ -133,6 +144,45 @@
       (and (syntax? surrounding-stx)
         (autoptic-to? surrounding-stx this-syntax))))
   
+  (define-syntax-class (autoptic-list*-to surrounding-stx)
+    #:attributes (smuggle)
+    (pattern _
+      #:when (autoptic-list*-to? surrounding-stx this-syntax)
+      #:attr smuggle
+      (lambda (lctx elements rest)
+        (let next ([stx this-syntax] [elems elements])
+          (if (syntax? stx)
+            (datum->syntax
+              #;lctx lctx
+              (next (syntax-e stx) elems)
+              #;srcloc stx
+              #;prop stx)
+          /match stx
+            [ (cons original-elem stx)
+              (match elems
+                [(cons elem elems) (cons elem /next stx elems)]
+                [ (list)
+                  (raise-arguments-error 'autoptic-list*-to
+                    "not enough replacement elements supplied to the smuggle procedure"
+                    "elements" elements
+                    "original syntax" this-syntax)]
+                [ _
+                  (raise-arguments-error 'autoptic-list*-to
+                    "expected a proper list of replacement elements"
+                    "elements" elements)])]
+            [ _
+              (match elems
+                [(list) rest]
+                [ (cons elem elems)
+                  (raise-arguments-error 'autoptic-list*-to
+                    "too many replacement elements supplied to the smuggle procedure"
+                    "elements" elements
+                    "original syntax" this-syntax)]
+                [_
+                  (raise-arguments-error 'autoptic-list*-to
+                    "expected a proper list of replacement elements"
+                    "elements" elements)])])))))
+  
   (define-syntax-class (autoptic-list-to surrounding-stx)
     #:attributes (smuggle)
     (pattern _
@@ -155,7 +205,7 @@
                     "not enough replacement elements supplied to the smuggle procedure"
                     "elements" elements
                     "original syntax" this-syntax)]
-                [_
+                [ _
                   (raise-arguments-error 'autoptic-list-to
                     "expected a proper list of replacement elements"
                     "elements" elements)])]
@@ -167,7 +217,7 @@
                     "too many replacement elements supplied to the smuggle procedure"
                     "elements" elements
                     "original syntax" this-syntax)]
-                [_
+                [ _
                   (raise-arguments-error 'autoptic-list-to
                     "expected a proper list of replacement elements"
                     "elements" elements)])])))))
@@ -205,6 +255,30 @@
     (expr/c #'syntax? #:name "surrounding-stx argument")
     
     #'{~and {~var _ /autoptic-to surrounding-stx.c} pattern})
+  
+  (define-syntax ~autoptic-list*-to /pattern-expander /syntax-parser
+    [
+      {~and {~var _ /autoptic-list-to this-syntax}
+        {_ surrounding-stx pattern}}
+      
+      #:declare surrounding-stx
+      (expr/c #'syntax? #:name "surrounding-stx argument")
+      
+      #'{~and {~var _ /autoptic-list*-to surrounding-stx.c} pattern}]
+    [
+      {~and {~var _ /autoptic-list-to this-syntax}
+        {_ surrounding-stx
+          {~and #:smuggle /~var _ /autoptic-to this-syntax}
+          smuggle:id
+          pattern}}
+      
+      #:declare surrounding-stx
+      (expr/c #'syntax? #:name "surrounding-stx argument")
+      
+      #'
+      {~and {~var lst /autoptic-list*-to surrounding-stx.c}
+        {~bind / smuggle /datum lst.smuggle}
+        pattern}])
   
   (define-syntax ~autoptic-list-to /pattern-expander /syntax-parser
     [
@@ -254,6 +328,35 @@
   
   (provide /all-defined-out)
   
+  
+  (define-syntax ~autoptic-list* /pattern-expander /syntax-parser
+    [ {~autoptic-list-to this-syntax {_ pattern}}
+      #'
+      {~autoptic-list*-to
+        (let ([stx this-syntax])
+          (unless (syntax? stx)
+            (raise-arguments-error '~autoptic-list*
+              "expected the current result of this-syntax to be a syntax object"
+              "this-syntax" stx))
+          stx)
+        pattern}]
+    [
+      {~autoptic-list-to this-syntax
+        {_
+          {~and #:smuggle /~var _ /autoptic-to this-syntax}
+          smuggle:id
+          pattern}}
+      #'
+      {~autoptic-list*-to
+        (let ([stx this-syntax])
+          (unless (syntax? stx)
+            (raise-arguments-error '~autoptic-list*
+              "expected the current result of this-syntax to be a syntax object"
+              "this-syntax" stx))
+          stx)
+        #:smuggle smuggle
+        pattern}]
+    )
   
   (define-syntax ~autoptic-list /pattern-expander /syntax-parser
     [ {~autoptic-list-to this-syntax {_ pattern}}
@@ -516,6 +619,7 @@
 
 
 (require /for-syntax 'part3)
+(require /for-syntax 'part4)
 (require /for-syntax 'part5)
 (require /for-syntax 'part6)
 
@@ -542,7 +646,7 @@
         (last /syntax->list #'/body ...)))
     result))
 
-(define-syntax-parse-rule (so-to-speak body:expr ...+)
+(define-syntax-parse-rule/autoptic (so-to-speak body:expr ...+)
   #:with result (eval-for-so-to-speak this-syntax #'(body ...))
   result)
 
@@ -565,24 +669,27 @@
   result)
 
 (define-syntax-parser condc /
-  (_
-    {~and {~seq clause ...}
-      {~seq
-        [
-          {~and next-phase-condition:expr
-            {~not /~or* {~literal else} {~literal =>}}}
-          {~and branch:expr
-            {~not /~or* {~literal else} {~literal =>}}}
-          ...]
-        ...
-        {~optional
-          {~and {~bind [has-else-clause? #t]}
-            [ {~literal else}
-              {~and else-branch:expr
+  {~autoptic-list
+    (_
+      {~and {~seq clause ...}
+        {~seq
+          {~autoptic-list
+            [
+              {~and next-phase-condition:expr
+                {~not /~or* {~literal else} {~literal =>}}}
+              {~and branch:expr
                 {~not /~or* {~literal else} {~literal =>}}}
               ...]}
-          #:defaults
-          ([has-else-clause? #f] [(else-branch 1) (list)])}}})
+          ...
+          {~optional
+            {~and {~bind [has-else-clause? #t]}
+              {~autoptic-list
+                [ {~literal else}
+                  {~and else-branch:expr
+                    {~not /~or* {~literal else} {~literal =>}}}
+                  ...]}}
+            #:defaults
+            ([has-else-clause? #f] [(else-branch 1) (list)])}}})}
   (when (equal? 'expression (syntax-local-context))
     (unless (attribute has-else-clause?)
       (raise-syntax-error #f
@@ -609,7 +716,7 @@
       #:when (eval-for-condc this-syntax #`(let () #,condition)))
     branch))
 
-(define-syntax-parse-rule
+(define-syntax-parse-rule/autoptic
   (ifc next-phase-condition:expr then:expr els:expr)
   (condc [next-phase-condition then] [else els]))
   ; TODO: Figure out why we can't use one of these implementations
@@ -624,7 +731,7 @@
 ;    (quote-syntax else #:local)))
 
 (define-syntax-parser whenc /
-  (_ next-phase-condition:expr body:expr ...+)
+  {~autoptic-list (_ next-phase-condition:expr body:expr ...+)}
   (when (equal? 'expression (syntax-local-context))
     (raise-syntax-error #f
       "not permitted in an expression context"
@@ -632,7 +739,7 @@
   #'(condc [next-phase-condition body ...]))
 
 (define-syntax-parser unlessc /
-  (_ next-phase-condition:expr body:expr ...+)
+  {~autoptic-list (_ next-phase-condition:expr body:expr ...+)}
   (when (equal? 'expression (syntax-local-context))
     (raise-syntax-error #f
       "not permitted in an expression context"
@@ -640,8 +747,8 @@
   #'(whenc (not next-phase-condition) body ...))
 
 (define-syntax-parse-rule/autoptic/loc
-  (define-provide-pre-transformer-syntax-parse-rule
-    {~autoptic (name:id . pattern)}
+  (define-provide-pre-transformer-syntax-parse-rule/autoptic
+    {~autoptic-list (name:id pattern ...)}
     {~and
       {~var directive
         (autoptic-pattern-directive-to this-syntax
@@ -652,31 +759,33 @@
     template)
   (define-syntax name
     (make-provide-pre-transformer /lambda (stx modes)
-      (syntax-parse stx #:track-literals / (_ . pattern)
+      (syntax-parse stx #:track-literals /
+        {~autoptic-list (_ pattern ...)}
         {~@ directive-parts ...}
         ...
         (pre-expand-export #'template modes)))))
 
 ; TODO: See if we'll use this.
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (so-to-speak-out body:expr ...+)
   #:with result (eval-for-so-to-speak this-syntax #'(body ...))
   result)
 
-(define-provide-pre-transformer-syntax-parse-rule
-  (ifc-out next-phase-condition:expr then-out else-out . args)
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
+  (ifc-out next-phase-condition:expr then-out else-out arg ...)
   
   #:with result
   (if (eval-for-condc this-syntax #'(let () next-phase-condition))
-    #'(then-out . args)
-    #'(else-out . args))
+    #'(then-out arg ...)
+    #'(else-out arg ...))
   
   result)
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (contract-ignored-out
-    [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
-      val/c]
+    {~autoptic-list
+      [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
+        val/c]}
     ...)
   
   #:declare val/c
@@ -687,10 +796,11 @@
   ;
   (contract-out [var (begin val/c.c any/c)] ...))
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (contract-whenc-out next-phase-condition:expr
-    [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
-      val/c]
+    {~autoptic-list
+      [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
+        val/c]}
     ...)
   
   #:declare val/c
@@ -701,10 +811,11 @@
     [var val/c.c]
     ...))
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (contract-unlessc-out next-phase-condition:expr
-    [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
-      val/c]
+    {~autoptic-list
+      [ {~and var:id /~not /~or* {~literal struct} {~literal rename}}
+        val/c]}
     ...)
   
   #:declare val/c
@@ -715,64 +826,94 @@
     [var val/c.c]
     ...))
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (recontract-whenc-out next-phase-condition:expr var:id ...)
   (ifc-out next-phase-condition recontract-out combine-out var ...))
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (recontract-unlessc-out next-phase-condition:expr var:id ...)
   (recontract-whenc-out (not next-phase-condition) var ...))
 
 (begin-for-syntax /define-syntax-class module-path
-  (pattern path #:when (module-path? /syntax->datum #'path)))
+  (pattern path:expr
+    
+    ; TODO: See if we can verify `path` is a module path. We don't
+    ; really want to check it like this, because the module path DSL
+    ; is expression-like enough that we'd rather respect its
+    ; self-determination of semantics rather than code-walking it.
+    ; When we respect Racket expressions this way, we can still check
+    ; that they're of the expected form by wrapping them in a larger
+    ; expression that constrains their behavior, but module paths
+    ; don't seem to have a way to do that.
+    ;
+    ; Note that if for some reason we do decide to use this
+    ; `syntax->datum` approach, we'll want to use a version of
+    ; `syntax->datum` that only strips syntax objects if they're
+    ; autoptic to some surrounding syntax.
+    ;
+;    #:when (module-path? /syntax->datum #'path)
+    
+    ))
 
 ; TODO: See if this works, and see if we'll use it. For now, we're
 ; achieving the same purposes using `#lang reprovide` in
 ; `lathe-comforts/private/codebasewide-requires`.
 #;
 (define-syntax-parser define-requirer /
-  (_ name:id
-    {~and clause
-      {~or*
-        _:module-path
-        ({~literal only-in} _:module-path _:id ...)}}
-    ...)
-  #`(define-syntax-parser name / (_)
-      #`(require
-          #,@(list
-               #,@(for/list
-                    ([clause (in-list /syntax->list #'/clause ...)])
-                    (syntax-parse clause
-                      [path #'(syntax-local-introduce 'path)]
-                      [
-                        [path var:id ...]
-                        #'#`(only-in #,(syntax-local-introduce 'path)
-                              var ...)]))))))
+  {~autoptic-list
+    (_ name:id
+      {~and clause
+        {~or*
+          {~autoptic-list
+            ({~literal only-in} _:module-path _:id ...)}
+          _:module-path}}
+      ...)}
+  (quasisyntax/loc this-syntax
+    (define-syntax-parser name / {~autoptic-list (_)}
+      #`
+      (require
+        #,@
+        (list
+          #,@
+          (for/list ([clause (in-list /syntax->list #'/clause ...)])
+            (syntax-parse clause
+              [ [path var:id ...]
+                #'#`
+                (only-in #,(syntax-local-introduce 'path) var ...)]
+              [path #'(syntax-local-introduce 'path)])))))))
 
 ; TODO: See if this works, and see if we'll use it. For now, we're
 ; achieving the same purposes using `#lang reprovide` in
 ; `lathe-comforts/private/codebasewide-requires`.
 #;
 (define-syntax-parser define-requirer-in /
-  (_ name:id
-    {~and clause
-      {~or*
-        _:module-path
-        ({~literal only-in} _:module-path _:id ...)}}
-    ...)
-  #`(define-syntax name /make-require-transformer /syntax-parser / (_)
-      (expand-import
-        #`(combine-in
-            #,@(list
-                 #,@(for/list
-                      ([clause (in-list /syntax->list #'/clause ...)])
-                      (syntax-parse clause
-                        [path #'(syntax-local-introduce 'path)]
-                        [
-                          [path var:id ...]
-                          #'#`(only-in
-                                #,(syntax-local-introduce 'path)
-                                var ...)])))))))
+  {~autoptic-list
+    (_ name:id
+      {~and clause
+        {~or*
+          {~autoptic-list
+            ({~literal only-in} _:module-path _:id ...)}
+          _:module-path}}
+      ...)}
+  #`
+  (define-syntax name /make-require-transformer
+    #,
+    (quasisyntax-loc this-syntax
+      (syntax-parser / {~autoptic-list (_)}
+        (expand-import
+          #`
+          (combine-in
+            #,@
+            (list
+              #,@
+              (for/list
+                ([clause (in-list /syntax->list #'/clause ...)])
+                (syntax-parse clause
+                  [ [path var:id ...]
+                    #'#`
+                    (only-in #,(syntax-local-introduce 'path)
+                      var ...)]
+                  [path #'(syntax-local-introduce 'path)])))))))))
 
 
 (define-for-syntax own-contract-scope (make-syntax-introducer))
@@ -800,7 +941,7 @@
       (lambda (orig) /own-contract-scope orig))
     orig))
 
-(define-syntax-parse-rule
+(define-syntax-parse-rule/autoptic
   (define-own-contract-policies
     {~alt
       {~optional {~seq #:antecedent-land antecedent-land}
@@ -875,7 +1016,7 @@
             (format "no ascribe-own-contract information for ~a" 'var)))
         (force val/c-unguarded.c))))
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (own-contract-ignored-out
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
@@ -886,7 +1027,7 @@
   
   (contract-ignored-out [var var.val/c] ...))
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (own-contract-out
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
@@ -913,7 +1054,7 @@
   
   result)
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (own-contract-whenc-out next-phase-condition:expr
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
@@ -944,7 +1085,7 @@
   
   result)
 
-(define-provide-pre-transformer-syntax-parse-rule
+(define-provide-pre-transformer-syntax-parse-rule/autoptic
   (own-contract-unlessc-out next-phase-condition:expr
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])}
@@ -957,7 +1098,7 @@
     [var var.val/c]
     ...))
 
-(define-syntax-parse-rule
+(define-syntax-parse-rule/autoptic
   (ascribe-own-contract var:id val/c
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])})
@@ -981,17 +1122,45 @@
   
   (define own-contract-var (delay val/c.c)))
 
-(begin-for-syntax /define-splicing-syntax-class lambda-param
-  #:attributes (kw var default)
+(begin-for-syntax /define-splicing-syntax-class
+  (lambda-param surrounding-stx)
+  #:attributes (kw var default smuggle)
   (pattern
     {~seq
-      {~or* {~seq} kw:keyword}
-      {~or* var:id [var:id default:expr]}}))
+      {~or*
+        {~and {~seq} /~bind / smuggle-kw /lambda (lctx) '()}
+        {~and {~autoptic-to surrounding-stx kw:keyword}
+          {~bind / smuggle-kw /lambda (lctx)
+            (list /contextualize-stx lctx #'kw)}}}
+      {~or*
+        {~and var:id /~bind / smuggle-var /lambda (lctx) #'var}
+        {~and
+          {~autoptic-list-to surrounding-stx
+            #:smuggle smuggle-var-and-default
+            [var:id default:expr]}
+          {~bind / smuggle-var /lambda (lctx)
+            ( (datum smuggle-var-and-default) lctx
+              `[,#'var ,#'default])}}}}
+    
+    #:attr smuggle
+    (lambda (lctx)
+      `(,@((datum smuggle-kw) lctx) ,((datum smuggle-var) lctx)))
+    
+    ))
 
-(begin-for-syntax /define-syntax-class lambda-params
-  #:attributes ()
+(begin-for-syntax /define-syntax-class (lambda-params surrounding-stx)
+  #:attributes (smuggle)
   (pattern
-    (param:lambda-param ... . {~or* rest:id ()})
+    {~autoptic-list*-to surrounding-stx #:smuggle smuggle-params
+      (
+        {~var param (lambda-param surrounding-stx)}
+        ...
+        .
+        {~or*
+          {~and rest:id /~bind / smuggle-rest /lambda (lctx) #'rest}
+          {~and nil ()
+            {~bind / smuggle-rest /lambda (lctx)
+              (contextualize-stx lctx #'nil)}}})}
     
     #:fail-when
     (check-duplicates #:key syntax-e
@@ -1001,53 +1170,71 @@
     #:fail-when
     (check-duplicate-identifier /syntax->list
       #'(param.var ... {~? rest}))
-    "duplicate argument identifier"))
+    "duplicate argument identifier"
+    
+    #:attr smuggle
+    (lambda (lctx)
+      ( (datum smuggle-params) lctx
+        (append* /for/list
+          ([smuggle-param (in-list (datum (param.smuggle ...)))])
+          (smuggle-param lctx))
+        ((datum smuggle-rest) lctx)))
+    
+    ))
 
-(define-syntax (define/own-contract stx)
-  (let loop ([intermediate-stx stx])
-    (syntax-parse intermediate-stx
-      [
-        (_ var:id val/c
-          {~optional {~seq #:antecedent-land antecedent-land}
-            #:defaults ([antecedent-land (datum->syntax stx '())])}
-          body:expr)
-        
-        #:declare val/c
+(define-syntax-parser define/own-contract /
+  {~autoptic-list
+    (_ copattern
+      {~var val/c
         (expr/c #'contract?
-          #:name "the variable's ascribed contract")
-        
-        #:with own-contract-var
-        (make-signature-contract-id #'antecedent-land #'var /lambda ()
-          (raise-syntax-error #f
-            "expected a define-own-contract-policies definition before using the policies"
-            stx))
-        
-        #`(begin
-            (ascribe-own-contract var val/c.c
-              #:antecedent-land antecedent-land)
-            #,(if
-                (syntax-local-value
-                  (make-own-contract-policy-id
-                    (syntax-local-introduce #'antecedent-land)
-                    '#%own-contract-policy-activating-internal-contracts?)
-                  (lambda ()
-                    (raise-syntax-error #f
-                      "expected a define-own-contract-policies definition before using the policies"
-                      stx)))
-                #'(define var
+          #:name "the variable's ascribed contract")}
+      {~optional {~seq {~autoptic #:antecedent-land} antecedent-land}
+        #:defaults ([antecedent-land (datum->syntax this-syntax '())])
+        }
+      body:expr ...+)}
+  (define stx this-syntax)
+  (let next
+    ([copattern #'copattern] [body (syntax->list #'(body ...))])
+    (syntax-parse copattern
+      [ {~autoptic (head . {~var args (lambda-params stx)})}
+        (next #'head
+          (list
+            (quasisyntax/loc stx
+              (lambda #,((datum args.smuggle) stx) #,@body))))]
+      [ var:id
+        (match body
+          [ (list val)
+            (with-syntax
+              (
+                [ own-contract-var
+                  (make-signature-contract-id #'antecedent-land #'var
+                    (lambda ()
+                      (raise-syntax-error #f
+                        "expected a define-own-contract-policies definition before using the policies"
+                        stx)))])
+              #`
+              (begin
+                (ascribe-own-contract var val/c.c
+                  #:antecedent-land antecedent-land)
+                (define var
+                  #,
+                  (if
+                    (syntax-local-value
+                      (make-own-contract-policy-id
+                        (syntax-local-introduce #'antecedent-land)
+                        '#%own-contract-policy-activating-internal-contracts?)
+                      (lambda ()
+                        (raise-syntax-error #f
+                          "expected a define-own-contract-policies definition before using the policies"
+                          stx)))
+                    #`
                     (invariant-assertion (force own-contract-var)
-                      body))
-                #'(define var body)))]
-      [
-        (_ (head . args:lambda-params) val/c:expr
-          {~optional {~seq #:antecedent-land antecedent-land}
-            #:defaults ([antecedent-land (datum->syntax stx '())])}
-          body:expr ...+)
-        #:with function (quasisyntax/loc stx (lambda args body ...))
-        (loop
-          #'(define/own-contract head val/c
-              #:antecedent-land antecedent-land
-              function))])))
+                      #,val)
+                    val))))]
+          [ _
+            (raise-syntax-error #f
+              "bad syntax (multiple expressions after identifier)"
+              stx)])])))
 
 
 
@@ -1061,7 +1248,7 @@
 ;
 (define-for-syntax activating-internal-contracts? #f)
 
-(define-syntax-parse-rule
+(define-syntax-parse-rule/autoptic
   (init-shim
     {~optional {~seq #:antecedent-land antecedent-land}
       #:defaults ([antecedent-land (datum->syntax this-syntax '())])})
