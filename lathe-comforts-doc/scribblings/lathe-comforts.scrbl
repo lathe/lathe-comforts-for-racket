@@ -446,12 +446,14 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Evaluates each @racket[val-expr], evaluates the @racket[body-expr] with those values in scope under respective @racket[var-id] variables, and renames the resulting contract to @racket[`(let/c [var-id ,(value-name-for-contract _val)] ... ,body-expr)], where each @racket[_val] is the result of a @racket[val-expr].
   
   This can come in handy when composiing relatively large contracts that use the same value in multiple places. It keeps the name more concise than it usually would be.
+  
+  @enforces-autopticity[]
 }
 
 @defform*[
   [
-    (fix/c self-id options ... contract-expr)
-    (fix/c (self-id [arg-id arg-expr] ...) options ... contract-expr)]
+    (fix/c self-id contract-expr)
+    (fix/c (self-id [arg-id arg-expr] ...) contract-expr)]
   #:contracts ([contract-expr contract?])
 ]{
   A fixed-point syntax for contracts. Returns the result of running @racket[contract-expr] with a certain contract or contract-returning function in scope as @racket[self-id], and with each given @racket[arg-expr]'s result in scope as the corresponding @racket[arg-id].
@@ -460,7 +462,9 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   In the parenthesized case, @racket[self-id] is bound to a contract-returning function that takes one argument for each @racket[arg-id]. The contract functionality of the result of @racket[self-id] should be used only after @racket[contract-expr] has returned a contract, and it works by evaluating @racket[contract-expr] again with @racket[arg-id] bound to each function argument.
   
-  In both cases, the contract obtained from @racket[self-id] is delayed so that it can be used without causing an infinite loop. This functionality is based on @racket[recursive-contract], and the given @racket[options] supply the optional arguments of the @racket[recursive-contract] operation.
+  In both cases, the contract obtained from @racket[self-id] is delayed so that it can be used without causing an infinite loop. This functionality is based on @racket[recursive-contract].
+  
+  @enforces-autopticity[]
   
   @examples[
     #:eval (example-eval)
@@ -486,6 +490,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   A @tech{contract obstinacy} may be given as @racket[obstinacy-expr], which defaults to @racket[(impersonator-obstinacy)]. The overall result is a contract of that contract obsinacy (e.g. a chaperone contract if using @racket[(chaperone-obstinacy)], or any contract at all if using @racket[(impersonator-obstinacy)]). The result of @racket[body-expr] must be a contract of that contract obstinacy as well.
   
   The name of the returned contract includes @racket[pat] and @racket[body-expr] verbatim. If they contain references to variables defined elsewhere, @racket[let/c] may be useful to ensure those variable bindings are apparent in the overall contract name.
+  
+  @enforces-autopticity[]
 }
 
 @defproc[(equal/c [example any/c]) flat-contract?]{
@@ -1207,6 +1213,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
     new-name-id match-name-id make-id-name-id make-list-name-id)
 ]{
   Defines @racket[new-name-id] as a syntax that expands into a call to @racket[match-name-id] if it's used a match expander, @racket[make-id-name-id] if it's used as an standalone identifier in an expression context, and @racket[make-list-name-id] if it's used at the beginning of a list in an expression context.
+  
+  @enforces-autopticity[]
+  
+  The defined syntax also enforces autopticity of its usage sites.
 }
 
 @defform[
@@ -1222,6 +1232,10 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   When the syntax defined this way is used as a match expander with one pattern for each @racket[arg-id], it first tries to match the same arguments according to @racket[(old-name-id arg-id ...)], and it fails if that pattern fails. Then it tries to check each of the @racket[arg/c-expr] contracts' @racket[contract-first-order-passes?] behavior against the respective argument value, and it fails if any of those fails. Then it projects the arguments through those contracts, and it attempts to check the @racket[guard-expr] with those projections, failing if the @racket[guard-expr] returns @racket[#f]. If it hasn't failed yet, it proceeds to match those projections according to the patterns given at the call site.
   
+  @enforces-autopticity[]
+  
+  The defined syntax also enforces autopticity of its usage sites.
+  
   @; TODO: This description seems a bit too terse. It might be good to give examples.
 }
 
@@ -1234,6 +1248,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   The value's projection is computed by taking the projections of each of the arguments and then executing @racket[(name-id _arg-id ...)], where this time each @racket[_arg-id] is an identifier already bound to the argument's projection value. For some match patterns, this may cause substantial changes to the value when projected by this contract: If @racket[name-id] is @racket[vector], it changes immutable vectors to mutable ones. If @racket[name-id] is a structure type name, it changes instances of subtypes of @racket[name-id] into instances of @racket[name-id] itself.
   
   Unlike @racket[struct/c] (but like @racket[istruct/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[arg/c-expr] contracts contain one or more impersonator contracts.
+  
+  @enforces-autopticity[]
 }
 
 

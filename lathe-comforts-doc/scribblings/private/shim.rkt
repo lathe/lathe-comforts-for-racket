@@ -36,7 +36,7 @@
 ; requiring here, but that makes it harder to pull these back out into
 ; a regular `require` if we figure out a way to do so.
 ;
-(define-syntax-parse-rule (init-shim)
+(define-syntax-parse-rule/autoptic (init-shim)
   
   #:with result
   (datum->syntax this-syntax /syntax->datum

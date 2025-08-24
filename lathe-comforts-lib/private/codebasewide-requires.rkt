@@ -33,7 +33,7 @@
     (only-in syntax/contract wrap-expr/c)
     (only-in syntax/datum datum)
     (only-in syntax/parse
-      ...+ ~! ~alt ~and ~bind ~fail ~literal ~not ~optional ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse this-syntax))
+      ...+ ~! ~alt ~and ~bind ~fail ~literal ~not ~optional ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse syntax-parser this-syntax))
   racket/base)
 
 (only-in racket/contract/base
