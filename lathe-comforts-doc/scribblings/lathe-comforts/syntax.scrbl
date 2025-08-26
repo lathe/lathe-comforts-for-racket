@@ -57,6 +57,15 @@ An example of a situation which would be ameliorated by use of autoptic parsing 
 
 @defform[
   #:kind "pattern expander"
+  {~autoptic-to surrounding-stx pattern}
+]{
+  A @tech[#:doc syntax-doc]{pattern expander} that parses according to @racket[pattern], but only if the syntax object has a set of scopes that's equal to or a superset of the set of scopes on the given syntax object @racket[surrounding-stx].
+  
+  @pattern-that-ensures-autopticity[]
+}
+
+@defform[
+  #:kind "pattern expander"
   {~autoptic-list-to surrounding-stx maybe-smuggle pattern}
   
   #:grammar

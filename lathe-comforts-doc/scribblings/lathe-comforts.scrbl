@@ -958,6 +958,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   @; TODO: See if it does. That is to say, see if
   @; `#:error-message-phrase` makes any difference.
+  
+  @enforces-autopticity[]
 }
 
 @defform[(struct-predicate struct-name-id)]{

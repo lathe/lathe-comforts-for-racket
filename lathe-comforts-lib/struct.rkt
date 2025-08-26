@@ -24,6 +24,8 @@
 
 (require #/for-syntax #/only-in lathe-comforts
   dissect expect fn mat w- w-loop)
+(require #/for-syntax #/only-in lathe-comforts/syntax
+  ~autoptic-to ~autoptic-list ~autoptic-list-to)
 
 (require #/only-in lathe-comforts dissect dissectfn expect fn mat w-)
 
@@ -135,7 +137,8 @@
       (apply values slots))))
 
 (define-syntax (struct-easy stx)
-  (syntax-parse stx #/ (_ (name:id slot:id ...) rest ...)
+  (syntax-parse stx #/
+    (_ (name:id slot:id ...) rest ...)
   #/w-loop next
     rest #'(rest ...)
     has-write #f
@@ -143,96 +146,111 @@
     ; `lathe-comforts/maybe` instead of a subsingleton list, but this
     ; way avoids a circular dependency between modules.
     maybe-phrase (list)
-    options #'()
+    rev-options (list)
     
     (w- next
       (fn rest has-write-now maybe-phrase options-suffix
         (next rest (or has-write has-write-now) maybe-phrase
-        #`#/#,@options #,@options-suffix))
-    #/syntax-parse rest
-      
-      [()
-      #/if has-write
-        #`(begin
+          (cons (syntax->list options-suffix) rev-options)))
+    #/syntax-parse rest #:context stx
+      [ ()
+        #:attr [options 2] (reverse rev-options)
+        #`
+        (begin
+          (define writefn
+            #,
+            (or has-write
+              #'(dissectfn (name slot ...) (list slot ...))))
           (define phrase
-            #,(mat maybe-phrase (list phrase) phrase
+            #,
+            (mat maybe-phrase (list phrase) phrase
               (format "an instance of the ~s structure type"
-              #/symbol->string #/syntax-e #'name)))
-          (struct name (slot ...) #,@options))
-        (next #'(#:write #/fn this #/list slot ...) #f maybe-phrase
-        #'#/)]
-      
-      [(#:other rest ...) #/next #'() #f maybe-phrase #'#/rest ...]
-      
-      [ (#:error-message-phrase phrase rest ...)
-        #:declare
-        phrase
-        (expr/c #'string? #:context stx
-          #:name "option #:error-message-phrase")
-      #/expect maybe-phrase (list)
-        (raise-syntax-error #f
-          "supplied #:error-message-phrase more than once"
-          stx #'phrase)
-      #/next #'(rest ...) #f (list #'phrase.c) #'#/rest ...]
-      
-      [ (#:write writefn rest ...)
-        #:declare
-        writefn
-        (expr/c #'(-> any/c list?) #:context stx
-          #:name "option #:write")
-      #/if has-write
-        (raise-syntax-error #f
-          "supplied #:write more than once"
-          stx #'writefn)
-      #/next #'(rest ...) #t maybe-phrase
-      #'#/#:methods gen:custom-write #/
-        (define write-proc
-          (make-constructor-style-printer
-            (fn this 'name)
-            (fn this
+                (symbol->string #/syntax-e #'name))))
+          (struct name (slot ...)
+            #:methods gen:custom-write
+            [
+              (define write-proc
+                (make-constructor-style-printer
+                  (fn this 'name)
+                  (fn this
+                    (expect this (name slot ...)
+                      (raise-arguments-error 'write-proc
+                        (string-append "expected this to be " phrase)
+                        "this" this)
+                    #/writefn this))))]
+            options ... ...))]
+      [ ({~autoptic-to stx #:other} ~! . rest)
+        (next #'() #f maybe-phrase #'rest)]
+      [
+        ( {~autoptic-to stx #:error-message-phrase}
+          ~!
+          {~var phrase
+            (expr/c #'string? #:context stx
+              #:name "option #:error-message-phrase")}
+          .
+          rest)
+        (expect maybe-phrase (list)
+          (raise-syntax-error #f
+            "supplied #:error-message-phrase more than once"
+            stx #'phrase)
+        #/next #'rest #f (list #'phrase.c) #'())]
+      [
+        ( {~autoptic-to stx #:write}
+          ~!
+          {~var writefn
+            (expr/c #'(-> any/c list?) #:context stx
+              #:name "option #:write")}
+          .
+          rest)
+        (if has-write
+          (raise-syntax-error #f
+            "supplied #:write more than once"
+            stx #'writefn)
+        #/next #'rest #'writefn.c maybe-phrase #'())]
+      [ ( {~autoptic-to stx #:equal} ~! . rest)
+        (next #'rest #f maybe-phrase
+          #'
+          (#:methods gen:equal+hash #/
+            (define (equal-proc a b recursive-equal?)
+              (expect a (name slot ...)
+                (raise-arguments-error 'equal-proc
+                  (string-append "expected a to be " phrase)
+                  "a" a)
+              #/w- a-slots (list slot ...)
+              #/expect b (name slot ...)
+                (raise-arguments-error 'equal-proc
+                  (string-append "expected b to be " phrase)
+                  "b" b)
+              #/w- b-slots (list slot ...)
+              #/for/and ([a (in-list a-slots)] [b (in-list b-slots)])
+                (recursive-equal? a b)))
+            (define (hash-proc this recursive-equal-hash-code)
               (expect this (name slot ...)
-                (raise-arguments-error 'write-proc
+                (raise-arguments-error 'hash-proc
                   (string-append "expected this to be " phrase)
                   "this" this)
-              #/writefn.c this))))]
-      
-      [(#:equal rest ...)
-      #/next #'(rest ...) #f maybe-phrase
-      #'#/#:methods gen:equal+hash #/
-        (define (equal-proc a b recursive-equal?)
-          (expect a (name slot ...)
-            (raise-arguments-error 'equal-proc
-              (string-append "expected a to be " phrase)
-              "a" a)
-          #/w- a-slots (list slot ...)
-          #/expect b (name slot ...)
-            (raise-arguments-error 'equal-proc
-              (string-append "expected b to be " phrase)
-              "b" b)
-          #/w- b-slots (list slot ...)
-          #/for/and ([a (in-list a-slots)] [b (in-list b-slots)])
-            (recursive-equal? a b)))
-        (define (hash-proc this recursive-equal-hash-code)
-          (expect this (name slot ...)
-            (raise-arguments-error 'hash-proc
-              (string-append "expected this to be " phrase)
-              "this" this)
-          #/recursive-equal-hash-code #/list slot ...))
-        (define (hash2-proc this recursive-equal-secondary-hash-code)
-          (expect this (name slot ...)
-            (raise-arguments-error 'hash2-proc
-              (string-append "expected this to be " phrase)
-              "this" this)
-          #/recursive-equal-secondary-hash-code #/list slot ...))]
-      
-      [((#:guard-easy body:expr ...) rest ...)
-      #/next #'(rest ...) #f maybe-phrase
-      #`#/
-        #:guard
-        #,#/syntax-protect #'#/guard-easy #/lambda (slot ...)
-          body ...])))
+              #/recursive-equal-hash-code #/list slot ...))
+            (define
+              (hash2-proc this recursive-equal-secondary-hash-code)
+              (expect this (name slot ...)
+                (raise-arguments-error 'hash2-proc
+                  (string-append "expected this to be " phrase)
+                  "this" this)
+              #/recursive-equal-secondary-hash-code
+                (list slot ...)))))]
+      [
+        (
+          {~autoptic-list-to stx
+            ({~autoptic-to stx #:guard-easy} ~! body:expr ...)}
+          .
+          rest)
+        (next #'rest #f maybe-phrase
+          #'
+          (#:guard #/guard-easy #/lambda (slot ...)
+            body ...))])))
 
 
+; TODO NOW: From here. We're makign things autoptic. We're reindenting some stuff. We're adding `~!`.
 (define-for-syntax (get-struct-info stx name)
   (w- struct-info (syntax-local-value name)
   #/expect (struct-info? struct-info) #t

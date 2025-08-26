@@ -32,6 +32,7 @@
   [scopes-empty? (-> syntax? boolean?)]
   [scopes<=? (-> syntax? syntax? boolean?)])
 (provide
+  ~autoptic-to
   ~autoptic-list-to
   ~autoptic-list*-to
   ~autoptic
