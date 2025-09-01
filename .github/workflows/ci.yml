@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        racket-variant: ["BC", "CS"]
         racket-version: ["8.18", "stable", "current"]
         racket-catalogs-id: ["pkgs"]
         racket-catalogs: [""]
@@ -25,8 +24,7 @@ jobs:
           # versions. This is essentially our package-lock.json or
           # Cargo.lock information.
           #
-          - racket-variant: "CS"
-            racket-version: "8.18"
+          - racket-version: "8.18"
             racket-catalogs-id: "racksnaps"
             racket-catalogs: |
               https://download.racket-lang.org/releases/8.18/catalog/,
@@ -40,7 +38,6 @@ jobs:
         with:
           architecture: x64
           distribution: full
-          variant: ${{ matrix.racket-variant }}
           version: ${{ matrix.racket-version }}
           catalogs: ${{ matrix.racket-catalogs }}
           
