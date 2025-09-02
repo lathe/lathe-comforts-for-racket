@@ -499,8 +499,7 @@
                   ((datum smuggle-stxclass-call) lctx
                     `(,#'stxclass ,@(syntax->list #'(arg ...))))}}}
             {~or*
-              {~and {~seq}
-                {~bind / smuggle-role /lambda (lctx) `()}}
+              {~seq {~bind / smuggle-role /lambda (lctx) `()}}
               {~and
                 {~seq
                   {~and role-kw /~autoptic-to surrounding-stx #:role}
