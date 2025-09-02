@@ -968,6 +968,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   For instance, if a struct is defined as @racket[(struct _my-data (_field-one _field-two))], then traditionally we can recognize instances of the struct using @racket[(_my-data? _x)], and now we can also recognize them using @racket[((@#,tt{struct-predicate} _my-data) _x)].
   
   This comes in handy mostly when defining other syntax transformers that deal with structure type names. Sometimes it allows those syntax transformers to be written using simple syntax templates, saving the trouble of making manual calls to @racket[syntax-local-value] and @racket[extract-struct-info].
+  
+  @enforces-autopticity[]
 }
 
 @defform[(struct-accessor-by-name struct-name-id field-name-id)]{
@@ -976,6 +978,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   For instance, if a struct is defined as @racket[(struct _my-data (_field-one _field-two))], then traditionally we can extract the first field using @racket[(_my-data-field-one _x)], and now we can also extract it using @racket[((@#,tt{struct-accessor-by-name} _my-data _field-one) _x)].
   
   This comes in handy mostly when defining other syntax transformers that deal with structure type names. Sometimes it allows those syntax transformers to be written using simple syntax templates, saving the trouble of making manual calls to @racket[syntax-local-value] and @racket[extract-struct-info].
+  
+  @enforces-autopticity[]
 }
 
 @defform[
@@ -987,6 +991,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Unlike @racket[struct/c] (but like @racket[match/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[field/c-expr] contracts contain one or more impersonator contracts.
   
   However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
+  
+  @enforces-autopticity[]
 }
 
 @defproc[(tupler? [v any/c]) boolean?]{
@@ -1149,14 +1155,24 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Note that unlike @racket[struct], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling the defined constructor directly.
   
   To have more complete control over the structure type created, use @racket[struct]. However, that will not produce a tupler value.
+  
+  @enforces-autopticity[]
+  
+  However, this syntax does not enforce autopticity the same way on the outermost list of an @racket[option], for which it instead enforces that all the tails of the list are autoptic with respect to the whole list. It also doesn't enforce autopticity at all on the keywords @racket[#:prop] nor @racket[#:gen]. These choices have been made to enable users to write syntaxes that take @racket[option] forms and pass them through.
+  
+  The defined syntax @racket[inst-id] also enforces autopticity of its own call sites.
 }
 
 @defform[#:kind "structure type property expander" (auto-write)]{
   A syntax which is only useful as an option to @racket[define-imitation-simple-struct] and @racket[define-syntax-and-value-imitation-simple-struct]. In that context, it specifies that the created structure type should have implementations of @racket[gen:custom-write] and @racket[prop:custom-print-quotable] which use @racket[make-constructor-style-printer] to display a structure value.
+  
+  @enforces-autopticity[]
 }
 
 @defform[#:kind "structure type property expander" (auto-equal)]{
   A syntax which is only useful as an option to @racket[define-imitation-simple-struct] and @racket[define-syntax-and-value-imitation-simple-struct]. In that context, it specifies that the created structure type should have an implementation of @racket[gen:equal+hash] which treats any two of the structure values as @racket[equal?] if their fields are @racket[equal?].
+  
+  @enforces-autopticity[]
 }
 
 @defform[
@@ -1202,6 +1218,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Even the contract combinator can be simulated in a more big-picture sense: Higher-order contracts for structure type properties will tend to need to replace a property's implementation with an instrumented version. Not all structure types that implement a properly will do so in a way that's easily decoupled from their other functionality, much less swapped out for another whole implementation. That means the ability to swap something out is essentially another method that structure type can implement, and it can be designed as such.
   
   When writing contracts for values whose design isn't easy to change, another approach is to intercept those values at the boundaries of a program and convert them into a custom structure type whose design is easier to control.
+  
+  @enforces-autopticity[]
 }
 
 
