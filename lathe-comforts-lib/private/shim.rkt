@@ -689,7 +689,7 @@
                   ...]}}
             #:defaults
             ([has-else-clause? #f] [(else-branch 1) (list)])}}})}
-  (when (equal? 'expression (syntax-local-context))
+  (when (equal-always? 'expression (syntax-local-context))
     (unless (attribute has-else-clause?)
       (raise-syntax-error #f
         "must have an else branch when in an expression context"
@@ -731,7 +731,7 @@
 
 (define-syntax-parser whenc /
   {~autoptic-list (_ next-phase-condition:expr body:expr ...+)}
-  (when (equal? 'expression (syntax-local-context))
+  (when (equal-always? 'expression (syntax-local-context))
     (raise-syntax-error #f
       "not permitted in an expression context"
       this-syntax))
@@ -739,7 +739,7 @@
 
 (define-syntax-parser unlessc /
   {~autoptic-list (_ next-phase-condition:expr body:expr ...+)}
-  (when (equal? 'expression (syntax-local-context))
+  (when (equal-always? 'expression (syntax-local-context))
     (raise-syntax-error #f
       "not permitted in an expression context"
       this-syntax))
@@ -1114,7 +1114,7 @@
   
   #:do
   [
-    (when (equal? 'expression (syntax-local-context))
+    (when (equal-always? 'expression (syntax-local-context))
       (raise-syntax-error #f
         "not allowed in an expression context"
         this-syntax))]

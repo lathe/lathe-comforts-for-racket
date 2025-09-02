@@ -4,7 +4,7 @@
 ;
 ; Utilities for contracts.
 
-;   Copyright 2017-2022 The Lathe Authors
+;   Copyright 2017-2022, 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -253,6 +253,11 @@
   (-> any/c flat-contract?)
   (rename-contract (fn v #/equal? example v)
     `(equal/c ,(value-name-for-contract example))))
+
+(define/own-contract (equal-always/c example)
+  (-> any/c flat-contract?)
+  (rename-contract (fn v #/equal-always? example v)
+    `(equal-always/c ,(value-name-for-contract example))))
 
 
 (define/own-contract (flat-contract-accepting/c v)

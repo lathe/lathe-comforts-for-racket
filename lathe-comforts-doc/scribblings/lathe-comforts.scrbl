@@ -253,7 +253,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   @examples[
     #:eval (example-eval)
-    (pd _/ hash-map (hash 'a 1 'b 2) _/ fn k v
+    (pd _/ hash-map (hashalw 'a 1 'b 2) _/ fn k v
       (format "(~s, ~s)" k v))
     (pd _/ build-list 5 _/ fn ~ _/ * 10 ~)
   ]
@@ -385,7 +385,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 )]{
   Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents impersonator contracts.
   
-  Every two @tt{impersonator-obstinacy} values are @racket[equal?].
+  Every two @tt{impersonator-obstinacy} values are @racket[equal-always?].
   
   @enforces-autopticity[]
 }
@@ -402,7 +402,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 )]{
   Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents chaperone contracts.
   
-  Every two @tt{chaperone-obstinacy} values are @racket[equal?].
+  Every two @tt{chaperone-obstinacy} values are @racket[equal-always?].
   
   @enforces-autopticity[]
 }
@@ -419,7 +419,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 )]{
   Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents flat contracts.
   
-  Every two @tt{flat-obstinacy} values are @racket[equal?].
+  Every two @tt{flat-obstinacy} values are @racket[equal-always?].
   
   @enforces-autopticity[]
 }
@@ -504,6 +504,10 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Returns a contract that recognizes a value if the given value is @racket[equal?] to it.
 }
 
+@defproc[(equal-always/c [example any/c]) flat-contract?]{
+  Returns a contract that recognizes a value if the given value is @racket[equal-always?] to it.
+}
+
 @defproc[(flat-contract-accepting/c [v any/c]) flat-contract?]{
   Returns a flat contract that recognizes any flat contract that recognizes the given value.
 }
@@ -525,7 +529,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 )]{
   Struct-like operations which construct and deconstruct a @tech{maybe value} that does not contain an element.
   
-  Every two @tt{nothing} values are @racket[equal?].
+  Every two @tt{nothing} values are @racket[equal-always?].
   
   @enforces-autopticity[]
 }
@@ -539,7 +543,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 )]{
   Struct-like operations which construct and deconstruct a @tech{maybe value} that contains an element.
   
-  Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] elements.
+  Two @tt{just} values are equivalent by @racket[equal-always?] or @racket[equal?] if they contain similarly equivalent elements.
   
   @enforces-autopticity[]
 }
@@ -598,7 +602,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 )]{
   Struct-like operations which construct and deconstruct a @tech{trivial value}.
   
-  Every two @tt{trivial} values are @racket[equal?].
+  Every two @tt{trivial} values are @racket[equal-always?].
   
   @enforces-autopticity[]
 }
@@ -780,23 +784,25 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 }
 
 @defproc[(hash-comparison-same? [a hash?] [b hash?]) boolean?]{
-  Returns whether the two given hash tables have the same comparison procedure (@racket[equal?], @racket[eqv?], or @racket[eq?]).
+  Returns whether the two given hash tables have the same comparison procedure from among @racket[equal-always?], @racket[equal?], @racket[eqv?], and @racket[eq?].
+  
+  If neither of them has any of those particular comparison procedures, the @racket[exn:fail:contract] exception is raised.
 }
 
 @defproc[(hash-keys-same? [a hash?] [b hash?]) boolean?]{
   Returns whether the two given hash tables have the same set of keys according to their comparison procedure. If the two hash tables don't even have the same comparison procedure, the @racket[exn:fail:contract] exception is raised.
   
-  If the thread performing this operation is terminated and the given hash tables use @racket[eqv?] or @racket[equal?] as their comparison procedure, all current and future operations on those hash tables may block indefinitely.
+  If the thread performing this operation is terminated and the given hash tables use @racket[equal-always?], @racket[equal?], or @racket[eqv?] as their comparison procedure, all current and future operations on those hash tables may block indefinitely.
   
-  If either of the given hash tables is modified partway through this operation, or if either one is an @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
+  If either of the given hash tables is modified partway through this operation, or if either one is an @racket[equal-always?]- or @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
 }
 
 @defproc[(hash-ref-maybe [hash hash?] [key any/c]) maybe?]{
   Looks up the given key in the given hash table. Returns a @racket[just?] of the value found or a @racket[nothing?] if no entry for that key exists.
   
-  If the thread performing this operation is terminated and the given hash table uses @racket[eqv?] or @racket[equal?] as its comparison procedure, all current and future operations on that hash table may block indefinitely.
+  If the thread performing this operation is terminated and the given hash table uses @racket[equal-always?], @racket[equal?], or @racket[eqv?] as its comparison procedure, all current and future operations on that hash table may block indefinitely.
   
-  If the given hash table is modified partway through this operation, or if it's an @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
+  If the given hash table is modified partway through this operation, or if it's an @racket[equal-always?]- or @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
 }
 
 @defproc[
@@ -805,9 +811,9 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 ]{
   Returns a hash table with the same key-comparison procedure, key-holding strength, and mutability as the given one, where the given key's mapping has been deleted (if @racket[maybe-value] is a @racket[nothing?]) or replaced (if it's a @racket[just?] of some value to use as the replacement).
   
-  If the given hash table is an @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
+  If the given hash table is an @racket[equal-always?]- or @racket[equal?]-based hash table whose keys have been mutated after insertion, the resulting behavior may be unpredictable.
   
-  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+  If the result is an @racket[equal-always?]- or @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
 }
 
 @defproc[
@@ -838,7 +844,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   Likewise, if a result of @racket[func] is modified between the time it is returned and the time this operation either returns or calls @racket[func] again, then the particular list of entries this operation collects from that @racket[func] result may be unpredictable.
   
-  If the overall result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+  If the overall result is an @racket[equal-always?]- or @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
 }
 
 @defproc[
@@ -851,7 +857,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   If the given hash table is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
   
-  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+  If the result is an @racket[equal-always?]- or @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
 }
 
 @defproc[
@@ -864,7 +870,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   If the given hash table is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
   
-  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+  If the result is an @racket[equal-always?]- or @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
 }
 
 @defproc[
@@ -904,7 +910,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   If the given hash table is modified while this operation is setting up (before it calls the given function for the first time), the particular list of entries it processes may be unpredictable. Modifications after that will not affect the operation.
   
-  If the result is an @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
+  If the result is an @racket[equal-always?]- or @racket[equal?]-based hash table and one of its keys is mutated after insertion, it may have unpredictable behavior with other hash-table-related utilities.
 }
 
 @defproc[(hash-v-map [hash hash?] [func (-> any/c any/c)]) hash?]{
@@ -948,7 +954,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 }
 
 @defform[(struct-easy (name-id slot-id ...) rest ...)]{
-  This is a convenience layer over @racket[struct], which has some features to automate the implementation of the struct's print behavior and @racket[equal?] behavior.
+  This is a convenience layer over @racket[struct], which has some features to automate the implementation of the struct's print behavior and equality behavior.
   
   The interface is rather unstable at this point. It's not even clear at this point which pieces of the behavior here are by design and which are temporary kludges.
   
@@ -960,7 +966,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   In the @racket[rest] section, the first occurrence of the @racket[#:other] keyword begins passing the rest of the subforms through to the @racket[struct] form. To illustrate, this means the definition @racket[(@#,tt{struct-easy} (_my-data _field-one _field-two) #:other ...)] behaves the same way as @racket[(struct _my-data (_field-one _field-two) ...)], aside from that custom write behavior.
   
-  If @racket[#:equal] appears in the @racket[rest] section (before any occurrence of  @racket[#:other]), then an implementation of @racket[gen:equal+hash] will be generated so that the resulting structure type's instances are @racket[equal?] if their corresponding fields are @racket[equal?].
+  If @racket[#:equal] appears in the @racket[rest] section (before any occurrence of  @racket[#:other]), then an implementation of @racket[gen:equal+hash] will be generated so that the resulting structure type's instances are equivalent by @racket[equal-always?] or @racket[equal?] if their corresponding fields are similarly equivalent. (Note that this is not a well-behaved @racket[equal-always?] behavior if the struct's fields can be mutated. It's recommended to use @racket[#:equal] only for structs whose fields are immutable.)
   
   If a list of the form @racket[(#:guard-easy _body-expr ...)] appears in the @racket[rest] section (before any occurrence of  @racket[#:other]), then the resulting structure type runs each @racket[_body-expr] when an instance is constructed. In those expressions, local variables corresponding to each field (e.g. @racket[_field-one] and @racket[_field-two]) are bound to the values that instance is being constructed with. The results of each @racket[_body-expr] are ignored; they're expected to raise exceptions if the field values are unacceptable.
   
@@ -1002,7 +1008,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   Unlike @racket[struct/c] (but like @racket[match/c]), this works even when @racket[name-id] is an immutable structure type name and the @racket[field/c-expr] contracts contain one or more impersonator contracts.
   
-  However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
+  However, this comes at the price of some quirks. This operation works by reconstructing the struct altogether when a higher-order projection is taken. This means the projection of this struct isn't necessarily @racket[eq?], @racket[equal?], @racket[equal-always?], @racket[chaperone-of?], or @racket[impersonator-of?] to the original value. In fact, the projection becomes an instance of the structure type @racket[name-id], even when the original value is an instance of a distinct structure subtype of @racket[name-id].
   
   @enforces-autopticity[]
 }
@@ -1162,7 +1168,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   An @racket[option] of the form @racket[(auto-write)] specifies implementations of @racket[gen:custom-write] and @racket[prop:custom-print-quotable] which use @racket[make-constructor-style-printer] to display the value.
   
-  An @racket[option] of the form @racket[(auto-equal)] specifies an implementation of @racket[gen:equal+hash] which treats any two of these structures as @racket[equal?] if their fields are @racket[equal?].
+  An @racket[option] of the form @racket[(auto-equal)] specifies an implementation of @racket[gen:equal+hash] which treats any two of these structures as being equivalent by @racket[equal-always?] or @racket[equal?] if their corresponding fields are similarly equivalent.
   
   Note that unlike @racket[struct], this has no support for creating structure types that have supertypes, subtypes, guard procedures, mutable fields, or automatic fields. For the most part, all these features except supertypes and subtypes can be simulated: Mutable fields can be simulated with immutable fields that contain mutable boxes, while guard procedures and automatic fields can be simulated by defining another procedure to call instead of calling the defined constructor directly.
   
@@ -1182,7 +1188,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
 }
 
 @defform[#:kind "structure type property expander" (auto-equal)]{
-  A syntax which is only useful as an option to @racket[define-imitation-simple-struct] and @racket[define-syntax-and-value-imitation-simple-struct]. In that context, it specifies that the created structure type should have an implementation of @racket[gen:equal+hash] which treats any two of the structure values as @racket[equal?] if their fields are @racket[equal?].
+  A syntax which is only useful as an option to @racket[define-imitation-simple-struct] and @racket[define-syntax-and-value-imitation-simple-struct]. In that context, it specifies that the created structure type should have an implementation of @racket[gen:equal+hash] which treats any two of the structure values as being equivalent by @racket[equal-always?] or @racket[equal?] if their corresponding fields are similarly equivalent.
   
   @enforces-autopticity[]
 }

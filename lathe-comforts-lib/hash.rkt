@@ -4,7 +4,7 @@
 ;
 ; Utilities for hash tables.
 
-;   Copyright 2017-2018, 2022 The Lathe Authors
+;   Copyright 2017-2018, 2022, 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -57,8 +57,20 @@
 
 (define/own-contract (hash-comparison-same? a b)
   (-> hash? hash? boolean?)
-  (list-any (list hash-equal? hash-eqv? hash-eq?) #/fn check
-    (and (check a) (check b))))
+  (define (attempt hash-has-comparison-procedure? then)
+    (w- a-has? (hash-has-comparison-procedure? a)
+    #/w- b-has? (hash-has-comparison-procedure? b)
+    #/if a-has? b-has?
+    #/if b-has? #f
+    #/then))
+  (attempt hash-equal-always? #/fn
+  #/attempt hash-equal? #/fn
+  #/attempt hash-eqv? #/fn
+  #/attempt hash-eq? #/fn
+  #/raise-arguments-error 'hash-comparison-same?
+    "expected at least one hash table that used a comparison procedure from among equal-always?, equal?, eqv?, and eq?"
+    "a" a
+    "b" b))
 
 (define/own-contract (hash-keys-same? a b)
   (->i ([a hash?] [b hash?])

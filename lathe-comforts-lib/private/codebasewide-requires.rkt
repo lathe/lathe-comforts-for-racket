@@ -41,6 +41,7 @@
 (only-in racket/contract/combinator
   blame-add-context coerce-chaperone-contract coerce-contract coerce-flat-contract contract-first-order-passes? make-chaperone-contract make-contract make-flat-contract raise-blame-error)
 (only-in racket/contract/region invariant-assertion)
+(only-in racket/hash-code hash-code-combine hash-code-combine*)
 (only-in racket/list append-map range)
 (only-in racket/match
   define-match-expander match match/derived match-lambda)

@@ -203,36 +203,33 @@
             stx #'writefn)
         #/next #'rest #'writefn.c maybe-phrase #'())]
       [ ( {~autoptic-to stx #:equal} ~! . rest)
+        #:with (a-slot ...) (generate-temporaries #'(slot ...))
+        #:with (b-slot ...) (generate-temporaries #'(slot ...))
         (next #'rest #f maybe-phrase
           #'
           (#:methods gen:equal+hash #/
             (define (equal-proc a b recursive-equal?)
-              (expect a (name slot ...)
+              (expect a (name a-slot ...)
                 (raise-arguments-error 'equal-proc
                   (string-append "expected a to be " phrase)
                   "a" a)
-              #/w- a-slots (list slot ...)
-              #/expect b (name slot ...)
+              #/expect b (name b-slot ...)
                 (raise-arguments-error 'equal-proc
                   (string-append "expected b to be " phrase)
                   "b" b)
-              #/w- b-slots (list slot ...)
-              #/for/and ([a (in-list a-slots)] [b (in-list b-slots)])
-                (recursive-equal? a b)))
-            (define (hash-proc this recursive-equal-hash-code)
+              #/and (recursive-equal? a-slot b-slot) ...))
+            (define (hash-proc this recur)
               (expect this (name slot ...)
                 (raise-arguments-error 'hash-proc
                   (string-append "expected this to be " phrase)
                   "this" this)
-              #/recursive-equal-hash-code #/list slot ...))
-            (define
-              (hash2-proc this recursive-equal-secondary-hash-code)
+              #/hash-code-combine (recur name) (recur slot) ...))
+            (define (hash2-proc this recur)
               (expect this (name slot ...)
                 (raise-arguments-error 'hash2-proc
                   (string-append "expected this to be " phrase)
                   "this" this)
-              #/recursive-equal-secondary-hash-code
-                (list slot ...)))))]
+              #/hash-code-combine (recur name) (recur slot) ...))))]
       [
         (
           {~autoptic-list-to stx
@@ -798,26 +795,25 @@
               #/for/and ([proj (in-list projs)])
                 (recursive-equal? (proj a) (proj b))))
             
-            (define (hash-proc self recursive-equal-hash-code)
+            (define (hash-proc self recur)
               (w- pred? (tupler-pred?-fn #,tupler-id)
               #/w- projs (tupler-proj-fns #,tupler-id)
               #/expect (pred? self) #t
                 (raise-arguments-error 'hash-proc
                   "expected self to be an instance of the structure type where this gen:equal+hash behavior was installed"
                   "self" self)
-              #/recursive-equal-hash-code
-                (map (fn proj #/proj self) projs)))
+              #/hash-code-combine* (recur #,tupler-id)
+                (map (fn proj #/recur #/proj self) projs)))
             
-            (define
-              (hash2-proc self recursive-equal-secondary-hash-code)
+            (define (hash2-proc self recur)
               (w- pred? (tupler-pred?-fn #,tupler-id)
               #/w- projs (tupler-proj-fns #,tupler-id)
               #/expect (pred? self) #t
                 (raise-arguments-error 'hash-proc
                   "expected self to be an instance of the structure type where this gen:equal+hash behavior was installed"
                   "self" self)
-              #/recursive-equal-secondary-hash-code
-                (map (fn proj #/proj self) projs)))
+              #/hash-code-combine* (recur #,tupler-id)
+                (map (fn proj #/recur #/proj self) projs)))
             
             )])))
 
