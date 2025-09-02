@@ -387,7 +387,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   Every two @tt{impersonator-obstinacy} values are @racket[equal-always?].
   
-  @enforces-autopticity[]
+  Call sites using the constructor must be autoptic.
 }
 
 @deftogether[(
@@ -404,7 +404,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   Every two @tt{chaperone-obstinacy} values are @racket[equal-always?].
   
-  @enforces-autopticity[]
+  Call sites using the constructor must be autoptic.
 }
 
 @deftogether[(
@@ -421,7 +421,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   Every two @tt{flat-obstinacy} values are @racket[equal-always?].
   
-  @enforces-autopticity[]
+  Call sites using the constructor must be autoptic.
 }
 
 @defproc[(obstinacy-contract/c [ob obstinacy?]) flat-contract?]{
@@ -531,7 +531,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   Every two @tt{nothing} values are @racket[equal-always?].
   
-  @enforces-autopticity[]
+  Call sites using the constructor must be autoptic.
 }
 
 @deftogether[(
@@ -545,7 +545,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   
   Two @tt{just} values are equivalent by @racket[equal-always?] or @racket[equal?] if they contain similarly equivalent elements.
   
-  @enforces-autopticity[]
+  Call sites using the constructor must be autoptic.
 }
 
 @defproc[(maybe? [v any/c]) boolean?]{
@@ -604,7 +604,7 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   
   Every two @tt{trivial} values are @racket[equal-always?].
   
-  @enforces-autopticity[]
+  Call sites using the constructor must be autoptic.
 }
 
 
