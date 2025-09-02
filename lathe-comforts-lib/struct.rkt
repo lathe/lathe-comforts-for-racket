@@ -223,13 +223,19 @@
                 (raise-arguments-error 'hash-proc
                   (string-append "expected this to be " phrase)
                   "this" this)
-              #/hash-code-combine (recur name) (recur slot) ...))
+              #/hash-code-combine
+                (equal-always-hash-code #/struct-descriptor name)
+                (recur slot)
+                ...))
             (define (hash2-proc this recur)
               (expect this (name slot ...)
                 (raise-arguments-error 'hash2-proc
                   (string-append "expected this to be " phrase)
                   "this" this)
-              #/hash-code-combine (recur name) (recur slot) ...))))]
+              #/hash-code-combine
+                (equal-always-hash-code #/struct-descriptor name)
+                (recur slot)
+                ...))))]
       [
         (
           {~autoptic-list-to stx
@@ -802,7 +808,8 @@
                 (raise-arguments-error 'hash-proc
                   "expected self to be an instance of the structure type where this gen:equal+hash behavior was installed"
                   "self" self)
-              #/hash-code-combine* (recur #,tupler-id)
+              #/hash-code-combine*
+                (equal-always-hash-code #,tupler-id)
                 (map (fn proj #/recur #/proj self) projs)))
             
             (define (hash2-proc self recur)
@@ -812,7 +819,8 @@
                 (raise-arguments-error 'hash-proc
                   "expected self to be an instance of the structure type where this gen:equal+hash behavior was installed"
                   "self" self)
-              #/hash-code-combine* (recur #,tupler-id)
+              #/hash-code-combine*
+                (equal-always-hash-code #,tupler-id)
                 (map (fn proj #/recur #/proj self) projs)))
             
             )])))
