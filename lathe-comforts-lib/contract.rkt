@@ -53,6 +53,7 @@
   by-own-method/c)
 (provide #/own-contract-out
   equal/c
+  equal-always/c
   flat-contract-accepting/c)
 
 
