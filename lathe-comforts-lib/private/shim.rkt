@@ -469,77 +469,72 @@
             `
             (,(contextualize-stx lctx #'kw)
               ,@(syntax->list #'(args ...)))}}
-        {~and
-          {~seq
-            {~and kw
-              {~autoptic-to surrounding-stx
-                (~or* #:fail-when #:fail-unless)}}
-            condition:expr
-            {~var message
-              (expr/c #'(or/c string? #f)
-                #:phase phase
-                #:name "the message string or #f")}}
+        {~seq
+          {~and kw
+            {~autoptic-to surrounding-stx
+              {~or* #:fail-when #:fail-unless}}}
+          condition:expr
+          {~var message
+            (expr/c #'(or/c string? #f)
+              #:phase phase
+              #:name "the message string or #f")}
           {~bind / smuggle-parts /lambda (lctx)
             `
             (,(contextualize-stx lctx #'kw)
               ,#'condition
               ,#'message.c)}}
-        {~and
-          {~seq
-            {~and kw /~autoptic-to surrounding-stx #:declare}
-            var:id
-            {~or*
-              {~and stxclass:id
-                {~bind / smuggle-stxclass /lambda (lctx) #'stxclass}}
-              {~and
-                {~autoptic-list-to surrounding-stx
-                  #:smuggle smuggle-stxclass-call
-                  (stxclass:id arg ...)}
-                {~bind / smuggle-stxclass /lambda (lctx)
-                  ((datum smuggle-stxclass-call) lctx
-                    `(,#'stxclass ,@(syntax->list #'(arg ...))))}}}
-            {~or*
-              {~seq {~bind / smuggle-role /lambda (lctx) `()}}
-              {~and
-                {~seq
-                  {~and role-kw /~autoptic-to surrounding-stx #:role}
-                  {~var role-expr
-                    (expr/c #'(or/c string? #f)
-                      #:phase phase
-                      #:name "the role string or #f")}}
-                {~bind / smuggle-role /lambda (lctx)
-                  `
-                  (,(contextualize-stx lctx #'role-kw)
-                    ,#'role-expr.c)}}}}
+        {~seq
+          {~and kw /~autoptic-to surrounding-stx #:declare}
+          var:id
+          {~or*
+            {~and stxclass:id
+              {~bind / smuggle-stxclass /lambda (lctx) #'stxclass}}
+            {~and
+              {~autoptic-list-to surrounding-stx
+                #:smuggle smuggle-stxclass-call
+                (stxclass:id arg ...)}
+              {~bind / smuggle-stxclass /lambda (lctx)
+                ( (datum smuggle-stxclass-call) lctx
+                  `(,#'stxclass ,@(syntax->list #'(arg ...))))}}}
+          {~or*
+            {~seq /~bind / smuggle-role /lambda (lctx) `()}
+            {~seq
+              {~and role-kw /~autoptic-to surrounding-stx #:role}
+              {~var role-expr
+                (expr/c #'(or/c string? #f)
+                  #:phase phase
+                  #:name "the role string or #f")}
+              {~bind / smuggle-role /lambda (lctx)
+                `
+                (,(contextualize-stx lctx #'role-kw)
+                  ,#'role-expr.c)}}}
           {~bind / smuggle-parts /lambda (lctx)
             `
             (,(contextualize-stx lctx #'kw)
               ,#'var
               ,((datum smuggle-stxclass) lctx)
               ,@((datum smuggle-role) lctx))}}
-        {~and
-          {~seq {~and kw /~autoptic-to surrounding-stx #:attr}
-            {~or*
-              {~and var:id
-                {~bind / smuggle-var /lambda (lctx) #'var}}
-              {~and
-                {~autoptic-list-to surrounding-stx
-                  #:smuggle smuggle-var-list
-                  [var:id {~autoptic-to surrounding-stx depth:nat}]}
-                {~bind / smuggle-var /lambda (lctx)
-                  ((datum smuggle-var-list) lctx
-                    `(,#'var ,(contextualize-stx lctx #'depth)))}}}
-            val:expr}
+        {~seq
+          {~and kw /~autoptic-to surrounding-stx #:attr}
+          {~or*
+            {~and var:id /~bind / smuggle-var /lambda (lctx) #'var}
+            {~and
+              {~autoptic-list-to surrounding-stx
+                #:smuggle smuggle-var-list
+                [var:id {~autoptic-to surrounding-stx depth:nat}]}
+              {~bind / smuggle-var /lambda (lctx)
+                ((datum smuggle-var-list) lctx
+                  `(,#'var ,(contextualize-stx lctx #'depth)))}}}
+          val:expr
           {~bind / smuggle-parts /lambda (lctx)
             `
             (,(contextualize-stx lctx #'kw)
               ,((datum smuggle-var) lctx)
               ,#'val)}}
-        {~and
-          {~seq
-            {~and kw /~autoptic-to surrounding-stx /~or* #:do #:undo}
-            {~autoptic-list-to surrounding-stx #:smuggle smuggle-body
-              [body:expr ...]}}
+        {~seq
+          {~and kw /~autoptic-to surrounding-stx /~or* #:do #:undo}
+          {~autoptic-list-to surrounding-stx #:smuggle smuggle-body
+            [body:expr ...]}
           {~bind / smuggle-parts /lambda (lctx)
             `
             (,(contextualize-stx lctx #'kw)
@@ -1127,7 +1122,7 @@
   (pattern
     {~seq
       {~or*
-        {~and {~seq} /~bind / smuggle-kw /lambda (lctx) '()}
+        {~seq /~bind / smuggle-kw /lambda (lctx) '()}
         {~and {~autoptic-to surrounding-stx kw:keyword}
           {~bind / smuggle-kw /lambda (lctx)
             (list /contextualize-stx lctx #'kw)}}}
