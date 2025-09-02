@@ -386,6 +386,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents impersonator contracts.
   
   Every two @tt{impersonator-obstinacy} values are @racket[equal?].
+  
+  @enforces-autopticity[]
 }
 
 @deftogether[(
@@ -401,6 +403,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents chaperone contracts.
   
   Every two @tt{chaperone-obstinacy} values are @racket[equal?].
+  
+  @enforces-autopticity[]
 }
 
 @deftogether[(
@@ -416,6 +420,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Struct-like operations which construct and deconstruct a @tech{contract obstinacy} that represents flat contracts.
   
   Every two @tt{flat-obstinacy} values are @racket[equal?].
+  
+  @enforces-autopticity[]
 }
 
 @defproc[(obstinacy-contract/c [ob obstinacy?]) flat-contract?]{
@@ -520,6 +526,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Struct-like operations which construct and deconstruct a @tech{maybe value} that does not contain an element.
   
   Every two @tt{nothing} values are @racket[equal?].
+  
+  @enforces-autopticity[]
 }
 
 @deftogether[(
@@ -532,6 +540,8 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   Struct-like operations which construct and deconstruct a @tech{maybe value} that contains an element.
   
   Two @tt{just} values are @racket[equal?] if they contain @racket[equal?] elements.
+  
+  @enforces-autopticity[]
 }
 
 @defproc[(maybe? [v any/c]) boolean?]{
@@ -589,6 +599,8 @@ So Lathe Comforts provides a very simple structure type, @racket[trivial], to re
   Struct-like operations which construct and deconstruct a @tech{trivial value}.
   
   Every two @tt{trivial} values are @racket[equal?].
+  
+  @enforces-autopticity[]
 }
 
 
