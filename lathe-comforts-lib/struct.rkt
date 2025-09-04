@@ -133,7 +133,8 @@
 
 (define-syntax (struct-easy stx)
   (syntax-parse stx #/
-    (_ (name:id slot:id ...) rest ...)
+    {~autoptic-list
+      (_ {~autoptic-list (name:id slot:id ...)} rest ...)}
   #/w-loop next
     rest #'(rest ...)
     has-write #f
@@ -152,10 +153,6 @@
         #:attr [options 2] (reverse rev-options)
         #`
         (begin
-          (define writefn
-            #,
-            (or has-write
-              #'(dissectfn (name slot ...) (list slot ...))))
           (define phrase
             #,
             (mat maybe-phrase (list phrase) phrase
@@ -172,7 +169,8 @@
                       (raise-arguments-error 'write-proc
                         (string-append "expected this to be " phrase)
                         "this" this)
-                    #/writefn this))))]
+                    #/#,(or has-write #'(fn this #/list slot ...))
+                      this))))]
             options ... ...))]
       [ ({~autoptic-to stx #:other} ~! . rest)
         (next #'() #f maybe-phrase #'rest)]
