@@ -27,9 +27,8 @@
 (provide
   define-syntax-parse-rule/autoptic
   define-syntax-parse-rule/autoptic/loc
-  autoptic-binds-to
-  fn
-  define-simple-normalizing-binder)
+  binds
+  fn)
 (provide #/own-contract-out
   pass)
 (provide
@@ -75,9 +74,9 @@
   (provide #/all-defined-out)
   
   
-  ; === Utilities for binding syntax, part 1 ===
+  ; === Utilities for binding syntax ===
   
-  (define-splicing-syntax-class (autoptic-binds-to surrounding-stx)
+  (define-splicing-syntax-class (binds surrounding-stx)
     #:attributes ([var 1] [val 1])
     (pattern
       (~or*
@@ -112,20 +111,6 @@
 (require 'part7)
 
 
-; === Utilities for binding syntax, part 2 ===
-
-(define-syntax-parse-rule/autoptic/loc
-  (define-simple-normalizing-binder
-    {~autoptic-list (name:id pattern:expr ...)}
-    {~autoptic-list (template:expr ...)})
-  (define-syntax-parse-rule/autoptic/loc
-    (name pattern ... vars body:expr #/... ...)
-    #:declare vars (autoptic-binds-to this-syntax)
-    (template ... ([vars.var vars.val] #/... ...)
-      body
-      (... ...))))
-
-
 ; === Utilities for functional programming, part 2 ===
 
 
@@ -135,11 +120,16 @@
   (-> any/c (-> any/c any) any)
   (func arg))
 
-(define-simple-normalizing-binder (w-)
-  (let))
+(define-syntax-parse-rule/autoptic/loc (w- vars body:expr ...)
+  #:declare vars (binds this-syntax)
+  (let ([vars.var vars.val] ...)
+    body ...))
 
-(define-simple-normalizing-binder (w-loop proc:id)
-  (let proc))
+(define-syntax-parse-rule/autoptic/loc
+  (w-loop proc:id vars body:expr ...)
+  #:declare vars (binds this-syntax)
+  (let proc ([vars.var vars.val] ...)
+    body ...))
 
 (define-syntax-parse-rule/autoptic/loc
   (loopfn proc:id args:id ... body:expr)

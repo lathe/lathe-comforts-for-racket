@@ -33,8 +33,7 @@
   define-syntax-parse-rule/autoptic/loc
   
   ; == Utilities for binding syntax ==
-  autoptic-binds-to
-  define-simple-normalizing-binder
+  binds
   
   ; == Utilities for functional programming ==
   

@@ -151,7 +151,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @defproc[
   #:kind "splicing syntax class"
-  (autoptic-binds-to [surrounding-stx syntax?])
+  (binds [surrounding-stx syntax?])
   @#,tech[#:doc syntax-doc]{splicing syntax class}
 ]{
   Matches syntax in any of three formats:
@@ -171,36 +171,6 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
   In all cases, this binds two attributes of ellipsis depth 1, namely @racket[_var] and @racket[_val], and they carry the same number of matches.
   
   (See @racket[_], @racket[expr], and @racket[id].)
-}
-
-@defform[
-  (define-simple-normalizing-binder (id pattern ...)
-    (template ...))
-]{
-  Defines a syntax transformer named @racket[id] which "normalizes" its binding syntax. Its input is a form that uses the rather permissive @racket[binds] splicing syntax class, and its output specifically uses the @racket[([_var _val] ...)] binding format expected by most Racket binding syntaxes.
-  
-  Specifically, the generated macro is equivalent to the following, where @racket[pattern ...] and @racket[template ...] are expanded right away, and the rest of the ellipses are part of the generated macro:
-  
-  @racketblock[
-    (define-syntax-parse-rule/autoptic/loc
-      (id pattern ... _vars _body:expr ...)
-      #:declare _vars (autoptic-binds-to this-syntax)
-      (template ... ([_vars.var _vars.val] ...)
-        _body ...))
-  ]
-  
-  (See @racket[expr].)
-  
-  As an example, @racket[w-] and @racket[w-loop] are defined straightforwardly in terms of @racket[let]:
-  
-  @racketblock[
-    (define-simple-normalizing-binder (w-)
-      (let))
-    (define-simple-normalizing-binder (w-loop _proc:id)
-      (let _proc))
-  ]
-  
-  @definition-that-ensures-autopticity[]
 }
 
 
@@ -229,7 +199,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 @defform[(w- local-binds body-expr ...)]{
-  Works just like a @racket[let] form with no @racket[_proc-id], but uses the @racket[autoptic-binds-to] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
+  Works just like a @racket[let] form with no @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
   
   @enforces-autopticity[]
   
@@ -260,7 +230,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 @defform[(w-loop proc-id local-binds body ...)]{
-  Works just like a @racket[let] form with a @racket[_proc-id], but uses the @racket[autoptic-binds-to] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
+  Works just like a @racket[let] form with a @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
   
   This example reverses and squares the numbers in a list, using the @racket[_next] procedure to continue the loop:
   
