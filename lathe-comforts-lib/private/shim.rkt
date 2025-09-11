@@ -43,7 +43,7 @@
   unlessc
   condc
   (for-syntax
-    autoptic-pattern-directive-to)
+    pattern-directive)
   define-provide-pre-transformer-syntax-parse-rule/autoptic
   so-to-speak-out
   ifc-out
@@ -453,7 +453,7 @@
       #;prop basis-stx))
   
   (define-splicing-syntax-class
-    (autoptic-pattern-directive-to surrounding-stx #:phase phase)
+    (pattern-directive surrounding-stx #:phase phase)
     #:attributes (smuggle-parts)
     (pattern
       {~or*
@@ -576,7 +576,7 @@
         (_ {~autoptic-list (name:id pat:expr ...)}
           {~and
             {~var directive
-              (autoptic-pattern-directive-to this-syntax
+              (pattern-directive this-syntax
                 #:phase (add1 /syntax-local-phase-level))}
             {~bind / [directive-parts 1]
               ((datum directive.smuggle-parts) this-syntax)}}
@@ -596,7 +596,7 @@
       {~autoptic-list (name:id pat:expr ...)}
       {~and
         {~var directive
-          (autoptic-pattern-directive-to this-syntax
+          (pattern-directive this-syntax
             #:phase (add1 /syntax-local-phase-level))}
         {~bind / [directive-parts 1]
           ((datum directive.smuggle-parts) this-syntax)}}
@@ -745,7 +745,7 @@
     {~autoptic-list (name:id pattern ...)}
     {~and
       {~var directive
-        (autoptic-pattern-directive-to this-syntax
+        (pattern-directive this-syntax
           #:phase (add1 /syntax-local-phase-level))}
       {~bind / [directive-parts 1]
         ((datum directive.smuggle-parts) this-syntax)}}
