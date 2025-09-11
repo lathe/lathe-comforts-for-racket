@@ -32,9 +32,6 @@
   define-syntax-parse-rule/autoptic
   define-syntax-parse-rule/autoptic/loc
   
-  ; == Utilities for binding syntax ==
-  binds
-  
   ; == Utilities for functional programming ==
   
   ; Bindings and recursion
@@ -54,4 +51,4 @@
   dissect/derived
   dissectfn
   dissectfn/derived
-)
+  )

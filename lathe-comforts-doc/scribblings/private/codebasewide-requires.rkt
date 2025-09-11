@@ -23,7 +23,13 @@
   (only-in syntax/parse this-syntax)
   racket/base)
 
-(only-in scribble/example examples make-eval-factory)
-(only-in syntax/parse/define define-syntax-parse-rule)
-
-(only-in lathe-comforts define-syntax-parse-rule/autoptic)
+(combine-in/fallback
+  (combine-in
+    
+    (only-in scribble/example examples make-eval-factory)
+    (only-in syntax/parse/define define-syntax-parse-rule)
+    
+    (only-in lathe-comforts define-syntax-parse-rule/autoptic)
+    
+    )
+  scribble/manual)

@@ -27,7 +27,7 @@
 (provide
   define-syntax-parse-rule/autoptic
   define-syntax-parse-rule/autoptic/loc
-  binds
+  w-binds
   fn)
 (provide #/own-contract-out
   pass)
@@ -76,7 +76,7 @@
   
   ; === Utilities for binding syntax ===
   
-  (define-splicing-syntax-class (binds surrounding-stx)
+  (define-splicing-syntax-class (w-binds surrounding-stx)
     #:attributes ([var 1] [val 1])
     (pattern
       (~or*
@@ -121,13 +121,13 @@
   (func arg))
 
 (define-syntax-parse-rule/autoptic/loc (w- vars body:expr ...)
-  #:declare vars (binds this-syntax)
+  #:declare vars (w-binds this-syntax)
   (let ([vars.var vars.val] ...)
     body ...))
 
 (define-syntax-parse-rule/autoptic/loc
   (w-loop proc:id vars body:expr ...)
-  #:declare vars (binds this-syntax)
+  #:declare vars (w-binds this-syntax)
   (let proc ([vars.var vars.val] ...)
     body ...))
 

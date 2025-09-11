@@ -25,12 +25,6 @@
 @(init-shim)
 
 
-@(define @enforces-autopticity[]
-  @list{
-    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
-  })
-
-
 @title[#:tag "own-contract"]{
   A Framework for Declaring Contracts Alongside Functions
 }

@@ -1,4 +1,4 @@
-#lang parendown/slash racket/base
+#lang parendown/slash at-exp racket/base
 
 ; shim.rkt
 ;
@@ -25,7 +25,11 @@
 (reprovide lathe-comforts/scribblings/private/codebasewide-requires)
 
 (provide
-  init-shim)
+  init-shim
+  enforces-autopticity
+  also-enforces-autopticity
+  definition-that-ensures-autopticity
+  pattern-that-ensures-autopticity)
 
 
 ; TODO: Putting `for-label` in
@@ -59,7 +63,8 @@
           (only-in racket/math natural?)
           (only-in racket/struct make-constructor-style-printer)
           (only-in racket/struct-info extract-struct-info)
-          (only-in syntax/parse expr id this-syntax syntax-parse)
+          (only-in syntax/parse
+            ~peek-not ~seq ~var expr id this-syntax syntax-parse)
           (only-in syntax/parse/define define-syntax-parse-rule)
           
           (only-in parendown pd)
@@ -83,3 +88,28 @@
       ))
   
   result)
+
+
+(define @enforces-autopticity[]
+  @list{
+    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+  })
+
+(define @also-enforces-autopticity[]
+  @list{
+    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+  })
+
+(define @definition-that-ensures-autopticity[]
+  @list{
+    Defining a syntax transformer this way helps to ensure @tech{autopticity} of each of its call sites. Note that each of the @racket[_pattern]s is still the usual sort of @racket[syntax-parse] pattern, and it won't ensure autopticity without the use of helpers like the @racket[~autoptic-list] pattern expander.
+    
+    @also-enforces-autopticity[]
+  })
+
+@(define @pattern-that-ensures-autopticity[]
+  @list{
+    Parsing using this pattern helps to ensure @tech{autopticity} of the call site being parsed.
+    
+    @also-enforces-autopticity[]
+  })

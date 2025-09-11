@@ -51,23 +51,6 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 
 @subsection[#:tag "syntax-definition"]{Utilities for Macro Definition}
 
-@(define @enforces-autopticity[]
-  @list{
-    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
-  })
-
-@(define @also-enforces-autopticity[]
-  @list{
-    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
-  })
-
-@(define @definition-that-ensures-autopticity[]
-  @list{
-    Defining a syntax transformer this way helps to ensure @tech{autopticity} of each of its call sites. Note that each of the @racket[_pattern]s is still the usual sort of @racket[syntax-parse] pattern, and it won't ensure autopticity without the use of helpers like the @racket[~autoptic-list] pattern expander.
-    
-    @also-enforces-autopticity[]
-  })
-
 @defform[
   (define-syntax-parse-rule/autoptic (id pattern ...)
     pattern-directive ...
@@ -147,33 +130,6 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 
-@subsection[#:tag "binding-syntax"]{Utilities for Binding Syntax}
-
-@defproc[
-  #:kind "splicing syntax class"
-  (binds [surrounding-stx syntax?])
-  @#,tech[#:doc syntax-doc]{splicing syntax class}
-]{
-  Matches syntax in any of three formats:
-  
-  @itemlist[
-    @item{
-      A single syntax object which is a list of two-element lists which each contain an identifier and an expression. This uses the pattern @racket[([_var:id _val:expr] ...)], and the user writes something like @racket[(w- ([_a 1] [_b 2]) (+ _a _b))] when they use this format.
-    }
-    @item{
-      A single syntax object which is a list of an even number of elements which alternate between identifiers and expressions. This uses the pattern @racket[[(~seq _var:id _val:expr) ...]], and the user writes something like @racket[(w- [_a 1 _b 2] (+ _a _b))] when they use this format.
-    }
-    @item{
-      An even number of syntax objects alternating between identifiers and expressions, proceeding as far as possible. This uses the head pattern @racket[(~seq (~seq _var:id _val:expr) ... (~peek-not (~seq __:id __:expr)))], and the user writes something like @racket[(w- _a 1 _b 2 (+ _a _b))] when they use this format.
-    }
-  ]
-  
-  In all cases, this binds two attributes of ellipsis depth 1, namely @racket[_var] and @racket[_val], and they carry the same number of matches.
-  
-  (See @racket[_], @racket[expr], and @racket[id].)
-}
-
-
 @subsection[#:tag "fp"]{Utilities for Functional Programming}
 
 
@@ -199,7 +155,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 @defform[(w- local-binds body-expr ...)]{
-  Works just like a @racket[let] form with no @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
+  Works just like a @racket[let] form with no @racket[_proc-id], but uses the @racket[w-binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
   
   @enforces-autopticity[]
   
@@ -230,7 +186,7 @@ Some of these utilities are designed with Parendown in mind. In some cases, Pare
 }
 
 @defform[(w-loop proc-id local-binds body ...)]{
-  Works just like a @racket[let] form with a @racket[_proc-id], but uses the @racket[binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
+  Works just like a @racket[let] form with a @racket[_proc-id], but uses the @racket[w-binds] splicing syntax class for the syntax of its bindings, so parentheses can usually be omitted.
   
   This example reverses and squares the numbers in a list, using the @racket[_next] procedure to continue the loop:
   
