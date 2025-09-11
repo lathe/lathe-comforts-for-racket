@@ -555,21 +555,12 @@
   (define (make-struct-property-expander impl)
     (dedicated-struct-property-expander impl))
   
-  (define-syntax-class props-and-gens-passthrough #/pattern
-    {~or*
-      {~autoptic-list (#:prop ~! _:expr _:expr)}
-      {~autoptic-list (#:gen ~! gen-name:id methods ...)}
-      {~and {~autoptic-list (op:id ~! . _)}
-        {~fail #:unless
-          (struct-property-expander? #/syntax-local-value #'op)
-          "expected the name of a structure property expander"}}})
-  
   (define-syntax-class
     (props-and-gens len reflection-name-id tupler-id)
-    #:attributes ([expansion 1])
+    #:attributes ([smuggle 1] [expansion 1])
     (pattern
       {~or*
-        {~and
+        {~and call
           {~autoptic-list
             (#:prop ~!
               {~var prop-key
@@ -578,13 +569,14 @@
               {~var prop-val
                 (expr/c #'any/c
                   #:name "one of the associated structure type property values")})}
+          {~bind #/ [smuggle 1] (list #'call)}
           {~bind #/ [expansion 1]
             (syntax->list #'(#:property prop-key.c prop-val.c))}}
-        {~and
-          {~autoptic-list (#:gen ~! gen-name:id methods ...)}
+        {~and call {~autoptic-list (#:gen ~! gen-name:id methods ...)}
+          {~bind #/ [smuggle 1] (list #'call)}
           {~bind #/ [expansion 1]
             (syntax->list #'(#:methods gen-name [methods ...]))}}
-        {~and call {~autoptic-list (op:id ~! . _)}
+        {~and call (op:id ~! . _)
           {~fail #:unless
             (struct-property-expander? #/syntax-local-value #'op)
             "expected the name of a structure property expander"}
@@ -596,6 +588,8 @@
             (w- op (syntax-local-value #'op)
             #/w- expand (struct-property-expander-ref op)
             #/expand op len reflection-name-id tupler-id #'call)}
+          {~bind #/ [smuggle 1]
+            (syntax->list #'(repeat.smuggle ... ...))}
           {~bind #/ [expansion 1]
             (syntax->list #'(repeat.expansion ... ...))}}}))
   
@@ -664,15 +658,19 @@
       {~var inspector
         (expr/c #'(or/c inspector? #f 'prefab)
           #:name "inspector argument")}
-      args:props-and-gens-passthrough ...)}
+      {~do #/define len (length #/syntax->list #'(proj ...))}
+      {~var args
+        (props-and-gens len #'reflection-name-result #'tupler)}
+      ...)}
   #`
   (begin
+    (define reflection-name-result reflection-name.c)
     (define tupler
       #,
       (quasisyntax/loc this-syntax
-        (tupler-for-simple-struct reflection-name.c inspector.c
-          #,(length #/syntax->list #'(proj ...))
-          args ...)))
+        (tupler-for-simple-struct reflection-name-result inspector.c
+          #,len
+          args.smuggle ... ...)))
     (define-pred-and-projs-from-tupler pred? proj ... tupler)))
 
 
@@ -727,18 +725,20 @@
         {~var inspector
           (expr/c #'(or/c inspector? #f 'prefab)
             #:name "inspector argument")}
-        args:props-and-gens-passthrough ...)}
+        {~do #/define len (length #/syntax->list #'(proj ...))}
+        {~var args
+          (props-and-gens len #'reflection-name-result #'tupler)}
+        ...)}
     #`
     (begin
+      (define reflection-name-result reflection-name.c)
       #,
       (syntax/loc this-syntax
         (define-value-imitation-simple-struct
           (pred? proj ...)
           tupler
-          reflection-name.c inspector.c args ...))
-      (define-match-expander-from-tupler make
-        #,(length #/syntax->list #'(proj ...))
-        tupler))])
+          reflection-name-result inspector.c args.smuggle ... ...))
+      (define-match-expander-from-tupler make #,len tupler))])
 
 (define-syntax-parser define-imitation-simple-struct #/
   {~autoptic-list
@@ -750,11 +750,17 @@
       {~var inspector
         (expr/c #'(or/c inspector? #f 'prefab)
           #:name "inspector argument")}
-      args:props-and-gens-passthrough ...)}
+      {~var args
+        (props-and-gens (length #/syntax->list #'(proj ...))
+          #'reflection-name-result
+          #'tupler)}
+      ...)}
   (syntax/loc this-syntax
-    (define-syntax-and-value-imitation-simple-struct (pred? proj ...)
-      make tupler
-      reflection-name.c inspector.c args ...)))
+    (begin
+      (define reflection-name-result reflection-name.c)
+      (define-syntax-and-value-imitation-simple-struct (pred? proj ...)
+        make tupler
+        reflection-name-result inspector.c args.smuggle ... ...))))
 
 (define-syntax auto-write
   (make-struct-property-expander
