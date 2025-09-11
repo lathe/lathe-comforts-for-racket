@@ -149,5 +149,5 @@ An example of a situation which would be ameliorated by use of autoptic parsing 
   
   In all cases, this binds two attributes of ellipsis depth 1, namely @racket[_var] and @racket[_val], and they carry the same number of matches.
   
-  @enforces-autopticity[]
+  This syntax class enforces that the structural nodes of its syntax are @tech{autoptic} with respect to @racket[surrounding-stx].
 }
