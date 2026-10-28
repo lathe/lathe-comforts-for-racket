@@ -4,7 +4,7 @@
 ;
 ; Finger trees, a catenable deque data structure with a pure API.
 
-;   Copyright 2023-2024 The Lathe Authors
+;   Copyright 2023-2024, 2026 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -82,10 +82,11 @@
 
 ; TODO: This was a small sketch at a way to implement counts that
 ; would increment in worst-case constant time, rather than the
-; worst-caselogarithmic time and amortized constant time we would
-; probably get from Racket numbers. Ah well, pushing elements onto our
-; finger tree also takes worst-case logarithmic time and amortized
-; constant time, so we've just used Racket numbers after all.
+; worst-case logarithmic (in the value of the number) time and
+; amortized constant time we would probably get from Racket numbers.
+; Ah well, pushing elements onto our finger tree also takes worst-case
+; logarithmic time and amortized constant time, so we've just used
+; Racket numbers after all.
 ;
 ; The general approach we were trying to take here was to have a
 ; little-endian number where the big digits are lazy, just like our
@@ -431,6 +432,11 @@
     [(finger-3 a b c) (list a b c)]
     [(finger-4 a b c d) (list a b c d)]))
 
+(define (list->summarized-node ss n)
+  (match n
+    [(list a b) (summarized-node-2 ss a b)]
+    [(list a b c) (summarized-node-3 ss a b c)]))
+
 (define (list->finger f)
   (match f
     [(list a) (finger-1 a)]
@@ -649,16 +655,19 @@
             b-middle))])
     last))
 
-(define/own-contract (finger-tree-append ft-a ft-b)
+(define/own-contract (finger-tree-append ss ft-a ft-b)
   ; TODO PRECISE: See if we want to check that `ft-a` and `ft-b` have
   ; the same `finger-tree-summary-sys` as part of the contract.
-  (-> finger-tree? finger-tree? finger-tree?)
-  (in-finger-tree ft-a /fn a-ss ft-a
+  (-> summary-sys? finger-tree? finger-tree? finger-tree?)
+  (dissect ft-a (finger-tree-rep a-ss ft-a)
   /dissect ft-b (finger-tree-rep b-ss ft-b)
-  /expect (equal-always? a-ss b-ss) #t
+  /expect (equal-always? ss a-ss) #t
     ; TODO: Improve this error.
-    (error "expected two finger trees with the same summary system")
-  /ftree-append a-ss ft-a ft-b))
+    (error "expected a finger tree with the given summary system")
+  /expect (equal-always? ss b-ss) #t
+    ; TODO: Improve this error.
+    (error "expected a finger tree with the given summary system")
+  /finger-tree-rep ss /ftree-append ss ft-a ft-b))
 
 (define (finger-summarize ss finger)
   (apply summary-sys-summary-plus ss
@@ -945,7 +954,7 @@
     (maybe/c /match/c bisection finger-tree? finger-tree?))
   (w- ss (finger-tree-summary-sys ft)
   /egress-veer-apology-maybe
-    (egress-bind (finger-tree-ref/remainder ft i) /fn i
+    (egress-bind (finger-tree-split-at/remainder ft i) /fn i
     ; If we've tried to split right at the end of the finger tree,
     ; `finger-tree-split-at/remainder` counts that as a failure, but
     ; `finger-tree-split-at-maybe` does not.
@@ -1069,3 +1078,377 @@
     (finger-tree-rep ss
       (expect e-after (just e-after) after
         (ftree-push-last ss after e-after)))))
+
+
+(define
+  (ftree-with-ordered-summaries-union
+    ss
+    a
+    b
+    summary<=>
+    summarized-union-lastward
+    element-union-lastward
+    summarized-union-firstward
+    element-union-firstward)
+  (w- summarized-element-union-lastward
+    (fn a b /summarized-union-lastward a b element-union-lastward)
+  /w- summarized-element-union-firstward
+    (fn a b /summarized-union-firstward a b element-union-firstward)
+  /w- union
+    (fn a b
+      (ftree-with-ordered-summaries-union ss a b summary<=>
+        summarized-union-lastward
+        element-union-lastward
+        summarized-union-firstward
+        element-union-firstward))
+  /mat a (ftree-0) b
+  /mat b (ftree-0) a
+  /mat a (ftree-1 a-s)
+    (dissect a-s (summarized a-sum a)
+    /dissect
+      (finger-tree-with-ordered-summaries-split (finger-tree-rep ss b)
+        (fn b-sum
+          (= -1 /summary<=> b-sum a-sum)))
+      (bisection (finger-tree-rep _ b-min) (finger-tree-rep _ b-max))
+    /ftree-append ss (ftree-push-last ss b-min a-s) b-max)
+  /mat b (ftree-1 b-s)
+    (dissect b-s (summarized b-sum b)
+    /dissect
+      (finger-tree-with-ordered-summaries-split (finger-tree-rep ss a)
+        (fn a-sum
+          (not /= 1 /summary<=> a-sum b-sum)))
+      (bisection (finger-tree-rep _ a-min) (finger-tree-rep _ a-max))
+    /ftree-append ss (ftree-push-last ss a-min b-s) a-max)
+  /dissect a (ftree-2+ a-first a-middle a-last)
+  /dissect b (ftree-2+ b-first b-middle b-last)
+  
+  /dissect
+    (w-loop next
+      a (finger->list a-first)
+      b (finger->list b-first)
+      rev-result (list)
+      
+      (expect a (cons a-s a) (list (reverse rev-result) 'b b)
+      /expect b (cons b-s b) (list (reverse rev-result) 'a a)
+      /dissect (summarized-element-union-lastward a-s b-s)
+        (list result-s carry-side carry)
+      /next
+        (match carry-side ['a (cons carry a)] ['b a])
+        (match carry-side ['a b] ['b (cons carry b)])
+        (cons result-s rev-result)))
+    (list first-list first-carry-side first-carry)
+  ; If `first-list` has more than 4 elements, we steal away the
+  ; remaining ones to add to `first-carry`.
+  /dissect
+    (expect first-list (list* a b c d e first-list)
+      (list first-list first-carry)
+      (list (list a b c d) (append (cons e first-list) first-carry)))
+    (list first-list first-carry)
+  ; If `first-carry` has 1 element, we steal the last element from
+  ; `first-list` to add to it.
+  /dissect
+    (expect first-carry (list a) (list first-list first-carry)
+    /dissect (reverse first-list) (cons first-last rev-first-past)
+      (list (reverse rev-first-past) (list first-last a)))
+    (list first-list first-carry)
+  /w- first (list->finger first-list)
+  ; We bunch `first-carry` into summarized nodes of 2 or 3 children,
+  ; and we add each one to `a-middle` or `b-middle` depending on the
+  ; value of `first-carry-side`.
+  /w- push-carry-first
+    (fn middle
+      (w-loop next rev-first-carry (reverse first-carry) middle middle
+        (mat rev-first-carry (list)
+          middle
+        /mat rev-first-carry (list c b a)
+          (delay/strict
+            (ftree-push-first ss
+              (summarized-node-3 ss a b c)
+              (force middle)))
+        /dissect rev-first-carry (list* b a rev-first-carry)
+        /w- middle
+          (delay/strict
+            (ftree-push-first ss
+              (summarized-node-2 ss a b)
+              (force middle)))
+        /next middle rev-first-carry)))
+  /dissect
+    (match first-carry-side
+      ['a (list (push-carry-first a-middle) b-middle)]
+      ['b (list a-middle (push-carry-first b-middle))])
+    (list a-middle b-middle)
+  
+  /dissect
+    (w-loop next
+      rev-a (reverse /finger->list a-last)
+      rev-b (reverse /finger->list b-last)
+      result (list)
+      
+      (expect rev-a (cons a-s rev-a) (list (reverse rev-b) 'b result)
+      /expect rev-b (cons b-s rev-b) (list (reverse rev-a) 'a result)
+      /dissect (summarized-element-union-firstward a-s b-s)
+        (list carry carry-side result-s)
+      /next
+        (match carry-side ['a (cons carry rev-a)] ['b rev-a])
+        (match carry-side ['a rev-b] ['b (cons carry rev-b)])
+        (cons result-s result)))
+    (list last-carry last-carry-side last-list)
+  ; If `last-list` has more than 4 elements, we steal away the
+  ; remaining ones to add to `last-carry`.
+  /dissect
+    (expect (reverse last-list) (list* e d c b a rev-last-list)
+      (list last-carry last-list)
+    /list
+      (append last-carry (reverse /cons a rev-last-list))
+      (list b c d e))
+    (list last-carry last-list)
+  ; If `last-carry` has 1 element, we steal the first element from
+  ; `last-list` to add to it.
+  /dissect
+    (expect last-carry (list a) (list last-carry last-list)
+    /dissect last-list (cons last-first last-rest)
+      (list (list a last-first) last-rest))
+    (list last-carry last-list)
+  /w- last (list->finger last-list)
+  ; We bunch `last-carry` into summarized nodes of 2 or 3 children,
+  ; and we add each one to `a-middle` or `b-middle` depending on the
+  ; value of `last-carry-side`.
+  /w- push-carry-last
+    (fn middle
+      (w-loop next last-carry last-carry middle middle
+        (mat last-carry (list)
+          middle
+        /mat last-carry (list a b c)
+          (delay/strict
+            (ftree-push-last ss
+              (force middle)
+              (summarized-node-3 ss a b c)))
+        /dissect last-carry (list* a b last-carry)
+        /w- middle
+          (delay/strict
+            (ftree-push-last ss
+              (force middle)
+              (summarized-node-2 ss a b)))
+        /next middle last-carry)))
+  /dissect
+    (match first-carry-side
+      ['a (list (push-carry-last a-middle) b-middle)]
+      ['b (list a-middle (push-carry-last b-middle))])
+    (list a-middle b-middle)
+  
+  /w- middle
+    (delay
+      (ftree-with-ordered-summaries-union
+        ss
+        (force a-middle)
+        (force b-middle)
+        summary<=>
+        ; TODO NOW: See if we need to replace these somehow so that
+        ; they merge elements which are nodes of two or three elements
+        ; rather than individual elements.
+        summarized-union-lastward
+        (fn a-s b-s
+          (dissect a-s (summarized a-sum a)
+          /dissect b-s (summarized b-sum b)
+          /dissect
+            (w-loop next
+              a (node->list a)
+              b (node->list b)
+              rev-result (list)
+              
+              (expect a (cons a-s a) (list (reverse rev-result) 'b b)
+              /expect b (cons b-s b) (list (reverse rev-result) 'a a)
+              /dissect (element-union-lastward a-s b-s)
+                (list element-result element-carry-side element-carry)
+              /next
+                (match element-carry-side
+                  ['a (cons element-carry a)]
+                  ['b a])
+                (match element-carry-side
+                  ['a b]
+                  ['b (cons element-carry b)])
+                (cons element-result rev-result)))
+            (list result-list carry-side carry-list)
+          ; If `result-list` has more than 3 elements, we steal away
+          ; the remaining ones to add to `carry-list`.
+          /dissect
+            (expect result-list (list* a b c d result-list)
+              (list result-list carry-list)
+            /list
+              (list a b c)
+              (append (cons d result-list) carry-list))
+            (list result-list carry-list)
+          ; If `carry-list` has 1 element, we steal the last element
+          ; from `result-list` to add to it.
+          /dissect
+            (expect carry-list (list a) (list result-list carry-list)
+            /dissect (reverse result-list)
+              (cons result-last rev-result-list)
+              (list (reverse rev-result-list) (list result-last a)))
+            (list result-list carry-list)
+          /list
+            (list->summarized-node ss result-list)
+            carry-side
+            (list->summarized-node ss carry-list)))
+        summarized-union-firstward
+        (fn a-s b-s
+          (dissect a-s (summarized a-sum a)
+          /dissect b-s (summarized b-sum b)
+          /dissect
+            (w-loop next
+              rev-a (reverse /node->list a)
+              rev-b (reverse /node->list b)
+              result (list)
+              
+              (expect rev-a (cons a-s rev-a) (list (reverse rev-b) 'b result)
+              /expect rev-b (cons b-s rev-b) (list (reverse rev-a) 'a result)
+              /dissect (element-union-firstward a-s b-s)
+                (list element-carry element-carry-side element-result)
+              /next
+                (match element-carry-side
+                  ['a (cons element-carry rev-a)]
+                  ['b a])
+                (match element-carry-side
+                  ['a b]
+                  ['b (cons element-carry rev-b)])
+                (cons element-result result)))
+            (list carry-list carry-side result-list)
+          ; If `result-list` has more than 3 elements, we steal away
+          ; the remaining ones to add to `carry-list`.
+          /dissect
+            (expect (reverse result-list) (list* d c b a rev-result-list)
+              (list carry-list result-list)
+            /list
+              (append carry-list (reverse /cons a rev-result-list))
+              (list b c d))
+            (list carry-list result-list)
+          ; If `carry-list` has 1 element, we steal the first element
+          ; from `result-list` to add to it.
+          /dissect
+            (expect carry-list (list a) (list carry-list result-list)
+            /dissect result-list (cons result-first result-rest)
+              (list (list a result-first) result-rest))
+            (list carry-list result-list)
+          /list
+            (list->summarized-node ss result-list)
+            carry-side
+            (list->summarized-node ss carry-list)))))
+  /ftree-2+ first middle last))
+
+(define
+  (ftree-with-ordered-summaries-union-lastward
+    ss
+    a
+    b
+    summary<=>
+    summarized-union-lastward
+    element-union-lastward
+    summarized-union-firstward
+    element-union-firstward)
+  (w- union
+    (fn a b
+      (ftree-with-ordered-summaries-union ss a b summary<=>
+        summarized-union-lastward
+        element-union-lastward
+        summarized-union-firstward
+        element-union-firstward))
+  /mat b (ftree-0)
+    (list a 'b (ftree-0))
+  /expect (ftree-pop-last ss a) (just /bisection a-past a-last-s)
+    (list b 'a (ftree-0))
+  /dissect a-last-s (summarized a-last-sum _)
+  /dissect
+    (finger-tree-with-ordered-summaries-split (finger-tree-rep ss b)
+      (fn b-sum
+        (= -1 /summary<=> b-sum a-last-sum)))
+    (bisection (finger-tree-rep _ b-min) (finger-tree-rep _ b-max))
+  /expect b-max (ftree-0)
+    (list (ftree-push-last ss (union a-past b-min) a-last-s) 'b b-max)
+  /dissect (ftree-pop-last ss b) (just /bisection b-past b-last-s)
+  /dissect b-last-s (summarized b-last-sum _)
+  /dissect
+    (finger-tree-with-ordered-summaries-split (finger-tree-rep ss a)
+      (fn a-sum
+        (not /= 1 /summary<=> a-sum b-last-sum)))
+    (bisection (finger-tree-rep _ a-min) (finger-tree-rep _ a-max))
+  /list (ftree-push-last ss (union a-min b-past) b-last-s) 'a a-max))
+
+(define
+  (ftree-with-ordered-summaries-union-firstward
+    ss
+    a
+    b
+    summary<=>
+    summarized-union-lastward
+    element-union-lastward
+    summarized-union-firstward
+    element-union-firstward)
+  (w- union
+    (fn a b
+      (ftree-with-ordered-summaries-union ss a b summary<=>
+        summarized-union-lastward
+        element-union-lastward
+        summarized-union-firstward
+        element-union-firstward))
+  /mat b (ftree-0)
+    (list (ftree-0) 'b a)
+  /expect (ftree-pop-first ss a) (just /bisection a-first-s a-rest)
+    (list (ftree-0) 'a b)
+  /dissect a-first-s (summarized a-first-sum _)
+  /dissect
+    (finger-tree-with-ordered-summaries-split (finger-tree-rep ss b)
+      (fn b-sum
+        (= -1 /summary<=> b-sum a-first-sum)))
+    (bisection (finger-tree-rep _ b-min) (finger-tree-rep _ b-max))
+  /expect b-min (ftree-0)
+    (list
+      b-min
+      'b
+      (ftree-push-first ss a-first-s (union a-rest b-max)))
+  /dissect (ftree-pop-first ss b) (just /bisection b-first-s b-rest)
+  /dissect b-first-s (summarized b-first-sum _)
+  /dissect
+    (finger-tree-with-ordered-summaries-split (finger-tree-rep ss a)
+      (fn a-sum
+        (not /= 1 /summary<=> a-sum b-first-sum)))
+    (bisection (finger-tree-rep _ a-min) (finger-tree-rep _ a-max))
+  /list
+    a-min
+    'a
+    (ftree-push-first ss b-first-s (union a-max b-rest))))
+
+(define/own-contract
+  (finger-tree-with-ordered-summaries-union ss a b summary<=>)
+  (->i
+    (
+      [ss summary-sys?]
+      ; TODO PRECISE: See if we want to check that `a` and `b` have
+      ; `ss` as their `finger-tree-summary-sys`.
+      [a finger-tree?]
+      [b finger-tree?]
+      [ summary<=> (ss)
+        (-> (summary-sys-summary/c ss) (summary-sys-summary/c ss)
+          (or/c -1 0 1))])
+    [_ finger-tree?])
+  (dissect a (finger-tree-rep _ a)
+  /dissect b (finger-tree-rep _ b)
+  /finger-tree-rep ss
+    (ftree-with-ordered-summaries-union ss a b summary<=>
+      (fn a-s b-s element-union-lastward
+        (dissect a-s (summarized a-sum a)
+        /dissect b-s (summarized b-sum b)
+        /w- ordering (summary<=> a-sum b-sum)
+        /mat ordering 1 (list b-s 'a a-s)
+        /mat ordering -1 (list a-s 'b b-s)
+        /element-union-lastward a-s b-s))
+      (fn a-s b-s
+        (list a-s 'b b-s))
+      (fn a-s b-s element-union-firstward
+        (dissect a-s (summarized a-sum a)
+        /dissect b-s (summarized b-sum b)
+        /w- ordering (summary<=> a-sum b-sum)
+        /mat ordering 1 (list b-s 'b a-s)
+        /mat ordering -1 (list a-s 'a b-s)
+        /element-union-firstward a-s b-s))
+      (fn a-s b-s
+        (list a-s 'a b-s)))))

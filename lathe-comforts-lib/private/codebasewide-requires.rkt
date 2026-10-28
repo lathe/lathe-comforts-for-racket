@@ -4,7 +4,7 @@
 ;
 ; An import list that's useful primarily for this codebase.
 
-;   Copyright 2022, 2024 The Lathe Authors
+;   Copyright 2022, 2024, 2026 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -34,8 +34,9 @@
       ...+ ~! ~alt ~and ~bind ~fail ~literal ~not ~optional ~or* ~parse ~seq ~var attribute define-splicing-syntax-class define-syntax-class expr expr/c id keyword nat pattern syntax-parse this-syntax))
   racket/base)
 
+(only-in racket/contract struct-type-property/c)
 (only-in racket/contract/base
-  -> ->i </c and/c any any/c chaperone-contract? cons/c contract? contract-name contract-out flat-contract? get/build-late-neg-projection list/c listof none/c or/c procedure-arity-includes/c recontract-out recursive-contract rename-contract struct-type-property/c unconstrained-domain-> unsupplied-arg?)
+  -> ->i </c and/c any any/c chaperone-contract? cons/c contract? contract-name contract-out flat-contract? get/build-late-neg-projection list/c listof none/c or/c procedure-arity-includes/c recontract-out recursive-contract rename-contract unconstrained-domain-> unsupplied-arg?)
 (only-in racket/contract/combinator
   blame-add-context coerce-chaperone-contract coerce-contract coerce-flat-contract contract-first-order-passes? make-chaperone-contract make-contract make-flat-contract raise-blame-error)
 (only-in racket/contract/region invariant-assertion)
