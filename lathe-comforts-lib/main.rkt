@@ -4,7 +4,7 @@
 ;
 ; Evergreen utilities.
 
-;   Copyright 2018-2019, 2022 The Lathe Authors
+;   Copyright 2018-2019, 2022, 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@
   
   ; === Evergreen utilities for binding syntax and FP ===
   
-  ; == Utilities for binding syntax ==
-  binds
-  define-simple-normalizing-binder
+  ; == Utilities for macros ==
+  define-syntax-parse-rule/autoptic
+  define-syntax-parse-rule/autoptic/loc
   
   ; == Utilities for functional programming ==
   
@@ -51,4 +51,4 @@
   dissect/derived
   dissectfn
   dissectfn/derived
-)
+  )

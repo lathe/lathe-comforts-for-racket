@@ -4,7 +4,7 @@
 ;
 ; Utilities for contracts.
 
-;   Copyright 2017-2022 The Lathe Authors
+;   Copyright 2017-2022, 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@
 ;   either express or implied. See the License for the specific
 ;   language governing permissions and limitations under the License.
 
+
+(require #/for-syntax #/only-in lathe-comforts/syntax
+  ~autoptic ~autoptic-list)
 
 (require lathe-comforts/private/shim)
 (init-shim)
@@ -50,6 +53,7 @@
   by-own-method/c)
 (provide #/own-contract-out
   equal/c
+  equal-always/c
   flat-contract-accepting/c)
 
 
@@ -133,58 +137,78 @@
     v))
 
 
-(define-syntax (let/c stx)
-  (syntax-protect #/syntax-parse stx #/ (_ [var:id val] ... body)
-    
-    #:declare body (expr/c #'contract? #:name "body result")
-    
-    #'(let ([var val] ...)
-        (rename-contract body.c
-          `(let/c [var ,(value-name-for-contract var)] ...
-             body)))))
+(define-syntax-parse-rule/autoptic
+  (let/c
+    {~autoptic-list
+      [ var:id
+        {~var val (expr/c #'contract #:name "binding value")}]}
+    ...
+    {~var body (expr/c #'contract? #:name "body result")})
+  (let ([var val] ...)
+    (rename-contract body.c
+      `(let/c [var ,(value-name-for-contract var)] ...
+          body))))
 
 
-; NOTE: This takes the same options `recursive-contract` does, and it
-; passes them along unmodified.
-(define-syntax (fix/c stx)
-  (syntax-protect #/syntax-parse stx
-    [
-      (fix/c var:id options ... contract)
-      
-      #:declare contract
-      (expr/c #'contract? #:name "contract argument")
-      
-      #'(let ()
-          (define var
+; TODO: See if we'll use this, probably in an upgraded `fix/c`.
+(define
+  (make-recursive-contract
+    obstinacy extra-delay? list? contract-promise)
+  (w- p contract-promise
+  #/mat obstinacy (flat-obstinacy)
+    (if extra-delay?
+      (if list?
+        (recursive-contract (force p)
+          #:flat #:extra-delay #:list-contract?)
+        (recursive-contract (force p) #:flat #:extra-delay))
+      (if list?
+        (recursive-contract (force p) #:flat #:list-contract?)
+        (recursive-contract (force p) #:flat)))
+  #/mat obstinacy (chaperone-obstinacy)
+    (if list?
+      (recursive-contract (force p) #:chaperone #:list-contract?)
+      (recursive-contract (force p) #:chaperone))
+  #/dissect obstinacy (impersonator-obstinacy)
+    (if list?
+      (recursive-contract (force p) #:impersonator #:list-contract?)
+      (recursive-contract (force p) #:impersonator))))
+
+; TODO: Let this pass in the extra options of
+; `make-recursive-contract`.
+;
+(define-syntax-parser fix/c
+  [
+    {~autoptic-list
+      (fix/c var:id
+        {~var contract
+          (expr/c #'contract? #:name "contract argument")})}
+    #'(let ()
+        (define var
+          (w- var (rename-contract (recursive-contract var) 'var)
+          #/rename-contract contract.c `(fix/c var contract)))
+        var)]
+  [
+    {~autoptic-list
+      (fix/c
+        {~autoptic-list
+          (var:id {~autoptic-list [arg-var:id arg-val:expr]} ...)}
+        {~var contract
+          (expr/c #'contract? #:name "contract argument")})}
+    #'(let ()
+        (define var
+          (lambda (arg-var ...)
             (w- var
-              (rename-contract (recursive-contract var options ...)
-                'var)
+              (lambda (arg-var ...)
+                (rename-contract
+                  (recursive-contract #/var arg-var ...)
+                  `(var ,(contract-name-or-value arg-var) ...)))
             #/rename-contract contract.c
-              `(fix/c var options ... contract)))
-          var)]
-    [
-      (fix/c (var:id [arg-var:id arg-val:expr] ...) options ...
-        contract)
-      
-      #:declare contract
-      (expr/c #'contract? #:name "contract argument")
-      
-      #'(let ()
-          (define var
-            (lambda (arg-var ...)
-              (w- var
-                (lambda (arg-var ...)
-                  (rename-contract
-                    (recursive-contract (var arg-var ...) options ...)
-                    `(var ,(contract-name-or-value arg-var) ...)))
-              #/rename-contract contract.c
-                `(fix/c
-                   (var
-                     [arg-var ,(contract-name-or-value arg-var)]
-                     ...)
-                   options ...
-                   contract))))
-          (var arg-val ...))]))
+              `(fix/c
+                  (var
+                    [arg-var ,(contract-name-or-value arg-var)]
+                    ...)
+                  contract))))
+        (var arg-val ...))])
 
 
 (define (by-own-method/c-impl ob name body)
@@ -211,29 +235,30 @@
             name v)
         #/project-late-contract c v "the body of")))))
 
-(define-syntax (by-own-method/c stx)
-  (syntax-protect #/syntax-parse stx #/
-    (_
-      (~optional (~seq #:obstinacy ob)
-        #:defaults ([ob.c #'(impersonator-obstinacy)]))
-      pat:expr
-      body)
-    
-    #:declare ob (expr/c #'obstinacy? #:name "obstinacy argument")
-    
-    #:declare body
-    (expr/c #'(obstinacy-contract/c ob-c) #:name "body result")
-    
-    #'(w- ob-c ob.c
-      #/by-own-method/c-impl ob-c '(by-own-method/c pat body)
-        (expectfn pat (list)
-          (list body.c)))))
+(define-syntax-parse-rule/autoptic
+  (by-own-method/c
+    (~optional
+      (~seq {~autoptic #:obstinacy}
+        {~var ob (expr/c #'obstinacy? #:name "obstinacy argument")})
+      #:defaults ([ob.c #'(impersonator-obstinacy)]))
+    pat:expr
+    {~var body
+      (expr/c #'(obstinacy-contract/c ob-c) #:name "body result")})
+  (w- ob-c ob.c
+  #/by-own-method/c-impl ob-c '(by-own-method/c pat body)
+    (expectfn pat (list)
+      (list body.c))))
 
 
 (define/own-contract (equal/c example)
   (-> any/c flat-contract?)
   (rename-contract (fn v #/equal? example v)
     `(equal/c ,(value-name-for-contract example))))
+
+(define/own-contract (equal-always/c example)
+  (-> any/c flat-contract?)
+  (rename-contract (fn v #/equal-always? example v)
+    `(equal-always/c ,(value-name-for-contract example))))
 
 
 (define/own-contract (flat-contract-accepting/c v)

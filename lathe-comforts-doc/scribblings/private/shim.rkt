@@ -1,11 +1,11 @@
-#lang parendown/slash racket/base
+#lang parendown/slash at-exp racket/base
 
 ; shim.rkt
 ;
 ; Import lists, debugging constants, and other utilities that are
 ; useful primarily for this codebase.
 
-;   Copyright 2022 The Lathe Authors
+;   Copyright 2022, 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -25,10 +25,91 @@
 (reprovide lathe-comforts/scribblings/private/codebasewide-requires)
 
 (provide
-  init-shim)
+  init-shim
+  enforces-autopticity
+  also-enforces-autopticity
+  definition-that-ensures-autopticity
+  pattern-that-ensures-autopticity)
 
 
-; NOTE: If we ever have something we want to do at the beginning of
-; each module, we'll put it here.
-(define-syntax-parse-rule (init-shim)
-  (begin))
+; TODO: Putting `for-label` in
+; `lathe-comforts/scribblings/private/codebasewide-requires` doesn't
+; work, so we use a very unhygienic macro that expands to `require`
+; here intsead. Didn't it work at some point? Technically we could be
+; meticulous and only adjust the scopes on the module names we're
+; requiring here, but that makes it harder to pull these back out into
+; a regular `require` if we figure out a way to do so.
+;
+(define-syntax-parse-rule/autoptic (init-shim)
+  
+  #:with result
+  (datum->syntax this-syntax /syntax->datum
+    #`
+    (begin
+      (require /only-in
+        reprovide/require-transformer/combine-in-fallback
+        combine-in/fallback)
+      (require /for-label /combine-in/fallback
+        (combine-in
+          (only-in racket/contract/base
+            -> </c and/c any any/c cons/c contract-out chaperone-contract? contract? contract-name flat-contract? listof or/c recursive-contract struct/c)
+          (only-in racket/contract/combinator
+            coerce-chaperone-contract coerce-contract coerce-flat-contract make-chaperone-contract make-contract make-flat-contract)
+          (only-in racket/contract/region
+            define/contract invariant-assertion)
+          (only-in racket/generic define-generics)
+          (only-in racket/list append-map)
+          (only-in racket/match exn:misc:match? match match-lambda)
+          (only-in racket/math natural?)
+          (only-in racket/struct make-constructor-style-printer)
+          (only-in racket/struct-info extract-struct-info)
+          (only-in syntax/parse
+            ~peek-not ~seq ~var expr id this-syntax syntax-parse)
+          (only-in syntax/parse/define define-syntax-parse-rule)
+          
+          (only-in parendown pd)
+          
+          lathe-comforts
+          lathe-comforts/contract
+          lathe-comforts/hash
+          lathe-comforts/list
+          lathe-comforts/match
+          lathe-comforts/maybe
+          lathe-comforts/own-contract
+          lathe-comforts/string
+          lathe-comforts/struct
+          lathe-comforts/syntax
+          lathe-comforts/trivial)
+        
+        racket/base)
+      
+      (define syntax-doc '(lib "syntax/scribblings/syntax.scrbl"))
+      
+      ))
+  
+  result)
+
+
+(define @enforces-autopticity[]
+  @list{
+    This syntax must be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+  })
+
+(define @also-enforces-autopticity[]
+  @list{
+    This syntax itself must also be called with @tech{autopticity}. An occurrence of a cons cell, empty list, or keyword that's part of the call syntax must have a set of scopes that's equal to or a superset of the set of scopes on the entire call, as though the call has created a local binding of what a cons cell means in these positions. This helps ensure that even though Racket expressions are often made of cons cells, an expression inserted into one of these positions by a macro's syntax template will not have its cons cells misinterpreted.
+  })
+
+(define @definition-that-ensures-autopticity[]
+  @list{
+    Defining a syntax transformer this way helps to ensure @tech{autopticity} of each of its call sites. Note that each of the @racket[_pattern]s is still the usual sort of @racket[syntax-parse] pattern, and it won't ensure autopticity without the use of helpers like the @racket[~autoptic-list] pattern expander.
+    
+    @also-enforces-autopticity[]
+  })
+
+@(define @pattern-that-ensures-autopticity[]
+  @list{
+    Parsing using this pattern helps to ensure @tech{autopticity} of the call site being parsed.
+    
+    @also-enforces-autopticity[]
+  })

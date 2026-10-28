@@ -15,8 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        racket-variant: ["BC", "CS"]
-        racket-version: ["8.3", "stable", "current"]
+        racket-version: ["8.18", "stable", "current"]
         racket-catalogs-id: ["pkgs"]
         racket-catalogs: [""]
         include:
@@ -25,22 +24,20 @@ jobs:
           # versions. This is essentially our package-lock.json or
           # Cargo.lock information.
           #
-          - racket-variant: "CS"
-            racket-version: "8.3"
+          - racket-version: "8.18"
             racket-catalogs-id: "racksnaps"
             racket-catalogs: |
-              https://download.racket-lang.org/releases/8.3/catalog/,
-              https://racksnaps.defn.io/built-snapshots/2022/01/23/catalog/
+              https://download.racket-lang.org/releases/8.18/catalog/,
+              https://racksnaps.defn.io/built-snapshots/2025/08/23/catalog/
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       
       - name: Install Racket '${{ matrix.racket-version }}'
-        uses: Bogdanp/setup-racket@v1.7
+        uses: Bogdanp/setup-racket@v1.11
         with:
           architecture: x64
           distribution: full
-          variant: ${{ matrix.racket-variant }}
           version: ${{ matrix.racket-version }}
           catalogs: ${{ matrix.racket-catalogs }}
           
@@ -56,7 +53,7 @@ jobs:
       - name: Record the Racket version
         run: racket --version | tee .racket-version
       - name: Obtain cached Racket packages, if available
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/racket
@@ -88,7 +85,7 @@ jobs:
       # fetch a stale copy of the dependency from the Racket package
       # index.
       #
-      - name: Install `${{ matrix.package }}-lib` and its dependencies
+      - name: Install `${{ needs.vars.outputs.package }}-lib` and its dependencies
         run: raco pkg install --auto --no-docs --batch --link "./${{ needs.vars.outputs.package }}-lib/"
       - name: Install `${{ needs.vars.outputs.package }}-doc` and its dependencies
         run: raco pkg install --auto --no-docs --batch --link "./${{ needs.vars.outputs.package }}-doc/"

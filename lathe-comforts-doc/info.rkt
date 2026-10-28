@@ -5,6 +5,7 @@
 (define deps (list "base"))
 (define build-deps
   (list
+    "at-exp-lib"
     "lathe-comforts-lib"
     "parendown-doc"
     "parendown-lib"

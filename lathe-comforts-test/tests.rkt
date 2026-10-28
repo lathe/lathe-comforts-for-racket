@@ -4,7 +4,7 @@
 ;
 ; Unit tests.
 
-;   Copyright 2018, 2019 The Lathe Authors
+;   Copyright 2018, 2019, 2021, 2025 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -120,14 +120,24 @@
     "Writing a structure whose structure type uses (auto-write) with quoting depth 1 writes an unreadable value with all the contents exposed")
   
   (check-equal?
-    (equal? (foo (list 1) 2) (foo (list 1) 2))
+    (equal? (foo (vector 1) 2) (foo (vector 1) 2))
     #t
     "A structure whose structure type uses (auto-equal) can be successfully compared with `equal?`")
   
   (check-equal?
-    (equal? (foo (list 1) 2) (foo (list 2) 2))
+    (equal? (foo (vector 1) 2) (foo (vector 2) 2))
     #f
     "A structure whose structure type uses (auto-equal) can be unsuccessfully compared with `equal?`")
+  
+  (check-equal?
+    (equal-always? (foo (list 1) 2) (foo (list 1) 2))
+    #t
+    "A structure whose structure type uses (auto-equal) can be successfully compared with `equal-always?`")
+  
+  (check-equal?
+    (equal-always? (foo (vector 1) 2) (foo (vector 1) 2))
+    #f
+    "A structure whose structure type uses (auto-equal) can be unsuccessfully compared with `equal-always?`")
   
   )
 
@@ -166,7 +176,7 @@
 
 (check-equal?
   (sort
-    (pd / hash-map (hash 'a 1 'b 2) / fn k v
+    (pd / hash-map (hashalw 'a 1 'b 2) / fn k v
       (format "(~s, ~s)" k v))
     string<?)
   (list "(a, 1)" "(b, 2)"))

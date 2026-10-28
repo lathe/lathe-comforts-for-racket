@@ -23,6 +23,7 @@
 (init-shim)
 
 (require #/for-syntax #/only-in lathe-comforts fn)
+(require #/for-syntax #/only-in lathe-comforts/syntax ~autoptic-list)
 
 (require #/only-in lathe-comforts
   dissect dissectfn expect expectfn fn mat w-)
@@ -35,70 +36,87 @@
 
 
 
-(define-syntax (define-match-expander-from-match-and-make stx)
-  (syntax-protect
-  #/syntax-parse stx #/
-    (_ new-name:id match-name:id make-id-name:id make-list-name:id)
-    #'(... #/define-match-expander new-name
-        (fn stx
-          (syntax-protect #/syntax-parse stx #/ (_ arg ...)
-            (quasisyntax/loc stx (match-name arg ...))))
-        (fn stx
-          (syntax-protect #/syntax-parse stx
-            [_:id (quasisyntax/loc stx make-id-name)]
-            [
-              (_ arg ...)
-              (quasisyntax/loc stx (make-list-name arg ...))])))))
+(define-syntax-parser define-match-expander-from-match-and-make #/
+  {~autoptic-list
+    (_ new-name:id match-name:id make-id-name:id make-list-name:id)}
+  (quasisyntax/loc this-syntax
+    (define-match-expander new-name
+      #,
+      (syntax/loc this-syntax
+        (... #/syntax-parser #/ {~autoptic-list (_ arg ...)}
+          (quasisyntax/loc this-syntax (match-name arg ...))))
+      #,
+      (syntax/loc this-syntax
+        (... #/syntax-parser
+          [_:id (quasisyntax/loc this-syntax make-id-name)]
+          [ {~autoptic-list (_ arg ...)}
+            (quasisyntax/loc this-syntax
+              (make-list-name arg ...))])))))
 
 
-(define-syntax (define-match-expander-attenuated stx)
-  (syntax-protect
-  #/syntax-parse stx #/
-    (_ new-name:id old-name:id [arg arg/c] ... guard-expr)
-    #:declare arg/c (expr/c #'contract? #:name "an argument contract")
-    #:with (arg-pat ...) (generate-temporaries #'(arg ...))
-    #:with (contracted-arg ...) (generate-temporaries #'(arg ...))
-    #:with (arg/c-result ...) (generate-temporaries #'(arg/c ...))
-    #'(begin
-        
-        (define arg/c-result arg/c.c)
-        ...
-        (define (passes-guard? arg ...)
-          guard-expr)
-        
-        (define-match-expander new-name
-          (fn stx
+(define-syntax-parser define-match-expander-attenuated #/
+  {~autoptic-list
+    (_ new-name:id old-name:id
+      {~autoptic-list
+        [
+          arg
+          {~var arg/c
+            (expr/c #'contract? #:name "an argument contract")}]}
+      ...
+      guard-expr:expr)}
+  #:with (arg-pat ...) (generate-temporaries #'(arg ...))
+  #:with (contracted-arg ...) (generate-temporaries #'(arg ...))
+  #:with (arg/c-result ...) (generate-temporaries #'(arg/c ...))
+  #`
+  (begin
+    
+    (define arg/c-result arg/c.c)
+    ...
+    #,
+    (syntax/loc this-syntax
+      (define (passes-guard? arg ...)
+        guard-expr))
+    
+    #,
+    (quasisyntax/loc this-syntax
+      (define-match-expander new-name
+        #,
+        (quasisyntax/loc this-syntax
+          (syntax-parser #/
             ; TODO: We should really use a syntax class for match
             ; patterns rather than `expr` here, but it doesn't look
             ; like one exists yet.
-            (syntax-protect
-            #/with-syntax
-              (
-                [contracted-guard
-                  (wrap-expr/c
-                    #'(->i ([arg arg/c-result] ...) [_ any/c])
-                    #'(fn arg ... #/passes-guard? arg ...)
-                    ; NOTE: The `#:positive` and `#:negative`
-                    ; arguments here are the usual values but swapped.
-                    #:positive 'from-macro
-                    #:negative 'use-site
-                    #:context stx)]
-                [contracted-arg
-                  (wrap-expr/c #'arg/c-result #'arg #:context stx)]
-                ...)
-            #/syntax-parse stx #/ (_ (~var arg-pat expr) ...)
-              #'(app
-                  (expectfn (old-name arg ...) #f
-                  #/and
-                    (contract-first-order-passes? arg/c-result arg)
-                    ...
-                  #/let ([arg contracted-arg] ...)
-                  #/and (contracted-guard arg ...)
-                  #/list arg ...)
-                #/list arg-pat ...)))
+            {~autoptic-list (_ {~var arg-pat expr} ...)}
+            
+            #:with contracted-guard
+            (wrap-expr/c
+              #'(->i ([arg arg/c-result] ...) [_ any/c])
+              #'(fn arg ... #/passes-guard? arg ...)
+              ; NOTE: The `#:positive` and `#:negative`
+              ; arguments here are the usual values but swapped.
+              #:positive 'from-macro
+              #:negative 'use-site
+              #:context this-syntax)
+            
+            {~@ #:with contracted-arg
+              (wrap-expr/c #'arg/c-result #'arg
+                #:context this-syntax)}
+            ...
+            
+            #'
+            (app
+              (expectfn (old-name arg ...) #f
+                (and
+                  (contract-first-order-passes? arg/c-result arg)
+                  ...
+                #/let ([arg contracted-arg] ...)
+                #/and (contracted-guard arg ...)
+                #/list arg ...))
+              (list arg-pat ...))))
+        #,
+        (quasisyntax/loc this-syntax
           (fn stx
-            (syntax-protect
-            #/with-syntax
+            (with-syntax
               (
                 [contracted-function
                   (wrap-expr/c
@@ -131,7 +149,8 @@
               [ _:id
                 #'(procedure-rename contracted-function 'new-name)]
               
-              [(_ arg ...) #'(contracted-function arg ...)]))))))
+              [ {~autoptic-list (_ arg ...)}
+                #'(contracted-function arg ...)])))))))
 
 
 (define (match/c-impl foo-name foo->maybe-list list->foo args)
@@ -193,21 +212,25 @@
               [v-arg (in-list v-list)])
             (arg-late-neg-projection v-arg missing-party)))))))
 
-(define-syntax (match/c stx)
-  (syntax-protect #/syntax-parse stx #/ (_ name:id arg/c ...)
-    ; TODO: See how well this `#:name` helps. It seems pretty vague.
-    #:declare arg/c (expr/c #'contract? #:name "one of the arguments")
-    #:with (arg ...) (generate-temporaries #'(arg/c ...))
-    #`(match/c-impl
-        'name
-        (fn v
-          (expect v #,(quasisyntax/loc stx (name arg ...)) #f
-          #/list arg ...))
-        (dissectfn (list arg ...)
-          (name arg ...))
-        (list
-          #,@(for/list
-               (
-                 [i (in-naturals)]
-                 [arg/c (in-list (syntax->list #'(arg/c.c ...)))])
-               #`(list #,arg/c #,(format "position ~a of" i)))))))
+(define-syntax-parser match/c #/
+  {~autoptic-list
+    (_ name:id
+      ; TODO: See how well this `#:name` helps. It seems pretty vague.
+      {~var arg/c (expr/c #'contract? #:name "one of the arguments")}
+      ...)}
+  #:with (arg ...) (generate-temporaries #'(arg/c ...))
+  #`
+  (match/c-impl
+    'name
+    (fn v
+      (expect v #,(syntax/loc this-syntax (name arg ...)) #f
+      #/list arg ...))
+    (dissectfn (list arg ...)
+      (name arg ...))
+    (list
+      #,@
+      (for/list
+        (
+          [i (in-naturals)]
+          [arg/c (in-list (syntax->list #'(arg/c.c ...)))])
+        #`(list #,arg/c #,(format "position ~a of" i))))))
