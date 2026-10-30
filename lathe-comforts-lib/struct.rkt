@@ -890,6 +890,12 @@
 
 
 
+; TODO: These are unused definitions for "crafty" structs and
+; interfaces, whose method calls can dispatch through a "crafty
+; tableau." Look over this framework to determine if it's in a usable
+; state, and once it is, export and document it.
+
+
 (define-generics crafty-signifier
   (crafty-signifier-get-prerequisites crafty-signifier))
 (ascribe-own-contract crafty-signifier-get-prerequisites
