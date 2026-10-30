@@ -7,7 +7,7 @@
 ; these things, and various utilities that could come in handy in
 ; other codebases for making shim files like this one.
 
-;   Copyright 2021-2022, 2025 The Lathe Authors
+;   Copyright 2021-2022, 2025-2026 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -227,18 +227,12 @@
 
 (module part3 racket/base
   
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require /for-syntax /only-in syntax/parse syntax-parser)
-  
   (require /for-syntax /submod ".." part2)
   
   ; TODO SHIM: See if we should add these to the shim. Our other
   ; modules don't depend on `syntax/parse`'s parsing framework at run
   ; time.
-  (require /only-in syntax/parse
-    ~and ~bind ~var expr/c pattern-expander this-syntax)
+  (require /only-in syntax/parse ~and ~bind ~var pattern-expander)
   
   (require lathe-comforts/private/codebasewide-requires)
   
@@ -308,11 +302,6 @@
 
 
 (module part4 racket/base
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require /for-syntax /only-in syntax/parse syntax-parser)
   
   (require /for-syntax /submod ".." part2)
   (require /for-syntax /submod ".." part3)
@@ -403,7 +392,8 @@
   ; TODO SHIM: See if we should add these to the shim. Our other
   ; modules don't depend on `syntax/parse`'s parsing framework at run
   ; time.
-  (require /only-in syntax/parse ~and ~var pattern-expander)
+  (require /only-in syntax/parse
+    ~and ~var pattern-expander this-syntax)
   
   (require lathe-comforts/private/codebasewide-requires)
   
@@ -549,11 +539,6 @@
   
   (require /for-syntax /submod ".." part4)
   (require /for-syntax /submod ".." part6)
-  
-  ; TODO SHIM: See if we should add these to the shim. Our other
-  ; modules don't depend on `syntax/parse`'s parsing framework at run
-  ; time.
-  (require /only-in syntax/parse expr id)
   
   (require /submod ".." part3)
   (require /submod ".." part4)

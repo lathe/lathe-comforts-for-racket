@@ -4,7 +4,7 @@
 ;
 ; Utilities for structs.
 
-;   Copyright 2017-2020, 2022, 2025 The Lathe Authors
+;   Copyright 2017-2020, 2022, 2025-2026 The Lathe Authors
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License");
 ;   you may not use this file except in compliance with the License.
@@ -887,3 +887,159 @@
         (make-inst-impl method-impl ...))
       (values
         inst? inst-impl? method ... prop-inst build-inst-impl))))
+
+
+
+(define-generics crafty-signifier
+  (crafty-signifier-get-prerequisites crafty-signifier))
+(ascribe-own-contract crafty-signifier-get-prerequisites
+  (-> crafty-signifier? crafty-tableau?))
+
+(define-generics crafty-signifier-implementation
+  (crafty-signifier-implementation-get-there
+    crafty-signifier-implementation)
+  (crafty-signifier-implementation-get-prerequisites
+    crafty-signifier-implementation)
+  (crafty-signifier-implementation-get-arity
+    crafty-signifier-implementation)
+  (crafty-signifier-implementation-construct-here there
+    crafty-signifier-implementation fields)
+  (crafty-signifier-implementation-deconstruct-falsable-here there
+    crafty-signifier-implementation v))
+(ascribe-own-contract crafty-signifier-implementation-get-there
+  (-> crafty-signifier-implementation? crafty-abstraction-stack?))
+(ascribe-own-contract
+  crafty-signifier-implementation-get-prerequisites
+  (-> crafty-signifier-implementation? crafty-tableau?))
+(ascribe-own-contract crafty-signifier-implementation-get-arity
+  (-> crafty-signifier-implementation? (set/c crafty-signifier?)))
+(ascribe-own-contract crafty-signifier-implementation-construct-here
+  (->
+    crafty-abstraction-stack?
+    crafty-signifier-implementation?
+    (and/c hash? immutable? hash-equal-always?
+      (hash/c crafty-signifier? any/c))
+    any/c))
+(ascribe-own-contract
+  crafty-signifier-implementation-deconstruct-falsable-here
+  (-> crafty-abstraction-stack? crafty-signifier-implementation? any/c
+    (or/c #f (hash/c crafty-signifier? any/c))))
+
+
+(define-generics crafty-method-implementation
+  (crafty-method-implementation-get-there
+    crafty-method-implementation)
+  (crafty-method-implementation-get-prerequisites
+    crafty-method-implementation)
+  (crafty-method-implementation-invoke-here there
+    target invocation crafty-method-implementation))
+(ascribe-own-contract crafty-method-implementation-get-there
+  (-> crafty-method-implementation? crafty-abstraction-stack?))
+(ascribe-own-contract crafty-method-implementation-get-prerequisites
+  (-> crafty-method-implementation? crafty-tableau?))
+(ascribe-own-contract crafty-method-implementation-invoke-here
+  (->
+    crafty-abstraction-stack?
+    any/c
+    any/c
+    crafty-method-implementation?
+    any))
+
+
+(define-generics possibly-crafty-object
+  (possibly-crafty-object-get-constructor-signifier-falsable
+    possibly-crafty-object)
+  (possibly-crafty-object-invoke-here there
+    possibly-crafty-object invocation))
+(ascribe-own-contract
+  possibly-crafty-object-get-constructor-signifier-falsable
+  (-> possibly-crafty-object? (or/c #f crafty-signifier?)))
+(ascribe-own-contract possibly-crafty-object-invoke-here
+  (-> crafty-abstraction-stack? possibly-crafty-object? any/c any))
+
+
+(define-generics possibly-crafty-invocation
+  (possibly-crafty-invocation-actually? possibly-crafty-invocation)
+  (possibly-crafty-invocation-invoke-here there
+    object possibly-crafty-invocation))
+(ascribe-own-contract possibly-crafty-invocation-actually?
+  (-> possibly-crafty-invocation? boolean?))
+(ascribe-own-contract possibly-crafty-invocation-invoke-here
+  (-> crafty-abstraction-stack? any/c possibly-crafty-invocation?
+    any))
+
+
+(define-generics crafty-abstraction-stack
+  (crafty-abstraction-stack-get-global-tableau
+    crafty-abstraction-stack)
+  (crafty-abstraction-stack-get-immediate-srcloc-falsable
+    crafty-abstraction-stack)
+  (crafty-abstraction-stack-report-error
+    crafty-abstraction-stack reportable-error))
+(ascribe-own-contract crafty-abstraction-stack-get-global-tableau
+  (-> crafty-abstraction-stack? crafty-tableau?))
+(ascribe-own-contract
+  crafty-abstraction-stack-get-immediate-srcloc-falsable
+  (-> crafty-abstraction-stack? (or/c #f srcloc?)))
+(ascribe-own-contract crafty-abstraction-stack-report-error
+  (-> crafty-abstraction-stack? any/c none/c))
+
+
+(define-generics crafty-tableau
+  (crafty-tableau-construct-here there
+    crafty-tableau signifier fields)
+  (crafty-tableau-get-signifier-implementation
+    crafty-tableau signifier)
+  (crafty-tableau-iterate-signifier-implementations crafty-tableau)
+  (crafty-tableau-invoke-here there crafty-tableau object invocation)
+  (crafty-tableau-get-method-implementation
+    crafty-tableau
+    object-constructor-signifier
+    invocation-constructor-signifier)
+  (crafty-tableau-iterate-method-implementations crafty-tableau)
+  (crafty-tableau-iterate-periphery-signifiers crafty-tableau)
+  (crafty-tableau-and-nothing-else? crafty-tableau)
+  (crafty-tableau-info-union-via-first
+    crafty-tableau other-crafty-tableau)
+  (crafty-tableau-nothing-else-info-union-via-second
+    other-crafty-tableau-and-nothing-else crafty-tableau)
+  (crafty-tableau-is-known-info>=-via-first?
+    crafty-tableau other-crafty-tableau)
+  (crafty-tableau-nothing-else-is-known-info>=-via-second?
+    other-crafty-tableau-and-nothing-else crafty-tableau))
+(ascribe-own-contract crafty-tableau-construct-here
+  (->
+    crafty-abstraction-stack?
+    crafty-tableau?
+    crafty-signifier?
+    (hash/c crafty-signifier? any/c)
+    any/c))
+(ascribe-own-contract crafty-tableau-get-signifier-implementation
+  (-> crafty-tableau? crafty-signifier?
+    crafty-signifier-implementation?))
+(ascribe-own-contract crafty-tableau-iterate-signifier-implementations
+  (-> crafty-tableau?
+    (sequence/c crafty-signifier? crafty-signifier-implementation?)))
+(ascribe-own-contract crafty-tableau-invoke-here
+  (-> crafty-abstraction-stack? crafty-tableau? any/c any/c any))
+(ascribe-own-contract crafty-tableau-get-method-implementation
+  (-> crafty-tableau? crafty-signifier? crafty-signifier?
+    crafty-method-implementation?))
+(ascribe-own-contract crafty-tableau-iterate-method-implementations
+  (-> crafty-tableau?
+    (sequence/c
+      crafty-signifier?
+      crafty-signifier?
+      crafty-method-implementation?)))
+(ascribe-own-contract crafty-tableau-iterate-periphery-signifiers
+  (-> crafty-tableau? (sequence/c crafty-signifier?)))
+(ascribe-own-contract crafty-tableau-and-nothing-else?
+  (-> crafty-tableau? boolean?))
+(ascribe-own-contract crafty-tableau-info-union-via-first
+  (-> crafty-tableau? crafty-tableau? crafty-tableau?))
+(ascribe-own-contract crafty-tableau-nothing-else-info-union-via-second
+  (-> crafty-tableau? crafty-tableau? crafty-tableau?))
+(ascribe-own-contract crafty-tableau-is-known-info>=-via-first?
+  (-> crafty-tableau? crafty-tableau? boolean?))
+(ascribe-own-contract crafty-tableau-nothing-else-is-known-info>=-via-second?
+  (-> crafty-tableau? crafty-tableau? boolean?))
